@@ -47,7 +47,7 @@ dependencies {
 
     // MCP SDK e dipendenze correlate
     implementation("io.modelcontextprotocol:kotlin-sdk:$mcpVersion")
-    implementation("org.slf4j:slf4j-nop:$slf4jVersion")
+    implementation("org.slf4j:slf4j-simple:$slf4jVersion")
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 

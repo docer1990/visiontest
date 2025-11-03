@@ -8,21 +8,27 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.asSink
 import kotlinx.io.buffered
-import java.util.logging.Logger
+import org.slf4j.LoggerFactory
 
 
 fun main()  {
 
     val config = AppConfig.createDefault()
 
-    val logger = Logger.getLogger("VisionTest")
+    val logger = LoggerFactory.getLogger("VisionTest")
     logger.info("Starting Vision Test server")
 
     val android = Android(
         timeoutMillis = config.adbTimeoutMillis,
         cacheValidityPeriod = config.deviceCacheValidityPeriod,
-        logger = org.slf4j.LoggerFactory.getLogger(Android::class.java)
+        logger = LoggerFactory.getLogger(Android::class.java)
     )
+
+    Runtime.getRuntime().addShutdownHook(Thread {
+        logger.info("Shutting down server")
+        android.close()
+        logger.info("Server shut down complete")
+    })
 
     val server = createServer(config)
 
@@ -37,14 +43,18 @@ fun main()  {
     )
 
     runBlocking {
-        logger.info("Connecting server")
-        server.connect(transport)
-        val done = Job()
-        server.onClose {
-            logger.info("Server closing")
-            done.complete()
+        try {
+            logger.info("Connecting server")
+            server.connect(transport)
+            val done = Job()
+            server.onClose {
+                logger.info("Server connection closed")
+                done.complete()
+            }
+            done.join()
+        } finally {
+            android.close()
         }
-        done.join()
     }
 }
 

@@ -4,7 +4,7 @@ import com.example.visiontest.*
 import com.example.visiontest.config.AppConfig
 import io.modelcontextprotocol.kotlin.sdk.*
 import kotlinx.coroutines.delay
-import java.util.logging.Logger
+import org.slf4j.Logger
 import java.util.concurrent.TimeoutException
 
 /**
@@ -15,8 +15,11 @@ import java.util.concurrent.TimeoutException
 */
 object ErrorHandler {
 
+    // Error messages
     const val PACKAGE_NAME_REQUIRED = "Error: packageName is required"
     const val DEVICE_NOT_FOUND = "No Android device available"
+
+    // Error codes
     const val ERROR_DEVICE_NOT_FOUND = "ERR_NO_DEVICE"
     const val ERROR_COMMAND_FAILED = "ERR_CMD_FAILED"
     const val ERROR_PACKAGE_NOT_FOUND = "ERR_PKG_NOT_FOUND"
@@ -26,6 +29,10 @@ object ErrorHandler {
     const val ERROR_INVALID_ARG = "ERR_INVALID_ARG"
     const val ERROR_ADB_INIT = "ERR_ADB_INIT"
     const val ERROR_UNKNOWN = "ERR_UNKNOWN"
+
+    // Retry configuration defaults
+    private const val DEFAULT_MAX_ATTEMPTS = 3
+    private const val DEFAULT_INITIAL_DELAY_MS = 500L
 
     /**
      * Handles tool errors and produces a standardized result with error codes.
@@ -44,11 +51,11 @@ object ErrorHandler {
         }
 
         // Log with detailed information
-        logger.warning("$context: [$errorCode] $errorMessage")
+        logger.warn("{}: [{}] {}", context, errorCode, errorMessage)
 
         // For debugging builds, log stack trace
         if (AppConfig.createDefault().enableLogging) {
-            logger.warning("Stack trace: ${e.stackTraceToString()}")
+            logger.warn("Stack trace:", e)
         }
 
         return CallToolResult(
@@ -60,8 +67,8 @@ object ErrorHandler {
      * Attempts to retry an operation that might fail transiently.
      */
     suspend fun <T> retryOperation(
-        maxAttempts: Int = 3,
-        initialDelayMs: Long = 500,
+        maxAttempts: Int = DEFAULT_MAX_ATTEMPTS,
+        initialDelayMs: Long = DEFAULT_INITIAL_DELAY_MS,
         operation: suspend () -> T
     ): T {
         var lastException: Exception? = null

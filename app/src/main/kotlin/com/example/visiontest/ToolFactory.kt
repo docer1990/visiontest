@@ -6,7 +6,7 @@ import io.modelcontextprotocol.kotlin.sdk.server.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.jsonPrimitive
-import java.util.logging.Logger
+import org.slf4j.Logger
 import com.example.visiontest.utils.ErrorHandler.DEVICE_NOT_FOUND
 import com.example.visiontest.utils.ErrorHandler.PACKAGE_NAME_REQUIRED
 
@@ -17,6 +17,13 @@ class ToolFactory(
     private val logger: Logger,
     private val toolTimeoutMillis: Long = 10000L
 ) {
+
+    companion object {
+        // Android system property keys
+        private const val PROP_MODEL = "ro.product.model"
+        private const val PROP_ANDROID_VERSION = "ro.build.version.release"
+        private const val PROP_SDK_VERSION = "ro.build.version.sdk"
+    }
 
     fun registerAllTools(server: Server) {
         registerAvailableDeviceTool(server)
@@ -39,9 +46,9 @@ class ToolFactory(
                 val deviceProps = runWithTimeout {
                     android.executeShellOnDevice(result.serial, "getprop")
                 }
-                val modelName = extractProperty(deviceProps, "ro.product.model")
-                val androidVersion = extractProperty(deviceProps, "ro.build.version.release")
-                val sdkVersion = extractProperty(deviceProps, "ro.build.version.sdk")
+                val modelName = extractProperty(deviceProps, PROP_MODEL)
+                val androidVersion = extractProperty(deviceProps, PROP_ANDROID_VERSION)
+                val sdkVersion = extractProperty(deviceProps, PROP_SDK_VERSION)
 
                 val deviceInfo = """
                 |Device found:

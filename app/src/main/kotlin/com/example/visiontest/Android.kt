@@ -38,6 +38,17 @@ class Android(
     private val logger: Logger = LoggerFactory.getLogger(Android::class.java),
 ) : AndroidConfig, AutoCloseable {
 
+    companion object {
+        // Android shell command error patterns
+        private val LAUNCH_ERROR_PATTERNS = listOf(
+            "Error:",           // Generic am error prefix
+            "Exception:",       // Java exceptions
+            "does not exist",   // Package/activity not found
+            "CRASHED",          // App crash during launch
+            "monkey aborted"    // Monkey tool failure
+        )
+    }
+
     private val adb = AndroidDebugBridgeClientFactory().build()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -65,24 +76,23 @@ class Android(
     private var lastDeviceListFetch: Long = 0
 
     private suspend fun fetchDevices(): List<Device> {
-        val currentTime = System.currentTimeMillis()
+        return deviceListCacheLock.withLock {
+            val currentTime = System.currentTimeMillis()
 
-        deviceListCacheLock.withLock {
             // Use cache if valid
             if (deviceListCache != null && (currentTime - lastDeviceListFetch) < cacheValidityPeriod) {
-                return deviceListCache!!
+                return@withLock deviceListCache!!
             }
-        }
 
-        return withTimeout(timeoutMillis) {
-            val devices = adb.execute(ListDevicesRequest())
+            // Cache invalid or missing - fetch new device list
+            val devices = withTimeout(timeoutMillis) {
+                adb.execute(ListDevicesRequest())
+            }
             val activeDevices = devices.filter { it.state == DeviceState.DEVICE }
 
             // Update the cache
-            deviceListCacheLock.withLock {
-                deviceListCache = activeDevices
-                lastDeviceListFetch = currentTime
-            }
+            deviceListCache = activeDevices
+            lastDeviceListFetch = currentTime
 
             activeDevices
         }
@@ -166,13 +176,33 @@ class Android(
         }
     }
 
+    /**
+     * Validates Android package name according to official naming rules:
+     * - Must have at least two segments separated by dots
+     * - Each segment must start with a letter
+     * - Segments can contain letters, digits, and underscores
+     * - No consecutive dots or trailing/leading dots
+     */
     private fun isValidPackageName(packageName: String): Boolean {
-        return packageName.matches(Regex("[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)+"))
+        return packageName.matches(Regex("^[a-zA-Z][a-zA-Z0-9_]*(?:\\.[a-zA-Z][a-zA-Z0-9_]+)+$"))
+    }
+
+    /**
+     * Validates that an activity name follows Android naming conventions
+     * and doesn't contain shell metacharacters. (; | & $ ( ) < > ` \ " ' \n \r)
+     */
+    private fun isValidActivityName(activityName: String): Boolean {
+        return activityName.matches(Regex("\\.?[a-zA-Z][a-zA-Z0-9_.]*")) &&
+               !activityName.contains(Regex("[;|&$()<>`\\\\\"'\\n\\r]"))
     }
 
     override suspend fun launchApp(packageName: String, activityName: String?): Boolean {
         if (!isValidPackageName(packageName)) {
             throw IllegalArgumentException("Invalid package name: $packageName")
+        }
+
+        if (activityName != null && !isValidActivityName(activityName)) {
+            throw IllegalArgumentException("Invalid activity name: $activityName")
         }
 
         val command = if (activityName != null) {
@@ -181,15 +211,15 @@ class Android(
             "monkey -p $packageName -c android.intent.category.LAUNCHER 1"
         }
 
-        return try {
-            val result = shell(command)
-            if (result.contains("Error")) {
-                throw CommandExecutionException("Error launching app: $packageName")
-            }
-            true
-        } catch (e: CommandExecutionException) {
-            logger.error("Error launching app: ${e.message}")
-            false
+        val result = shell(command)
+
+        // Check for specific error patterns from am/monkey commands
+        if (LAUNCH_ERROR_PATTERNS.any { result.contains(it, ignoreCase = true) }) {
+            logger.error("Failed to launch app {}: {}", packageName, result)
+            throw CommandExecutionException("Error launching app: $packageName", exitCode = -1)
         }
+
+        logger.debug("Successfully launched app: {}", packageName)
+        return true
     }
 }

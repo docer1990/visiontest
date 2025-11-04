@@ -38,3 +38,18 @@ class AppInfoException(message: String, cause: Throwable? = null) : Exception(me
  * Thrown when a specified package cannot be found on the device.
  */
 class PackageNotFoundException(message: String) : Exception(message)
+
+/**
+ * Thrown when an iOS simulator operation fails.
+ */
+class IOSSimulatorException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+/**
+ * Thrown when no iOS simulator is available for testing.
+ */
+class NoSimulatorAvailableException(message: String) : Exception(message)
+
+/**
+ * Thrown when a specified app cannot be found on the iOS device/simulator.
+ */
+class AppNotFoundException(message: String) : Exception(message)

@@ -1,5 +1,14 @@
-package com.example.visiontest
+package com.example.visiontest.android
 
+import com.example.visiontest.AdbInitializationException
+import com.example.visiontest.AppInfoException
+import com.example.visiontest.AppListException
+import com.example.visiontest.CommandExecutionException
+import com.example.visiontest.NoDeviceAvailableException
+import com.example.visiontest.PackageNotFoundException
+import com.example.visiontest.common.DeviceConfig
+import com.example.visiontest.common.DeviceType
+import com.example.visiontest.common.MobileDevice
 import com.example.visiontest.utils.ErrorHandler
 import com.malinskiy.adam.AndroidDebugBridgeClientFactory
 import com.malinskiy.adam.interactor.StartAdbInteractor
@@ -13,7 +22,6 @@ import org.slf4j.LoggerFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -22,21 +30,11 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeoutException
 
-
-interface AndroidConfig {
-    suspend fun listDevice(): List<Device>
-    suspend fun getFirstAvailableDevice(): Device
-    suspend fun listApps(): List<String>
-    suspend fun getAppInfo(packageName: String): String
-    suspend fun executeShellOnDevice(deviceId: String, command: String): String
-    suspend fun launchApp(packageName: String, activityName: String? = null): Boolean
-}
-
 class Android(
     private val timeoutMillis: Long = 5000L,
     private val cacheValidityPeriod: Long = 1000L,
     private val logger: Logger = LoggerFactory.getLogger(Android::class.java),
-) : AndroidConfig, AutoCloseable {
+) : DeviceConfig, AutoCloseable {
 
     companion object {
         // Android shell command error patterns
@@ -72,10 +70,10 @@ class Android(
     }
 
     private val deviceListCacheLock = Mutex()
-    private var deviceListCache: List<Device>? = null
+    private var deviceListCache: List<MobileDevice>? = null
     private var lastDeviceListFetch: Long = 0
 
-    private suspend fun fetchDevices(): List<Device> {
+    private suspend fun fetchDevices(): List<MobileDevice> {
         return deviceListCacheLock.withLock {
             val currentTime = System.currentTimeMillis()
 
@@ -91,21 +89,21 @@ class Android(
             val activeDevices = devices.filter { it.state == DeviceState.DEVICE }
 
             // Update the cache
-            deviceListCache = activeDevices
+            deviceListCache = activeDevices.map { it.toMobileDevice() }
             lastDeviceListFetch = currentTime
 
-            activeDevices
+            activeDevices.map { it.toMobileDevice() }
         }
     }
 
-    override suspend fun getFirstAvailableDevice(): Device {
+    override suspend fun getFirstAvailableDevice(): MobileDevice {
         return ErrorHandler.retryOperation(maxAttempts = 3) {
             fetchDevices().firstOrNull()
                 ?: throw NoDeviceAvailableException("no Android devices available")
         }
     }
 
-    override suspend fun listDevice(): List<Device> {
+    override suspend fun listDevices(): List<MobileDevice> {
         return fetchDevices()
     }
 
@@ -114,13 +112,13 @@ class Android(
         deviceSerial: String? = null
     ): String {
         val device = deviceSerial?.let { serial ->
-            fetchDevices().find { it.serial == serial }
+            fetchDevices().find { it.id == serial }
         } ?: getFirstAvailableDevice()
 
-        logger.debug("Executing command: '$command' on device: ${device.serial}")
+        logger.debug("Executing command: '$command' on device: ${device.id}")
 
         val response: ShellCommandResult = withTimeoutOrNull(timeoutMillis) {
-            adb.execute(ShellCommandRequest(command), device.serial)
+            adb.execute(ShellCommandRequest(command), device.id)
         } ?: throw TimeoutException("Timeout executing command: $command")
 
         if (response.exitCode != 0) {
@@ -135,14 +133,11 @@ class Android(
         return response.output.trim()
     }
 
-    override suspend fun executeShellOnDevice(deviceId: String, command: String): String {
-        val device = fetchDevices().find { it.serial == deviceId }
-            ?: throw NoDeviceAvailableException("No device with ID $deviceId available")
-
-        return shell(command, device.serial)
+    override suspend fun executeShell(command: String, deviceId: String?): String {
+        return shell(command, deviceId)
     }
 
-    override suspend fun listApps(): List<String> {
+    override suspend fun listApps(deviceId: String?): List<String> {
         return ErrorHandler.retryOperation {
             try {
                 val result = shell("pm list packages")
@@ -160,7 +155,7 @@ class Android(
         }
     }
 
-    override suspend fun getAppInfo(packageName: String): String {
+    override suspend fun getAppInfo(packageName: String, deviceId: String?): String {
         if (!isValidPackageName(packageName)) {
             throw IllegalArgumentException("Invalid package name: $packageName")
         }
@@ -196,7 +191,7 @@ class Android(
                !activityName.contains(Regex("[;|&$()<>`\\\\\"'\\n\\r]"))
     }
 
-    override suspend fun launchApp(packageName: String, activityName: String?): Boolean {
+    override suspend fun launchApp(packageName: String, activityName: String?, deviceId: String?): Boolean {
         if (!isValidPackageName(packageName)) {
             throw IllegalArgumentException("Invalid package name: $packageName")
         }
@@ -221,5 +216,14 @@ class Android(
 
         logger.debug("Successfully launched app: {}", packageName)
         return true
+    }
+
+    private fun Device.toMobileDevice(): MobileDevice {
+        return MobileDevice(
+            id = this.serial,
+            name = this.serial,
+            type = DeviceType.ANDROID,
+            state = this.state.toString()
+        )
     }
 }

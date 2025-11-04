@@ -3,7 +3,7 @@
  */
 package com
 
-import com.example.visiontest.Android
+import com.example.visiontest.android.Android
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlinx.coroutines.runBlocking
@@ -11,7 +11,7 @@ import kotlinx.coroutines.runBlocking
 class AndroidTest {
     @Test fun androidCanListDevices(): Unit =  runBlocking {
         val android = Android()
-        val apps = android.listDevice()
+        val apps = android.listDevices()
         assertNotNull(apps, "app should have a list of devices")
     }
 }

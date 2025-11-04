@@ -1,5 +1,7 @@
 package com.example.visiontest
 
+import com.example.visiontest.android.Android
+import com.example.visiontest.ios.IOSManager
 import com.example.visiontest.config.AppConfig
 import io.ktor.utils.io.streams.asInput
 import io.modelcontextprotocol.kotlin.sdk.*
@@ -24,15 +26,20 @@ fun main()  {
         logger = LoggerFactory.getLogger(Android::class.java)
     )
 
+    val ios = IOSManager(
+        logger = LoggerFactory.getLogger(IOSManager::class.java)
+    )
+
     Runtime.getRuntime().addShutdownHook(Thread {
         logger.info("Shutting down server")
         android.close()
+        ios.close()
         logger.info("Server shut down complete")
     })
 
     val server = createServer(config)
 
-    val toolFactory = ToolFactory(android, logger)
+    val toolFactory = ToolFactory(android, ios, logger)
     toolFactory.registerAllTools(server)
 
     // Connect using stdio transport
@@ -54,6 +61,7 @@ fun main()  {
             done.join()
         } finally {
             android.close()
+            ios.close()
         }
     }
 }

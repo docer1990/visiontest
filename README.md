@@ -135,7 +135,10 @@ You can customize these values by:
    - `VISION_TEST_ADB_TIMEOUT`: ADB command timeout in milliseconds (default: 5000)
    - `VISION_TEST_DEVICE_CACHE_VALIDITY`: Device cache validity period in milliseconds (default: 1000)
    - `VISION_TEST_TOOL_TIMEOUT`: Tool execution timeout in milliseconds (default: 10000)
-   - `VISION_TEST_ENABLE_LOGGING`: Enable detailed logging (default: true)
+   - `VISION_TEST_LOG_LEVEL`: Logging verbosity level (values: "PRODUCTION", "DEVELOPMENT", "DEBUG"; default: "PRODUCTION")
+     - `PRODUCTION`: Minimal logging, no stack traces (recommended for production use)
+     - `DEVELOPMENT`: Detailed logging with sanitized stack traces (safe for development)
+     - `DEBUG`: Full logging including complete stack traces (use only in secure environments)
 
 2. **Properties File** (future implementation):
    Create a `config.properties` file with the following format:
@@ -202,15 +205,23 @@ To configure Claude to work with the Vision Test server:
 
 The system includes a comprehensive error handling mechanism with specific error codes:
 
-- `ERR_NO_DEVICE`: No Android device is available
-- `ERR_CMD_FAILED`: Command execution failed
-- `ERR_PKG_NOT_FOUND`: Package not found on device
+### Common Error Codes
 - `ERR_APP_INFO`: Error retrieving app information
 - `ERR_APP_LIST`: Error listing apps
 - `ERR_TIMEOUT`: Operation timed out
 - `ERR_INVALID_ARG`: Invalid argument provided
-- `ERR_ADB_INIT`: ADB initialization failed
 - `ERR_UNKNOWN`: Unknown error
+
+### Android-Specific Error Codes
+- `ERR_NO_DEVICE`: No Android device is available
+- `ERR_CMD_FAILED`: Command execution failed
+- `ERR_PKG_NOT_FOUND`: Package not found on device
+- `ERR_ADB_INIT`: ADB initialization failed
+
+### iOS-Specific Error Codes
+- `ERR_NO_SIMULATOR`: No iOS simulator is available
+- `ERR_IOS_SIMULATOR`: iOS simulator operation failed
+- `ERR_APP_NOT_FOUND`: App not found on iOS device/simulator
 
 ## Extension
 

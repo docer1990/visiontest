@@ -1,7 +1,9 @@
 package com.example.visiontest.utils
 
 import com.example.visiontest.*
+import com.example.visiontest.android.*
 import com.example.visiontest.config.AppConfig
+import com.example.visiontest.config.LogLevel
 import io.modelcontextprotocol.kotlin.sdk.*
 import kotlinx.coroutines.delay
 import org.slf4j.Logger
@@ -17,6 +19,7 @@ object ErrorHandler {
 
     // Error messages
     const val PACKAGE_NAME_REQUIRED = "Error: packageName is required"
+    const val BUNDLE_ID_REQUIRED = "Error: bundleId is required"
     const val DEVICE_NOT_FOUND = "No Android device available"
 
     // Error codes
@@ -28,6 +31,9 @@ object ErrorHandler {
     const val ERROR_TIMEOUT = "ERR_TIMEOUT"
     const val ERROR_INVALID_ARG = "ERR_INVALID_ARG"
     const val ERROR_ADB_INIT = "ERR_ADB_INIT"
+    const val ERROR_IOS_SIMULATOR = "ERR_IOS_SIMULATOR"
+    const val ERROR_NO_SIMULATOR = "ERR_NO_SIMULATOR"
+    const val ERROR_APP_NOT_FOUND = "ERR_APP_NOT_FOUND"
     const val ERROR_UNKNOWN = "ERR_UNKNOWN"
 
     // Retry configuration defaults
@@ -36,26 +42,56 @@ object ErrorHandler {
 
     /**
      * Handles tool errors and produces a standardized result with error codes.
+     * Logging behavior varies based on the configured log level:
+     * - PRODUCTION: Only error message and code
+     * - DEVELOPMENT: Error message, code, and sanitized stack trace
+     * - DEBUG: Full stack trace with all details
      */
     fun handleToolError(e: Exception, logger: Logger, context: String): CallToolResult {
         val (errorCode, errorMessage) = when (e) {
+            // Android-specific errors
             is NoDeviceAvailableException -> Pair(ERROR_DEVICE_NOT_FOUND, DEVICE_NOT_FOUND)
             is CommandExecutionException -> Pair(ERROR_COMMAND_FAILED, "Command execution failed (code: ${e.exitCode}): ${e.message}")
             is PackageNotFoundException -> Pair(ERROR_PACKAGE_NOT_FOUND, "Package not found: ${e.message}")
+            is AdbInitializationException -> Pair(ERROR_ADB_INIT, "ADB initialization failed: ${e.message}")
+
+            // iOS-specific errors
+            is NoSimulatorAvailableException -> Pair(ERROR_NO_SIMULATOR, "No iOS simulator available: ${e.message}")
+            is IOSSimulatorException -> Pair(ERROR_IOS_SIMULATOR, "iOS simulator error: ${e.message}")
+            is AppNotFoundException -> Pair(ERROR_APP_NOT_FOUND, "App not found: ${e.message}")
+
+            // Common errors
             is AppInfoException -> Pair(ERROR_APP_INFO_FAILED, "Failed to get app information: ${e.message}")
             is AppListException -> Pair(ERROR_APP_LIST_FAILED, "Failed to list apps: ${e.message}")
             is TimeoutException -> Pair(ERROR_TIMEOUT, "Operation timed out: ${e.message}")
             is IllegalArgumentException -> Pair(ERROR_INVALID_ARG, "Invalid argument: ${e.message}")
-            is AdbInitializationException -> Pair(ERROR_ADB_INIT, "ADB initialization failed: ${e.message}")
+
             else -> Pair(ERROR_UNKNOWN, "Error: ${e.message ?: e.javaClass.simpleName}")
         }
 
-        // Log with detailed information
-        logger.warn("{}: [{}] {}", context, errorCode, errorMessage)
+        val config = AppConfig.createDefault()
 
-        // For debugging builds, log stack trace
-        if (AppConfig.createDefault().enableLogging) {
-            logger.warn("Stack trace:", e)
+        // Log based on configured level
+        when (config.logLevel) {
+            LogLevel.PRODUCTION -> {
+                // Production: minimal logging, no stack traces
+                logger.warn("{}: [{}] {}", context, errorCode, errorMessage)
+            }
+            LogLevel.DEVELOPMENT -> {
+                // Development: detailed logging with sanitized stack trace
+                logger.warn("{}: [{}] {}", context, errorCode, errorMessage)
+                logger.warn("Exception type: {}", e.javaClass.simpleName)
+                // Only log the first 3 stack trace elements to avoid exposing full internal paths
+                val sanitizedTrace = e.stackTrace.take(3).joinToString("\n  ") {
+                    "${it.className}.${it.methodName}:${it.lineNumber}"
+                }
+                logger.warn("Stack trace (sanitized):\n  {}", sanitizedTrace)
+            }
+            LogLevel.DEBUG -> {
+                // Debug: full logging including complete stack traces
+                logger.warn("{}: [{}] {}", context, errorCode, errorMessage)
+                logger.warn("Full stack trace:", e)
+            }
         }
 
         return CallToolResult(

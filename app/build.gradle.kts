@@ -54,6 +54,9 @@ dependencies {
     // Adam - ADB client per Kotlin (sostituzione di adbkit)
     implementation("com.malinskiy.adam:adam:0.5.0")
 
+    // Gson for JSON serialization
+    implementation("com.google.code.gson:gson:2.10.1")
+
 
 
     // This dependency is used by the application.

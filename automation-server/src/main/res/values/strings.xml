@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Automation Server</string>
+    <string name="app_description">UIAutomator automation server for VisionTest MCP</string>
+
+    <!-- Configuration -->
+    <string name="configuration">Configuration</string>
+    <string name="port_label">Server Port</string>
+
+    <!-- Usage Instructions -->
+    <string name="usage_title">How to Start the Server</string>
+    <string name="usage_step1">1. Install both APKs on your device</string>
+    <string name="usage_step2">2. Run the command below from your computer</string>
+    <string name="usage_step3">3. The server will start and listen for JSON-RPC requests</string>
+    <string name="command_label">Start Command:</string>
+    <string name="copy_command">Copy Command</string>
+    <string name="command_copied">Command copied to clipboard</string>
+
+    <!-- Info -->
+    <string name="info_title">Why use instrumentation?</string>
+    <string name="info_description">UIAutomator requires a valid Instrumentation context to access the UiAutomation service. Running via \'am instrument\' provides this context, enabling full UI automation capabilities.</string>
+
+    <!-- Errors -->
+    <string name="error_invalid_port">Invalid port. Use a value between 1024 and 65535.</string>
+</resources>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Colors -->
+    <color name="primary">#1976D2</color>
+    <color name="primary_dark">#1565C0</color>
+    <color name="primary_light">#42A5F5</color>
+
+    <!-- Secondary Colors -->
+    <color name="secondary">#FF6F00</color>
+    <color name="secondary_dark">#E65100</color>
+    <color name="secondary_light">#FFA726</color>
+
+    <!-- Status Colors -->
+    <color name="status_running">#4CAF50</color>
+    <color name="status_stopped">#9E9E9E</color>
+    <color name="status_error">#F44336</color>
+    <color name="status_starting">#FFC107</color>
+
+    <!-- Background Colors -->
+    <color name="background">#FAFAFA</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="card_background">#FFFFFF</color>
+
+    <!-- Text Colors -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_on_primary">#FFFFFF</color>
+
+    <!-- Divider -->
+    <color name="divider">#E0E0E0</color>
+
+    <!-- Code Block -->
+    <color name="code_background">#263238</color>
+    <color name="code_text">#ECEFF1</color>
+
+    <!-- Info Card -->
+    <color name="info_background">#E3F2FD</color>
+</resources>

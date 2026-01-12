@@ -1,245 +1,303 @@
-# Vision Test - MCP Server for Mobile Automation
+# VisionTest - MCP Server for Mobile Automation
 
-A platform-agnostic interface for mobile automation that enables LLMs and agents to interact with native mobile applications and devices. Currently supports Android devices (emulators and physical), with iOS support planned.
+A platform-agnostic interface for mobile automation that enables LLMs and agents to interact with native mobile applications and devices. Supports Android devices (emulators and physical) and iOS simulators.
 
 ## Overview
 
-Vision Test is an MCP (Model Context Protocol) server that provides a standardized way for AI agents and Large Language Models to interact with mobile devices. This project allows for:
+VisionTest is an MCP (Model Context Protocol) server that provides a standardized way for AI agents and Large Language Models to interact with mobile devices. The project consists of two main components:
+
+1. **MCP Server** (`app/`) - Kotlin/JVM server that exposes mobile automation tools via Model Context Protocol
+2. **Automation Server** (`automation-server/`) - Native Android app with UIAutomator API access via JSON-RPC, using the **instrumentation pattern** (like Maestro/Appium)
+
+This architecture allows for:
 
 - Device detection and information retrieval
 - Application management (listing, info retrieval, launching)
-- Command execution on connected devices
+- Direct UIAutomator access for advanced UI automation
+- Secure automation via Android instrumentation framework
 - Scalable automation across multiple device types
 
 ## Features
 
-- **Device Management**: Detect and interact with connected Android devices
+### MCP Server
+- **Device Management**: Detect and interact with connected Android devices and iOS simulators
 - **App Management**: List installed apps, get detailed app information, and launch apps
-- **Robust Error Handling**: Comprehensive exception framework with descriptive error messages and codes
+- **UI Automation**: Get UI hierarchy, find elements, interact with UI via UIAutomator
+- **Robust Error Handling**: Comprehensive exception framework with descriptive error messages
 - **Performance Optimizations**: Device list caching to reduce ADB command overhead
 - **Retry Logic**: Automatic retries with exponential backoff for flaky device operations
-- **Structured Responses**: Formatted, human-readable output for device and app information
+
+### Automation Server (Android)
+- **Instrumentation Pattern**: Uses Android's instrumentation framework for secure UIAutomator access
+- **UIAutomator Integration**: Direct access to Android UIAutomator API
+- **JSON-RPC Server**: HTTP-based JSON-RPC 2.0 interface for automation commands
+- **Configuration UI**: Simple interface showing setup instructions and port configuration
+- **No Exported Services**: Only accessible via ADB instrumentation for security
 
 ## Prerequisites
 
-- **JDK 11 or higher**
-- **Kotlin 1.6+**
-- **Android Platform Tools**: Contains the Android Debug Bridge (ADB) for device communication
+- **JDK 17 or higher**
+- **Kotlin 2.1+**
+- **Android Platform Tools**: Contains ADB for device communication
    - [Download Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)
    - Add the platform-tools directory to your system PATH
-- **Connected Android device(s) or emulator(s)** with Developer Options and USB Debugging enabled
-- **MCP supported foundational models or agents**:
-   - Claude MCP
-   - OpenAI Agent SDK
-   - Copilot Studio
-   - Any LLM or agent that implements the Model Context Protocol
+- **Android SDK** (for building the Automation Server app)
+- **Connected Android device(s) or emulator(s)** with USB Debugging enabled
+   - Minimum SDK: 21 (Android 5.0)
+   - Target SDK: 34 (Android 14)
+- **Xcode Command Line Tools** (for iOS simulator support on macOS)
 
 ## Installation
 
-### Setting up Android Platform Tools
+### 1. Clone and Build
 
-1. Download Android Platform Tools:
-   - Visit [Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)
-   - Download the appropriate package for your operating system
+```bash
+git clone https://github.com/yourusername/visiontest.git
+cd visiontest
 
-2. Extract the package and add to PATH:
-   - Extract the downloaded zip file
-   - Add the `platform-tools` directory to your system PATH
-   - Verify installation by running `adb version` in your terminal
+# Build entire project
+./gradlew build
 
-3. Configure your Android device:
-   - Enable Developer Options (tap Build Number 7 times in Settings > About phone)
-   - Enable USB Debugging in Developer Options
-   - Connect device via USB and accept the debugging prompt on the device
+# Build MCP Server JAR
+./gradlew shadowJar
+# Output: app/build/libs/visiontest.jar
 
-### Setting up the Vision Test project
+# Build Automation Server APKs
+./gradlew :automation-server:assembleDebug :automation-server:assembleDebugAndroidTest
+# Output:
+#   - automation-server/build/outputs/apk/debug/automation-server-debug.apk
+#   - automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk
+```
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/vision-test.git
-   cd vision-test
-   ```
+### 2. Install Automation Server on Device
 
-2. Build the project:
-   ```bash
-   ./gradlew build
-   ```
+Both APKs (main and test) are required for instrumentation-based automation:
 
-### Setting up MCP Claude Desktop
+```bash
+# Connect your Android device via USB (or start an emulator)
+adb devices
 
-1. Download and install Claude Desktop with MCP support
-   - Install from your organization's approved source
-   - Ensure you have the correct permissions to use the MCP features
+# Install both APKs
+./gradlew :automation-server:installDebug :automation-server:installDebugAndroidTest
 
-2. Configure Claude Desktop for external tools:
-   - Open Claude Desktop settings
-   - Navigate to the Tools section
-   - Enable "External MCP Tools"
-   - Add the Vision Test server as a tool provider
-   - Set the connection parameters to use the Vision Test server
+# Or manually:
+adb install automation-server/build/outputs/apk/debug/automation-server-debug.apk
+adb install automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk
+```
+
+### 3. Configure Claude Desktop
+
+Create/edit the MCP configuration file:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+#### Option A: Using the Launcher Script (Recommended)
+
+```json
+{
+  "mcpServers": {
+    "visiontest": {
+      "command": "/ABSOLUTE/PATH/TO/visiontest/run-visiontest.sh"
+    }
+  }
+}
+```
+
+#### Option B: Manual Configuration
+
+```json
+{
+  "mcpServers": {
+    "visiontest": {
+      "command": "/path/to/java",
+      "args": ["-jar", "/ABSOLUTE/PATH/TO/visiontest/app/build/libs/visiontest.jar"],
+      "env": {
+        "PATH": "/path/to/android/sdk/platform-tools:/usr/bin:/bin",
+        "ANDROID_HOME": "/path/to/android/sdk"
+      }
+    }
+  }
+}
+```
 
 ## Usage
 
-### Running the Server
+### Available MCP Tools
 
-```bash
-./gradlew run
+#### Device Management
+
+| Tool | Platform | Description |
+|------|----------|-------------|
+| `available_device_android` | Android | Get first available device info |
+| `list_apps_android` | Android | List installed apps |
+| `info_app_android` | Android | Get app details (requires `packageName`) |
+| `launch_app_android` | Android | Launch app (requires `packageName`) |
+| `ios_available_device` | iOS | Get first available simulator info |
+| `ios_list_apps` | iOS | List installed apps |
+| `ios_info_app` | iOS | Get app details (requires `bundleId`) |
+| `ios_launch_app` | iOS | Launch app (requires `bundleId`) |
+
+#### UI Automation (Android)
+
+| Tool | Description |
+|------|-------------|
+| `install_automation_server` | Install both APKs on device |
+| `start_automation_server` | Start JSON-RPC server via instrumentation |
+| `automation_server_status` | Check if server is running |
+| `get_ui_hierarchy` | Get XML of all visible UI elements |
+| `find_element` | Find element by text, resourceId, className, etc. |
+
+#### Typical Workflow
+
+```
+1. install_automation_server  →  Install APKs (one-time setup)
+2. start_automation_server    →  Start the JSON-RPC server
+3. get_ui_hierarchy           →  Analyze the current screen
+4. find_element               →  Find specific UI elements
 ```
 
-This will start the MCP server, which will begin listening for connections on the standard input/output streams.
+### JSON-RPC API
 
-### Connecting with Claude Desktop
+When the Automation Server is running, it exposes a JSON-RPC 2.0 API:
 
-1. Start the Vision Test server
-2. Open Claude Desktop
-3. In a conversation, you can now access the Android device tools
-4. Claude will be able to use commands like `available_device`, `list_apps`, etc.
+**Endpoint**: `POST http://localhost:9008/jsonrpc`
 
-### Available Tools
+**Health Check**: `GET http://localhost:9008/health`
 
-The server exposes the following tools:
+#### Available Methods
 
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `ui.dumpHierarchy` | - | Get UI hierarchy as XML |
+| `ui.click` | `x`, `y` | Click at coordinates |
+| `ui.findElement` | `text`, `resourceId`, etc. | Find UI element |
+| `device.getInfo` | - | Get display size, rotation, SDK |
+| `device.pressBack` | - | Press the back button |
+| `device.pressHome` | - | Press the home button |
 
-#### available_device
+#### Example Request
 
-Returns detailed information about the first available Android device.
-
-#### list_apps
-
-Lists all installed applications on the connected device.
-
-#### info_app
-
-Returns formatted information about a specific application.
-
-#### launch_app
-
-Launches an app on the device.
-
-
-## Configuration
-
-### Server Configuration
-
-The server can be configured using the `AppConfig` class. Default values:
-
-- ADB Timeout: 5000ms
-- Device Cache Validity: 1000ms
-- Tool Execution Timeout: 10000ms
-
-You can customize these values by:
-
-1. **Environment Variables**:
-   - `VISION_TEST_SERVER_NAME`: Name of the server (default: "vision-test")
-   - `VISION_TEST_SERVER_VERSION`: Version of the server (default: "1.0.0")
-   - `VISION_TEST_ADB_TIMEOUT`: ADB command timeout in milliseconds (default: 5000)
-   - `VISION_TEST_DEVICE_CACHE_VALIDITY`: Device cache validity period in milliseconds (default: 1000)
-   - `VISION_TEST_TOOL_TIMEOUT`: Tool execution timeout in milliseconds (default: 10000)
-   - `VISION_TEST_LOG_LEVEL`: Logging verbosity level (values: "PRODUCTION", "DEVELOPMENT", "DEBUG"; default: "PRODUCTION")
-     - `PRODUCTION`: Minimal logging, no stack traces (recommended for production use)
-     - `DEVELOPMENT`: Detailed logging with sanitized stack traces (safe for development)
-     - `DEBUG`: Full logging including complete stack traces (use only in secure environments)
-
-2. **Properties File** (future implementation):
-   Create a `config.properties` file with the following format:
-   ```properties
-   server.name=vision-test
-   server.version=1.0.0
-   adb.timeout=5000
-   device.cache.validity=1000
-   tool.timeout=10000
-   logging.enabled=true
-   ```
-
-### Claude MCP Configuration
-
-To configure Claude to work with the Vision Test server:
-
-1. Ensure Claude Desktop is running with MCP support enabled
-
-2. Create an MCP configuration file:
-   - Create a file named `mcpServers.json` in the appropriate configuration directory:
-      - Windows: `%APPDATA%\Claude\mcpServers.json`
-      - macOS: `~/Library/Application Support/Claude/mcpServers.json`
-      - Linux: `~/.config/Claude/mcpServers.json`
-
-   - Add the following configuration, replacing the path with your actual path:
-   ```json
-   {
-     "mcpServers": {
-       "visionTest": {
-         "command": "java",
-         "args": [
-           "-jar",
-           "/ABSOLUTE/PATH/TO/PARENT/FOLDER/visiontest/app/build/libs/visiontest.jar"
-         ]
-       }
-     }
-   }
-   ```
-
-3. Restart Claude Desktop to load the new configuration
-
-4. In the Claude settings, verify the external tool is available:
-   - Tool Provider: "visionTest" should now appear in the list
-   - You can test the connection by using the "Test Connection" feature
+```bash
+curl -X POST http://localhost:9008/jsonrpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"ui.dumpHierarchy","id":1}'
+```
 
 ## Architecture
 
-### Core Components
+### Project Structure
 
-- **Android**: Main interface to Android devices via ADB
-- **ToolFactory**: Registers and manages tools for the MCP server
-- **ErrorHandler**: Centralized error handling with retries
-- **Exceptions**: Custom exception hierarchy for different error conditions
+```
+visiontest/
+├── app/                              # MCP Server (Kotlin/JVM)
+│   └── src/main/kotlin/com/example/visiontest/
+│       ├── Main.kt                   # Entry point
+│       ├── ToolFactory.kt            # MCP tool registration
+│       ├── android/
+│       │   ├── Android.kt            # ADB communication (Adam library)
+│       │   └── AutomationClient.kt   # JSON-RPC HTTP client
+│       ├── ios/
+│       │   └── IOSManager.kt         # iOS simulator operations
+│       └── config/
+│           ├── AppConfig.kt          # MCP server config
+│           └── AutomationConfig.kt   # Automation constants
+│
+├── automation-server/                # Android App
+│   └── src/
+│       ├── main/                     # Main app (config UI only)
+│       │   ├── MainActivity.kt       # Shows instructions, port config
+│       │   ├── config/ServerConfig.kt
+│       │   ├── jsonrpc/JsonRpcModels.kt
+│       │   └── uiautomator/
+│       │       ├── BaseUiAutomatorBridge.kt   # Abstract base class
+│       │       └── UiAutomatorModels.kt       # Data classes
+│       │
+│       └── androidTest/              # Instrumentation (actual server)
+│           ├── AutomationServerTest.kt        # Entry point
+│           ├── AutomationInstrumentationRunner.kt
+│           ├── JsonRpcServerInstrumented.kt   # HTTP server
+│           └── UiAutomatorBridgeInstrumented.kt
+│
+├── CLAUDE.md                         # AI assistant context
+├── LEARNING.md                       # Architecture decisions & learnings
+└── build.gradle.kts                  # Root build config
+```
 
-### Flow
+### Why Instrumentation?
 
-1. The server initializes and connects to ADB
-2. Tools are registered with the MCP server
-3. The server listens for commands via standard input
-4. Commands are processed and routed to appropriate handlers
-5. Results are returned via standard output
+The automation server uses Android's instrumentation framework instead of a regular service:
 
-## Error Handling
+| Approach | UIAutomator Access | Security |
+|----------|-------------------|----------|
+| Exported Service | No | Risk |
+| Regular Service | No | Safe |
+| **Instrumentation** | **Yes** | **Safe** |
 
-The system includes a comprehensive error handling mechanism with specific error codes:
+UIAutomator requires a valid `Instrumentation` object to access `UiAutomation`. Only the test framework provides this - creating an empty `Instrumentation()` doesn't work.
 
-### Common Error Codes
-- `ERR_APP_INFO`: Error retrieving app information
-- `ERR_APP_LIST`: Error listing apps
-- `ERR_TIMEOUT`: Operation timed out
-- `ERR_INVALID_ARG`: Invalid argument provided
-- `ERR_UNKNOWN`: Unknown error
+### Manual Testing
 
-### Android-Specific Error Codes
-- `ERR_NO_DEVICE`: No Android device is available
-- `ERR_CMD_FAILED`: Command execution failed
-- `ERR_PKG_NOT_FOUND`: Package not found on device
-- `ERR_ADB_INIT`: ADB initialization failed
+```bash
+# Terminal 1: Start the server
+adb shell am instrument -w -e port 9008 \
+  -e class com.example.automationserver.AutomationServerTest#runAutomationServer \
+  com.example.automationserver.test/com.example.automationserver.AutomationInstrumentationRunner
 
-### iOS-Specific Error Codes
-- `ERR_NO_SIMULATOR`: No iOS simulator is available
-- `ERR_IOS_SIMULATOR`: iOS simulator operation failed
-- `ERR_APP_NOT_FOUND`: App not found on iOS device/simulator
+# Terminal 2: Test the server
+adb forward tcp:9008 tcp:9008
+curl http://localhost:9008/health
 
-## Extension
+# Stop the server
+adb shell am force-stop com.example.automationserver
+```
 
-### Adding New Tools
+## Configuration
 
-To add a new tool:
+### Environment Variables
 
-1. Define the tool functionality in the `ToolFactory` class
-2. Register the tool in the `registerAllTools` method
-3. Implement any required Android interface methods
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VISION_TEST_LOG_LEVEL` | `PRODUCTION` | `PRODUCTION`, `DEVELOPMENT`, `DEBUG` |
+| `VISION_TEST_ADB_TIMEOUT` | `5000` | ADB command timeout (ms) |
+| `VISION_TEST_TOOL_TIMEOUT` | `10000` | Tool execution timeout (ms) |
+
+### Automation Server
+
+- **Default Port**: 9008 (configurable via app UI, range: 1024-65535)
+- **Port Forwarding**: Automatically set up by MCP tools
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| `ERR_NO_DEVICE` | No Android device available |
+| `ERR_CMD_FAILED` | Command execution failed |
+| `ERR_PKG_NOT_FOUND` | Package not found |
+| `ERR_TIMEOUT` | Operation timed out |
+| `ERR_NO_SIMULATOR` | No iOS simulator available |
+
+## Extending
+
+### Adding New JSON-RPC Methods
+
+1. Add method to `BaseUiAutomatorBridge.kt`
+2. Register in `JsonRpcServerInstrumented.kt` `executeMethod()`
+3. Add client method to `AutomationClient.kt`
+4. Create MCP tool in `ToolFactory.kt`
+
+### Adding New MCP Tools
+
+1. Create method in `ToolFactory.kt`
+2. Register in `registerAllTools()`
 
 ## Future Plans
 
-- iOS device support
-- More advanced device interactions (screenshots, UI automation)
-- Plugin system for easier extension
-- Performance monitoring and logging
-- Pagination for large result sets
+- [ ] Screenshot capture via UIAutomator
+- [ ] Swipe, scroll, longClick operations
+- [ ] Wait/sync operations for E2E testing
+- [ ] Physical iOS device support
+- [ ] WebSocket support for real-time updates
 
 ## Contributing
 

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Background circle -->
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+
+    <!-- Play/Server icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M44,38v32l24,-16z" />
+
+    <!-- Connection dots -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,54m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M74,54m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+</vector>

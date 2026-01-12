@@ -26,6 +26,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeoutException
@@ -45,6 +46,13 @@ class Android(
             "CRASHED",          // App crash during launch
             "monkey aborted"    // Monkey tool failure
         )
+
+        // Shell metacharacters that could be used for command injection
+        // Same pattern as IOSSimulator for consistency
+        private val DANGEROUS_SHELL_CHARS = Regex("[;|&$()<>`\\\\\"'\\n\\r]")
+
+        // Allowlist of permitted ADB subcommands
+        private val ALLOWED_ADB_COMMANDS = setOf("install", "forward", "shell")
     }
 
     private val adb = AndroidDebugBridgeClientFactory().build()
@@ -135,6 +143,110 @@ class Android(
 
     override suspend fun executeShell(command: String, deviceId: String?): String {
         return shell(command, deviceId)
+    }
+
+    /**
+     * Executes an ADB command on the host machine (not a shell command on the device).
+     * Only allows specific safe commands: install, forward, shell (for am instrument only).
+     *
+     * Security: Uses allowlist of commands and validates all arguments against
+     * dangerous shell metacharacters to prevent command injection.
+     *
+     * @param args ADB command arguments (e.g., "install", "-r", "/path/to/apk")
+     * @param deviceSerial Optional device serial to target
+     * @throws IllegalArgumentException if command is not in the allowlist or arguments are invalid
+     * @throws CommandExecutionException if ADB command fails
+     */
+    suspend fun executeAdb(vararg args: String, deviceSerial: String? = null): String {
+        require(args.isNotEmpty()) { "ADB command cannot be empty" }
+
+        val subCommand = args[0]
+        val subArgs = args.drop(1)
+
+        // Validate command against allowlist
+        require(subCommand in ALLOWED_ADB_COMMANDS) {
+            "ADB command '$subCommand' is not allowed. Permitted: $ALLOWED_ADB_COMMANDS"
+        }
+
+        // Validate and sanitize arguments based on command type
+        when (subCommand) {
+            "install" -> validateInstallArgs(subArgs)
+            "forward" -> validateForwardArgs(subArgs)
+            "shell" -> validateShellArgs(subArgs)
+        }
+
+        val device = deviceSerial?.let { serial ->
+            fetchDevices().find { it.id == serial }
+        } ?: getFirstAvailableDevice()
+
+        // Build command with validated arguments - ProcessBuilder handles escaping
+        val command = mutableListOf("adb", "-s", device.id)
+        command.addAll(args)
+
+        logger.debug("Executing ADB command: ${command.joinToString(" ")}")
+
+        return withContext(Dispatchers.IO) {
+            val process = ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .start()
+
+            val output = process.inputStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
+
+            if (exitCode != 0) {
+                logger.warn("ADB command failed with exit code $exitCode: $output")
+                throw CommandExecutionException("ADB command failed: ${args.joinToString(" ")}", exitCode)
+            }
+
+            output.trim()
+        }
+    }
+
+    private fun validateInstallArgs(args: List<String>) {
+        // Allowed flags for install
+        val allowedFlags = setOf("-r", "-t", "-d", "-g")
+        val filteredArgs = args.filter { it !in allowedFlags }
+
+        require(filteredArgs.size == 1) { "install command requires exactly one APK path" }
+
+        val apkPath = filteredArgs[0]
+        require(apkPath.endsWith(".apk")) { "Install path must be an APK file" }
+        require(!DANGEROUS_SHELL_CHARS.containsMatchIn(apkPath)) {
+            "APK path contains dangerous characters"
+        }
+        require(java.io.File(apkPath).exists()) { "APK file does not exist: $apkPath" }
+    }
+
+    private fun validateForwardArgs(args: List<String>) {
+        val tcpPattern = Regex("^tcp:\\d{1,5}$")
+
+        if (args.firstOrNull() == "--remove") {
+            require(args.size == 2) { "forward --remove requires one tcp:port argument" }
+            require(args[1].matches(tcpPattern)) { "Invalid port format: ${args[1]}" }
+        } else {
+            require(args.size == 2) { "forward command requires two tcp:port arguments" }
+            require(args.all { it.matches(tcpPattern) }) { "Invalid port format in forward command" }
+            // Validate port range (non-privileged ports only)
+            args.forEach { arg ->
+                val port = arg.removePrefix("tcp:").toIntOrNull()
+                require(port != null && port in 1024..65535) {
+                    "Port must be between 1024 and 65535"
+                }
+            }
+        }
+    }
+
+    private fun validateShellArgs(args: List<String>) {
+        // Only allow "am instrument" for automation server startup
+        require(args.size >= 2 && args[0] == "am" && args[1] == "instrument") {
+            "Only 'am instrument' shell commands are allowed via executeAdb"
+        }
+        // Validate all arguments don't contain dangerous shell metacharacters
+        args.forEach { arg ->
+            require(!DANGEROUS_SHELL_CHARS.containsMatchIn(arg)) {
+                "Shell argument contains dangerous characters: $arg"
+            }
+        }
     }
 
     override suspend fun listApps(deviceId: String?): List<String> {

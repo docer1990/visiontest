@@ -9,9 +9,10 @@ This document captures key learnings, architectural decisions, and best practice
 1. [UIAutomator and the Instrumentation Requirement](#uiautomator-and-the-instrumentation-requirement)
 2. [Extracting Shared Code with Template Method Pattern](#extracting-shared-code-with-template-method-pattern)
 3. [Android Instrumentation Pattern](#android-instrumentation-pattern)
-4. [Security Best Practices](#security-best-practices)
-5. [Code Quality Patterns](#code-quality-patterns)
-6. [Common Pitfalls](#common-pitfalls)
+4. [Flutter App Support via Reflection](#flutter-app-support-via-reflection)
+5. [Security Best Practices](#security-best-practices)
+6. [Code Quality Patterns](#code-quality-patterns)
+7. [Common Pitfalls](#common-pitfalls)
 
 ---
 
@@ -95,14 +96,20 @@ The [Template Method Pattern](https://refactoring.guru/design-patterns/template-
 // BaseUiAutomatorBridge.kt - Contains ALL the UIAutomator logic
 abstract class BaseUiAutomatorBridge {
 
-    // Abstract method - subclasses provide the UiDevice
+    // Abstract methods - subclasses provide the resources
     protected abstract fun getUiDevice(): UiDevice
+    protected abstract fun getUiAutomation(): UiAutomation
+    protected abstract fun getDisplayRect(): Rect
 
-    // Concrete methods use getUiDevice()
+    // Concrete methods use the abstract methods
     fun dumpHierarchy(): UiHierarchyResult {
         return try {
+            val device = getUiDevice()
+            val uiAutomation = getUiAutomation()
+            device.waitForIdle()
+
             val outputStream = ByteArrayOutputStream()
-            getUiDevice().dumpWindowHierarchy(outputStream)
+            dumpHierarchyInternal(device, uiAutomation, outputStream)
             val xmlHierarchy = outputStream.toString("UTF-8")
             UiHierarchyResult(success = true, hierarchy = xmlHierarchy)
         } catch (e: Exception) {
@@ -116,9 +123,23 @@ abstract class BaseUiAutomatorBridge {
     // ... all other operations
 }
 
-// UiAutomatorBridgeInstrumented.kt - Minimal subclass, just provides UiDevice
-class UiAutomatorBridgeInstrumented(private val device: UiDevice) : BaseUiAutomatorBridge() {
+// UiAutomatorBridgeInstrumented.kt - Provides UiDevice, UiAutomation, and display bounds
+class UiAutomatorBridgeInstrumented(
+    private val device: UiDevice,
+    private val instrumentation: Instrumentation
+) : BaseUiAutomatorBridge() {
+
+    private val cachedUiAutomation: UiAutomation by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            instrumentation.getUiAutomation(FLAG_RETRIEVE_INTERACTIVE_WINDOWS)
+        } else {
+            instrumentation.uiAutomation
+        }
+    }
+
     override fun getUiDevice(): UiDevice = device
+    override fun getUiAutomation(): UiAutomation = cachedUiAutomation
+    override fun getDisplayRect(): Rect = /* cached display bounds */
 }
 ```
 
@@ -126,9 +147,10 @@ class UiAutomatorBridgeInstrumented(private val device: UiDevice) : BaseUiAutoma
 
 1. **DRY (Don't Repeat Yourself)**: Logic exists in one place
 2. **Easier Maintenance**: Fix a bug once, it's fixed everywhere
-3. **Consistency**: Both implementations behave identically
+3. **Consistency**: All implementations behave identically
 4. **Documentation**: Base class documents expected behavior
-5. **Testability**: Can test base class logic with mock UiDevice
+5. **Testability**: Can test base class logic with mock implementations
+6. **Flexibility**: Subclasses can provide UiDevice, UiAutomation, and display bounds in context-appropriate ways
 
 ### When to Use This Pattern
 
@@ -226,6 +248,96 @@ Breaking this down:
 | Exported Service | ❌ No UiAutomation | ❌ Security risk | Low |
 | Non-exported Service | ❌ No UiAutomation | ✅ Secure | Low |
 | **Instrumentation** | ✅ Full access | ✅ Secure (ADB only) | Medium |
+
+---
+
+## Flutter App Support via Reflection
+
+### The Problem
+
+Flutter apps use their own rendering engine and don't create native Android views. While Flutter does support accessibility, the standard `UiDevice.dumpWindowHierarchy()` method often fails to capture Flutter UI elements properly.
+
+### The Solution: Reflection-Based Hierarchy Dumping
+
+Inspired by how Maestro handles this, we use reflection to access `UiDevice.getWindowRoots()` - a private method that returns all accessibility window roots:
+
+```kotlin
+private fun dumpHierarchyInternal(
+    device: UiDevice,
+    uiAutomation: UiAutomation,
+    out: OutputStream
+) {
+    // Use reflection to get window roots, like Maestro does
+    val roots = try {
+        device.javaClass
+            .getDeclaredMethod("getWindowRoots")
+            .apply { isAccessible = true }
+            .let {
+                @Suppress("UNCHECKED_CAST")
+                it.invoke(device) as Array<AccessibilityNodeInfo>
+            }
+            .toList()
+    } catch (e: Exception) {
+        // Fallback to rootInActiveWindow
+        listOfNotNull(uiAutomation.rootInActiveWindow)
+    }
+
+    // Manually serialize each root to XML
+    roots.forEach { root ->
+        dumpNodeRecursive(root, serializer, 0, displayRect, insideWebView = false)
+        root.recycle()
+    }
+}
+```
+
+### Key Configuration for Flutter
+
+Three critical configurations enable Flutter support:
+
+1. **FLAG_RETRIEVE_INTERACTIVE_WINDOWS**: Required for accessing windows from other apps
+
+```kotlin
+private val cachedUiAutomation: UiAutomation by lazy {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        instrumentation.getUiAutomation(FLAG_RETRIEVE_INTERACTIVE_WINDOWS)
+    } else {
+        instrumentation.uiAutomation
+    }
+}
+```
+
+2. **Disabled Compressed Layout**: Exposes all accessibility nodes
+
+```kotlin
+init {
+    device.setCompressedLayoutHierarchy(false)
+}
+```
+
+3. **WebView Visibility Workaround**: WebView contents may report as invisible but should be dumped
+
+```kotlin
+if (child.isVisibleToUser || insideWebView || isWebView) {
+    dumpNodeRecursive(child, serializer, i, displayRect, insideWebView || isWebView)
+}
+```
+
+### Why Reflection?
+
+- `getWindowRoots()` is a private method in UiDevice
+- Standard `dumpWindowHierarchy()` uses internal methods that don't work well with Flutter
+- Maestro, the industry-standard mobile testing tool, uses this same approach
+- The method has been stable across Android versions
+
+### Trade-offs
+
+| Approach | Flutter Support | Stability | Complexity |
+|----------|----------------|-----------|------------|
+| `dumpWindowHierarchy()` | ❌ Poor | ✅ Stable | Low |
+| **Reflection (`getWindowRoots`)** | ✅ Good | ⚠️ May break | Medium |
+| Accessibility Service | ✅ Good | ✅ Stable | High |
+
+The reflection approach is a pragmatic choice that balances Flutter support with implementation complexity.
 
 ---
 
@@ -416,7 +528,9 @@ private fun waitForUiDevice(instrumentation: Instrumentation): UiDevice {
 ## Further Reading
 
 - [Android UIAutomator Documentation](https://developer.android.com/training/testing/other-components/ui-automator)
-- [Maestro - Mobile UI Testing](https://maestro.mobile.dev/) - Uses similar instrumentation pattern
+- [Maestro - Mobile UI Testing](https://maestro.mobile.dev/) - Uses similar instrumentation and reflection patterns
+- [Maestro Source - ViewHierarchy.kt](https://github.com/mobile-dev-inc/maestro/blob/main/maestro-android/src/androidTest/java/dev/mobile/maestro/ViewHierarchy.kt) - Reference implementation for reflection-based hierarchy
+- [Flutter Accessibility](https://docs.flutter.dev/ui/accessibility-and-internationalization/accessibility) - How Flutter exposes accessibility nodes
 - [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 - [Template Method Pattern](https://refactoring.guru/design-patterns/template-method)
 - [OWASP Mobile Security Guide](https://owasp.org/www-project-mobile-app-security/)

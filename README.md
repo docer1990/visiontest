@@ -30,6 +30,7 @@ This architecture allows for:
 ### Automation Server (Android)
 - **Instrumentation Pattern**: Uses Android's instrumentation framework for secure UIAutomator access
 - **UIAutomator Integration**: Direct access to Android UIAutomator API
+- **Flutter App Support**: Reflection-based hierarchy dumping via `getWindowRoots()` for Flutter and other frameworks
 - **JSON-RPC Server**: HTTP-based JSON-RPC 2.0 interface for automation commands
 - **Configuration UI**: Simple interface showing setup instructions and port configuration
 - **No Exported Services**: Only accessible via ADB instrumentation for security
@@ -210,7 +211,7 @@ visiontest/
 │       │   ├── config/ServerConfig.kt
 │       │   ├── jsonrpc/JsonRpcModels.kt
 │       │   └── uiautomator/
-│       │       ├── BaseUiAutomatorBridge.kt   # Abstract base class
+│       │       ├── BaseUiAutomatorBridge.kt   # Abstract base class (reflection-based hierarchy)
 │       │       └── UiAutomatorModels.kt       # Data classes
 │       │
 │       └── androidTest/              # Instrumentation (actual server)
@@ -235,6 +236,15 @@ The automation server uses Android's instrumentation framework instead of a regu
 | **Instrumentation** | **Yes** | **Safe** |
 
 UIAutomator requires a valid `Instrumentation` object to access `UiAutomation`. Only the test framework provides this - creating an empty `Instrumentation()` doesn't work.
+
+### Flutter App Support
+
+The automation server uses a Maestro-inspired approach for Flutter app support:
+
+- **Reflection-based hierarchy**: Uses `UiDevice.getWindowRoots()` via reflection to access all accessibility window roots
+- **Cross-app windows**: Enables `FLAG_RETRIEVE_INTERACTIVE_WINDOWS` (API 24+) for accessing windows from other apps
+- **Uncompressed hierarchy**: Sets `compressedLayoutHierarchy` to false to expose all accessibility nodes
+- **WebView handling**: Includes WebView contents that may report as invisible
 
 ### Manual Testing
 
@@ -281,7 +291,7 @@ adb shell am force-stop com.example.automationserver
 
 ### Adding New JSON-RPC Methods
 
-1. Add method to `BaseUiAutomatorBridge.kt`
+1. Add method to `BaseUiAutomatorBridge.kt` (uses `getUiDevice()`, `getUiAutomation()`, `getDisplayRect()`)
 2. Register in `JsonRpcServerInstrumented.kt` `executeMethod()`
 3. Add client method to `AutomationClient.kt`
 4. Create MCP tool in `ToolFactory.kt`

@@ -85,7 +85,8 @@ class AutomationServerTest {
         // Create and start the JSON-RPC server
         val server = JsonRpcServerInstrumented(
             port = port,
-            uiDevice = uiDevice
+            uiDevice = uiDevice,
+            instrumentation = instrumentation
         )
 
         runBlocking {

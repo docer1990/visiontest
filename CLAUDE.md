@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Important**: When working on the MCP server Kotlin code, follow the guidelines in [`kotlin-mcp-server.instruction.md`](kotlin-mcp-server.instruction.md) for best practices on Kotlin Multiplatform Support, server setup, tool registration, transport configuration, Coroutine Usage, Common Patterns, Dependency Injection and error handling.
+
 ## Build and Run Commands
 
 ```bash
@@ -55,7 +57,7 @@ Native Android app providing UIAutomator access via JSON-RPC. Uses **instrumenta
 - `MainActivity.kt` - Shows setup instructions and port configuration
 - `config/ServerConfig.kt` - SharedPreferences for port setting
 - `jsonrpc/JsonRpcModels.kt` - Request/Response/Error data classes
-- `uiautomator/BaseUiAutomatorBridge.kt` - Abstract base class with all UIAutomator logic
+- `uiautomator/BaseUiAutomatorBridge.kt` - Abstract base class with all UIAutomator logic (includes reflection-based hierarchy dumping)
 - `uiautomator/UiAutomatorModels.kt` - Data classes for results
 
 **Instrumentation (`src/androidTest/`) - The actual working server:**
@@ -140,6 +142,21 @@ curl http://localhost:9008/health
 adb shell am force-stop com.example.automationserver
 ```
 
+## Flutter App Support
+
+The automation server uses a reflection-based approach for UI hierarchy dumping, similar to Maestro:
+
+**Key features:**
+- Uses `UiDevice.getWindowRoots()` via reflection to access all accessibility window roots
+- Enables `FLAG_RETRIEVE_INTERACTIVE_WINDOWS` (API 24+) for cross-app window access
+- Sets `compressedLayoutHierarchy` to false to expose all accessibility nodes
+- Handles WebView contents that may report as invisible
+
+**Abstract methods in `BaseUiAutomatorBridge`:**
+- `getUiDevice()` - Returns the UiDevice instance
+- `getUiAutomation()` - Returns UiAutomation with appropriate flags
+- `getDisplayRect()` - Returns display bounds for visibility calculations
+
 ## Key Patterns
 
 - All device operations use suspend functions with coroutine-based async
@@ -148,7 +165,8 @@ adb shell am force-stop com.example.automationserver
 - Custom exception hierarchy in `Exceptions.kt` with platform-specific error codes
 - Tool timeout wrapper: `runWithTimeout()` in ToolFactory (default: 10s, 30s for UI hierarchy)
 - Automation Server uses Ktor/Netty for HTTP server with Gson serialization
-- Template Method Pattern: `BaseUiAutomatorBridge` defines operations, subclasses provide `UiDevice`
+- Template Method Pattern: `BaseUiAutomatorBridge` defines operations, subclasses provide `UiDevice`, `UiAutomation`, and display bounds
+- Reflection-based hierarchy dumping via `UiDevice.getWindowRoots()` for Flutter app support
 - Centralized constants in `AutomationConfig.kt` - no magic numbers
 
 ## Configuration
@@ -183,5 +201,6 @@ adb shell am force-stop com.example.automationserver
 See `LEARNING.md` for detailed explanations of:
 - Why we use instrumentation instead of services
 - Template Method Pattern for UIAutomator bridge
+- Reflection-based hierarchy dumping for Flutter support
 - Why non-working code was deleted instead of deprecated
 - Security best practices (command allowlists, JSON escaping)

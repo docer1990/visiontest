@@ -1,5 +1,6 @@
 package com.example.automationserver
 
+import android.app.Instrumentation
 import android.util.Log
 import androidx.test.uiautomator.UiDevice
 import com.example.automationserver.jsonrpc.JsonRpcError
@@ -27,7 +28,8 @@ import kotlinx.coroutines.withContext
  */
 class JsonRpcServerInstrumented(
     private val port: Int,
-    uiDevice: UiDevice
+    uiDevice: UiDevice,
+    instrumentation: Instrumentation
 ) {
     companion object {
         private const val TAG = "JsonRpcServerInstr"
@@ -35,7 +37,7 @@ class JsonRpcServerInstrumented(
 
     private var server: ApplicationEngine? = null
     private val gson = Gson()
-    private val uiAutomator = UiAutomatorBridgeInstrumented(uiDevice)
+    private val uiAutomator = UiAutomatorBridgeInstrumented(uiDevice, instrumentation)
 
     val isRunning: Boolean
         get() = server != null
@@ -105,8 +107,16 @@ class JsonRpcServerInstrumented(
         val request = try {
             gson.fromJson(requestText, JsonRpcRequest::class.java)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse JSON-RPC request", e)
             return JsonRpcResponse(error = JsonRpcError.parseError(e.message), id = null)
         }
+
+        if (request == null) {
+            Log.e(TAG, "Parsed JSON-RPC request is null")
+            return JsonRpcResponse(error = JsonRpcError.parseError("Failed to parse request"), id = null)
+        }
+
+        Log.d(TAG, "Handling JSON-RPC method: ${request.method}")
 
         if (request.jsonrpc != "2.0") {
             return JsonRpcResponse(

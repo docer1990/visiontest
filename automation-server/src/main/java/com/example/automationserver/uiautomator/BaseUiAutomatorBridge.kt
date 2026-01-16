@@ -244,7 +244,7 @@ abstract class BaseUiAutomatorBridge {
         if (node == null) return null
         val nodeRect = Rect()
         node.getBoundsInScreen(nodeRect)
-        return if (nodeRect.intersect(displayRect)) nodeRect else Rect()
+        return if (nodeRect.intersect(displayRect)) nodeRect else null
     }
 
     /**

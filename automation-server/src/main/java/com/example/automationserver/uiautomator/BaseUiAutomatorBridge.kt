@@ -36,6 +36,36 @@ abstract class BaseUiAutomatorBridge {
     companion object {
         private const val TAG = "BaseUiAutomatorBridge"
         private const val WEBVIEW_CLASS_NAME = "android.webkit.WebView"
+
+        // Known interactive class names (even if clickable=false)
+        private val INTERACTIVE_CLASSES = setOf(
+            "android.widget.Button",
+            "android.widget.ImageButton",
+            "com.google.android.material.button.MaterialButton",
+            "com.google.android.material.floatingactionbutton.FloatingActionButton",
+            "android.widget.EditText",
+            "android.widget.AutoCompleteTextView",
+            "android.widget.CheckBox",
+            "android.widget.Switch",
+            "androidx.appcompat.widget.SwitchCompat",
+            "android.widget.RadioButton",
+            "android.widget.ToggleButton",
+            "android.widget.Spinner",
+            "android.widget.SeekBar",
+            "android.widget.RatingBar"
+        )
+
+        // Layout containers to exclude (unless they have text/content-desc)
+        private val LAYOUT_CONTAINERS = setOf(
+            "android.widget.FrameLayout",
+            "android.widget.LinearLayout",
+            "android.widget.RelativeLayout",
+            "android.view.ViewGroup",
+            "android.view.View",
+            "androidx.constraintlayout.widget.ConstraintLayout",
+            "androidx.coordinatorlayout.widget.CoordinatorLayout",
+            "androidx.appcompat.widget.LinearLayoutCompat"
+        )
     }
 
     /**
@@ -270,15 +300,20 @@ abstract class BaseUiAutomatorBridge {
     }
 
     /**
-     * Performs a click at the given screen coordinates.
+     * Performs a tap at the given screen coordinates.
      *
      * @param x The x coordinate in pixels
      * @param y The y coordinate in pixels
      * @return [OperationResult] indicating success or failure
      */
-    fun click(x: Int, y: Int): OperationResult {
+    fun tapByCoordinates(x: Int, y: Int): OperationResult {
         return try {
-            val success = getUiDevice().click(x, y)
+            val device = getUiDevice()
+            Log.d(TAG, "Waiting for idle before click at ($x, $y)")
+            device.waitForIdle(1000)
+            Log.d(TAG, "Performing click at ($x, $y)")
+            val success = device.click(x, y)
+            Log.d(TAG, "Click completed with success=$success")
             OperationResult(success = success)
         } catch (e: Exception) {
             Log.e(TAG, "Error performing click at ($x, $y)", e)
@@ -366,5 +401,359 @@ abstract class BaseUiAutomatorBridge {
             Log.e(TAG, "Error finding element", e)
             ElementResult(found = false, error = e.message)
         }
+    }
+
+    fun swipe(
+        startX: Int,
+        startY: Int,
+        endX: Int,
+        endY: Int,
+        steps: Int
+    ): OperationResult {
+        return try {
+            val device = getUiDevice()
+            Log.d(TAG, "Performing swipe from ($startX, $startY) to ($endX, $endY) in $steps steps")
+            val success = device.swipe(startX, startY, endX, endY, steps)
+            Log.d(TAG, "Swipe completed with success=$success")
+            OperationResult(success = success)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error performing swipe", e)
+            OperationResult(success = false, error = e.message)
+        }
+    }
+
+    /**
+     * Performs a swipe in the specified direction.
+     *
+     * This is a convenience method that calculates coordinates based on direction,
+     * making it easier for agents to perform common gestures without knowing screen dimensions.
+     *
+     * @param direction The direction to swipe (UP, DOWN, LEFT, RIGHT)
+     * @param distance The distance preset (SHORT, MEDIUM, LONG) - default MEDIUM
+     * @param speed The speed preset (SLOW, NORMAL, FAST) - default NORMAL
+     * @return [OperationResult] indicating success or failure
+     */
+    fun swipeByDirection(
+        direction: SwipeDirection,
+        distance: SwipeDistance = SwipeDistance.MEDIUM,
+        speed: SwipeSpeed = SwipeSpeed.NORMAL
+    ): OperationResult {
+        return try {
+            val device = getUiDevice()
+            val width = device.displayWidth
+            val height = device.displayHeight
+
+            // Calculate center point
+            val centerX = width / 2
+            val centerY = height / 2
+
+            // Calculate distance as percentage of screen dimension
+            val distancePercent = when (distance) {
+                SwipeDistance.SHORT -> 0.20
+                SwipeDistance.MEDIUM -> 0.40
+                SwipeDistance.LONG -> 0.60
+            }
+
+            // Calculate steps based on speed
+            val steps = when (speed) {
+                SwipeSpeed.SLOW -> 50
+                SwipeSpeed.NORMAL -> 20
+                SwipeSpeed.FAST -> 5
+            }
+
+            // Calculate start and end coordinates based on direction
+            val (startX, startY, endX, endY) = when (direction) {
+                SwipeDirection.UP -> {
+                    // Swipe UP: finger moves from bottom to top (scrolls content down)
+                    val offsetY = (height * distancePercent / 2).toInt()
+                    listOf(centerX, centerY + offsetY, centerX, centerY - offsetY)
+                }
+                SwipeDirection.DOWN -> {
+                    // Swipe DOWN: finger moves from top to bottom (scrolls content up)
+                    val offsetY = (height * distancePercent / 2).toInt()
+                    listOf(centerX, centerY - offsetY, centerX, centerY + offsetY)
+                }
+                SwipeDirection.LEFT -> {
+                    // Swipe LEFT: finger moves from right to left
+                    val offsetX = (width * distancePercent / 2).toInt()
+                    listOf(centerX + offsetX, centerY, centerX - offsetX, centerY)
+                }
+                SwipeDirection.RIGHT -> {
+                    // Swipe RIGHT: finger moves from left to right
+                    val offsetX = (width * distancePercent / 2).toInt()
+                    listOf(centerX - offsetX, centerY, centerX + offsetX, centerY)
+                }
+            }
+
+            Log.d(TAG, "Performing swipe $direction (distance=$distance, speed=$speed) from ($startX, $startY) to ($endX, $endY) in $steps steps")
+            val success = device.swipe(startX, startY, endX, endY, steps)
+            Log.d(TAG, "Swipe $direction completed with success=$success")
+            OperationResult(success = success)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error performing swipe by direction", e)
+            OperationResult(success = false, error = e.message)
+        }
+    }
+
+    /**
+     * Performs a swipe on a specific element in the specified direction.
+     *
+     * Finds the element using the provided selectors, then swipes within its bounds.
+     * Useful for carousels, sliders, or any scrollable element that isn't full-screen.
+     *
+     * @param direction The direction to swipe (UP, DOWN, LEFT, RIGHT)
+     * @param text Exact text match for finding the element
+     * @param textContains Partial text match
+     * @param resourceId Resource ID (e.g., "com.example:id/carousel")
+     * @param className Class name (e.g., "androidx.recyclerview.widget.RecyclerView")
+     * @param contentDescription Accessibility content description
+     * @param speed The speed preset (SLOW, NORMAL, FAST) - default NORMAL
+     * @return [OperationResult] indicating success or failure
+     */
+    fun swipeOnElement(
+        direction: SwipeDirection,
+        text: String? = null,
+        textContains: String? = null,
+        resourceId: String? = null,
+        className: String? = null,
+        contentDescription: String? = null,
+        speed: SwipeSpeed = SwipeSpeed.NORMAL
+    ): OperationResult {
+        return try {
+            val device = getUiDevice()
+
+            // Build selector
+            val selector = when {
+                text != null -> By.text(text)
+                textContains != null -> By.textContains(textContains)
+                resourceId != null -> By.res(resourceId)
+                className != null -> By.clazz(className)
+                contentDescription != null -> By.desc(contentDescription)
+                else -> return OperationResult(success = false, error = "No selector provided")
+            }
+
+            // Find the element
+            val element = device.findObject(selector)
+                ?: return OperationResult(success = false, error = "Element not found")
+
+            val bounds = element.visibleBounds
+                ?: return OperationResult(success = false, error = "Element has no visible bounds")
+
+            // Calculate center and swipe distance within element bounds
+            val centerX = (bounds.left + bounds.right) / 2
+            val centerY = (bounds.top + bounds.bottom) / 2
+
+            // Use 70% of element dimension for swipe distance
+            val horizontalOffset = ((bounds.right - bounds.left) * 0.35).toInt()
+            val verticalOffset = ((bounds.bottom - bounds.top) * 0.35).toInt()
+
+            // Calculate steps based on speed
+            val steps = when (speed) {
+                SwipeSpeed.SLOW -> 50
+                SwipeSpeed.NORMAL -> 20
+                SwipeSpeed.FAST -> 5
+            }
+
+            // Calculate start and end coordinates based on direction
+            val (startX, startY, endX, endY) = when (direction) {
+                SwipeDirection.UP -> {
+                    listOf(centerX, centerY + verticalOffset, centerX, centerY - verticalOffset)
+                }
+                SwipeDirection.DOWN -> {
+                    listOf(centerX, centerY - verticalOffset, centerX, centerY + verticalOffset)
+                }
+                SwipeDirection.LEFT -> {
+                    listOf(centerX + horizontalOffset, centerY, centerX - horizontalOffset, centerY)
+                }
+                SwipeDirection.RIGHT -> {
+                    listOf(centerX - horizontalOffset, centerY, centerX + horizontalOffset, centerY)
+                }
+            }
+
+            Log.d(TAG, "Performing swipe $direction on element within bounds $bounds from ($startX, $startY) to ($endX, $endY)")
+            val success = device.swipe(startX, startY, endX, endY, steps)
+            Log.d(TAG, "Swipe on element completed with success=$success")
+            OperationResult(success = success)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error performing swipe on element", e)
+            OperationResult(success = false, error = e.message)
+        }
+    }
+
+    /**
+     * Gets a filtered list of interactive elements on the current screen.
+     *
+     * Uses heuristics to identify elements that are likely meaningful to interact with,
+     * even if accessibility properties are not properly set by developers.
+     *
+     * Includes elements that:
+     * - Have clickable, checkable, scrollable, or long-clickable = true
+     * - Are instances of known interactive classes (Button, EditText, etc.)
+     * - Have non-empty text or content-description
+     * - Have a resource-id (developer named it)
+     *
+     * Excludes:
+     * - Pure layout containers without meaningful content
+     * - Elements with empty/invalid bounds
+     * - Disabled elements (optional, controlled by includeDisabled param)
+     *
+     * @param includeDisabled Whether to include disabled elements (default: false)
+     * @return [InteractiveElementsResult] containing the filtered list of elements
+     */
+    fun getInteractiveElements(includeDisabled: Boolean = false): InteractiveElementsResult {
+        return try {
+            val device = getUiDevice()
+            val uiAutomation = getUiAutomation()
+            val displayRect = getDisplayRect()
+
+            device.waitForIdle()
+
+            val elements = mutableListOf<InteractiveElement>()
+
+            // Get all window roots using reflection
+            val roots = try {
+                device.javaClass
+                    .getDeclaredMethod("getWindowRoots")
+                    .apply { isAccessible = true }
+                    .let {
+                        @Suppress("UNCHECKED_CAST")
+                        it.invoke(device) as Array<AccessibilityNodeInfo>
+                    }
+                    .toList()
+            } catch (e: Exception) {
+                Log.e(TAG, "Unable to call getWindowRoots via reflection, falling back", e)
+                listOfNotNull(uiAutomation.rootInActiveWindow)
+            }
+
+            Log.d(TAG, "Found ${roots.size} window roots for interactive elements")
+
+            roots.forEach { root ->
+                collectInteractiveElements(root, elements, displayRect, includeDisabled)
+                root.recycle()
+            }
+
+            Log.d(TAG, "Found ${elements.size} interactive elements")
+
+            InteractiveElementsResult(
+                success = true,
+                elements = elements,
+                count = elements.size
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting interactive elements", e)
+            InteractiveElementsResult(
+                success = false,
+                error = e.message ?: "Unknown error"
+            )
+        }
+    }
+
+    /**
+     * Recursively collects interactive elements from the accessibility tree.
+     */
+    private fun collectInteractiveElements(
+        node: AccessibilityNodeInfo,
+        elements: MutableList<InteractiveElement>,
+        displayRect: Rect,
+        includeDisabled: Boolean
+    ) {
+        // Check if this node should be included
+        if (shouldIncludeElement(node, displayRect, includeDisabled)) {
+            val bounds = getVisibleBoundsInScreen(node, displayRect)
+            if (bounds != null) {
+                val centerX = (bounds.left + bounds.right) / 2
+                val centerY = (bounds.top + bounds.bottom) / 2
+
+                elements.add(
+                    InteractiveElement(
+                        text = node.text?.toString()?.takeIf { it.isNotEmpty() },
+                        resourceId = node.viewIdResourceName?.takeIf { it.isNotEmpty() },
+                        className = node.className?.toString(),
+                        contentDescription = node.contentDescription?.toString()?.takeIf { it.isNotEmpty() },
+                        bounds = bounds.toShortString(),
+                        centerX = centerX,
+                        centerY = centerY,
+                        isClickable = node.isClickable,
+                        isCheckable = node.isCheckable,
+                        isScrollable = node.isScrollable,
+                        isLongClickable = node.isLongClickable,
+                        isEnabled = node.isEnabled
+                    )
+                )
+            }
+        }
+
+        // Recurse into children
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            if (child != null) {
+                if (child.isVisibleToUser) {
+                    collectInteractiveElements(child, elements, displayRect, includeDisabled)
+                }
+                child.recycle()
+            }
+        }
+    }
+
+    /**
+     * Determines if an element should be included in the interactive elements list.
+     *
+     * Uses multiple heuristics since developers often forget to set proper accessibility properties.
+     */
+    private fun shouldIncludeElement(
+        node: AccessibilityNodeInfo,
+        displayRect: Rect,
+        includeDisabled: Boolean
+    ): Boolean {
+        // Skip if not visible
+        if (!node.isVisibleToUser) return false
+
+        // Skip disabled elements unless explicitly requested
+        if (!includeDisabled && !node.isEnabled) return false
+
+        // Check bounds
+        val bounds = getVisibleBoundsInScreen(node, displayRect) ?: return false
+        if (bounds.width() <= 0 || bounds.height() <= 0) return false
+
+        val className = node.className?.toString() ?: ""
+        val text = node.text?.toString() ?: ""
+        val contentDesc = node.contentDescription?.toString() ?: ""
+        val resourceId = node.viewIdResourceName ?: ""
+
+        // Include if explicitly interactive
+        if (node.isClickable || node.isCheckable || node.isScrollable || node.isLongClickable) {
+            return true
+        }
+
+        // Include known interactive classes
+        if (INTERACTIVE_CLASSES.any { className.contains(it) || className.endsWith(it.substringAfterLast(".")) }) {
+            return true
+        }
+
+        // Exclude pure layout containers without meaningful content
+        if (LAYOUT_CONTAINERS.any { className.contains(it) }) {
+            // Only include if it has text or content-desc (rare but possible)
+            return text.isNotEmpty() || contentDesc.isNotEmpty()
+        }
+
+        // Include TextView/ImageView with text, content-desc, or resource-id
+        // These are often used as clickable elements without proper properties
+        if (className.contains("TextView") || className.contains("ImageView")) {
+            return text.isNotEmpty() || contentDesc.isNotEmpty() || resourceId.isNotEmpty()
+        }
+
+        // Include anything with meaningful content (text or content-desc)
+        // that isn't a layout container
+        if (text.isNotEmpty() || contentDesc.isNotEmpty()) {
+            return true
+        }
+
+        // Include if it has a resource-id (developer named it, probably important)
+        // but only if it's not a layout container
+        if (resourceId.isNotEmpty() && !LAYOUT_CONTAINERS.any { className.contains(it) }) {
+            return true
+        }
+
+        return false
     }
 }

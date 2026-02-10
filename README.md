@@ -246,6 +246,23 @@ The automation server uses a Maestro-inspired approach for Flutter app support:
 - **Uncompressed hierarchy**: Sets `compressedLayoutHierarchy` to false to expose all accessibility nodes
 - **WebView handling**: Includes WebView contents that may report as invisible
 
+**Finding Elements in Flutter Apps:**
+
+Flutter apps expose text labels via `content-desc` (contentDescription) instead of `text`. When searching for elements:
+
+1. First try `find_element` with the `text` parameter
+2. If not found, retry with `contentDescription` parameter
+
+```bash
+# Native Android app - use text
+curl -X POST http://localhost:9008/jsonrpc \
+  -d '{"jsonrpc":"2.0","method":"ui.findElement","params":{"text":"Log In"},"id":1}'
+
+# Flutter app - use contentDescription
+curl -X POST http://localhost:9008/jsonrpc \
+  -d '{"jsonrpc":"2.0","method":"ui.findElement","params":{"contentDescription":"Log In"},"id":1}'
+```
+
 ### Manual Testing
 
 ```bash

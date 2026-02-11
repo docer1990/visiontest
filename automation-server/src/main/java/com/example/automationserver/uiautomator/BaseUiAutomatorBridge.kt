@@ -55,13 +55,14 @@ abstract class BaseUiAutomatorBridge {
             "android.widget.RatingBar"
         )
 
-        // Layout containers to exclude (unless they have text/content-desc)
+        // Layout containers to exclude (unless they have text, content-desc, or resource-id)
+        // Note: android.view.View is intentionally excluded from this list because
+        // Flutter, Compose, and other frameworks use it for meaningful interactive nodes.
         private val LAYOUT_CONTAINERS = setOf(
             "android.widget.FrameLayout",
             "android.widget.LinearLayout",
             "android.widget.RelativeLayout",
             "android.view.ViewGroup",
-            "android.view.View",
             "androidx.constraintlayout.widget.ConstraintLayout",
             "androidx.coordinatorlayout.widget.CoordinatorLayout",
             "androidx.appcompat.widget.LinearLayoutCompat"
@@ -731,8 +732,8 @@ abstract class BaseUiAutomatorBridge {
 
         // Exclude pure layout containers without meaningful content
         if (LAYOUT_CONTAINERS.any { className.contains(it) }) {
-            // Only include if it has text or content-desc (rare but possible)
-            return if (text.isNotEmpty() || contentDesc.isNotEmpty()) bounds else null
+            // Include if it has text, content-desc, or resource-id
+            return if (text.isNotEmpty() || contentDesc.isNotEmpty() || resourceId.isNotEmpty()) bounds else null
         }
 
         // Include TextView/ImageView with text, content-desc, or resource-id

@@ -13,6 +13,7 @@ This document captures key learnings, architectural decisions, and best practice
 5. [Security Best Practices](#security-best-practices)
 6. [Code Quality Patterns](#code-quality-patterns)
 7. [Common Pitfalls](#common-pitfalls)
+8. [iOS Automation Architecture](#ios-automation-architecture)
 
 ---
 
@@ -570,6 +571,68 @@ private fun waitForUiDevice(instrumentation: Instrumentation): UiDevice {
     throw IllegalStateException("Failed to get UiDevice after $MAX_RETRIES attempts")
 }
 ```
+
+---
+
+## iOS Automation Architecture
+
+### Why XCUITest?
+
+iOS UI automation requires the XCUITest framework — the iOS equivalent of Android's instrumentation pattern. Like Android's UIAutomator, XCUITest provides:
+
+- Full access to the UI element tree via `XCUIElement`
+- Ability to tap, swipe, and interact with any on-screen element
+- Accessibility property access (labels, identifiers, values)
+
+### Architecture Mapping (Android → iOS)
+
+| Android Component | iOS Equivalent | Notes |
+|---|---|---|
+| `automation-server/` (Gradle) | `ios-automation-server/` (Xcode) | Separate build systems |
+| UIAutomator + Instrumentation | XCUITest framework | Both use test framework for privileged access |
+| `BaseUiAutomatorBridge.kt` | `XCUITestBridge.swift` | Core automation logic |
+| `JsonRpcServerInstrumented.kt` (Ktor) | `JsonRpcServer.swift` (Swifter) | HTTP server |
+| `AutomationServerTest.kt` | `AutomationServerUITest.swift` | Entry point test |
+| `adb shell am instrument -w` | `xcodebuild test -only-testing:` | Launch mechanism |
+| ADB port forwarding `tcp:9008` | Not needed (direct localhost:9009) | iOS simulators share Mac network |
+| `AutomationClient.kt` | `IOSAutomationClient.kt` | MCP server HTTP client |
+| Steps (speed control) | Duration (seconds) | Swipe speed mapping |
+
+### Key Differences
+
+1. **No Port Forwarding**: iOS simulators run on the Mac and share its network stack. The XCUITest HTTP server is directly accessible at `localhost:9009`.
+
+2. **No Back Button**: iOS doesn't have a hardware back button. Agents must tap the navigation bar's back button or swipe from the left edge instead.
+
+3. **Swipe Duration vs Steps**: Android uses step count to control swipe speed (each step ≈ 5ms). iOS uses `press(forDuration:thenDragTo:)` with duration in seconds. Mapping: `duration = steps * 0.05`.
+
+4. **Build System**: Android uses Gradle as a submodule. iOS uses a separate Xcode project with Swift Package Manager for the Swifter HTTP server dependency.
+
+5. **Server Startup**: Android's `am instrument` starts quickly. iOS's `xcodebuild test` needs to build first (can take 30-60 seconds on first run), so the MCP tool uses a longer timeout (120s) and polls every 2 seconds.
+
+6. **Stopping the Server**: Android uses `am force-stop`. iOS requires killing the `xcodebuild` process (tracked by PID).
+
+### Why Swifter?
+
+We chose [Swifter](https://github.com/httpswift/swifter) as the HTTP server library because:
+- **Pure Swift**: No C dependencies, works in XCUITest bundle
+- **Lightweight**: Single-purpose HTTP server
+- **SPM support**: Easy integration via Swift Package Manager
+- **Commonly used**: Used by other XCUITest automation tools
+- **Simple API**: `server.GET["/path"]` and `server["/path"]` handlers
+
+### Element Property Mapping
+
+iOS elements expose different properties than Android. The bridge maps them to a compatible format:
+
+| iOS (`XCUIElement`) | JSON key | Android equivalent |
+|---|---|---|
+| `.label` | `text` / `contentDescription` | `text` / `content-desc` |
+| `.identifier` | `resourceId` | `resource-id` |
+| `.elementType` | `className` | `class` |
+| `.value` | `value` | `value` |
+| `.isEnabled` | `isEnabled` | `enabled` |
+| `.frame` | `bounds` | `bounds` (as `[left,top][right,bottom]`) |
 
 ---
 

@@ -7,14 +7,16 @@ A platform-agnostic interface for mobile automation that enables LLMs and agents
 VisionTest is an MCP (Model Context Protocol) server that provides a standardized way for AI agents and Large Language Models to interact with mobile devices. The project consists of two main components:
 
 1. **MCP Server** (`app/`) - Kotlin/JVM server that exposes mobile automation tools via Model Context Protocol
-2. **Automation Server** (`automation-server/`) - Native Android app with UIAutomator API access via JSON-RPC, using the **instrumentation pattern** (like Maestro/Appium)
+2. **Android Automation Server** (`automation-server/`) - Native Android app with UIAutomator API access via JSON-RPC, using the **instrumentation pattern** (like Maestro/Appium)
+3. **iOS Automation Server** (`ios-automation-server/`) - Native iOS app with XCUITest access via JSON-RPC, using the same instrumentation pattern adapted for iOS
 
 This architecture allows for:
 
 - Device detection and information retrieval
 - Application management (listing, info retrieval, launching)
-- Direct UIAutomator access for advanced UI automation
-- Secure automation via Android instrumentation framework
+- Direct UIAutomator access for advanced Android UI automation
+- Direct XCUITest access for iOS simulator UI automation
+- Secure automation via instrumentation frameworks on both platforms
 - Scalable automation across multiple device types
 
 ## Features
@@ -27,13 +29,20 @@ This architecture allows for:
 - **Performance Optimizations**: Device list caching to reduce ADB command overhead
 - **Retry Logic**: Automatic retries with exponential backoff for flaky device operations
 
-### Automation Server (Android)
+### Android Automation Server
 - **Instrumentation Pattern**: Uses Android's instrumentation framework for secure UIAutomator access
 - **UIAutomator Integration**: Direct access to Android UIAutomator API
 - **Flutter App Support**: Reflection-based hierarchy dumping via `getWindowRoots()` for Flutter and other frameworks
 - **JSON-RPC Server**: HTTP-based JSON-RPC 2.0 interface for automation commands
 - **Configuration UI**: Simple interface showing setup instructions and port configuration
 - **No Exported Services**: Only accessible via ADB instrumentation for security
+
+### iOS Automation Server
+- **XCUITest Framework**: Uses Apple's XCUITest for iOS simulator UI automation
+- **JSON-RPC Server**: HTTP-based JSON-RPC 2.0 interface (via Swifter library)
+- **No Port Forwarding**: iOS simulators share the Mac's network stack
+- **Full UI Automation**: Tap, swipe, find elements, dump hierarchy, get interactive elements
+- **Lightweight**: Swifter HTTP server in a UI test bundle
 
 ## Prerequisites
 
@@ -147,42 +156,80 @@ Create/edit the MCP configuration file:
 | `start_automation_server` | Start JSON-RPC server via instrumentation |
 | `automation_server_status` | Check if server is running |
 | `get_ui_hierarchy` | Get XML of all visible UI elements |
+| `get_interactive_elements` | Get filtered list of interactive elements |
 | `find_element` | Find element by text, resourceId, className, etc. |
+| `android_tap_by_coordinates` | Tap at screen coordinates |
+| `android_swipe` | Swipe by coordinates |
+| `android_swipe_direction` | Swipe by direction with distance and speed |
+| `android_swipe_on_element` | Swipe on a specific element |
+| `android_get_device_info` | Get display size, rotation, SDK version |
 
-#### Typical Workflow
+#### UI Automation (iOS)
+
+| Tool | Description |
+|------|-------------|
+| `ios_start_automation_server` | Build + start XCUITest server on simulator |
+| `ios_automation_server_status` | Check if server is running |
+| `ios_get_ui_hierarchy` | Get XML of all visible UI elements |
+| `ios_get_interactive_elements` | Get filtered list of interactive elements |
+| `ios_find_element` | Find element by text, identifier, etc. |
+| `ios_tap_by_coordinates` | Tap at screen coordinates |
+| `ios_swipe` | Swipe by coordinates |
+| `ios_swipe_direction` | Swipe by direction with distance and speed |
+| `ios_get_device_info` | Get display size, rotation, iOS version |
+| `ios_press_home` | Press home button |
+
+#### Typical Android Workflow
 
 ```
-1. install_automation_server  →  Install APKs (one-time setup)
-2. start_automation_server    →  Start the JSON-RPC server
-3. get_ui_hierarchy           →  Analyze the current screen
-4. find_element               →  Find specific UI elements
+1. install_automation_server     →  Install APKs (one-time setup)
+2. start_automation_server       →  Start the JSON-RPC server
+3. get_interactive_elements      →  Get interactive elements with tap coordinates
+4. android_tap_by_coordinates    →  Tap using centerX/centerY
+```
+
+#### Typical iOS Workflow
+
+```
+1. ios_start_automation_server   →  Build + start XCUITest server
+2. ios_get_interactive_elements  →  Get interactive elements with tap coordinates
+3. ios_tap_by_coordinates        →  Tap using centerX/centerY
 ```
 
 ### JSON-RPC API
 
-When the Automation Server is running, it exposes a JSON-RPC 2.0 API:
+Both automation servers expose a JSON-RPC 2.0 API with compatible method names:
 
-**Endpoint**: `POST http://localhost:9008/jsonrpc`
-
-**Health Check**: `GET http://localhost:9008/health`
+**Android**: `POST http://localhost:9008/jsonrpc` | Health: `GET http://localhost:9008/health`
+**iOS**: `POST http://localhost:9009/jsonrpc` | Health: `GET http://localhost:9009/health`
 
 #### Available Methods
 
-| Method | Parameters | Description |
-|--------|------------|-------------|
-| `ui.dumpHierarchy` | - | Get UI hierarchy as XML |
-| `ui.click` | `x`, `y` | Click at coordinates |
-| `ui.findElement` | `text`, `resourceId`, etc. | Find UI element |
-| `device.getInfo` | - | Get display size, rotation, SDK |
-| `device.pressBack` | - | Press the back button |
-| `device.pressHome` | - | Press the home button |
+| Method | Parameters | Android | iOS |
+|--------|------------|---------|-----|
+| `ui.dumpHierarchy` | - | Yes | Yes |
+| `ui.tapByCoordinates` | `x`, `y` | Yes | Yes |
+| `ui.swipe` | `startX`, `startY`, `endX`, `endY`, `steps` | Yes | Yes |
+| `ui.swipeByDirection` | `direction`, `distance`, `speed` | Yes | Yes |
+| `ui.swipeOnElement` | `direction`, selector, `speed` | Yes | No |
+| `ui.findElement` | `text`, `resourceId`, etc. | Yes | Yes |
+| `ui.getInteractiveElements` | `includeDisabled` | Yes | Yes |
+| `device.getInfo` | - | Yes | Yes |
+| `device.pressBack` | - | Yes | No |
+| `device.pressHome` | - | Yes | Yes |
 
-#### Example Request
+#### Example Requests
 
 ```bash
+# Android
 curl -X POST http://localhost:9008/jsonrpc \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"ui.dumpHierarchy","id":1}'
+
+# iOS
+curl -X POST http://localhost:9009/jsonrpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"device.getInfo","id":1}'
 ```
 
 ## Architecture
@@ -197,28 +244,41 @@ visiontest/
 │       ├── ToolFactory.kt            # MCP tool registration
 │       ├── android/
 │       │   ├── Android.kt            # ADB communication (Adam library)
-│       │   └── AutomationClient.kt   # JSON-RPC HTTP client
+│       │   └── AutomationClient.kt   # JSON-RPC client (Android)
 │       ├── ios/
-│       │   └── IOSManager.kt         # iOS simulator operations
+│       │   ├── IOSManager.kt         # iOS simulator operations
+│       │   └── IOSAutomationClient.kt # JSON-RPC client (iOS)
 │       └── config/
 │           ├── AppConfig.kt          # MCP server config
-│           └── AutomationConfig.kt   # Automation constants
+│           ├── AutomationConfig.kt   # Android automation constants
+│           └── IOSAutomationConfig.kt # iOS automation constants
 │
-├── automation-server/                # Android App
+├── automation-server/                # Android Automation Server
 │   └── src/
 │       ├── main/                     # Main app (config UI only)
-│       │   ├── MainActivity.kt       # Shows instructions, port config
+│       │   ├── MainActivity.kt
 │       │   ├── config/ServerConfig.kt
 │       │   ├── jsonrpc/JsonRpcModels.kt
 │       │   └── uiautomator/
-│       │       ├── BaseUiAutomatorBridge.kt   # Abstract base class (reflection-based hierarchy)
-│       │       └── UiAutomatorModels.kt       # Data classes
-│       │
+│       │       ├── BaseUiAutomatorBridge.kt
+│       │       └── UiAutomatorModels.kt
 │       └── androidTest/              # Instrumentation (actual server)
-│           ├── AutomationServerTest.kt        # Entry point
+│           ├── AutomationServerTest.kt
 │           ├── AutomationInstrumentationRunner.kt
-│           ├── JsonRpcServerInstrumented.kt   # HTTP server
+│           ├── JsonRpcServerInstrumented.kt
 │           └── UiAutomatorBridgeInstrumented.kt
+│
+├── ios-automation-server/            # iOS Automation Server (Xcode)
+│   ├── IOSAutomationServer.xcodeproj
+│   ├── IOSAutomationServer/          # Minimal host app
+│   │   └── AppDelegate.swift
+│   └── IOSAutomationServerUITests/   # XCUITest server
+│       ├── AutomationServerUITest.swift   # Entry point
+│       ├── Server/JsonRpcServer.swift     # Swifter HTTP server
+│       ├── Bridge/XCUITestBridge.swift    # All XCUITest logic
+│       └── Models/
+│           ├── JsonRpcModels.swift
+│           └── AutomationModels.swift
 │
 ├── CLAUDE.md                         # AI assistant context
 ├── LEARNING.md                       # Architecture decisions & learnings
@@ -320,11 +380,13 @@ adb shell am force-stop com.example.automationserver
 
 ## Future Plans
 
-- [ ] Screenshot capture via UIAutomator
-- [ ] Swipe, scroll, longClick operations
+- [ ] Screenshot capture via UIAutomator / XCUITest
+- [x] Swipe, scroll operations (Android + iOS)
+- [ ] Long press operations
 - [ ] Wait/sync operations for E2E testing
 - [ ] Physical iOS device support
 - [ ] WebSocket support for real-time updates
+- [x] iOS simulator UI automation via XCUITest
 
 ## Contributing
 

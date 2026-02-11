@@ -32,11 +32,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Output paths:
 # - Main APK: automation-server/build/outputs/apk/debug/automation-server-debug.apk
 # - Test APK: automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk
+
+# === iOS Automation Server ===
+# Build for testing (resolves SPM dependencies + compiles)
+xcodebuild build-for-testing \
+  -project ios-automation-server/IOSAutomationServer.xcodeproj \
+  -scheme IOSAutomationServer \
+  -destination 'platform=iOS Simulator,name=iPhone 16'
+
+# Start the automation server (runs XCUITest with JSON-RPC server)
+xcodebuild test \
+  -project ios-automation-server/IOSAutomationServer.xcodeproj \
+  -scheme IOSAutomationServer \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -only-testing:IOSAutomationServerUITests/AutomationServerUITest/testRunAutomationServer
+
+# Test the server (in another terminal)
+curl http://localhost:9009/health
 ```
 
 ## Architecture Overview
 
-VisionTest is an MCP (Model Context Protocol) server enabling AI agents to interact with mobile devices. It consists of two modules:
+VisionTest is an MCP (Model Context Protocol) server enabling AI agents to interact with mobile devices. It consists of three modules:
 
 ### MCP Server (`app/`)
 
@@ -44,9 +61,11 @@ Kotlin/JVM server using stdio transport. Key files:
 - `Main.kt` - Entry point, initializes managers and connects via stdio
 - `ToolFactory.kt` - Registers all MCP tools (Android, iOS, and Automation)
 - `android/Android.kt` - ADB communication via Adam library
-- `android/AutomationClient.kt` - HTTP client for Automation Server JSON-RPC
-- `config/AutomationConfig.kt` - Centralized constants for automation
+- `android/AutomationClient.kt` - HTTP client for Android Automation Server JSON-RPC
 - `ios/IOSManager.kt` - iOS simulator operations via `xcrun simctl`
+- `ios/IOSAutomationClient.kt` - HTTP client for iOS Automation Server JSON-RPC
+- `config/AutomationConfig.kt` - Centralized constants for Android automation
+- `config/IOSAutomationConfig.kt` - Centralized constants for iOS automation
 - `common/DeviceConfig.kt` - Shared interface for both platforms
 
 ### Automation Server (`automation-server/`)
@@ -84,6 +103,34 @@ Native Android app providing UIAutomator access via JSON-RPC. Uses **instrumenta
 | `device.pressBack` | - | Press back button |
 | `device.pressHome` | - | Press home button |
 
+### iOS Automation Server (`ios-automation-server/`)
+
+Native iOS app providing XCUITest access via JSON-RPC. Uses **XCUITest framework** (similar pattern to Android's instrumentation).
+
+**Host App (`IOSAutomationServer/`):**
+- `AppDelegate.swift` - Minimal host app required by XCUITest
+
+**UI Test Bundle (`IOSAutomationServerUITests/`) - The actual working server:**
+- `AutomationServerUITest.swift` - Entry point test that starts the JSON-RPC server
+- `Server/JsonRpcServer.swift` - Swifter HTTP server with JSON-RPC 2.0 dispatch
+- `Bridge/XCUITestBridge.swift` - All XCUITest automation logic
+- `Models/JsonRpcModels.swift` - Request/Response/Error types
+- `Models/AutomationModels.swift` - Result types (mirrors UiAutomatorModels.kt)
+
+**Key difference from Android:** iOS simulators share the Mac's network stack, so **no port forwarding is needed**. The server is directly accessible at `localhost:9009`.
+
+**Supported iOS JSON-RPC Methods:**
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `ui.dumpHierarchy` | - | Get UI hierarchy XML |
+| `ui.tapByCoordinates` | `x`, `y` | Tap at coordinates |
+| `ui.swipe` | `startX`, `startY`, `endX`, `endY`, `steps` | Swipe by coordinates |
+| `ui.swipeByDirection` | `direction`, `distance`, `speed` | Swipe by direction |
+| `ui.findElement` | `text`, `resourceId`, etc. | Find UI element |
+| `ui.getInteractiveElements` | `includeDisabled` (optional) | Get interactive elements |
+| `device.getInfo` | - | Get display size, rotation, iOS version |
+| `device.pressHome` | - | Press home button |
+
 ## MCP Tools
 
 ### Device Management
@@ -113,7 +160,7 @@ Native Android app providing UIAutomator access via JSON-RPC. Uses **instrumenta
 | `android_get_device_info` | Get display size, rotation, and SDK version |
 | `get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
 
-**Typical Automation Workflow:**
+**Typical Android Automation Workflow:**
 1. `install_automation_server` - Install both APKs (one-time)
 2. `start_automation_server` - Start JSON-RPC server via `am instrument`
 3. `get_interactive_elements` - Get filtered list of interactive elements (preferred)
@@ -121,6 +168,27 @@ Native Android app providing UIAutomator access via JSON-RPC. Uses **instrumenta
 4. `android_tap_by_coordinates` - Tap using centerX/centerY from interactive elements
 5. `android_swipe_direction` - Scroll/swipe by direction (simpler, no coordinates needed)
    - OR `android_swipe` - Swipe by exact coordinates (for precise control)
+
+### UI Automation (iOS)
+| Tool | Description |
+|------|-------------|
+| `ios_start_automation_server` | Build + start XCUITest server on simulator |
+| `ios_automation_server_status` | Check if iOS automation server is running |
+| `ios_get_ui_hierarchy` | Get XML of all UI elements on current screen |
+| `ios_find_element` | Find element by text, identifier, elementType, etc. |
+| `ios_tap_by_coordinates` | Tap at screen coordinates (x, y) |
+| `ios_swipe` | Swipe by coordinates |
+| `ios_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
+| `ios_get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
+| `ios_get_device_info` | Get display size, rotation, and iOS version |
+| `ios_press_home` | Press home button |
+
+**Typical iOS Automation Workflow:**
+1. `ios_start_automation_server` - Build and start XCUITest server (handles build + install)
+2. `ios_get_interactive_elements` - Get filtered list of interactive elements (preferred)
+   - OR `ios_get_ui_hierarchy` - Get full XML hierarchy (when you need all elements)
+3. `ios_tap_by_coordinates` - Tap using centerX/centerY from interactive elements
+4. `ios_swipe_direction` - Scroll/swipe by direction (simpler, no coordinates needed)
 
 ## Instrumentation Pattern
 
@@ -154,6 +222,54 @@ curl http://localhost:9008/health
 # Stop server
 adb shell am force-stop com.example.automationserver
 ```
+
+## iOS Automation Pattern
+
+The iOS automation server uses Apple's XCUITest framework, mirroring the Android instrumentation pattern:
+
+**Why XCUITest?**
+- XCUITest provides full access to the UI element tree via XCUIElement
+- It runs as a UI test bundle, with proper accessibility access
+- No separate installation step — `xcodebuild test` handles build + install + run
+
+**How it works:**
+```bash
+# MCP tool executes this command:
+xcodebuild test \
+  -project ios-automation-server/IOSAutomationServer.xcodeproj \
+  -scheme IOSAutomationServer \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -only-testing:IOSAutomationServerUITests/AutomationServerUITest/testRunAutomationServer
+```
+
+**Manual testing:**
+```bash
+# Start server (in one terminal)
+xcodebuild test \
+  -project ios-automation-server/IOSAutomationServer.xcodeproj \
+  -scheme IOSAutomationServer \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -only-testing:IOSAutomationServerUITests/AutomationServerUITest/testRunAutomationServer
+
+# In another terminal, test directly
+curl http://localhost:9009/health
+curl -X POST http://localhost:9009/jsonrpc -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"device.getInfo","id":1}'
+
+# Stop server: kill the xcodebuild process (Ctrl+C)
+```
+
+**Key differences from Android:**
+| Aspect | Android | iOS |
+|--------|---------|-----|
+| Port forwarding | Required (ADB) | Not needed (shared network) |
+| Back button | `device.pressBack()` | No equivalent — tap nav bar back button |
+| Starting server | `am instrument -w` | `xcodebuild test -only-testing:` |
+| Stopping server | `am force-stop` | Kill xcodebuild process |
+| Swipe control | Step count | Duration (steps * 0.05 seconds) |
+| Build system | Gradle module | Xcode project |
+| Dependencies | Ktor/Netty (Gradle) | Swifter (Swift Package Manager) |
+| Default port | 9008 | 9009 |
 
 ## Flutter App Support
 
@@ -204,10 +320,15 @@ The automation server uses a reflection-based approach for UI hierarchy dumping,
 - Device cache validity: 1000ms
 - Tool execution timeout: 10000ms
 
-### Automation Server Defaults (in `config/AutomationConfig.kt`)
+### Android Automation Server Defaults (in `config/AutomationConfig.kt`)
 
 - Server port: 9008 (range: 1024-65535)
 - ADB port forwarding: `adb forward tcp:9008 tcp:9008`
+
+### iOS Automation Server Defaults (in `config/IOSAutomationConfig.kt`)
+
+- Server port: 9009 (range: 1024-65535)
+- No port forwarding needed (iOS simulators share Mac's network stack)
 
 ## Prerequisites
 

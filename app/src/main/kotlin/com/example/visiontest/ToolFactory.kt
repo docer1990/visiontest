@@ -1020,8 +1020,14 @@ class ToolFactory(
                         return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
                     }
 
-                    val includeDisabled = request.arguments["includeDisabled"]
-                        ?.jsonPrimitive?.content?.toBoolean() ?: false
+                    val includeDisabledRaw = request.arguments["includeDisabled"]
+                        ?.jsonPrimitive?.content
+                    val includeDisabled = when (includeDisabledRaw) {
+                        null -> false
+                        "true" -> true
+                        "false" -> false
+                        else -> return@runWithTimeout "Invalid value for 'includeDisabled': '$includeDisabledRaw'. Must be true or false."
+                    }
 
                     automationClient.getInteractiveElements(includeDisabled)
                 }

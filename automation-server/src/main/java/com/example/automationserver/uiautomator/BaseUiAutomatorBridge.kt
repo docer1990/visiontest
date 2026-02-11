@@ -657,30 +657,28 @@ abstract class BaseUiAutomatorBridge {
         displayRect: Rect,
         includeDisabled: Boolean
     ) {
-        // Check if this node should be included
-        if (shouldIncludeElement(node, displayRect, includeDisabled)) {
-            val bounds = getVisibleBoundsInScreen(node, displayRect)
-            if (bounds != null) {
-                val centerX = (bounds.left + bounds.right) / 2
-                val centerY = (bounds.top + bounds.bottom) / 2
+        // Check if this node should be included and get its bounds in one pass
+        val bounds = getIncludedElementBounds(node, displayRect, includeDisabled)
+        if (bounds != null) {
+            val centerX = (bounds.left + bounds.right) / 2
+            val centerY = (bounds.top + bounds.bottom) / 2
 
-                elements.add(
-                    InteractiveElement(
-                        text = node.text?.toString()?.takeIf { it.isNotEmpty() },
-                        resourceId = node.viewIdResourceName?.takeIf { it.isNotEmpty() },
-                        className = node.className?.toString(),
-                        contentDescription = node.contentDescription?.toString()?.takeIf { it.isNotEmpty() },
-                        bounds = bounds.toShortString(),
-                        centerX = centerX,
-                        centerY = centerY,
-                        isClickable = node.isClickable,
-                        isCheckable = node.isCheckable,
-                        isScrollable = node.isScrollable,
-                        isLongClickable = node.isLongClickable,
-                        isEnabled = node.isEnabled
-                    )
+            elements.add(
+                InteractiveElement(
+                    text = node.text?.toString()?.takeIf { it.isNotEmpty() },
+                    resourceId = node.viewIdResourceName?.takeIf { it.isNotEmpty() },
+                    className = node.className?.toString(),
+                    contentDescription = node.contentDescription?.toString()?.takeIf { it.isNotEmpty() },
+                    bounds = bounds.toShortString(),
+                    centerX = centerX,
+                    centerY = centerY,
+                    isClickable = node.isClickable,
+                    isCheckable = node.isCheckable,
+                    isScrollable = node.isScrollable,
+                    isLongClickable = node.isLongClickable,
+                    isEnabled = node.isEnabled
                 )
-            }
+            )
         }
 
         // Recurse into children
@@ -697,23 +695,24 @@ abstract class BaseUiAutomatorBridge {
 
     /**
      * Determines if an element should be included in the interactive elements list.
+     * Returns the element's visible bounds if it should be included, or null if it should be excluded.
      *
      * Uses multiple heuristics since developers often forget to set proper accessibility properties.
      */
-    private fun shouldIncludeElement(
+    private fun getIncludedElementBounds(
         node: AccessibilityNodeInfo,
         displayRect: Rect,
         includeDisabled: Boolean
-    ): Boolean {
+    ): Rect? {
         // Skip if not visible
-        if (!node.isVisibleToUser) return false
+        if (!node.isVisibleToUser) return null
 
         // Skip disabled elements unless explicitly requested
-        if (!includeDisabled && !node.isEnabled) return false
+        if (!includeDisabled && !node.isEnabled) return null
 
         // Check bounds
-        val bounds = getVisibleBoundsInScreen(node, displayRect) ?: return false
-        if (bounds.width() <= 0 || bounds.height() <= 0) return false
+        val bounds = getVisibleBoundsInScreen(node, displayRect) ?: return null
+        if (bounds.width() <= 0 || bounds.height() <= 0) return null
 
         val className = node.className?.toString() ?: ""
         val text = node.text?.toString() ?: ""
@@ -722,38 +721,38 @@ abstract class BaseUiAutomatorBridge {
 
         // Include if explicitly interactive
         if (node.isClickable || node.isCheckable || node.isScrollable || node.isLongClickable) {
-            return true
+            return bounds
         }
 
         // Include known interactive classes
         if (INTERACTIVE_CLASSES.any { className.contains(it) || className.endsWith(it.substringAfterLast(".")) }) {
-            return true
+            return bounds
         }
 
         // Exclude pure layout containers without meaningful content
         if (LAYOUT_CONTAINERS.any { className.contains(it) }) {
             // Only include if it has text or content-desc (rare but possible)
-            return text.isNotEmpty() || contentDesc.isNotEmpty()
+            return if (text.isNotEmpty() || contentDesc.isNotEmpty()) bounds else null
         }
 
         // Include TextView/ImageView with text, content-desc, or resource-id
         // These are often used as clickable elements without proper properties
         if (className.contains("TextView") || className.contains("ImageView")) {
-            return text.isNotEmpty() || contentDesc.isNotEmpty() || resourceId.isNotEmpty()
+            return if (text.isNotEmpty() || contentDesc.isNotEmpty() || resourceId.isNotEmpty()) bounds else null
         }
 
         // Include anything with meaningful content (text or content-desc)
         // that isn't a layout container
         if (text.isNotEmpty() || contentDesc.isNotEmpty()) {
-            return true
+            return bounds
         }
 
         // Include if it has a resource-id (developer named it, probably important)
         // but only if it's not a layout container
         if (resourceId.isNotEmpty() && !LAYOUT_CONTAINERS.any { className.contains(it) }) {
-            return true
+            return bounds
         }
 
-        return false
+        return null
     }
 }

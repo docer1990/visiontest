@@ -116,7 +116,7 @@ class AutomationClient(
     }
 
     /**
-     * Clicks at the specified coordinates.
+     * Taps at the specified screen coordinates.
      */
     suspend fun tapByCoordinates(x: Int, y: Int): String {
         return sendRequest("ui.tapByCoordinates", mapOf("x" to x, "y" to y))

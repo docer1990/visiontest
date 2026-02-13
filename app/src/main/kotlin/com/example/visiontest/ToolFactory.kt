@@ -686,15 +686,23 @@ class ToolFactory(
                         return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
                     }
 
-                    val startX = request.arguments["startX"]?.jsonPrimitive?.int
+                    val startXElement = request.arguments["startX"]
                         ?: return@runWithTimeout "Error: Missing 'startX' parameter"
-                    val startY = request.arguments["startY"]?.jsonPrimitive?.int
+                    val startX = startXElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'startX' must be an integer"
+                    val startYElement = request.arguments["startY"]
                         ?: return@runWithTimeout "Error: Missing 'startY' parameter"
-                    val endX = request.arguments["endX"]?.jsonPrimitive?.int
+                    val startY = startYElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'startY' must be an integer"
+                    val endXElement = request.arguments["endX"]
                         ?: return@runWithTimeout "Error: Missing 'endX' parameter"
-                    val endY = request.arguments["endY"]?.jsonPrimitive?.int
+                    val endX = endXElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'endX' must be an integer"
+                    val endYElement = request.arguments["endY"]
                         ?: return@runWithTimeout "Error: Missing 'endY' parameter"
-                    val steps = request.arguments["steps"]?.jsonPrimitive?.int ?: 20
+                    val endY = endYElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'endY' must be an integer"
+                    val steps = request.arguments["steps"]?.jsonPrimitive?.content?.toIntOrNull() ?: 20
 
                     automationClient.swipe(startX, startY, endX, endY, steps)
                 }

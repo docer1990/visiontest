@@ -725,13 +725,24 @@ abstract class BaseUiAutomatorBridge {
             return bounds
         }
 
-        // Include known interactive classes
-        if (INTERACTIVE_CLASSES.any { className.contains(it) || className.endsWith(it.substringAfterLast(".")) }) {
+        // Precompute simple class name and interactive class patterns to avoid repeated work
+        val simpleClassName = className.substringAfterLast('.')
+        val interactiveClassPatterns = INTERACTIVE_CLASSES.map { fullName ->
+            fullName to fullName.substringAfterLast('.')
+        }
+        // Include known interactive classes (full or short name match)
+        if (interactiveClassPatterns.any { (fullName, shortName) ->
+                className.contains(fullName) || simpleClassName == shortName
+            }
+        ) {
             return bounds
         }
 
+        // Check layout container membership once to avoid repeated iterations
+        val isLayoutContainer = LAYOUT_CONTAINERS.any { className.contains(it) }
+
         // Exclude pure layout containers without meaningful content
-        if (LAYOUT_CONTAINERS.any { className.contains(it) }) {
+        if (isLayoutContainer) {
             // Include if it has text, content-desc, or resource-id
             return if (text.isNotEmpty() || contentDesc.isNotEmpty() || resourceId.isNotEmpty()) bounds else null
         }
@@ -750,7 +761,7 @@ abstract class BaseUiAutomatorBridge {
 
         // Include if it has a resource-id (developer named it, probably important)
         // but only if it's not a layout container
-        if (resourceId.isNotEmpty() && !LAYOUT_CONTAINERS.any { className.contains(it) }) {
+        if (resourceId.isNotEmpty() && !isLayoutContainer) {
             return bounds
         }
 

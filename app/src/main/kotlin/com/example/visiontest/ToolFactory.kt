@@ -2,14 +2,12 @@ package com.example.visiontest
 
 import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
-import com.example.visiontest.ios.IOSManager
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.utils.ErrorHandler
 import io.modelcontextprotocol.kotlin.sdk.*
 import io.modelcontextprotocol.kotlin.sdk.server.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
 import org.slf4j.Logger
 import com.example.visiontest.utils.ErrorHandler.PACKAGE_NAME_REQUIRED

@@ -7,6 +7,7 @@ import android.util.Log
 import android.util.Xml
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.UiDevice
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
@@ -55,6 +56,9 @@ abstract class BaseUiAutomatorBridge {
             "android.widget.RatingBar"
         )
 
+        // Short class names for interactive classes, pre-computed once for efficient lookup
+        private val INTERACTIVE_CLASS_SHORT_NAMES = INTERACTIVE_CLASSES.map { it.substringAfterLast('.') }.toSet()
+
         // Layout containers to exclude (unless they have text, content-desc, or resource-id)
         // Note: android.view.View is intentionally excluded from this list because
         // Flutter, Compose, and other frameworks use it for meaningful interactive nodes.
@@ -67,6 +71,12 @@ abstract class BaseUiAutomatorBridge {
             "androidx.coordinatorlayout.widget.CoordinatorLayout",
             "androidx.appcompat.widget.LinearLayoutCompat"
         )
+
+        private fun SwipeSpeed.toSteps(): Int = when (this) {
+            SwipeSpeed.SLOW -> 50
+            SwipeSpeed.NORMAL -> 20
+            SwipeSpeed.FAST -> 5
+        }
     }
 
     /**
@@ -366,6 +376,30 @@ abstract class BaseUiAutomatorBridge {
      * @param contentDescription Accessibility content description
      * @return [ElementResult] with element info if found, or found=false if not
      */
+
+    /**
+     * Builds a [BySelector] by chaining all non-null selector criteria.
+     * When multiple selectors are provided, they are combined (AND logic)
+     * to create a more specific match.
+     *
+     * @return A combined [BySelector], or null if no criteria were provided.
+     */
+    private fun buildSelector(
+        text: String? = null,
+        textContains: String? = null,
+        resourceId: String? = null,
+        className: String? = null,
+        contentDescription: String? = null
+    ): BySelector? {
+        var selector: BySelector? = null
+        text?.let { selector = (selector?.text(it) ?: By.text(it)) }
+        textContains?.let { selector = (selector?.textContains(it) ?: By.textContains(it)) }
+        resourceId?.let { selector = (selector?.res(it) ?: By.res(it)) }
+        className?.let { selector = (selector?.clazz(it) ?: By.clazz(it)) }
+        contentDescription?.let { selector = (selector?.desc(it) ?: By.desc(it)) }
+        return selector
+    }
+
     fun findElement(
         text: String? = null,
         textContains: String? = null,
@@ -374,14 +408,8 @@ abstract class BaseUiAutomatorBridge {
         contentDescription: String? = null
     ): ElementResult {
         return try {
-            val selector = when {
-                text != null -> By.text(text)
-                textContains != null -> By.textContains(textContains)
-                resourceId != null -> By.res(resourceId)
-                className != null -> By.clazz(className)
-                contentDescription != null -> By.desc(contentDescription)
-                else -> return ElementResult(found = false, error = "No selector provided")
-            }
+            val selector = buildSelector(text, textContains, resourceId, className, contentDescription)
+                ?: return ElementResult(found = false, error = "No selector provided")
 
             val element = getUiDevice().findObject(selector)
             if (element != null) {
@@ -455,12 +483,7 @@ abstract class BaseUiAutomatorBridge {
                 SwipeDistance.LONG -> 0.60
             }
 
-            // Calculate steps based on speed
-            val steps = when (speed) {
-                SwipeSpeed.SLOW -> 50
-                SwipeSpeed.NORMAL -> 20
-                SwipeSpeed.FAST -> 5
-            }
+            val steps = speed.toSteps()
 
             // Calculate start and end coordinates based on direction
             val (startX, startY, endX, endY) = when (direction) {
@@ -523,15 +546,9 @@ abstract class BaseUiAutomatorBridge {
         return try {
             val device = getUiDevice()
 
-            // Build selector
-            val selector = when {
-                text != null -> By.text(text)
-                textContains != null -> By.textContains(textContains)
-                resourceId != null -> By.res(resourceId)
-                className != null -> By.clazz(className)
-                contentDescription != null -> By.desc(contentDescription)
-                else -> return OperationResult(success = false, error = "No selector provided")
-            }
+            // Build selector by combining all provided criteria
+            val selector = buildSelector(text, textContains, resourceId, className, contentDescription)
+                ?: return OperationResult(success = false, error = "No selector provided")
 
             // Find the element
             val element = device.findObject(selector)
@@ -548,12 +565,7 @@ abstract class BaseUiAutomatorBridge {
             val horizontalOffset = ((bounds.right - bounds.left) * 0.35).toInt()
             val verticalOffset = ((bounds.bottom - bounds.top) * 0.35).toInt()
 
-            // Calculate steps based on speed
-            val steps = when (speed) {
-                SwipeSpeed.SLOW -> 50
-                SwipeSpeed.NORMAL -> 20
-                SwipeSpeed.FAST -> 5
-            }
+            val steps = speed.toSteps()
 
             // Calculate start and end coordinates based on direction
             val (startX, startY, endX, endY) = when (direction) {
@@ -725,16 +737,9 @@ abstract class BaseUiAutomatorBridge {
             return bounds
         }
 
-        // Precompute simple class name and interactive class patterns to avoid repeated work
-        val simpleClassName = className.substringAfterLast('.')
-        val interactiveClassPatterns = INTERACTIVE_CLASSES.map { fullName ->
-            fullName to fullName.substringAfterLast('.')
-        }
         // Include known interactive classes (full or short name match)
-        if (interactiveClassPatterns.any { (fullName, shortName) ->
-                className.contains(fullName) || simpleClassName == shortName
-            }
-        ) {
+        val simpleClassName = className.substringAfterLast('.')
+        if (INTERACTIVE_CLASSES.any { className.contains(it) } || simpleClassName in INTERACTIVE_CLASS_SHORT_NAMES) {
             return bounds
         }
 

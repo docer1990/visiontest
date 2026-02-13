@@ -200,8 +200,7 @@ class JsonRpcServerInstrumented(
                     ?: throw InvalidParamsException("Missing 'endX' parameter")
                 val endY = params.get("endY")?.asInt
                     ?: throw InvalidParamsException("Missing 'endY' parameter")
-                val steps = params.get("steps")?.asInt
-                    ?: throw InvalidParamsException("Missing 'steps' parameter")
+                val steps = params.get("steps")?.asInt ?: 20
 
                 uiAutomator.swipe(startX, startY, endX, endY, steps)
             }

@@ -616,11 +616,13 @@ class ToolFactory(
                 Tap on the Android device screen at the specified (x, y) coordinates.
                 The automation server must be running first (use start_automation_server).
 
-                WORKFLOW: First call 'get_ui_hierarchy' or 'find_element' to locate the target element.
-                Elements have bounds in format [left,top][right,bottom] (e.g., [100,200][300,400]).
-                Calculate center coordinates: x = (left + right) / 2, y = (top + bottom) / 2.
-
-                Example: For bounds [100,200][300,400], tap at x=200, y=300.
+                WORKFLOW: Prefer calling 'get_interactive_elements' first to locate tappable elements.
+                Each interactive element includes ready-to-use 'centerX' and 'centerY' fields that you can pass
+                directly as the 'x' and 'y' parameters to this tool.
+                If you instead use 'get_ui_hierarchy' or 'find_element', elements expose bounds in the format
+                [left,top][right,bottom] (e.g., [100,200][300,400]). In that case, manually calculate center
+                coordinates: x = (left + right) / 2, y = (top + bottom) / 2.
+                Example (manual calculation): For bounds [100,200][300,400], tap at x=200, y=300.
 
                 USE CASES:
                 - Tap buttons, links, or interactive elements after locating them
@@ -639,10 +641,14 @@ class ToolFactory(
                         return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
                     }
 
-                    val x = request.arguments["x"]?.jsonPrimitive?.int
+                    val xElement = request.arguments["x"]
                         ?: return@runWithTimeout "Error: Missing 'x' parameter"
-                    val y = request.arguments["y"]?.jsonPrimitive?.int
+                    val x = xElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'x' must be an integer"
+                    val yElement = request.arguments["y"]
                         ?: return@runWithTimeout "Error: Missing 'y' parameter"
+                    val y = yElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'y' must be an integer"
 
                     automationClient.tapByCoordinates(x, y)
                 }

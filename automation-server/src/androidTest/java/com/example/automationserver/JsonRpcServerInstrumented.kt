@@ -150,6 +150,10 @@ class JsonRpcServerInstrumented(
         return when (method) {
             // UI Hierarchy methods
             "ui.dumpHierarchy" -> uiAutomator.dumpHierarchy()
+            "ui.getInteractiveElements" -> {
+                val includeDisabled = params?.get("includeDisabled")?.asBoolean ?: false
+                uiAutomator.getInteractiveElements(includeDisabled)
+            }
 
             // Device methods
             "device.getInfo" -> uiAutomator.getDeviceInfo()
@@ -157,12 +161,12 @@ class JsonRpcServerInstrumented(
             "device.pressHome" -> uiAutomator.pressHome()
 
             // Click methods
-            "ui.click" -> {
+            "ui.tapByCoordinates" -> {
                 val x = params?.get("x")?.asInt
                     ?: throw InvalidParamsException("Missing 'x' parameter")
                 val y = params.get("y")?.asInt
                     ?: throw InvalidParamsException("Missing 'y' parameter")
-                uiAutomator.click(x, y)
+                uiAutomator.tapByCoordinates(x, y)
             }
 
             // Find element method
@@ -184,6 +188,84 @@ class JsonRpcServerInstrumented(
                     resourceId = resourceId,
                     className = className,
                     contentDescription = contentDescription
+                )
+            }
+
+            "ui.swipe" -> {
+                val startX = params?.get("startX")?.asInt
+                    ?: throw InvalidParamsException("Missing 'startX' parameter")
+                val startY = params.get("startY")?.asInt
+                    ?: throw InvalidParamsException("Missing 'startY' parameter")
+                val endX = params.get("endX")?.asInt
+                    ?: throw InvalidParamsException("Missing 'endX' parameter")
+                val endY = params.get("endY")?.asInt
+                    ?: throw InvalidParamsException("Missing 'endY' parameter")
+                val steps = params.get("steps")?.asInt ?: 20
+
+                uiAutomator.swipe(startX, startY, endX, endY, steps)
+            }
+
+            "ui.swipeByDirection" -> {
+                val directionStr = params?.get("direction")?.asString?.uppercase()
+                    ?: throw InvalidParamsException("Missing 'direction' parameter")
+                val direction = try {
+                    com.example.automationserver.uiautomator.SwipeDirection.valueOf(directionStr)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException("Invalid direction: $directionStr. Must be one of: UP, DOWN, LEFT, RIGHT")
+                }
+
+                val distanceStr = params.get("distance")?.asString?.uppercase() ?: "MEDIUM"
+                val distance = try {
+                    com.example.automationserver.uiautomator.SwipeDistance.valueOf(distanceStr)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException("Invalid distance: $distanceStr. Must be one of: SHORT, MEDIUM, LONG")
+                }
+
+                val speedStr = params.get("speed")?.asString?.uppercase() ?: "NORMAL"
+                val speed = try {
+                    com.example.automationserver.uiautomator.SwipeSpeed.valueOf(speedStr)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException("Invalid speed: $speedStr. Must be one of: SLOW, NORMAL, FAST")
+                }
+
+                uiAutomator.swipeByDirection(direction, distance, speed)
+            }
+
+            "ui.swipeOnElement" -> {
+                val directionStr = params?.get("direction")?.asString?.uppercase()
+                    ?: throw InvalidParamsException("Missing 'direction' parameter")
+                val direction = try {
+                    com.example.automationserver.uiautomator.SwipeDirection.valueOf(directionStr)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException("Invalid direction: $directionStr. Must be one of: UP, DOWN, LEFT, RIGHT")
+                }
+
+                val text = params.get("text")?.asString
+                val textContains = params.get("textContains")?.asString
+                val resourceId = params.get("resourceId")?.asString
+                val className = params.get("className")?.asString
+                val contentDescription = params.get("contentDescription")?.asString
+
+                if (text == null && textContains == null && resourceId == null &&
+                    className == null && contentDescription == null) {
+                    throw InvalidParamsException("At least one selector required: text, textContains, resourceId, className, or contentDescription")
+                }
+
+                val speedStr = params.get("speed")?.asString?.uppercase() ?: "NORMAL"
+                val speed = try {
+                    com.example.automationserver.uiautomator.SwipeSpeed.valueOf(speedStr)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException("Invalid speed: $speedStr. Must be one of: SLOW, NORMAL, FAST")
+                }
+
+                uiAutomator.swipeOnElement(
+                    direction = direction,
+                    text = text,
+                    textContains = textContains,
+                    resourceId = resourceId,
+                    className = className,
+                    contentDescription = contentDescription,
+                    speed = speed
                 )
             }
 

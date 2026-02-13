@@ -249,6 +249,54 @@ Breaking this down:
 | Non-exported Service | ❌ No UiAutomation | ✅ Secure | Low |
 | **Instrumentation** | ✅ Full access | ✅ Secure (ADB only) | Medium |
 
+### Why Two APKs?
+
+The automation server requires **two separate APKs** to function:
+
+| APK | Contents | Purpose |
+|-----|----------|---------|
+| **Main APK** (`automation-server-debug.apk`) | `BaseUiAutomatorBridge.kt`, `MainActivity.kt`, data classes | App code + shared UIAutomator logic |
+| **Test APK** (`automation-server-debug-androidTest.apk`) | `AutomationServerTest.kt`, `JsonRpcServerInstrumented.kt`, `UiAutomatorBridgeInstrumented.kt` | Instrumentation code that gets `UiAutomation` access |
+
+**Why this split?**
+
+Android's security model prevents regular apps from accessing `UiAutomation` (which can control any app on the device). Only the **instrumentation framework** grants this privilege.
+
+When you run `am instrument`:
+1. Android loads the **test APK** in a special instrumentation process
+2. Provides a real `Instrumentation` object with `UiAutomation` access
+3. The test APK can access classes from the **main APK** (shared context)
+4. Your test code (`AutomationServerTest`) starts the HTTP server with full UIAutomator access
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    Test APK                         │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ AutomationServerTest (gets Instrumentation) │   │
+│  │         ↓                                   │   │
+│  │ UiAutomatorBridgeInstrumented               │   │
+│  │         ↓ (extends)                         │   │
+│  └─────────────────────────────────────────────┘   │
+│                      ↓ uses                         │
+├─────────────────────────────────────────────────────┤
+│                    Main APK                         │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ BaseUiAutomatorBridge (shared logic)        │   │
+│  │ JsonRpcModels, UiAutomatorModels            │   │
+│  └─────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+```
+
+**Development tip:** When changing code in `src/main/`, you must reinstall **both** APKs:
+
+```bash
+# Changes in src/main/ → reinstall both
+./gradlew :automation-server:installDebug :automation-server:installDebugAndroidTest
+
+# Changes in src/androidTest/ only → reinstall test APK
+./gradlew :automation-server:installDebugAndroidTest
+```
+
 ---
 
 ## Flutter App Support via Reflection

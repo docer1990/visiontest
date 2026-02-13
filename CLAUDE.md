@@ -74,8 +74,12 @@ Native Android app providing UIAutomator access via JSON-RPC. Uses **instrumenta
 | Method | Parameters | Description |
 |--------|------------|-------------|
 | `ui.dumpHierarchy` | - | Get UI hierarchy XML |
-| `ui.click` | `x`, `y` | Click at coordinates |
+| `ui.tapByCoordinates` | `x`, `y` | Tap at coordinates |
+| `ui.swipe` | `startX`, `startY`, `endX`, `endY`, `steps` | Swipe by coordinates |
+| `ui.swipeByDirection` | `direction`, `distance`, `speed` | Swipe by direction (up/down/left/right) |
+| `ui.swipeOnElement` | `direction`, selector, `speed` | Swipe on a specific element |
 | `ui.findElement` | `text`, `resourceId`, etc. | Find UI element |
+| `ui.getInteractiveElements` | `includeDisabled` (optional) | Get filtered list of interactive elements |
 | `device.getInfo` | - | Get display size, rotation, SDK |
 | `device.pressBack` | - | Press back button |
 | `device.pressHome` | - | Press home button |
@@ -102,12 +106,21 @@ Native Android app providing UIAutomator access via JSON-RPC. Uses **instrumenta
 | `automation_server_status` | Check if automation server is running |
 | `get_ui_hierarchy` | Get XML of all UI elements on current screen |
 | `find_element` | Find element by text, resourceId, className, etc. |
+| `android_tap_by_coordinates` | Tap at screen coordinates (x, y) |
+| `android_swipe` | Swipe by coordinates (startX, startY) to (endX, endY) |
+| `android_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
+| `android_swipe_on_element` | Swipe on a specific element (for carousels, sliders) |
+| `android_get_device_info` | Get display size, rotation, and SDK version |
+| `get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
 
 **Typical Automation Workflow:**
 1. `install_automation_server` - Install both APKs (one-time)
 2. `start_automation_server` - Start JSON-RPC server via `am instrument`
-3. `get_ui_hierarchy` - Retrieve UI elements to analyze the screen
-4. `find_element` - Find specific elements by selector
+3. `get_interactive_elements` - Get filtered list of interactive elements (preferred)
+   - OR `get_ui_hierarchy` - Get full XML hierarchy (when you need all elements)
+4. `android_tap_by_coordinates` - Tap using centerX/centerY from interactive elements
+5. `android_swipe_direction` - Scroll/swipe by direction (simpler, no coordinates needed)
+   - OR `android_swipe` - Swipe by exact coordinates (for precise control)
 
 ## Instrumentation Pattern
 
@@ -151,6 +164,13 @@ The automation server uses a reflection-based approach for UI hierarchy dumping,
 - Enables `FLAG_RETRIEVE_INTERACTIVE_WINDOWS` (API 24+) for cross-app window access
 - Sets `compressedLayoutHierarchy` to false to expose all accessibility nodes
 - Handles WebView contents that may report as invisible
+
+**Finding elements in Flutter apps:**
+> **Important:** Flutter apps expose text labels via `content-desc` (contentDescription) attribute instead of `text`. When using `find_element` on a Flutter app:
+> 1. First try finding by `text` parameter
+> 2. If not found, retry using `contentDescription` parameter with the same value
+>
+> Example: To find a "Log In" button in a Flutter app, use `contentDescription: "Log In"` instead of `text: "Log In"`.
 
 **Abstract methods in `BaseUiAutomatorBridge`:**
 - `getUiDevice()` - Returns the UiDevice instance

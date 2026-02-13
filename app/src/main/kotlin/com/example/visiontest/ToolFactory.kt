@@ -2,7 +2,6 @@ package com.example.visiontest
 
 import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
-import com.example.visiontest.ios.IOSManager
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.utils.ErrorHandler
 import io.modelcontextprotocol.kotlin.sdk.*
@@ -44,6 +43,14 @@ class ToolFactory(
         registerAutomationServerStatusTool(server)
         registerGetUiHierarchyTool(server)
         registerFindElementTool(server)
+        registerAndroidTapByCoordinatesTool(server)
+        registerAndroidPressBackTool(server)
+        registerAndroidPressHomeTool(server)
+        registerAndroidSwipe(server)
+        registerAndroidSwipeDirection(server)
+        registerAndroidSwipeOnElement(server)
+        registerAndroidGetDeviceInfoTool(server)
+        registerGetInteractiveElementsTool(server)
 
         // iOS tools
         registerIOSAvailableDeviceTool(server)
@@ -502,7 +509,28 @@ class ToolFactory(
     private fun registerGetUiHierarchyTool(server: Server) {
         server.addTool(
             name = "get_ui_hierarchy",
-            description = "Gets the UI hierarchy (all visible elements) from the current screen of the connected Android device. Returns XML with element bounds, text, resource IDs, and other properties. The automation server must be running first (use start_automation_server).",
+            description = """
+                Gets the COMPLETE UI hierarchy as XML from the current screen.
+                The automation server must be running first (use start_automation_server).
+
+                PREFER 'get_interactive_elements' for most tasks - it returns a cleaner,
+                filtered list of elements you can actually interact with.
+
+                USE THIS TOOL WHEN YOU NEED:
+                - Full XML structure with parent-child relationships
+                - Debug why an element isn't found by get_interactive_elements
+                - Analyze layout containers and view hierarchy
+                - Find elements with unusual/custom class names
+                - Inspect raw accessibility properties
+
+                RETURNS: Verbose XML with ALL elements including:
+                - Layout containers (FrameLayout, LinearLayout, etc.)
+                - Invisible or disabled elements
+                - Every node in the accessibility tree
+
+                TIP: Start with get_interactive_elements. Only use this if you need
+                the full structure or can't find what you're looking for.
+            """.trimIndent(),
             inputSchema = Tool.Input()
         ) {
             try {
@@ -537,6 +565,9 @@ class ToolFactory(
                 - resourceId: Resource ID (e.g., "com.example:id/button")
                 - className: Class name (e.g., "android.widget.Button")
                 - contentDescription: Accessibility content description
+
+                FLUTTER APP TIP: Flutter apps expose text labels via 'contentDescription' instead of 'text'.
+                If you cannot find an element by 'text', retry using 'contentDescription' with the same value.
             """.trimIndent(),
             inputSchema = Tool.Input()
         ) { request: CallToolRequest ->
@@ -572,6 +603,452 @@ class ToolFactory(
                 )
             } catch (e: Exception) {
                 handleToolError(e, "Error finding element")
+            }
+        }
+    }
+
+    private fun registerAndroidTapByCoordinatesTool(server: Server) {
+        server.addTool(
+            name = "android_tap_by_coordinates",
+            description = """
+                Tap on the Android device screen at the specified (x, y) coordinates.
+                The automation server must be running first (use start_automation_server).
+
+                WORKFLOW: Prefer calling 'get_interactive_elements' first to locate tappable elements.
+                Each interactive element includes ready-to-use 'centerX' and 'centerY' fields that you can pass
+                directly as the 'x' and 'y' parameters to this tool.
+                If you instead use 'get_ui_hierarchy' or 'find_element', elements expose bounds in the format
+                [left,top][right,bottom] (e.g., [100,200][300,400]). In that case, manually calculate center
+                coordinates: x = (left + right) / 2, y = (top + bottom) / 2.
+                Example (manual calculation): For bounds [100,200][300,400], tap at x=200, y=300.
+
+                USE CASES:
+                - Tap buttons, links, or interactive elements after locating them
+                - Tap at specific screen positions for gestures or navigation
+
+                TIP: If you know the element's text or resourceId, use 'find_element' first
+                to get precise bounds rather than guessing coordinates.
+                """.trimIndent(),
+            inputSchema = Tool.Input(
+                required = listOf("x", "y")
+            )
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!automationClient.isServerRunning()) {
+                        return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
+                    }
+
+                    val xElement = request.arguments["x"]
+                        ?: return@runWithTimeout "Error: Missing 'x' parameter"
+                    val x = xElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'x' must be an integer"
+                    val yElement = request.arguments["y"]
+                        ?: return@runWithTimeout "Error: Missing 'y' parameter"
+                    val y = yElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'y' must be an integer"
+
+                    automationClient.tapByCoordinates(x, y)
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error performing tap by coordinates")
+            }
+        }
+    }
+
+    private fun registerAndroidSwipe(server: Server) {
+        server.addTool(
+            name = "android_swipe",
+            description = """
+                Swipe on the Android device screen from one point to another.
+                The automation server must be running first (use start_automation_server).
+
+                PARAMETERS:
+                - startX, startY: Starting coordinates of the swipe
+                - endX, endY: Ending coordinates of the swipe
+                - steps (optional, default 20): Number of steps in the swipe gesture.
+                  Controls speed and smoothness: lower = faster (10 for quick), higher = slower (50-100 for scrolling).
+
+                USE CASES:
+                - Scroll lists: swipe from bottom to top (e.g., startY=1500, endY=500)
+                - Navigate carousels: swipe horizontally
+                - Pull-to-refresh: swipe from top to bottom
+
+                EXAMPLE: To scroll down on a 1080x1920 screen, swipe from (540, 1400) to (540, 600).
+            """.trimIndent(),
+            inputSchema = Tool.Input(
+                required = listOf("startX", "startY", "endX", "endY")
+            )
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!automationClient.isServerRunning()) {
+                        return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
+                    }
+
+                    val startXElement = request.arguments["startX"]
+                        ?: return@runWithTimeout "Error: Missing 'startX' parameter"
+                    val startX = startXElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'startX' must be an integer"
+                    val startYElement = request.arguments["startY"]
+                        ?: return@runWithTimeout "Error: Missing 'startY' parameter"
+                    val startY = startYElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'startY' must be an integer"
+                    val endXElement = request.arguments["endX"]
+                        ?: return@runWithTimeout "Error: Missing 'endX' parameter"
+                    val endX = endXElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'endX' must be an integer"
+                    val endYElement = request.arguments["endY"]
+                        ?: return@runWithTimeout "Error: Missing 'endY' parameter"
+                    val endY = endYElement.jsonPrimitive.content.toIntOrNull()
+                        ?: return@runWithTimeout "Error: 'endY' must be an integer"
+                    val steps = request.arguments["steps"]?.jsonPrimitive?.content?.toIntOrNull() ?: 20
+
+                    automationClient.swipe(startX, startY, endX, endY, steps)
+                }
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error performing swipe")
+            }
+        }
+    }
+
+    private fun registerAndroidSwipeDirection(server: Server) {
+        server.addTool(
+            name = "android_swipe_direction",
+            description = """
+                Swipe in a direction on the Android device screen.
+                The automation server must be running first (use start_automation_server).
+
+                SIMPLER than 'android_swipe' - no need to calculate coordinates!
+                Automatically uses screen center and calculates start/end points.
+
+                PARAMETERS:
+                - direction (required): "up", "down", "left", "right"
+                - distance (optional): "short" (20%), "medium" (40%, default), "long" (60%)
+                - speed (optional): "slow", "normal" (default), "fast"
+
+                DIRECTION BEHAVIOR:
+                - "up"    → Finger moves up, content scrolls DOWN (see more below)
+                - "down"  → Finger moves down, content scrolls UP (see more above)
+                - "left"  → Finger moves left (next item in carousel)
+                - "right" → Finger moves right (previous item / go back)
+
+                EXAMPLES:
+                - Scroll a list down: direction="up"
+                - Scroll a list up: direction="down"
+                - Next carousel item: direction="left"
+                - Pull to refresh: direction="down", distance="long", speed="slow"
+
+                USE 'android_swipe' instead when you need:
+                - Precise start/end coordinates
+                - Swipe from a specific element
+                - Diagonal swipes
+            """.trimIndent(),
+            inputSchema = Tool.Input(
+                required = listOf("direction")
+            )
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!automationClient.isServerRunning()) {
+                        return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
+                    }
+
+                    val direction = request.arguments["direction"]?.jsonPrimitive?.content
+                        ?: return@runWithTimeout "Error: Missing 'direction' parameter"
+
+                    val validDirections = listOf("up", "down", "left", "right")
+                    if (direction.lowercase() !in validDirections) {
+                        return@runWithTimeout "Error: Invalid direction '$direction'. Must be one of: ${validDirections.joinToString()}"
+                    }
+
+                    val distance = request.arguments["distance"]?.jsonPrimitive?.content ?: "medium"
+                    val speed = request.arguments["speed"]?.jsonPrimitive?.content ?: "normal"
+
+                    automationClient.swipeByDirection(direction, distance, speed)
+                }
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error performing swipe by direction")
+            }
+        }
+    }
+
+    private fun registerAndroidSwipeOnElement(server: Server) {
+        server.addTool(
+            name = "android_swipe_on_element",
+            description = """
+                Swipe on a specific UI element in a direction.
+                The automation server must be running first (use start_automation_server).
+
+                PERFECT FOR:
+                - Carousels and horizontal scrollers
+                - ViewPagers and tab swiping
+                - Sliders and seek bars
+                - Any scrollable element that isn't full-screen
+
+                PARAMETERS:
+                - direction (required): "up", "down", "left", "right"
+                - At least ONE selector (to find the element):
+                  - resourceId: e.g., "com.example:id/carousel"
+                  - text: Exact text match
+                  - textContains: Partial text match
+                  - className: e.g., "androidx.recyclerview.widget.RecyclerView"
+                  - contentDescription: Accessibility label
+                - speed (optional): "slow", "normal" (default), "fast"
+
+                HOW IT WORKS:
+                1. Finds the element using the provided selector
+                2. Calculates swipe coordinates within the element's bounds
+                3. Performs the swipe (70% of element dimension)
+
+                EXAMPLES:
+                - Carousel next: resourceId="carousel", direction="left"
+                - Carousel previous: resourceId="carousel", direction="right"
+                - Scroll list in container: className="RecyclerView", direction="up"
+
+                USE 'android_swipe_direction' for full-screen scrolling.
+                USE 'android_swipe' for precise coordinate control.
+            """.trimIndent(),
+            inputSchema = Tool.Input(
+                required = listOf("direction")
+            )
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!automationClient.isServerRunning()) {
+                        return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
+                    }
+
+                    val direction = request.arguments["direction"]?.jsonPrimitive?.content
+                        ?: return@runWithTimeout "Error: Missing 'direction' parameter"
+
+                    val validDirections = listOf("up", "down", "left", "right")
+                    if (direction.lowercase() !in validDirections) {
+                        return@runWithTimeout "Error: Invalid direction '$direction'. Must be one of: ${validDirections.joinToString()}"
+                    }
+
+                    val text = request.arguments["text"]?.jsonPrimitive?.content
+                    val textContains = request.arguments["textContains"]?.jsonPrimitive?.content
+                    val resourceId = request.arguments["resourceId"]?.jsonPrimitive?.content
+                    val className = request.arguments["className"]?.jsonPrimitive?.content
+                    val contentDescription = request.arguments["contentDescription"]?.jsonPrimitive?.content
+
+                    if (text == null && textContains == null && resourceId == null &&
+                        className == null && contentDescription == null) {
+                        return@runWithTimeout "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+                    }
+
+                    val speed = request.arguments["speed"]?.jsonPrimitive?.content ?: "normal"
+
+                    automationClient.swipeOnElement(
+                        direction = direction,
+                        text = text,
+                        textContains = textContains,
+                        resourceId = resourceId,
+                        className = className,
+                        contentDescription = contentDescription,
+                        speed = speed
+                    )
+                }
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error performing swipe on element")
+            }
+        }
+    }
+
+    private fun registerAndroidPressBackTool(server: Server) {
+        server.addTool(
+            name = "android_press_back",
+            description = """
+                Press the hardware back button on the Android device.
+                The automation server must be running first (use start_automation_server).
+
+                USE CASES:
+                - Navigate to the previous screen in an app
+                - Dismiss dialogs, popups, or bottom sheets
+                - Close the on-screen keyboard
+                - Exit full-screen or immersive modes
+                - Cancel ongoing operations (e.g., close a search bar)
+
+                BEHAVIOR:
+                - Equivalent to pressing the physical/virtual back button
+                - Apps may intercept this action for custom behavior
+                - Multiple presses may be needed to fully exit nested screens
+
+                TIP: Use 'get_ui_hierarchy' after pressing back to verify the expected
+                screen is now displayed before proceeding with further actions.
+            """.trimIndent(),
+            inputSchema = Tool.Input()
+        ) { _: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!automationClient.isServerRunning()) {
+                        return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
+                    }
+
+                    automationClient.pressBack()
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            }  catch (e: Exception) {
+                handleToolError(e, "Error pressing back")
+            }
+        }
+    }
+
+    private fun registerAndroidPressHomeTool(server: Server) {
+        server.addTool(
+            name = "android_press_home",
+            description = """
+                Press the hardware home button on the Android device.
+                The automation server must be running first (use start_automation_server).
+
+                USE CASES:
+                - Return to the device home screen from any app
+                - Minimize the current app without closing it
+                - Exit immersive or full-screen modes
+                - Reset navigation state to a known starting point
+                - Switch context before launching a different app
+
+                BEHAVIOR:
+                - Equivalent to pressing the physical/virtual home button
+                - The current app moves to the background (not terminated)
+                - Always navigates to the launcher/home screen
+                - Works regardless of app state or navigation depth
+
+                TIP: Use 'get_ui_hierarchy' after pressing home to confirm you're on the
+                home screen, then use 'launch_app_android' to start a different app.
+            """.trimIndent(),
+            inputSchema = Tool.Input()
+        ) { _: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!automationClient.isServerRunning()) {
+                        return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
+                    }
+
+                    automationClient.pressHome()
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error pressing home")
+            }
+        }
+    }
+
+    private fun registerAndroidGetDeviceInfoTool(server: Server) {
+        server.addTool(
+            name = "android_get_device_info",
+            description = """
+                Gets device information from the connected Android device via the automation server.
+                The automation server must be running first (use start_automation_server).
+
+                RETURNS:
+                - Display size (width x height in pixels)
+                - Display rotation (0, 90, 180, or 270 degrees)
+                - SDK version (Android API level)
+
+                USE CASES:
+                - Determine screen dimensions for calculating tap/swipe coordinates
+                - Check device orientation before performing gestures
+                - Verify SDK version for feature compatibility
+            """.trimIndent(),
+            inputSchema = Tool.Input()
+        ) {
+            try {
+                val result = runWithTimeout {
+                    if (!automationClient.isServerRunning()) {
+                        return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
+                    }
+
+                    automationClient.getDeviceInfo()
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error getting device info")
+            }
+        }
+    }
+
+    private fun registerGetInteractiveElementsTool(server: Server) {
+        server.addTool(
+            name = "get_interactive_elements",
+            description = """
+                Gets a filtered list of interactive UI elements from the current screen.
+                The automation server must be running first (use start_automation_server).
+
+                MUCH MORE USEFUL than 'get_ui_hierarchy' for most tasks because it:
+                - Returns only elements you can actually interact with
+                - Filters out layout containers and invisible elements
+                - Provides center coordinates ready for tapping
+                - Returns clean JSON instead of verbose XML
+
+                HEURISTICS USED (handles missing accessibility properties):
+                - Explicitly interactive: clickable, checkable, scrollable, long-clickable
+                - Known interactive classes: Button, EditText, CheckBox, Switch, etc.
+                - Has meaningful content: text, content-description, or resource-id
+                - Excludes: layout containers, invisible elements, disabled elements
+
+                OPTIONAL PARAMETERS:
+                - includeDisabled: Set to true to also include disabled elements (default: false)
+
+                RETURNS for each element:
+                - text, contentDescription, resourceId, className
+                - bounds (e.g., "[100,200][300,400]")
+                - centerX, centerY (ready for android_tap_by_coordinates)
+                - isClickable, isCheckable, isScrollable, isLongClickable, isEnabled
+
+                WORKFLOW:
+                1. Call get_interactive_elements to see what you can interact with
+                2. Find the element you want by text, contentDescription, or resourceId
+                3. Use centerX, centerY with android_tap_by_coordinates to tap it
+            """.trimIndent(),
+            inputSchema = Tool.Input()
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(30000) {
+                    if (!automationClient.isServerRunning()) {
+                        return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
+                    }
+
+                    val includeDisabledRaw = request.arguments["includeDisabled"]
+                        ?.jsonPrimitive?.content
+                    val includeDisabled = when (includeDisabledRaw) {
+                        null -> false
+                        "true" -> true
+                        "false" -> false
+                        else -> return@runWithTimeout "Invalid value for 'includeDisabled': '$includeDisabledRaw'. Must be true or false."
+                    }
+
+                    automationClient.getInteractiveElements(includeDisabled)
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error getting interactive elements")
             }
         }
     }
@@ -677,5 +1154,4 @@ class ToolFactory(
         }
         return null
     }
-
 }

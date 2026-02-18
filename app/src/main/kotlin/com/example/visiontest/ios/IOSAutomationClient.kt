@@ -31,15 +31,13 @@ class IOSAutomationClient(
      */
     suspend fun sendRequest(method: String, params: Map<String, Any>? = null, id: Int = 1): String {
         return withContext(Dispatchers.IO) {
-            val paramsJson = if (params != null) {
-                params.entries.joinToString(",", "{", "}") { (k, v) ->
-                    "\"$k\":${valueToJson(v)}"
-                }
-            } else {
-                "{}"
-            }
-
-            val requestBody = """{"jsonrpc":"2.0","method":"$method","params":$paramsJson,"id":$id}"""
+            val requestMap = mutableMapOf<String, Any>(
+                "jsonrpc" to "2.0",
+                "method" to method,
+                "params" to (params ?: emptyMap<String, Any>()),
+                "id" to id
+            )
+            val requestBody = gson.toJson(requestMap)
 
             val url = URL("http://$host:$port/jsonrpc")
             val connection = url.openConnection() as HttpURLConnection
@@ -197,5 +195,4 @@ class IOSAutomationClient(
         return sendRequest("ui.findElement", params.ifEmpty { null })
     }
 
-    private fun valueToJson(value: Any): String = gson.toJson(value)
 }

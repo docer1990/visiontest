@@ -73,6 +73,7 @@ class ToolFactory(
         registerIOSFindElementTool(server)
         registerIOSGetDeviceInfoTool(server)
         registerIOSPressHomeTool(server)
+        registerIOSStopAutomationServerTool(server)
     }
 
     private fun registerAndroidAvailableDeviceTool(server: Server) {
@@ -1072,6 +1073,7 @@ class ToolFactory(
     // ==================== iOS Automation Tools ====================
 
     /** Track the xcodebuild process so we can kill it to stop the server */
+    @Volatile
     private var iosXcodebuildProcess: Process? = null
 
     private fun registerIOSStartAutomationServerTool(server: Server) {
@@ -1096,6 +1098,15 @@ class ToolFactory(
                         return@runWithTimeout "iOS automation server is already running on localhost:$port"
                     }
 
+                    // Clean up any orphaned previous process
+                    iosXcodebuildProcess?.let { process ->
+                        if (process.isAlive) {
+                            logger.info("Destroying orphaned xcodebuild process before starting a new one")
+                            process.destroyForcibly()
+                        }
+                        iosXcodebuildProcess = null
+                    }
+
                     // Find the Xcode project
                     val projectPath = findXcodeProject()
                         ?: return@runWithTimeout "Xcode project not found at ${IOSAutomationConfig.XCODE_PROJECT_PATH}. Make sure you're running from the project root."
@@ -1118,6 +1129,7 @@ class ToolFactory(
 
                         val process = ProcessBuilder(command)
                             .redirectErrorStream(true)
+                            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                             .start()
                         iosXcodebuildProcess = process
                     }
@@ -1127,6 +1139,16 @@ class ToolFactory(
                     val maxAttempts = 60 // xcodebuild needs time to build
                     while (attempts < maxAttempts) {
                         kotlinx.coroutines.delay(2000)
+
+                        // Check if xcodebuild exited early (build failure, signing error, etc.)
+                        iosXcodebuildProcess?.let { process ->
+                            if (!process.isAlive) {
+                                val exitCode = process.exitValue()
+                                iosXcodebuildProcess = null
+                                return@runWithTimeout "xcodebuild exited with code $exitCode before the server started. Run the xcodebuild command manually to see build errors."
+                            }
+                        }
+
                         if (iosAutomationClient.isServerRunning()) {
                             logger.info("iOS automation server started successfully")
                             return@runWithTimeout "iOS automation server started successfully. Server is listening on localhost:$port"
@@ -1135,7 +1157,7 @@ class ToolFactory(
                         logger.debug("Waiting for iOS server to start... attempt $attempts/$maxAttempts")
                     }
 
-                    "iOS automation server may not have started properly. Check xcodebuild output for errors."
+                    "iOS automation server did not respond after ${maxAttempts * 2}s. xcodebuild may still be building. Check with 'ios_automation_server_status' or run xcodebuild manually to see output."
                 }
 
                 CallToolResult(
@@ -1243,8 +1265,14 @@ class ToolFactory(
                         return@runWithTimeout "iOS automation server is not running. Use 'ios_start_automation_server' first."
                     }
 
-                    val includeDisabled = request.arguments["includeDisabled"]
-                        ?.jsonPrimitive?.content?.toBoolean() ?: false
+                    val includeDisabledRaw = request.arguments["includeDisabled"]
+                        ?.jsonPrimitive?.content
+                    val includeDisabled = when (includeDisabledRaw) {
+                        null -> false
+                        "true" -> true
+                        "false" -> false
+                        else -> return@runWithTimeout "Invalid value for 'includeDisabled': '$includeDisabledRaw'. Must be true or false."
+                    }
                     val bundleId = request.arguments["bundleId"]?.jsonPrimitive?.content
 
                     iosAutomationClient.getInteractiveElements(includeDisabled, bundleId)
@@ -1504,6 +1532,28 @@ class ToolFactory(
                 )
             } catch (e: Exception) {
                 handleToolError(e, "Error pressing iOS home button")
+            }
+        }
+    }
+
+    private fun registerIOSStopAutomationServerTool(server: Server) {
+        server.addTool(
+            name = "ios_stop_automation_server",
+            description = "Stops the iOS automation server running on the simulator.",
+            inputSchema = Tool.Input()
+        ) {
+            try {
+                val process = iosXcodebuildProcess
+                if (process != null && process.isAlive) {
+                    process.destroyForcibly()
+                    iosXcodebuildProcess = null
+                    CallToolResult(content = listOf(TextContent("iOS automation server stopped successfully.")))
+                } else {
+                    iosXcodebuildProcess = null
+                    CallToolResult(content = listOf(TextContent("iOS automation server is not running.")))
+                }
+            } catch (e: Exception) {
+                handleToolError(e, "Error stopping iOS automation server")
             }
         }
     }

@@ -12,6 +12,8 @@ class XCUITestBridge {
     private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
     /// Cached screen size to avoid expensive screenshot calls
     private var cachedScreenSize: CGSize?
+    /// Orientation when screen size was last cached
+    private var cachedOrientation: UIDeviceOrientation?
     /// Cache of XCUIApplication instances by bundleId
     private var appCache: [String: XCUIApplication] = [:]
 
@@ -30,13 +32,15 @@ class XCUITestBridge {
         return app
     }
 
-    /// Returns screen size, caching the result to avoid repeated screenshot calls.
+    /// Returns screen size, caching per orientation to avoid repeated screenshot calls.
     private func getScreenSize() -> CGSize {
-        if let cached = cachedScreenSize {
+        let currentOrientation = XCUIDevice.shared.orientation
+        if let cached = cachedScreenSize, currentOrientation == cachedOrientation {
             return cached
         }
         let size = XCUIScreen.main.screenshot().image.size
         cachedScreenSize = size
+        cachedOrientation = currentOrientation
         return size
     }
 
@@ -71,7 +75,7 @@ class XCUITestBridge {
         xml += " text=\"\(text)\""
         xml += " resource-id=\"\(identifier)\""
         xml += " class=\"\(elementType)\""
-        xml += " content-desc=\"\(text)\""
+        xml += " content-desc=\"\(identifier)\""
         xml += " enabled=\"\(snapshot.isEnabled)\""
         xml += " bounds=\"\(bounds)\""
         xml += " value=\"\(value)\""
@@ -183,14 +187,6 @@ class XCUITestBridge {
 
     // MARK: - Interactive Elements
 
-    /// Known interactive element types
-    private static let interactiveTypes: [XCUIElement.ElementType] = [
-        .button, .link, .textField, .secureTextField,
-        .switch, .slider, .stepper, .picker,
-        .segmentedControl, .toggle, .tab,
-        .searchField, .textView
-    ]
-
     /// Collects interactive elements using snapshot API for speed.
     /// Takes a single snapshot of the entire tree, then filters in-memory.
     /// - Parameter bundleId: Bundle ID of the app to query. If nil, queries springboard.
@@ -296,7 +292,11 @@ class XCUITestBridge {
         let endCoord = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
             .withOffset(CGVector(dx: CGFloat(endX), dy: CGFloat(endY)))
 
-        startCoord.press(forDuration: 0.05, thenDragTo: endCoord, withVelocity: XCUIGestureVelocity(rawValue: CGFloat(1.0 / duration)), thenHoldForDuration: 0)
+        let dx = CGFloat(endX - startX)
+        let dy = CGFloat(endY - startY)
+        let distance = sqrt(dx * dx + dy * dy)
+        let velocity = max(distance / CGFloat(duration), 10.0) // floor at 10 pts/sec
+        startCoord.press(forDuration: 0.05, thenDragTo: endCoord, withVelocity: XCUIGestureVelocity(rawValue: velocity), thenHoldForDuration: 0)
 
         return OperationResult(success: true, error: nil)
     }

@@ -124,15 +124,15 @@ enum SwipeDirection: String {
 }
 
 enum SwipeDistance: String {
-    case short_ = "SHORT"   // 20% of screen
-    case medium = "MEDIUM"  // 40% of screen
-    case long_ = "LONG"     // 60% of screen
+    case `short` = "SHORT"   // 20% of screen
+    case medium = "MEDIUM"   // 40% of screen
+    case `long` = "LONG"     // 60% of screen
 
     var percent: Double {
         switch self {
-        case .short_: return 0.20
+        case .short: return 0.20
         case .medium: return 0.40
-        case .long_: return 0.60
+        case .long: return 0.60
         }
     }
 }

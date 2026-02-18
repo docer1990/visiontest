@@ -202,15 +202,19 @@ class JsonRpcServer {
             result = block()
             semaphore.signal()
         }
-        semaphore.wait()
+        let timeout = semaphore.wait(timeout: .now() + 30)
+        if timeout == .timedOut {
+            NSLog("JsonRpcServer: WARNING - runOnMainThread timed out after 30s")
+        }
         return result
     }
 
     private func jsonResponse(_ dict: [String: Any]) -> HttpResponse {
         do {
             let data = try JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])
-            let body = String(data: data, encoding: .utf8) ?? "{}"
-            return .ok(.text(body))
+            return .raw(200, "OK", ["Content-Type": "application/json"]) { writer in
+                try writer.write(data)
+            }
         } catch {
             return .internalServerError
         }

@@ -4,7 +4,7 @@ A platform-agnostic interface for mobile automation that enables LLMs and agents
 
 ## Overview
 
-VisionTest is an MCP (Model Context Protocol) server that provides a standardized way for AI agents and Large Language Models to interact with mobile devices. The project consists of two main components:
+VisionTest is an MCP (Model Context Protocol) server that provides a standardized way for AI agents and Large Language Models to interact with mobile devices. The project consists of three main components:
 
 1. **MCP Server** (`app/`) - Kotlin/JVM server that exposes mobile automation tools via Model Context Protocol
 2. **Android Automation Server** (`automation-server/`) - Native Android app with UIAutomator API access via JSON-RPC, using the **instrumentation pattern** (like Maestro/Appium)
@@ -62,7 +62,7 @@ This architecture allows for:
 ### 1. Clone and Build
 
 ```bash
-git clone https://github.com/yourusername/visiontest.git
+git clone https://github.com/docer1990/visiontest.git
 cd visiontest
 
 # Build entire project
@@ -163,6 +163,8 @@ Create/edit the MCP configuration file:
 | `android_swipe_direction` | Swipe by direction with distance and speed |
 | `android_swipe_on_element` | Swipe on a specific element |
 | `android_get_device_info` | Get display size, rotation, SDK version |
+| `android_press_back` | Press the back button |
+| `android_press_home` | Press the home button |
 
 #### UI Automation (iOS)
 
@@ -178,6 +180,7 @@ Create/edit the MCP configuration file:
 | `ios_swipe_direction` | Swipe by direction with distance and speed |
 | `ios_get_device_info` | Get display size, rotation, iOS version |
 | `ios_press_home` | Press home button |
+| `ios_stop_automation_server` | Stop the running XCUITest server |
 
 #### Typical Android Workflow
 
@@ -346,13 +349,19 @@ adb shell am force-stop com.example.automationserver
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `VISION_TEST_LOG_LEVEL` | `PRODUCTION` | `PRODUCTION`, `DEVELOPMENT`, `DEBUG` |
-| `VISION_TEST_ADB_TIMEOUT` | `5000` | ADB command timeout (ms) |
-| `VISION_TEST_TOOL_TIMEOUT` | `10000` | Tool execution timeout (ms) |
+| `VISION_TEST_APK_PATH` | (auto-detected) | Explicit path to test APK |
+
+### Default Timeouts (hardcoded in `AppConfig.kt`)
+
+- ADB timeout: 5000ms
+- Device cache validity: 1000ms
+- Tool execution timeout: 10000ms
 
 ### Automation Server
 
-- **Default Port**: 9008 (configurable via app UI, range: 1024-65535)
-- **Port Forwarding**: Automatically set up by MCP tools
+- **Android Default Port**: 9008 (configurable via app UI, range: 1024-65535)
+- **iOS Default Port**: 9009 (no port forwarding needed)
+- **Port Forwarding**: Automatically set up by MCP tools (Android only)
 
 ## Error Codes
 
@@ -380,13 +389,18 @@ adb shell am force-stop com.example.automationserver
 
 ## Future Plans
 
+- [ ] Text input/typing support
 - [ ] Screenshot capture via UIAutomator / XCUITest
-- [x] Swipe, scroll operations (Android + iOS)
 - [ ] Long press operations
 - [ ] Wait/sync operations for E2E testing
+- [ ] Multi-device coordination
+- [ ] Generic app install/uninstall
+- [ ] Clipboard operations (read/write)
 - [ ] Physical iOS device support
 - [ ] WebSocket support for real-time updates
-- [x] iOS simulator UI automation via XCUITest
+- [ ] Notification/status bar interaction
+- [ ] Permission dialog automation
+- [ ] Video recording of automation sessions
 
 ## Contributing
 

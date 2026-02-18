@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Important**: When working on the MCP server Kotlin code, follow the guidelines in [`kotlin-mcp-server.instruction.md`](kotlin-mcp-server.instruction.md) for best practices on Kotlin Multiplatform Support, server setup, tool registration, transport configuration, Coroutine Usage, Common Patterns, Dependency Injection and error handling.
+> **Important**: Before modifying any Kotlin MCP server code in `app/src/`, you MUST read [`kotlin-mcp-server.instruction.md`](kotlin-mcp-server.instruction.md). It contains required patterns for server setup, tool registration, transport configuration, coroutine usage, dependency injection, and error handling.
 
 ## Build and Run Commands
 
@@ -159,6 +159,8 @@ Native iOS app providing XCUITest access via JSON-RPC. Uses **XCUITest framework
 | `android_swipe_on_element` | Swipe on a specific element (for carousels, sliders) |
 | `android_get_device_info` | Get display size, rotation, and SDK version |
 | `get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
+| `android_press_back` | Press the back button |
+| `android_press_home` | Press the home button |
 
 **Typical Android Automation Workflow:**
 1. `install_automation_server` - Install both APKs (one-time)
@@ -182,6 +184,7 @@ Native iOS app providing XCUITest access via JSON-RPC. Uses **XCUITest framework
 | `ios_get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
 | `ios_get_device_info` | Get display size, rotation, and iOS version |
 | `ios_press_home` | Press home button |
+| `ios_stop_automation_server` | Stop the running XCUITest server |
 
 **Typical iOS Automation Workflow:**
 1. `ios_start_automation_server` - Build and start XCUITest server (handles build + install)

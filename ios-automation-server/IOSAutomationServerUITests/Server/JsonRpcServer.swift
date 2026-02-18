@@ -36,8 +36,14 @@ class JsonRpcServer {
 
             let bodyData = Data(request.body)
             // XCUITest APIs must be called on the main thread
-            let response = self.runOnMainThread {
-                self.handleRequest(bodyData)
+            let response: [String: Any]
+            do {
+                response = try self.runOnMainThread {
+                    self.handleRequest(bodyData)
+                }
+            } catch {
+                NSLog("JsonRpcServer: Main thread execution failed: \(error)")
+                response = JsonRpcResponse.error(.xcuiTestError("Main thread timeout after 30s"), id: nil)
             }
             return self.jsonResponse(response)
         }
@@ -192,11 +198,12 @@ class JsonRpcServer {
 
     /// Executes a block synchronously on the main thread.
     /// XCUITest APIs (XCUIDevice, XCUIElement, etc.) must be called from the main thread.
-    private func runOnMainThread<T>(_ block: @escaping () -> T) -> T {
+    /// - Throws: `MainThreadTimeoutError` if the block doesn't complete within 30 seconds.
+    private func runOnMainThread<T>(_ block: @escaping () -> T) throws -> T {
         if Thread.isMainThread {
             return block()
         }
-        var result: T!
+        var result: T?
         let semaphore = DispatchSemaphore(value: 0)
         DispatchQueue.main.async {
             result = block()
@@ -205,8 +212,9 @@ class JsonRpcServer {
         let timeout = semaphore.wait(timeout: .now() + 30)
         if timeout == .timedOut {
             NSLog("JsonRpcServer: WARNING - runOnMainThread timed out after 30s")
+            throw MainThreadTimeoutError()
         }
-        return result
+        return result!
     }
 
     private func jsonResponse(_ dict: [String: Any]) -> HttpResponse {
@@ -236,3 +244,5 @@ class InvalidParamsException: Error {
         self.message = message
     }
 }
+
+class MainThreadTimeoutError: Error {}

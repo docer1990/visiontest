@@ -35,5 +35,9 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
 # Set APK path
 export VISION_TEST_APK_PATH="$APK_PATH"
 
+# Change to project root so relative paths (Xcode project, APKs) resolve correctly
+# This is needed when MCP clients launch the script from a different working directory
+cd "$SCRIPT_DIR"
+
 # Run the server
 exec "$JAVA_CMD" -jar "$JAR_PATH" "$@"

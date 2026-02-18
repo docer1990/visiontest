@@ -2,6 +2,8 @@ package com.example.visiontest
 
 import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
+import com.example.visiontest.ios.IOSManager
+import com.example.visiontest.ios.IOSAutomationClient
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.utils.ErrorHandler
 import io.modelcontextprotocol.kotlin.sdk.*
@@ -13,6 +15,7 @@ import org.slf4j.Logger
 import com.example.visiontest.utils.ErrorHandler.PACKAGE_NAME_REQUIRED
 import com.example.visiontest.utils.ErrorHandler.BUNDLE_ID_REQUIRED
 import com.example.visiontest.config.AutomationConfig
+import com.example.visiontest.config.IOSAutomationConfig
 import java.io.File
 
 
@@ -22,7 +25,8 @@ class ToolFactory(
     private val ios: DeviceConfig,
     private val logger: Logger,
     private val toolTimeoutMillis: Long = 10000L,
-    private val automationClient: AutomationClient = AutomationClient()
+    private val automationClient: AutomationClient = AutomationClient(),
+    private val iosAutomationClient: IOSAutomationClient = IOSAutomationClient()
 ) {
 
     companion object {
@@ -57,6 +61,19 @@ class ToolFactory(
         registerIOSListAppsTool(server)
         registerIOSInfoAppTool(server)
         registerIOSLaunchAppTool(server)
+
+        // iOS automation tools
+        registerIOSStartAutomationServerTool(server)
+        registerIOSAutomationServerStatusTool(server)
+        registerIOSGetUiHierarchyTool(server)
+        registerIOSGetInteractiveElementsTool(server)
+        registerIOSTapByCoordinatesTool(server)
+        registerIOSSwipeTool(server)
+        registerIOSSwipeDirectionTool(server)
+        registerIOSFindElementTool(server)
+        registerIOSGetDeviceInfoTool(server)
+        registerIOSPressHomeTool(server)
+        registerIOSStopAutomationServerTool(server)
     }
 
     private fun registerAndroidAvailableDeviceTool(server: Server) {
@@ -232,7 +249,7 @@ class ToolFactory(
         |-------------------------
         |Version: $versionName (Code: $versionCode)
         |SDK: Target=$targetSdk, Minimum=$minSdk
-        |Installation: 
+        |Installation:
         |  - First Installed: $firstInstallTime
         |  - Last Updated: $lastUpdateTime
         |
@@ -490,13 +507,13 @@ class ToolFactory(
                 val isRunning = runWithTimeout {
                     automationClient.isServerRunning()
                 }
-                
+
                 val statusMessage = if (isRunning) {
                     "Automation server is running and accessible at localhost:${AutomationConfig.DEFAULT_PORT}"
                 } else {
                     "Automation server is not running. Use 'start_automation_server' to start it."
                 }
-                
+
                 CallToolResult(
                     content = listOf(TextContent(statusMessage))
                 )
@@ -1052,6 +1069,526 @@ class ToolFactory(
             }
         }
     }
+
+    // ==================== iOS Automation Tools ====================
+
+    /** Track the xcodebuild process so we can kill it to stop the server */
+    @Volatile
+    private var iosXcodebuildProcess: Process? = null
+
+    private fun registerIOSStartAutomationServerTool(server: Server) {
+        server.addTool(
+            name = "ios_start_automation_server",
+            description = """
+                Starts the iOS automation server on the booted iOS simulator.
+                Builds and runs the XCUITest automation server via xcodebuild.
+                No installation step needed — xcodebuild handles build + install.
+
+                The server starts on port ${IOSAutomationConfig.DEFAULT_PORT} and is directly
+                accessible at localhost (no port forwarding needed for iOS simulators).
+            """.trimIndent(),
+            inputSchema = Tool.Input()
+        ) {
+            try {
+                val result = runWithTimeout(120000) {
+                    val port = IOSAutomationConfig.DEFAULT_PORT
+
+                    // Check if already running
+                    if (iosAutomationClient.isServerRunning()) {
+                        return@runWithTimeout "iOS automation server is already running on localhost:$port"
+                    }
+
+                    // Clean up any orphaned previous process
+                    iosXcodebuildProcess?.let { process ->
+                        if (process.isAlive) {
+                            logger.info("Destroying orphaned xcodebuild process before starting a new one")
+                            process.destroyForcibly()
+                        }
+                        iosXcodebuildProcess = null
+                    }
+
+                    // Find the Xcode project
+                    val projectPath = findXcodeProject()
+                        ?: return@runWithTimeout "Xcode project not found at ${IOSAutomationConfig.XCODE_PROJECT_PATH}. Make sure you're running from the project root."
+
+                    // Get the booted simulator
+                    val device = ios.getFirstAvailableDevice()
+                    val simulatorName = device.name
+
+                    // Start xcodebuild test in background
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        val testId = "${IOSAutomationConfig.UI_TEST_TARGET}/${IOSAutomationConfig.TEST_CLASS}/${IOSAutomationConfig.TEST_METHOD}"
+                        val command = listOf(
+                            "xcodebuild", "test",
+                            "-project", projectPath,
+                            "-scheme", IOSAutomationConfig.XCODE_SCHEME,
+                            "-destination", "platform=iOS Simulator,name=$simulatorName",
+                            "-only-testing:$testId"
+                        )
+                        logger.info("Starting iOS automation server: ${command.joinToString(" ")}")
+
+                        val process = ProcessBuilder(command)
+                            .redirectErrorStream(true)
+                            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                            .start()
+                        iosXcodebuildProcess = process
+                    }
+
+                    // Wait for server to start and verify via health check
+                    var attempts = 0
+                    val maxAttempts = 60 // xcodebuild needs time to build
+                    while (attempts < maxAttempts) {
+                        kotlinx.coroutines.delay(2000)
+
+                        // Check if xcodebuild exited early (build failure, signing error, etc.)
+                        iosXcodebuildProcess?.let { process ->
+                            if (!process.isAlive) {
+                                val exitCode = process.exitValue()
+                                iosXcodebuildProcess = null
+                                return@runWithTimeout "xcodebuild exited with code $exitCode before the server started. Run the xcodebuild command manually to see build errors."
+                            }
+                        }
+
+                        if (iosAutomationClient.isServerRunning()) {
+                            logger.info("iOS automation server started successfully")
+                            return@runWithTimeout "iOS automation server started successfully. Server is listening on localhost:$port"
+                        }
+                        attempts++
+                        logger.debug("Waiting for iOS server to start... attempt $attempts/$maxAttempts")
+                    }
+
+                    "iOS automation server did not respond after ${maxAttempts * 2}s. xcodebuild may still be building. Check with 'ios_automation_server_status' or run xcodebuild manually to see output."
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error starting iOS automation server")
+            }
+        }
+    }
+
+    private fun registerIOSAutomationServerStatusTool(server: Server) {
+        server.addTool(
+            name = "ios_automation_server_status",
+            description = "Checks if the iOS automation server is running on the simulator. Returns server status and connection information.",
+            inputSchema = Tool.Input()
+        ) {
+            try {
+                val isRunning = runWithTimeout {
+                    iosAutomationClient.isServerRunning()
+                }
+
+                val statusMessage = if (isRunning) {
+                    "iOS automation server is running and accessible at localhost:${IOSAutomationConfig.DEFAULT_PORT}"
+                } else {
+                    "iOS automation server is not running. Use 'ios_start_automation_server' to start it."
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(statusMessage))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error checking iOS automation server status")
+            }
+        }
+    }
+
+    private fun registerIOSGetUiHierarchyTool(server: Server) {
+        server.addTool(
+            name = "ios_get_ui_hierarchy",
+            description = """
+                Gets the COMPLETE UI hierarchy as XML from the current iOS simulator screen.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                PREFER 'ios_get_interactive_elements' for most tasks - it returns a cleaner,
+                filtered list of elements you can actually interact with.
+
+                USE THIS TOOL WHEN YOU NEED:
+                - Full XML structure with parent-child relationships
+                - Debug why an element isn't found by ios_get_interactive_elements
+                - Analyze layout structure
+                - Inspect raw accessibility properties
+
+                OPTIONAL PARAMETERS:
+                - bundleId: Bundle ID of the app to query (e.g., "com.apple.Preferences").
+                  If not provided, queries springboard (which only shows system UI, not app content).
+                  ALWAYS provide bundleId when inspecting an app's UI.
+            """.trimIndent(),
+            inputSchema = Tool.Input()
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(30000) {
+                    if (!iosAutomationClient.isServerRunning()) {
+                        return@runWithTimeout "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                    }
+                    val bundleId = request.arguments["bundleId"]?.jsonPrimitive?.content
+                    iosAutomationClient.getUiHierarchy(bundleId)
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error getting iOS UI hierarchy")
+            }
+        }
+    }
+
+    private fun registerIOSGetInteractiveElementsTool(server: Server) {
+        server.addTool(
+            name = "ios_get_interactive_elements",
+            description = """
+                Gets a filtered list of interactive UI elements from the current iOS simulator screen.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                Returns only elements you can interact with (buttons, text fields, switches, etc.)
+                with center coordinates ready for tapping via ios_tap_by_coordinates.
+
+                OPTIONAL PARAMETERS:
+                - includeDisabled: Set to true to include disabled elements (default: false)
+                - bundleId: Bundle ID of the app to query (e.g., "com.apple.Preferences").
+                  If not provided, queries springboard (which only shows system UI, not app content).
+                  ALWAYS provide bundleId when inspecting an app's UI.
+
+                WORKFLOW:
+                1. Call ios_get_interactive_elements with bundleId to see what you can interact with
+                2. Find the element by text, label, or identifier
+                3. Use centerX, centerY with ios_tap_by_coordinates to tap it
+            """.trimIndent(),
+            inputSchema = Tool.Input()
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(30000) {
+                    if (!iosAutomationClient.isServerRunning()) {
+                        return@runWithTimeout "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                    }
+
+                    val includeDisabledRaw = request.arguments["includeDisabled"]
+                        ?.jsonPrimitive?.content
+                    val includeDisabled = when (includeDisabledRaw) {
+                        null -> false
+                        "true" -> true
+                        "false" -> false
+                        else -> return@runWithTimeout "Invalid value for 'includeDisabled': '$includeDisabledRaw'. Must be true or false."
+                    }
+                    val bundleId = request.arguments["bundleId"]?.jsonPrimitive?.content
+
+                    iosAutomationClient.getInteractiveElements(includeDisabled, bundleId)
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error getting iOS interactive elements")
+            }
+        }
+    }
+
+    private fun registerIOSTapByCoordinatesTool(server: Server) {
+        server.addTool(
+            name = "ios_tap_by_coordinates",
+            description = """
+                Tap on the iOS simulator screen at the specified (x, y) coordinates.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                WORKFLOW: First call 'ios_get_interactive_elements' to locate the target element.
+                Use the centerX, centerY values from the returned elements.
+            """.trimIndent(),
+            inputSchema = Tool.Input(
+                required = listOf("x", "y")
+            )
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!iosAutomationClient.isServerRunning()) {
+                        return@runWithTimeout "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                    }
+
+                    val x = request.arguments["x"]?.jsonPrimitive?.content?.toIntOrNull()
+                        ?: return@runWithTimeout "Error: Missing 'x' parameter"
+                    val y = request.arguments["y"]?.jsonPrimitive?.content?.toIntOrNull()
+                        ?: return@runWithTimeout "Error: Missing 'y' parameter"
+
+                    iosAutomationClient.tapByCoordinates(x, y)
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error performing iOS tap")
+            }
+        }
+    }
+
+    private fun registerIOSSwipeTool(server: Server) {
+        server.addTool(
+            name = "ios_swipe",
+            description = """
+                Swipe on the iOS simulator screen from one point to another.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                PARAMETERS:
+                - startX, startY: Starting coordinates
+                - endX, endY: Ending coordinates
+                - steps (optional, default 20): Controls speed (maps to duration: steps * 0.05 seconds)
+            """.trimIndent(),
+            inputSchema = Tool.Input(
+                required = listOf("startX", "startY", "endX", "endY")
+            )
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!iosAutomationClient.isServerRunning()) {
+                        return@runWithTimeout "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                    }
+
+                    val startX = request.arguments["startX"]?.jsonPrimitive?.content?.toIntOrNull()
+                        ?: return@runWithTimeout "Error: Missing 'startX' parameter"
+                    val startY = request.arguments["startY"]?.jsonPrimitive?.content?.toIntOrNull()
+                        ?: return@runWithTimeout "Error: Missing 'startY' parameter"
+                    val endX = request.arguments["endX"]?.jsonPrimitive?.content?.toIntOrNull()
+                        ?: return@runWithTimeout "Error: Missing 'endX' parameter"
+                    val endY = request.arguments["endY"]?.jsonPrimitive?.content?.toIntOrNull()
+                        ?: return@runWithTimeout "Error: Missing 'endY' parameter"
+                    val steps = request.arguments["steps"]?.jsonPrimitive?.content?.toIntOrNull() ?: 20
+
+                    iosAutomationClient.swipe(startX, startY, endX, endY, steps)
+                }
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error performing iOS swipe")
+            }
+        }
+    }
+
+    private fun registerIOSSwipeDirectionTool(server: Server) {
+        server.addTool(
+            name = "ios_swipe_direction",
+            description = """
+                Swipe in a direction on the iOS simulator screen.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                SIMPLER than 'ios_swipe' - no need to calculate coordinates!
+
+                PARAMETERS:
+                - direction (required): "up", "down", "left", "right"
+                - distance (optional): "short" (20%), "medium" (40%, default), "long" (60%)
+                - speed (optional): "slow", "normal" (default), "fast"
+
+                DIRECTION BEHAVIOR:
+                - "up"    → Finger moves up, content scrolls DOWN
+                - "down"  → Finger moves down, content scrolls UP
+                - "left"  → Finger moves left (next item)
+                - "right" → Finger moves right (previous item)
+            """.trimIndent(),
+            inputSchema = Tool.Input(
+                required = listOf("direction")
+            )
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!iosAutomationClient.isServerRunning()) {
+                        return@runWithTimeout "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                    }
+
+                    val direction = request.arguments["direction"]?.jsonPrimitive?.content
+                        ?: return@runWithTimeout "Error: Missing 'direction' parameter"
+
+                    val validDirections = listOf("up", "down", "left", "right")
+                    if (direction.lowercase() !in validDirections) {
+                        return@runWithTimeout "Error: Invalid direction '$direction'. Must be one of: ${validDirections.joinToString()}"
+                    }
+
+                    val distance = request.arguments["distance"]?.jsonPrimitive?.content ?: "medium"
+                    val speed = request.arguments["speed"]?.jsonPrimitive?.content ?: "normal"
+
+                    iosAutomationClient.swipeByDirection(direction, distance, speed)
+                }
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error performing iOS swipe by direction")
+            }
+        }
+    }
+
+    private fun registerIOSFindElementTool(server: Server) {
+        server.addTool(
+            name = "ios_find_element",
+            description = """
+                Finds a UI element on the current iOS simulator screen.
+                Returns element info including bounds, text, and properties if found.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                Provide at least ONE of these parameters:
+                - text: Exact text match
+                - textContains: Partial text match
+                - resourceId: Accessibility identifier
+                - className: Element type name (e.g., "Button", "TextField")
+                - contentDescription: Accessibility label
+                - bundleId: Bundle ID of the app to search in (e.g., "com.apple.Preferences").
+                  If not provided, searches springboard. ALWAYS provide bundleId when searching in an app.
+            """.trimIndent(),
+            inputSchema = Tool.Input()
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(30000) {
+                    if (!iosAutomationClient.isServerRunning()) {
+                        return@runWithTimeout "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                    }
+
+                    val args = request.arguments
+                    val text = args["text"]?.jsonPrimitive?.content
+                    val textContains = args["textContains"]?.jsonPrimitive?.content
+                    val identifier = args["resourceId"]?.jsonPrimitive?.content
+                    val elementType = args["className"]?.jsonPrimitive?.content
+                    val label = args["contentDescription"]?.jsonPrimitive?.content
+                    val bundleId = args["bundleId"]?.jsonPrimitive?.content
+
+                    if (text == null && textContains == null && identifier == null &&
+                        elementType == null && label == null) {
+                        return@runWithTimeout "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+                    }
+
+                    iosAutomationClient.findElement(
+                        text = text,
+                        textContains = textContains,
+                        identifier = identifier,
+                        elementType = elementType,
+                        label = label,
+                        bundleId = bundleId
+                    )
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error finding iOS element")
+            }
+        }
+    }
+
+    private fun registerIOSGetDeviceInfoTool(server: Server) {
+        server.addTool(
+            name = "ios_get_device_info",
+            description = """
+                Gets device information from the iOS simulator via the automation server.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                RETURNS:
+                - Display size (width x height in pixels)
+                - Display rotation
+                - iOS version
+                - Device model
+            """.trimIndent(),
+            inputSchema = Tool.Input()
+        ) {
+            try {
+                val result = runWithTimeout {
+                    if (!iosAutomationClient.isServerRunning()) {
+                        return@runWithTimeout "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                    }
+                    iosAutomationClient.getDeviceInfo()
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error getting iOS device info")
+            }
+        }
+    }
+
+    private fun registerIOSPressHomeTool(server: Server) {
+        server.addTool(
+            name = "ios_press_home",
+            description = """
+                Press the home button on the iOS simulator.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                Returns to the home screen. The current app moves to the background.
+            """.trimIndent(),
+            inputSchema = Tool.Input()
+        ) { _: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!iosAutomationClient.isServerRunning()) {
+                        return@runWithTimeout "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                    }
+                    iosAutomationClient.pressHome()
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error pressing iOS home button")
+            }
+        }
+    }
+
+    private fun registerIOSStopAutomationServerTool(server: Server) {
+        server.addTool(
+            name = "ios_stop_automation_server",
+            description = "Stops the iOS automation server running on the simulator.",
+            inputSchema = Tool.Input()
+        ) {
+            try {
+                val process = iosXcodebuildProcess
+                if (process != null && process.isAlive) {
+                    process.destroyForcibly()
+                    iosXcodebuildProcess = null
+                    CallToolResult(content = listOf(TextContent("iOS automation server stopped successfully.")))
+                } else {
+                    iosXcodebuildProcess = null
+                    CallToolResult(content = listOf(TextContent("iOS automation server is not running.")))
+                }
+            } catch (e: Exception) {
+                handleToolError(e, "Error stopping iOS automation server")
+            }
+        }
+    }
+
+    private fun findXcodeProject(): String? {
+        val relativePath = IOSAutomationConfig.XCODE_PROJECT_PATH
+
+        // 1. Try relative to current working directory
+        val cwdFile = File(relativePath)
+        if (cwdFile.exists()) {
+            return cwdFile.absolutePath
+        }
+
+        // 2. Try relative to project root
+        val projectRoot = findProjectRoot(File(".").absoluteFile)
+        if (projectRoot != null) {
+            val projectFile = File(projectRoot, relativePath)
+            if (projectFile.exists()) {
+                return projectFile.absolutePath
+            }
+        }
+
+        // 3. Try relative to code source
+        val codeSourceRoot = findCodeSourceRoot()
+        if (codeSourceRoot != null) {
+            val codeSourceFile = File(codeSourceRoot, relativePath)
+            if (codeSourceFile.exists()) {
+                return codeSourceFile.absolutePath
+            }
+        }
+
+        return null
+    }
+
+    // ==================== Android APK Discovery ====================
 
     private fun findAutomationServerApk(): String? {
         val apkRelativePath = "automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk"

@@ -297,7 +297,7 @@ abstract class BaseUiAutomatorBridge {
     fun inputText(text: String): OperationResult {
         return try {
             val device = getUiDevice()
-            Log.d(TAG, "Typing text: $text")
+            Log.d(TAG, "Typing text of length=${text.length}")
             device.waitForIdle(1000)
             // Shell-escape the text: wrap in single quotes with proper escaping
             val escaped = text.replace("'", "'\\''")

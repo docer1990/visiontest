@@ -3,6 +3,7 @@ package com.example.automationserver.uiautomator
 import android.app.UiAutomation
 import android.graphics.Rect
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import android.util.Xml
 import android.view.accessibility.AccessibilityNodeInfo
@@ -285,6 +286,63 @@ abstract class BaseUiAutomatorBridge {
         } catch (e: Exception) {
             Log.e(TAG, "Error performing click at ($x, $y)", e)
             OperationResult(success = false, error = e.message)
+        }
+    }
+
+    /**
+     * Types text into the currently focused element.
+     *
+     * Uses [AccessibilityNodeInfo.ACTION_SET_TEXT] on the focused node, which bypasses
+     * the shell entirely and correctly handles all characters (spaces, `&`, `|`, `$`, etc.).
+     *
+     * Falls back to the shell `input text` command if no focused element is found
+     * (e.g. when focus is on a non-standard view that the accessibility framework
+     * doesn't report as focused).
+     *
+     * @param text The text to type
+     * @return [OperationResult] indicating success or failure
+     */
+    fun inputText(text: String): OperationResult {
+        return try {
+            val device = getUiDevice()
+            Log.d(TAG, "Typing text of length=${text.length}")
+            device.waitForIdle(1000)
+
+            val focusedNode = findFocusedNode()
+            if (focusedNode != null) {
+                val args = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+                }
+                val success = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                focusedNode.recycle()
+                Log.d(TAG, "Text input via ACTION_SET_TEXT completed with success=$success")
+                OperationResult(success = success)
+            } else {
+                Log.d(TAG, "No focused node found, falling back to shell input")
+                // Android's `input text` uses %s for literal spaces; then shell-escape quotes
+                val escaped = text.replace(" ", "%s").replace("'", "'\\''")
+                device.executeShellCommand("input text '$escaped'")
+                Log.d(TAG, "Text input via shell completed")
+                OperationResult(success = true)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error typing text", e)
+            OperationResult(success = false, error = e.message)
+        }
+    }
+
+    /**
+     * Finds the currently focused input node in the accessibility tree.
+     *
+     * @return The focused [AccessibilityNodeInfo], or null if none is found.
+     *         Caller is responsible for calling [AccessibilityNodeInfo.recycle].
+     */
+    private fun findFocusedNode(): AccessibilityNodeInfo? {
+        return try {
+            getUiAutomation().findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to find focused node", e)
+            null
         }
     }
 

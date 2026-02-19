@@ -163,6 +163,7 @@ Create/edit the MCP configuration file:
 | `android_swipe_direction` | Swipe by direction with distance and speed |
 | `android_swipe_on_element` | Swipe on a specific element |
 | `android_get_device_info` | Get display size, rotation, SDK version |
+| `android_input_text` | Type text into the currently focused element |
 | `android_press_back` | Press the back button |
 | `android_press_home` | Press the home button |
 
@@ -179,6 +180,7 @@ Create/edit the MCP configuration file:
 | `ios_swipe` | Swipe by coordinates |
 | `ios_swipe_direction` | Swipe by direction with distance and speed |
 | `ios_get_device_info` | Get display size, rotation, iOS version |
+| `ios_input_text` | Type text into the currently focused element |
 | `ios_press_home` | Press home button |
 | `ios_stop_automation_server` | Stop the running XCUITest server |
 
@@ -189,6 +191,7 @@ Create/edit the MCP configuration file:
 2. start_automation_server       →  Start the JSON-RPC server
 3. get_interactive_elements      →  Get interactive elements with tap coordinates
 4. android_tap_by_coordinates    →  Tap using centerX/centerY
+5. android_input_text            →  Type text into focused field
 ```
 
 #### Typical iOS Workflow
@@ -197,6 +200,7 @@ Create/edit the MCP configuration file:
 1. ios_start_automation_server   →  Build + start XCUITest server
 2. ios_get_interactive_elements  →  Get interactive elements with tap coordinates
 3. ios_tap_by_coordinates        →  Tap using centerX/centerY
+4. ios_input_text                →  Type text into focused field
 ```
 
 ### JSON-RPC API
@@ -218,6 +222,7 @@ Both automation servers expose a JSON-RPC 2.0 API with compatible method names:
 | `ui.findElement` | `text`, `resourceId`, etc. | Yes | Yes |
 | `ui.getInteractiveElements` | `includeDisabled` | Yes | Yes |
 | `device.getInfo` | - | Yes | Yes |
+| `ui.inputText` | `text` | Yes | Yes |
 | `device.pressBack` | - | Yes | No |
 | `device.pressHome` | - | Yes | Yes |
 
@@ -416,7 +421,7 @@ adb shell am force-stop com.example.automationserver
 
 ## Future Plans
 
-- [ ] Text input/typing support
+- [x] Text input/typing support
 - [ ] Screenshot capture via UIAutomator / XCUITest
 - [ ] Long press operations
 - [ ] Wait/sync operations for E2E testing

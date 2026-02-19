@@ -50,6 +50,7 @@ class ToolFactory(
         registerAndroidTapByCoordinatesTool(server)
         registerAndroidPressBackTool(server)
         registerAndroidPressHomeTool(server)
+        registerAndroidInputTextTool(server)
         registerAndroidSwipe(server)
         registerAndroidSwipeDirection(server)
         registerAndroidSwipeOnElement(server)
@@ -73,6 +74,7 @@ class ToolFactory(
         registerIOSFindElementTool(server)
         registerIOSGetDeviceInfoTool(server)
         registerIOSPressHomeTool(server)
+        registerIOSInputTextTool(server)
         registerIOSStopAutomationServerTool(server)
     }
 
@@ -971,6 +973,41 @@ class ToolFactory(
         }
     }
 
+    private fun registerAndroidInputTextTool(server: Server) {
+        server.addTool(
+            name = "android_input_text",
+            description = """
+                Types text into the currently focused element on the Android device.
+                The automation server must be running first (use start_automation_server).
+
+                WORKFLOW: First tap on a text field using 'android_tap_by_coordinates' to focus it,
+                then call this tool to type text into it.
+            """.trimIndent(),
+            inputSchema = Tool.Input(
+                required = listOf("text")
+            )
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!automationClient.isServerRunning()) {
+                        return@runWithTimeout "Automation server is not running. Use 'start_automation_server' first."
+                    }
+
+                    val text = request.arguments["text"]?.jsonPrimitive?.content
+                        ?: return@runWithTimeout "Error: Missing 'text' parameter"
+
+                    automationClient.inputText(text)
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error typing text on Android")
+            }
+        }
+    }
+
     private fun registerAndroidGetDeviceInfoTool(server: Server) {
         server.addTool(
             name = "android_get_device_info",
@@ -1532,6 +1569,41 @@ class ToolFactory(
                 )
             } catch (e: Exception) {
                 handleToolError(e, "Error pressing iOS home button")
+            }
+        }
+    }
+
+    private fun registerIOSInputTextTool(server: Server) {
+        server.addTool(
+            name = "ios_input_text",
+            description = """
+                Types text into the currently focused element on the iOS simulator.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                WORKFLOW: First tap on a text field using 'ios_tap_by_coordinates' to focus it,
+                then call this tool to type text into it.
+            """.trimIndent(),
+            inputSchema = Tool.Input(
+                required = listOf("text")
+            )
+        ) { request: CallToolRequest ->
+            try {
+                val result = runWithTimeout(10000) {
+                    if (!iosAutomationClient.isServerRunning()) {
+                        return@runWithTimeout "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                    }
+
+                    val text = request.arguments["text"]?.jsonPrimitive?.content
+                        ?: return@runWithTimeout "Error: Missing 'text' parameter"
+
+                    iosAutomationClient.inputText(text)
+                }
+
+                CallToolResult(
+                    content = listOf(TextContent(result))
+                )
+            } catch (e: Exception) {
+                handleToolError(e, "Error typing text on iOS")
             }
         }
     }

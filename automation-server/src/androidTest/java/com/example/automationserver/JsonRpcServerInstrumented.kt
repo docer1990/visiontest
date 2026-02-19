@@ -269,6 +269,12 @@ class JsonRpcServerInstrumented(
                 )
             }
 
+            "ui.inputText" -> {
+                val text = params?.get("text")?.asString
+                    ?: throw InvalidParamsException("Missing 'text' parameter")
+                uiAutomator.inputText(text)
+            }
+
             else -> throw MethodNotFoundException(method)
         }
     }

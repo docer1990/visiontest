@@ -339,6 +339,16 @@ class XCUITestBridge {
 
         return swipe(startX: startX, startY: startY, endX: endX, endY: endY, duration: speed.duration)
     }
+    
+    // MARK: - Input Text
+    
+    /// Types text into the currently focused element using the keyboard.
+    /// Uses the springboard coordinate space, consistent with how taps/swipes are routed.
+    /// The caller should ensure a text field is focused (e.g. via tapByCoordinates) before calling this.
+    func inputText(text: String) -> OperationResult {
+        springboard.typeText(text)
+        return OperationResult(success: true, error: nil)
+    }
 
     // MARK: - Helpers
 

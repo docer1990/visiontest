@@ -102,6 +102,7 @@ Native Android app providing UIAutomator access via JSON-RPC. Uses **instrumenta
 | `ui.findElement` | `text`, `resourceId`, etc. | Find UI element |
 | `ui.getInteractiveElements` | `includeDisabled` (optional) | Get filtered list of interactive elements |
 | `device.getInfo` | - | Get display size, rotation, SDK |
+| `ui.inputText` | `text` | Type text into focused element |
 | `device.pressBack` | - | Press back button |
 | `device.pressHome` | - | Press home button |
 
@@ -130,6 +131,7 @@ Native iOS app providing XCUITest access via JSON-RPC. Uses **XCUITest framework
 | `ui.swipeByDirection` | `direction`, `distance`, `speed` | Swipe by direction |
 | `ui.findElement` | `text`, `resourceId`, etc. | Find UI element |
 | `ui.getInteractiveElements` | `includeDisabled` (optional) | Get interactive elements |
+| `ui.inputText` | `text` | Type text into focused element |
 | `device.getInfo` | - | Get display size, rotation, iOS version |
 | `device.pressHome` | - | Press home button |
 
@@ -161,6 +163,7 @@ Native iOS app providing XCUITest access via JSON-RPC. Uses **XCUITest framework
 | `android_swipe_on_element` | Swipe on a specific element (for carousels, sliders) |
 | `android_get_device_info` | Get display size, rotation, and SDK version |
 | `get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
+| `android_input_text` | Type text into the currently focused element |
 | `android_press_back` | Press the back button |
 | `android_press_home` | Press the home button |
 
@@ -170,7 +173,8 @@ Native iOS app providing XCUITest access via JSON-RPC. Uses **XCUITest framework
 3. `get_interactive_elements` - Get filtered list of interactive elements (preferred)
    - OR `get_ui_hierarchy` - Get full XML hierarchy (when you need all elements)
 4. `android_tap_by_coordinates` - Tap using centerX/centerY from interactive elements
-5. `android_swipe_direction` - Scroll/swipe by direction (simpler, no coordinates needed)
+5. `android_input_text` - Type text into the focused field
+6. `android_swipe_direction` - Scroll/swipe by direction (simpler, no coordinates needed)
    - OR `android_swipe` - Swipe by exact coordinates (for precise control)
 
 ### UI Automation (iOS)
@@ -185,6 +189,7 @@ Native iOS app providing XCUITest access via JSON-RPC. Uses **XCUITest framework
 | `ios_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
 | `ios_get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
 | `ios_get_device_info` | Get display size, rotation, and iOS version |
+| `ios_input_text` | Type text into the currently focused element |
 | `ios_press_home` | Press home button |
 | `ios_stop_automation_server` | Stop the running XCUITest server |
 
@@ -193,7 +198,8 @@ Native iOS app providing XCUITest access via JSON-RPC. Uses **XCUITest framework
 2. `ios_get_interactive_elements` - Get filtered list of interactive elements (preferred)
    - OR `ios_get_ui_hierarchy` - Get full XML hierarchy (when you need all elements)
 3. `ios_tap_by_coordinates` - Tap using centerX/centerY from interactive elements
-4. `ios_swipe_direction` - Scroll/swipe by direction (simpler, no coordinates needed)
+4. `ios_input_text` - Type text into the focused field
+5. `ios_swipe_direction` - Scroll/swipe by direction (simpler, no coordinates needed)
 
 ## Instrumentation Pattern
 

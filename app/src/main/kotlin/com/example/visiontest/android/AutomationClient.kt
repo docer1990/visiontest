@@ -197,6 +197,13 @@ class AutomationClient(
     }
 
     /**
+     * Types text into the currently focused element.
+     */
+    suspend fun inputText(text: String): String {
+        return sendRequest("ui.inputText", mapOf("text" to text))
+    }
+
+    /**
      * Presses the back button.
      */
     suspend fun pressBack(): String {

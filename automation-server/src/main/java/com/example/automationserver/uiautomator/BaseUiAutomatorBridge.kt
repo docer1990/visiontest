@@ -289,6 +289,28 @@ abstract class BaseUiAutomatorBridge {
     }
 
     /**
+     * Types text into the currently focused element using shell input.
+     *
+     * @param text The text to type
+     * @return [OperationResult] indicating success or failure
+     */
+    fun inputText(text: String): OperationResult {
+        return try {
+            val device = getUiDevice()
+            Log.d(TAG, "Typing text: $text")
+            device.waitForIdle(1000)
+            // Shell-escape the text: wrap in single quotes with proper escaping
+            val escaped = text.replace("'", "'\\''")
+            device.executeShellCommand("input text '$escaped'")
+            Log.d(TAG, "Text input completed")
+            OperationResult(success = true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error typing text", e)
+            OperationResult(success = false, error = e.message)
+        }
+    }
+
+    /**
      * Presses the device back button.
      *
      * @return [OperationResult] indicating success or failure

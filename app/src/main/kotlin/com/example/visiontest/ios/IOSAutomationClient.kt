@@ -162,6 +162,13 @@ class IOSAutomationClient(
     }
 
     /**
+     * Types text into the currently focused element.
+     */
+    suspend fun inputText(text: String): String {
+        return sendRequest("ui.inputText", mapOf("text" to text))
+    }
+
+    /**
      * Presses the home button.
      */
     suspend fun pressHome(): String {

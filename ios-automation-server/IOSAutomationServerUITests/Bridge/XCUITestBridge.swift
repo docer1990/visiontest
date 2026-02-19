@@ -339,6 +339,16 @@ class XCUITestBridge {
 
         return swipe(startX: startX, startY: startY, endX: endX, endY: endY, duration: speed.duration)
     }
+    
+    // MARK: - Input Text
+    
+    /// Types text into the currently focused element using the keyboard.
+    /// The caller should ensure a text field is focused (e.g. via tapByCoordinates) before calling this.
+    func inputText(text: String) -> OperationResult {
+        let app = XCUIApplication()
+        app.typeText(text)
+        return OperationResult(success: true, error: nil)
+    }
 
     // MARK: - Helpers
 

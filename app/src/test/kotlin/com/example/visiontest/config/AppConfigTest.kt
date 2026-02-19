@@ -19,19 +19,19 @@ class AppConfigTest {
 
     @Test
     fun `createDefault has expected adb timeout`() {
-        val config = AppConfig()
+        val config = AppConfig.createDefault()
         assertEquals(5000L, config.adbTimeoutMillis)
     }
 
     @Test
     fun `createDefault has expected tool timeout`() {
-        val config = AppConfig()
+        val config = AppConfig.createDefault()
         assertEquals(10000L, config.toolTimeoutMillis)
     }
 
     @Test
     fun `createDefault has expected device cache validity period`() {
-        val config = AppConfig()
+        val config = AppConfig.createDefault()
         assertEquals(1000L, config.deviceCacheValidityPeriod)
     }
 

@@ -45,7 +45,6 @@ class AndroidValidationTest {
 
     @Test
     fun `isValidPackageName rejects segment with single char after dot`() {
-        // Each segment after dot needs at least 2 chars per the regex: [a-zA-Z][a-zA-Z0-9_]+
         assertFalse(Android.isValidPackageName("com.example.a"))
     }
 

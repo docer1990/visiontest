@@ -12,8 +12,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # === MCP Server (app module) ===
 ./gradlew run                           # Run the MCP server
-./gradlew test                          # Run all tests
-./gradlew test --tests "AndroidTest"    # Run a specific test class
+./gradlew test                          # Run all tests (app + automation-server)
+./gradlew :app:test                     # Run only MCP server unit tests
+./gradlew test --tests "ErrorHandlerTest"  # Run a specific test class
 ./gradlew shadowJar                     # Build fat JAR -> app/build/libs/visiontest.jar
 
 # === Automation Server Android App ===
@@ -295,6 +296,20 @@ The automation server uses a reflection-based approach for UI hierarchy dumping,
 - `getUiDevice()` - Returns the UiDevice instance
 - `getUiAutomation()` - Returns UiAutomation with appropriate flags
 - `getDisplayRect()` - Returns display bounds for visibility calculations
+
+## Unit Tests
+
+Tests are under `app/src/test/kotlin/com/example/visiontest/`. All tests are pure JVM (no device/emulator needed).
+
+| Test File | What It Tests |
+|-----------|---------------|
+| `utils/ErrorHandlerTest.kt` | 12 exception→error-code mappings, `retryOperation` exponential backoff |
+| `ios/IOSSimulatorParsingTest.kt` | `parseDeviceList`, `parseAppListFromPlist`, `isValidBundleId`, `isValidShellCommand` |
+| `android/AndroidValidationTest.kt` | `isValidPackageName`, `validateForwardArgs`, `validateShellArgs`, `validateInstallArgs` |
+| `config/AppConfigTest.kt` | Default config values and log level |
+| `ToolFactoryHelpersTest.kt` | `extractProperty`, `extractPattern`, `formatAppInfo` |
+
+See `.claude/unit-testing-strategy.md` for the full testing roadmap (Plans 1-7).
 
 ## Key Patterns
 

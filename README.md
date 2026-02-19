@@ -342,6 +342,29 @@ curl http://localhost:9008/health
 adb shell am force-stop com.example.automationserver
 ```
 
+## Testing
+
+```bash
+# Run all unit tests
+./gradlew test
+
+# Run only MCP server (app/) tests
+./gradlew :app:test
+
+# Run a specific test class
+./gradlew test --tests "ErrorHandlerTest"
+```
+
+### Test Coverage
+
+| Module | Test File | Coverage Area |
+|--------|-----------|---------------|
+| `app/` | `ErrorHandlerTest.kt` | Exception-to-error-code mappings, retry with exponential backoff |
+| `app/` | `IOSSimulatorParsingTest.kt` | Device list parsing, plist parsing, bundle ID & shell command validation |
+| `app/` | `AndroidValidationTest.kt` | Package name validation, ADB argument validation (forward, shell, install) |
+| `app/` | `AppConfigTest.kt` | Default configuration values |
+| `app/` | `ToolFactoryHelpersTest.kt` | Property extraction, pattern matching, app info formatting |
+
 ## Configuration
 
 ### Environment Variables

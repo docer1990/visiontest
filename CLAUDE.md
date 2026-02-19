@@ -14,6 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew run                           # Run the MCP server
 ./gradlew test                          # Run all tests (app + automation-server)
 ./gradlew :app:test                     # Run only MCP server unit tests
+./gradlew :automation-server:test       # Run only automation server unit tests
 ./gradlew test --tests "ErrorHandlerTest"  # Run a specific test class
 ./gradlew shadowJar                     # Build fat JAR -> app/build/libs/visiontest.jar
 
@@ -299,7 +300,9 @@ The automation server uses a reflection-based approach for UI hierarchy dumping,
 
 ## Unit Tests
 
-Tests are under `app/src/test/kotlin/com/example/visiontest/`. All tests are pure JVM (no device/emulator needed).
+All tests are pure JVM (no device/emulator needed).
+
+### MCP Server (`app/src/test/kotlin/com/example/visiontest/`)
 
 | Test File | What It Tests |
 |-----------|---------------|
@@ -308,6 +311,15 @@ Tests are under `app/src/test/kotlin/com/example/visiontest/`. All tests are pur
 | `android/AndroidValidationTest.kt` | `isValidPackageName`, `validateForwardArgs`, `validateShellArgs`, `validateInstallArgs` |
 | `config/AppConfigTest.kt` | Default config values and log level |
 | `ToolFactoryHelpersTest.kt` | `extractProperty`, `extractPattern`, `formatAppInfo` |
+
+### Automation Server (`automation-server/src/test/java/com/example/automationserver/`)
+
+| Test File | What It Tests |
+|-----------|---------------|
+| `jsonrpc/JsonRpcModelsTest.kt` | `JsonRpcError` factory methods, request/response defaults and field handling |
+| `uiautomator/UiAutomatorModelsTest.kt` | All data classes, default values, enum entries (SwipeSpeed, SwipeDirection, SwipeDistance) |
+| `config/ServerConfigPortTest.kt` | `isValidPort` boundary tests, constants |
+| `uiautomator/XmlUtilsTest.kt` | `stripInvalidXMLChars` — invalid ranges replaced, valid chars preserved |
 
 See `.claude/unit-testing-strategy.md` for the full testing roadmap (Plans 1-7).
 

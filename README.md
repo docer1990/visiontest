@@ -364,6 +364,10 @@ adb shell am force-stop com.example.automationserver
 | `app/` | `AndroidValidationTest.kt` | Package name validation, ADB argument validation (forward, shell, install) |
 | `app/` | `AppConfigTest.kt` | Default configuration values |
 | `app/` | `ToolFactoryHelpersTest.kt` | Property extraction, pattern matching, app info formatting |
+| `automation-server/` | `JsonRpcModelsTest.kt` | JSON-RPC error factory methods, request/response defaults and field handling |
+| `automation-server/` | `UiAutomatorModelsTest.kt` | All data classes, default values, enum entries (SwipeSpeed, SwipeDirection, SwipeDistance) |
+| `automation-server/` | `ServerConfigPortTest.kt` | Port validation boundaries, constants |
+| `automation-server/` | `XmlUtilsTest.kt` | XML character stripping (invalid ranges, preserved chars, mixed input) |
 
 ## Configuration
 

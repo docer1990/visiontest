@@ -104,4 +104,11 @@ class XmlUtilsTest {
         val input = "a${0x0.toChar()}b"
         assertEquals(input, stripInvalidXMLChars(input))
     }
+
+    @Test
+    fun `high Unicode invalid range char 0x1FFFE replaced with dot`() {
+        val highInvalidChar = String(Character.toChars(0x1FFFE))
+        val input = "a${highInvalidChar}b"
+        assertEquals("a.b", stripInvalidXMLChars(input))
+    }
 }

@@ -357,13 +357,13 @@ adb shell am force-stop com.example.automationserver
 
 ### Test Coverage
 
-| Module | Test File | Tests | Coverage Area |
-|--------|-----------|-------|---------------|
-| `app/` | `ErrorHandlerTest.kt` | 18 | Exception-to-error-code mappings, retry with exponential backoff |
-| `app/` | `IOSSimulatorParsingTest.kt` | 20 | Device list parsing, plist parsing, bundle ID & shell command validation |
-| `app/` | `AndroidValidationTest.kt` | 18 | Package name validation, ADB argument validation (forward, shell, install) |
-| `app/` | `AppConfigTest.kt` | 6 | Default configuration values |
-| `app/` | `ToolFactoryHelpersTest.kt` | 8 | Property extraction, pattern matching, app info formatting |
+| Module | Test File | Coverage Area |
+|--------|-----------|---------------|
+| `app/` | `ErrorHandlerTest.kt` | Exception-to-error-code mappings, retry with exponential backoff |
+| `app/` | `IOSSimulatorParsingTest.kt` | Device list parsing, plist parsing, bundle ID & shell command validation |
+| `app/` | `AndroidValidationTest.kt` | Package name validation, ADB argument validation (forward, shell, install) |
+| `app/` | `AppConfigTest.kt` | Default configuration values |
+| `app/` | `ToolFactoryHelpersTest.kt` | Property extraction, pattern matching, app info formatting |
 
 ## Configuration
 

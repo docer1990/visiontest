@@ -3,6 +3,7 @@ package com.example.visiontest.ios
 import com.example.visiontest.common.DeviceType
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -107,13 +108,10 @@ class IOSSimulatorParsingTest {
     }
 
     @Test
-    fun `parseDeviceList with malformed JSON returns empty list`() {
-        val result = try {
+    fun `parseDeviceList throws on malformed JSON`() {
+        assertFailsWith<Exception> {
             simulator.parseDeviceList("not valid json")
-        } catch (_: Exception) {
-            emptyList()
         }
-        assertTrue(result.isEmpty())
     }
 
     @Test

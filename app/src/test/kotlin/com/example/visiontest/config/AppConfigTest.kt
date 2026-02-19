@@ -7,13 +7,13 @@ class AppConfigTest {
 
     @Test
     fun `createDefault has expected server name`() {
-        val config = AppConfig()
+        val config = AppConfig.createDefault()
         assertEquals("vision-test", config.serverName)
     }
 
     @Test
     fun `createDefault has expected server version`() {
-        val config = AppConfig()
+        val config = AppConfig.createDefault()
         assertEquals("1.0.0", config.serverVersion)
     }
 

@@ -61,7 +61,7 @@ class JsonRpcServer {
 
     // MARK: - JSON-RPC Dispatch
 
-    private func handleRequest(_ data: Data) -> [String: Any] {
+    internal func handleRequest(_ data: Data) -> [String: Any] {
         guard let request = JsonRpcRequest.parse(from: data) else {
             return JsonRpcResponse.error(.parseError("Failed to parse request"), id: nil)
         }
@@ -188,7 +188,7 @@ class JsonRpcServer {
 
     // MARK: - Helpers
 
-    private func intParam(_ params: [String: Any]?, _ key: String) -> Int? {
+    internal func intParam(_ params: [String: Any]?, _ key: String) -> Int? {
         guard let value = params?[key] else { return nil }
         if let intVal = value as? Int { return intVal }
         if let doubleVal = value as? Double { return Int(doubleVal) }

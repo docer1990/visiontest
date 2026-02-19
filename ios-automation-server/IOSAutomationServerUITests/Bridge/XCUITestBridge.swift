@@ -342,7 +342,7 @@ class XCUITestBridge {
 
     // MARK: - Helpers
 
-    private func orientationToRotation() -> Int {
+    internal func orientationToRotation() -> Int {
         switch XCUIDevice.shared.orientation {
         case .portrait: return 0
         case .landscapeLeft: return 1
@@ -352,7 +352,7 @@ class XCUITestBridge {
         }
     }
 
-    private func boundsString(from frame: CGRect) -> String {
+    internal func boundsString(from frame: CGRect) -> String {
         let left = Int(frame.minX)
         let top = Int(frame.minY)
         let right = Int(frame.maxX)
@@ -372,7 +372,7 @@ class XCUITestBridge {
         return str.isEmpty ? nil : str
     }
 
-    private func escapeXML(_ text: String?) -> String {
+    internal func escapeXML(_ text: String?) -> String {
         guard let text = text else { return "" }
         return text
             .replacingOccurrences(of: "&", with: "&amp;")

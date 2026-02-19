@@ -14,10 +14,19 @@
 		A1000013 /* JsonRpcServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013 /* JsonRpcServer.swift */; };
 		A1000014 /* XCUITestBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014 /* XCUITestBridge.swift */; };
 		A1000020 /* Swifter in Frameworks */ = {isa = PBXBuildFile; productRef = A4000001 /* Swifter */; };
+		A1000030 /* JsonRpcModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000011 /* JsonRpcModels.swift */; };
+		A1000031 /* AutomationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000012 /* AutomationModels.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		A3000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A0000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A5000001;
+			remoteInfo = IOSAutomationServer;
+		};
+		A3000003 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A0000001 /* Project object */;
 			proxyType = 1;
@@ -37,6 +46,8 @@
 		A2000014 /* XCUITestBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCUITestBridge.swift; sourceTree = "<group>"; };
 		A2000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A2000016 /* IOSAutomationServerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IOSAutomationServerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2000020 /* IOSAutomationServerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IOSAutomationServerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2000021 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +66,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A6000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -63,6 +81,7 @@
 			children = (
 				A7000002 /* IOSAutomationServer */,
 				A7000003 /* IOSAutomationServerUITests */,
+				A7000008 /* IOSAutomationServerTests */,
 				A7000004 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -93,6 +112,7 @@
 			children = (
 				A2000003 /* IOSAutomationServer.app */,
 				A2000016 /* IOSAutomationServerUITests.xctest */,
+				A2000020 /* IOSAutomationServerTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -120,6 +140,14 @@
 				A2000014 /* XCUITestBridge.swift */,
 			);
 			path = Bridge;
+			sourceTree = "<group>";
+		};
+		A7000008 /* IOSAutomationServerTests */ = {
+			isa = PBXGroup;
+			children = (
+				A2000021 /* Info.plist */,
+			);
+			path = IOSAutomationServerTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -161,6 +189,23 @@
 			productReference = A2000016 /* IOSAutomationServerUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		A5000003 /* IOSAutomationServerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A8000005 /* Build configuration list for PBXNativeTarget "IOSAutomationServerTests" */;
+			buildPhases = (
+				A9000003 /* Sources */,
+				A6000003 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A3000004 /* PBXTargetDependency */,
+			);
+			name = IOSAutomationServerTests;
+			productName = IOSAutomationServerTests;
+			productReference = A2000020 /* IOSAutomationServerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -189,6 +234,7 @@
 			targets = (
 				A5000001 /* IOSAutomationServer */,
 				A5000002 /* IOSAutomationServerUITests */,
+				A5000003 /* IOSAutomationServerTests */,
 			);
 		};
 /* End PBXProject section */
@@ -214,6 +260,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A9000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000030 /* JsonRpcModels.swift in Sources */,
+				A1000031 /* AutomationModels.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -221,6 +276,11 @@
 			isa = PBXTargetDependency;
 			target = A5000001 /* IOSAutomationServer */;
 			targetProxy = A3000001 /* PBXContainerItemProxy */;
+		};
+		A3000004 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A5000001 /* IOSAutomationServer */;
+			targetProxy = A3000003 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -355,6 +415,44 @@
 			};
 			name = Release;
 		};
+		AB000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = IOSAutomationServerTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.IOSAutomationServerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IOSAutomationServer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/IOSAutomationServer";
+			};
+			name = Debug;
+		};
+		AB000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = IOSAutomationServerTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.IOSAutomationServerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IOSAutomationServer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/IOSAutomationServer";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -381,6 +479,15 @@
 			buildConfigurations = (
 				AB000005 /* Debug */,
 				AB000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A8000005 /* Build configuration list for PBXNativeTarget "IOSAutomationServerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB000007 /* Debug */,
+				AB000008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

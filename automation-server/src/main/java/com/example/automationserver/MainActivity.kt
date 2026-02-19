@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
         binding.portInput.doAfterTextChanged { text ->
             val port = text?.toString()?.toIntOrNull()
             if (port != null) {
-                if (!config.isValidPort(port)) {
+                if (!ServerConfig.isValidPort(port)) {
                     binding.portInput.error = getString(R.string.error_invalid_port)
                 } else {
                     binding.portInput.error = null

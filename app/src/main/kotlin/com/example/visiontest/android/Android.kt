@@ -53,6 +53,64 @@ class Android(
 
         // Allowlist of permitted ADB subcommands
         private val ALLOWED_ADB_COMMANDS = setOf("install", "forward", "shell")
+
+        /**
+         * Validates Android package name according to official naming rules:
+         * - Must have at least two segments separated by dots
+         * - Each segment must start with a letter
+         * - Segments can contain letters, digits, and underscores
+         * - No consecutive dots or trailing/leading dots
+         */
+        internal fun isValidPackageName(packageName: String): Boolean {
+            return packageName.matches(Regex("^[a-zA-Z][a-zA-Z0-9_]*(?:\\.[a-zA-Z][a-zA-Z0-9_]+)+$"))
+        }
+
+        internal fun validateInstallArgs(args: List<String>) {
+            // Allowed flags for install
+            val allowedFlags = setOf("-r", "-t", "-d", "-g")
+            val filteredArgs = args.filter { it !in allowedFlags }
+
+            require(filteredArgs.size == 1) { "install command requires exactly one APK path" }
+
+            val apkPath = filteredArgs[0]
+            require(apkPath.endsWith(".apk")) { "Install path must be an APK file" }
+            require(!DANGEROUS_SHELL_CHARS.containsMatchIn(apkPath)) {
+                "APK path contains dangerous characters"
+            }
+            require(java.io.File(apkPath).exists()) { "APK file does not exist: $apkPath" }
+        }
+
+        internal fun validateForwardArgs(args: List<String>) {
+            val tcpPattern = Regex("^tcp:\\d{1,5}$")
+
+            if (args.firstOrNull() == "--remove") {
+                require(args.size == 2) { "forward --remove requires one tcp:port argument" }
+                require(args[1].matches(tcpPattern)) { "Invalid port format: ${args[1]}" }
+            } else {
+                require(args.size == 2) { "forward command requires two tcp:port arguments" }
+                require(args.all { it.matches(tcpPattern) }) { "Invalid port format in forward command" }
+                // Validate port range (non-privileged ports only)
+                args.forEach { arg ->
+                    val port = arg.removePrefix("tcp:").toIntOrNull()
+                    require(port != null && port in 1024..65535) {
+                        "Port must be between 1024 and 65535"
+                    }
+                }
+            }
+        }
+
+        internal fun validateShellArgs(args: List<String>) {
+            // Only allow "am instrument" for automation server startup
+            require(args.size >= 2 && args[0] == "am" && args[1] == "instrument") {
+                "Only 'am instrument' shell commands are allowed via executeAdb"
+            }
+            // Validate all arguments don't contain dangerous shell metacharacters
+            args.forEach { arg ->
+                require(!DANGEROUS_SHELL_CHARS.containsMatchIn(arg)) {
+                    "Shell argument contains dangerous characters: $arg"
+                }
+            }
+        }
     }
 
     private val adb = AndroidDebugBridgeClientFactory().build()
@@ -202,53 +260,6 @@ class Android(
         }
     }
 
-    private fun validateInstallArgs(args: List<String>) {
-        // Allowed flags for install
-        val allowedFlags = setOf("-r", "-t", "-d", "-g")
-        val filteredArgs = args.filter { it !in allowedFlags }
-
-        require(filteredArgs.size == 1) { "install command requires exactly one APK path" }
-
-        val apkPath = filteredArgs[0]
-        require(apkPath.endsWith(".apk")) { "Install path must be an APK file" }
-        require(!DANGEROUS_SHELL_CHARS.containsMatchIn(apkPath)) {
-            "APK path contains dangerous characters"
-        }
-        require(java.io.File(apkPath).exists()) { "APK file does not exist: $apkPath" }
-    }
-
-    private fun validateForwardArgs(args: List<String>) {
-        val tcpPattern = Regex("^tcp:\\d{1,5}$")
-
-        if (args.firstOrNull() == "--remove") {
-            require(args.size == 2) { "forward --remove requires one tcp:port argument" }
-            require(args[1].matches(tcpPattern)) { "Invalid port format: ${args[1]}" }
-        } else {
-            require(args.size == 2) { "forward command requires two tcp:port arguments" }
-            require(args.all { it.matches(tcpPattern) }) { "Invalid port format in forward command" }
-            // Validate port range (non-privileged ports only)
-            args.forEach { arg ->
-                val port = arg.removePrefix("tcp:").toIntOrNull()
-                require(port != null && port in 1024..65535) {
-                    "Port must be between 1024 and 65535"
-                }
-            }
-        }
-    }
-
-    private fun validateShellArgs(args: List<String>) {
-        // Only allow "am instrument" for automation server startup
-        require(args.size >= 2 && args[0] == "am" && args[1] == "instrument") {
-            "Only 'am instrument' shell commands are allowed via executeAdb"
-        }
-        // Validate all arguments don't contain dangerous shell metacharacters
-        args.forEach { arg ->
-            require(!DANGEROUS_SHELL_CHARS.containsMatchIn(arg)) {
-                "Shell argument contains dangerous characters: $arg"
-            }
-        }
-    }
-
     override suspend fun listApps(deviceId: String?): List<String> {
         return ErrorHandler.retryOperation {
             try {
@@ -283,16 +294,6 @@ class Android(
         }
     }
 
-    /**
-     * Validates Android package name according to official naming rules:
-     * - Must have at least two segments separated by dots
-     * - Each segment must start with a letter
-     * - Segments can contain letters, digits, and underscores
-     * - No consecutive dots or trailing/leading dots
-     */
-    private fun isValidPackageName(packageName: String): Boolean {
-        return packageName.matches(Regex("^[a-zA-Z][a-zA-Z0-9_]*(?:\\.[a-zA-Z][a-zA-Z0-9_]+)+$"))
-    }
 
     /**
      * Validates that an activity name follows Android naming conventions

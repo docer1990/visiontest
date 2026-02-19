@@ -9,6 +9,7 @@ build/
 # IDE - IntelliJ IDEA / Android Studio
 # ===================================
 .idea/
+.claude/
 *.iml
 *.ipr
 *.iws
@@ -66,7 +67,7 @@ Desktop.ini
 .nfs*
 
 # ===================================
-# Logs e file temporanei
+# Logs and temporary files
 # ===================================
 *.log
 *.tmp
@@ -85,9 +86,9 @@ Desktop.ini
 secrets/
 
 # ===================================
-# MCP Server specifico
+# MCP Server
 # ===================================
-# Config locali MCP
+# local MCP config
 mcp-config.local.json
 
 # ===================================
@@ -99,6 +100,6 @@ mcp-config.local.json
 coverage/
 
 # ===================================
-# Directory vuote da rimuovere
+# Empty Directory
 # ===================================
 android-server/

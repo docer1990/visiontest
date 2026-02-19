@@ -142,7 +142,7 @@ class IOSSimulator(
      * @param command The command to validate
      * @return true if the command is safe, false otherwise
      */
-    private fun isValidShellCommand(command: String): Boolean {
+    internal fun isValidShellCommand(command: String): Boolean {
         if (command.isBlank()) {
             logger.warn("Empty shell command rejected")
             return false
@@ -174,7 +174,7 @@ class IOSSimulator(
      * @param bundleId The bundle identifier to validate
      * @return true if valid, false otherwise
      */
-    private fun isValidBundleId(bundleId: String): Boolean {
+    internal fun isValidBundleId(bundleId: String): Boolean {
         if (bundleId.isBlank()) {
             return false
         }
@@ -199,7 +199,7 @@ class IOSSimulator(
      * The output format is like: { "com.apple.app" = { ... }; "com.other.app" = { ... }; }
      * Extracts all bundle IDs (keys) from the plist.
      */
-    private fun parseAppListFromPlist(plistOutput: String): List<String> {
+    internal fun parseAppListFromPlist(plistOutput: String): List<String> {
         // Extract all bundle IDs using regex
         // Pattern matches quoted strings that are keys in the plist (followed by = or :)
         val bundleIdPattern = Regex(""""([a-zA-Z][a-zA-Z0-9._-]*(?:\.[a-zA-Z][a-zA-Z0-9._-]*)+)"\s*[=:]""")
@@ -222,7 +222,7 @@ class IOSSimulator(
         return json.keys.toList()
     }
 
-    private fun parseDeviceList(jsonOutput: String): List<MobileDevice> {
+    internal fun parseDeviceList(jsonOutput: String): List<MobileDevice> {
         val devices = mutableListOf<MobileDevice>()
         val jsonElement = Json.parseToJsonElement(jsonOutput)
         val devicesMap = jsonElement.jsonObject["devices"]?.jsonObject ?: return emptyList()

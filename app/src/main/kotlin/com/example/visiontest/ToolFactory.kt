@@ -221,12 +221,12 @@ class ToolFactory(
     }
 
     // Helper function to extract properties from getprop output
-    private fun extractProperty(propOutput: String, propName: String): String {
+    internal fun extractProperty(propOutput: String, propName: String): String {
         val regex = Regex("\\[$propName]: \\[(.+?)]")
         return regex.find(propOutput)?.groupValues?.get(1) ?: "Unknown"
     }
 
-    private fun formatAppInfo(rawInfo: String, packageName: String): String {
+    internal fun formatAppInfo(rawInfo: String, packageName: String): String {
         // Extract useful information using regex patterns
         val versionName = extractPattern(rawInfo, "versionName=(\\S+)")
         val versionCode = extractPattern(rawInfo, "versionCode=(\\d+)")
@@ -259,7 +259,7 @@ class ToolFactory(
     """.trimMargin()
     }
 
-    private fun extractPattern(text: String, pattern: String): String {
+    internal fun extractPattern(text: String, pattern: String): String {
         return Regex(pattern).find(text)?.groupValues?.get(1) ?: "Unknown"
     }
 

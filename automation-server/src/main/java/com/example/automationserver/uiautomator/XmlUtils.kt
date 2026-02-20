@@ -8,11 +8,10 @@ package com.example.automationserver.uiautomator
  */
 @Suppress("ComplexCondition")
 internal fun stripInvalidXMLChars(cs: CharSequence): String {
-    val str = cs.toString()
-    val ret = StringBuilder()
+    val ret = StringBuilder(cs.length)
     var i = 0
-    while (i < str.length) {
-        val codePoint = Character.codePointAt(str, i)
+    while (i < cs.length) {
+        val codePoint = Character.codePointAt(cs, i)
         val charCount = Character.charCount(codePoint)
         // Invalid XML character ranges per XML 1.1 spec
         if (codePoint in 0x1..0x8 ||
@@ -40,7 +39,7 @@ internal fun stripInvalidXMLChars(cs: CharSequence): String {
         ) {
             ret.append(".")
         } else {
-            ret.appendRange(str, i, i + charCount)
+            ret.append(cs, i, i + charCount)
         }
         i += charCount
     }

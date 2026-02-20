@@ -196,11 +196,7 @@ class JsonRpcServer {
     // MARK: - Helpers
 
     internal func intParam(_ params: [String: Any]?, _ key: String) -> Int? {
-        guard let value = params?[key] else { return nil }
-        if let intVal = value as? Int { return intVal }
-        if let doubleVal = value as? Double { return Int(doubleVal) }
-        if let strVal = value as? String { return Int(strVal) }
-        return nil
+        return IOSAutomationServerUITests.intParam(params, key)
     }
 
     /// Executes a block synchronously on the main thread.

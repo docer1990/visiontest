@@ -363,11 +363,7 @@ class XCUITestBridge {
     }
 
     internal func boundsString(from frame: CGRect) -> String {
-        let left = Int(frame.minX)
-        let top = Int(frame.minY)
-        let right = Int(frame.maxX)
-        let bottom = Int(frame.maxY)
-        return "[\(left),\(top)][\(right),\(bottom)]"
+        return IOSAutomationServerUITests.boundsString(from: frame)
     }
 
     private func stringValue(of element: XCUIElement) -> String? {
@@ -383,13 +379,7 @@ class XCUITestBridge {
     }
 
     internal func escapeXML(_ text: String?) -> String {
-        guard let text = text else { return "" }
-        return text
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
-            .replacingOccurrences(of: "'", with: "&apos;")
+        return IOSAutomationServerUITests.escapeXML(text)
     }
 
     /// Maps XCUIElement.ElementType to a human-readable string name.

@@ -163,9 +163,15 @@ class IOSAutomationClient(
 
     /**
      * Types text into the currently focused element.
+     *
+     * @param text The text to type.
+     * @param bundleId Bundle ID of the target app. When provided, text is typed into that app;
+     *                 when null, the server targets Springboard (which may fail if no focused element is found).
      */
-    suspend fun inputText(text: String): String {
-        return sendRequest("ui.inputText", mapOf("text" to text))
+    suspend fun inputText(text: String, bundleId: String? = null): String {
+        val params = mutableMapOf<String, Any>("text" to text)
+        bundleId?.let { params["bundleId"] = it }
+        return sendRequest("ui.inputText", params)
     }
 
     /**

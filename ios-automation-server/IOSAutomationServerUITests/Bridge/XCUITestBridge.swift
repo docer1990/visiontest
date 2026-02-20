@@ -342,11 +342,36 @@ class XCUITestBridge {
     
     // MARK: - Input Text
     
-    /// Types text into the currently focused element using the keyboard.
-    /// Uses the springboard coordinate space, consistent with how taps/swipes are routed.
-    /// The caller should ensure a text field is focused (e.g. via tapByCoordinates) before calling this.
-    func inputText(text: String) -> OperationResult {
-        springboard.typeText(text)
+    /// Types text into the currently focused element of the target application using the keyboard.
+    /// The `bundleId` determines which app to target: when provided, text is typed into the app
+    /// identified by that bundle identifier; when `nil` or empty, the Springboard app is used
+    /// via `queryTarget(bundleId:)`. The caller should ensure a text field in the target app is
+    /// already focused (e.g. via a tap operation) before calling this.
+    func inputText(text: String, bundleId: String? = nil) -> OperationResult {
+        let target = queryTarget(bundleId: bundleId)
+
+        // Find the focused text input element to avoid cross-process keyboard relay.
+        // Typing on the focused element directly avoids the _UIRemoteKeyboards protocol
+        // which crashes on iOS 26.1 simulator (KERN_INVALID_ADDRESS in UIKeyboard).
+        let focusedPredicate = NSPredicate(format: "hasKeyboardFocus == true")
+        let focusedElement = target.descendants(matching: .any).matching(focusedPredicate).firstMatch
+
+        if focusedElement.exists {
+            focusedElement.typeText(text)
+        } else {
+            // When no focused element is found, avoid typing on Springboard.
+            // Require callers to specify a bundleId (or focus a field) instead.
+            if bundleId == nil || bundleId?.isEmpty == true {
+                return OperationResult(
+                    success: false,
+                    error: "No focused text input element found for inputText. " +
+                           "Ensure a text field is focused or provide a bundleId for the target app."
+                )
+            }
+            // Fallback: type on the target app itself (not Springboard), which stays in-process.
+            target.typeText(text)
+        }
+
         return OperationResult(success: true, error: nil)
     }
 

@@ -1582,6 +1582,8 @@ class ToolFactory(
 
                 WORKFLOW: First tap on a text field using 'ios_tap_by_coordinates' to focus it,
                 then call this tool to type text into it.
+
+                Optional 'bundleId' targets the specific app (recommended to avoid keyboard crashes on iOS 26+).
             """.trimIndent(),
             inputSchema = Tool.Input(
                 required = listOf("text")
@@ -1595,8 +1597,9 @@ class ToolFactory(
 
                     val text = request.arguments["text"]?.jsonPrimitive?.content
                         ?: return@runWithTimeout "Error: Missing 'text' parameter"
+                    val bundleId = request.arguments["bundleId"]?.jsonPrimitive?.content
 
-                    iosAutomationClient.inputText(text)
+                    iosAutomationClient.inputText(text, bundleId)
                 }
 
                 CallToolResult(

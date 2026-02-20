@@ -167,7 +167,8 @@ class JsonRpcServer {
             guard let text = params?["text"] as? String else {
                 throw InvalidParamsException("Missing 'text' parameter")
             }
-            return bridge.inputText(text: text).toDictionary()
+            let inputBundleId = params?["bundleId"] as? String
+            return bridge.inputText(text: text, bundleId: inputBundleId).toDictionary()
 
         // Swipe by direction
         case "ui.swipeByDirection":

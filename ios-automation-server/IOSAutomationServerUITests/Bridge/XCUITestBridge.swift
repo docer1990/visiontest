@@ -345,8 +345,22 @@ class XCUITestBridge {
     /// Types text into the currently focused element using the keyboard.
     /// Uses the springboard coordinate space, consistent with how taps/swipes are routed.
     /// The caller should ensure a text field is focused (e.g. via tapByCoordinates) before calling this.
-    func inputText(text: String) -> OperationResult {
-        springboard.typeText(text)
+    func inputText(text: String, bundleId: String? = nil) -> OperationResult {
+        let target = queryTarget(bundleId: bundleId)
+
+        // Find the focused text input element to avoid cross-process keyboard relay.
+        // Typing on the focused element directly avoids the _UIRemoteKeyboards protocol
+        // which crashes on iOS 26.1 simulator (KERN_INVALID_ADDRESS in UIKeyboard).
+        let focusedPredicate = NSPredicate(format: "hasKeyboardFocus == true")
+        let focusedElement = target.descendants(matching: .any).matching(focusedPredicate).firstMatch
+
+        if focusedElement.exists {
+            focusedElement.typeText(text)
+        } else {
+            // Fallback: type on the app itself (still avoids springboard remote keyboard)
+            target.typeText(text)
+        }
+
         return OperationResult(success: true, error: nil)
     }
 

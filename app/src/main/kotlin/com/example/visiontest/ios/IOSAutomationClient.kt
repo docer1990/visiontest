@@ -164,8 +164,10 @@ class IOSAutomationClient(
     /**
      * Types text into the currently focused element.
      */
-    suspend fun inputText(text: String): String {
-        return sendRequest("ui.inputText", mapOf("text" to text))
+    suspend fun inputText(text: String, bundleId: String? = null): String {
+        val params = mutableMapOf<String, Any>("text" to text)
+        bundleId?.let { params["bundleId"] = it }
+        return sendRequest("ui.inputText", params)
     }
 
     /**

@@ -75,8 +75,8 @@ class XmlUtilsTest {
     }
 
     @Test
-    fun `chars 0xFDD0 through 0xFDDF replaced with dot`() {
-        for (code in 0xFDD0..0xFDDF) {
+    fun `chars 0xFDD0 through 0xFDEF replaced with dot`() {
+        for (code in 0xFDD0..0xFDEF) {
             val input = "a${code.toChar()}b"
             assertEquals("a.b", stripInvalidXMLChars(input), "char 0x${code.toString(16)} should be replaced")
         }
@@ -99,10 +99,10 @@ class XmlUtilsTest {
     }
 
     @Test
-    fun `null char 0x0 is preserved`() {
-        // 0x0 is NOT in the invalid ranges (ranges start at 0x1)
+    fun `null char 0x0 is replaced with dot`() {
+        // U+0000 is not permitted in XML 1.1
         val input = "a${0x0.toChar()}b"
-        assertEquals(input, stripInvalidXMLChars(input))
+        assertEquals("a.b", stripInvalidXMLChars(input))
     }
 
     @Test

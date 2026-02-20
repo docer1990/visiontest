@@ -14,13 +14,14 @@ internal fun stripInvalidXMLChars(cs: CharSequence): String {
         val codePoint = Character.codePointAt(cs, i)
         val charCount = Character.charCount(codePoint)
         // Invalid XML character ranges per XML 1.1 spec
-        if (codePoint in 0x1..0x8 ||
+        if (codePoint == 0x0 ||
+            codePoint in 0x1..0x8 ||
             codePoint in 0xB..0xC ||
             codePoint in 0xE..0x1F ||
             codePoint in 0x7F..0x84 ||
             codePoint in 0x86..0x9F ||
             codePoint in 0xD800..0xDFFF ||
-            codePoint in 0xFDD0..0xFDDF ||
+            codePoint in 0xFDD0..0xFDEF ||
             codePoint in 0xFFFE..0xFFFF ||
             codePoint in 0x1FFFE..0x1FFFF ||
             codePoint in 0x2FFFE..0x2FFFF ||

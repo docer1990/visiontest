@@ -1583,7 +1583,12 @@ class ToolFactory(
                 WORKFLOW: First tap on a text field using 'ios_tap_by_coordinates' to focus it,
                 then call this tool to type text into it.
 
-                Optional 'bundleId' targets the specific app (recommended to avoid keyboard crashes on iOS 26+).
+                PARAMETERS:
+                - text (required): The text to type.
+                - bundleId (required for app UI): Bundle ID of the target app (e.g., "com.apple.Preferences").
+                  ALWAYS provide bundleId when typing into a third-party or system app.
+                  Without bundleId, the server targets Springboard and will fail if no focused element is found.
+                  Only omit bundleId when interacting with Springboard system UI itself.
             """.trimIndent(),
             inputSchema = Tool.Input(
                 required = listOf("text")

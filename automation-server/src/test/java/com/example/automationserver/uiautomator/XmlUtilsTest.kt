@@ -111,4 +111,22 @@ class XmlUtilsTest {
         val input = "a${highInvalidChar}b"
         assertEquals("a.b", stripInvalidXMLChars(input))
     }
+
+    @Test
+    fun `surrogate range 0xD800 through 0xDFFF replaced with dot`() {
+        // Unpaired surrogates are invalid in XML.
+        // Test boundaries of the surrogate range.
+        for (code in intArrayOf(0xD800, 0xDBFF, 0xDC00, 0xDFFF)) {
+            val input = "a${code.toChar()}b"
+            assertEquals("a.b", stripInvalidXMLChars(input), "surrogate 0x${code.toString(16)} should be replaced")
+        }
+    }
+
+    @Test
+    fun `BMP noncharacters 0xFFFE and 0xFFFF replaced with dot`() {
+        for (code in 0xFFFE..0xFFFF) {
+            val input = "a${code.toChar()}b"
+            assertEquals("a.b", stripInvalidXMLChars(input), "char 0x${code.toString(16)} should be replaced")
+        }
+    }
 }

@@ -19,7 +19,9 @@ internal fun stripInvalidXMLChars(cs: CharSequence): String {
             codePoint in 0xE..0x1F ||
             codePoint in 0x7F..0x84 ||
             codePoint in 0x86..0x9F ||
+            codePoint in 0xD800..0xDFFF ||
             codePoint in 0xFDD0..0xFDDF ||
+            codePoint in 0xFFFE..0xFFFF ||
             codePoint in 0x1FFFE..0x1FFFF ||
             codePoint in 0x2FFFE..0x2FFFF ||
             codePoint in 0x3FFFE..0x3FFFF ||

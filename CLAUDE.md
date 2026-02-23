@@ -49,6 +49,13 @@ xcodebuild test \
   -destination 'platform=iOS Simulator,name=iPhone 16' \
   -only-testing:IOSAutomationServerUITests/AutomationServerUITest/testRunAutomationServer
 
+# Run iOS unit tests
+xcodebuild test \
+  -project ios-automation-server/IOSAutomationServer.xcodeproj \
+  -scheme IOSAutomationServer \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -only-testing:IOSAutomationServerTests
+
 # Test the server (in another terminal)
 curl http://localhost:9009/health
 ```
@@ -306,7 +313,7 @@ The automation server uses a reflection-based approach for UI hierarchy dumping,
 
 ## Unit Tests
 
-All tests are pure JVM (no device/emulator needed).
+All Gradle tests are pure JVM (no device/emulator needed). iOS tests run on the simulator but don't need a running automation server.
 
 ### MCP Server (`app/src/test/kotlin/com/example/visiontest/`)
 
@@ -326,6 +333,14 @@ All tests are pure JVM (no device/emulator needed).
 | `uiautomator/UiAutomatorModelsTest.kt` | All data classes, default values, enum entries (SwipeSpeed, SwipeDirection, SwipeDistance) |
 | `config/ServerConfigPortTest.kt` | `isValidPort` boundary tests, constants |
 | `uiautomator/XmlUtilsTest.kt` | `stripInvalidXMLChars` — invalid ranges replaced, valid chars preserved |
+
+### iOS Automation Server (`ios-automation-server/IOSAutomationServerTests/`)
+
+| Test File | What It Tests |
+|-----------|---------------|
+| `JsonRpcModelsTests.swift` | `JsonRpcRequest.parse` (valid/invalid/malformed JSON), error factory methods & codes, `toDictionary`, success/error responses |
+| `AutomationModelsTests.swift` | All result model `toDictionary()` conversions (UiHierarchyResult, DeviceInfoResult, OperationResult, ElementResult, InteractiveElement, InteractiveElementsResult), enum raw values & properties (SwipeDirection, SwipeDistance, SwipeSpeed) |
+| `HelpersTests.swift` | `escapeXML` (nil, special chars, multiple replacements), `boundsString` (CGRect to bounds string, fractional truncation), `intParam` (Int/Double/String coercion, missing keys, edge cases) |
 
 See `.claude/unit-testing-strategy.md` for the full testing roadmap (Plans 1-7).
 

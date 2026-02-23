@@ -333,6 +333,8 @@ curl -X POST http://localhost:9008/jsonrpc \
 
 ### Manual Testing
 
+#### Android
+
 ```bash
 # Terminal 1: Start the server
 adb shell am instrument -w -e port 9008 \
@@ -347,18 +349,56 @@ curl http://localhost:9008/health
 adb shell am force-stop com.example.automationserver
 ```
 
-## Testing
+#### iOS
 
 ```bash
-# Run all unit tests
+# Terminal 1: Start the server
+xcodebuild test \
+  -project ios-automation-server/IOSAutomationServer.xcodeproj \
+  -scheme IOSAutomationServer \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -only-testing:IOSAutomationServerUITests/AutomationServerUITest/testRunAutomationServer
+
+# Terminal 2: Test the server (no port forwarding needed)
+curl http://localhost:9009/health
+curl -X POST http://localhost:9009/jsonrpc -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"device.getInfo","id":1}'
+
+# Stop the server: kill the xcodebuild process (Ctrl+C in Terminal 1)
+```
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run all Gradle unit tests (MCP server + Android automation server)
 ./gradlew test
 
 # Run only MCP server (app/) tests
 ./gradlew :app:test
 
+# Run only Android automation server tests
+./gradlew :automation-server:test
+
 # Run a specific test class
 ./gradlew test --tests "ErrorHandlerTest"
+
+# Run iOS automation server unit tests
+xcodebuild test \
+  -project ios-automation-server/IOSAutomationServer.xcodeproj \
+  -scheme IOSAutomationServer \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -only-testing:IOSAutomationServerTests
+
+# Build iOS tests without running (resolves SPM dependencies + compiles)
+xcodebuild build-for-testing \
+  -project ios-automation-server/IOSAutomationServer.xcodeproj \
+  -scheme IOSAutomationServer \
+  -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
+
+All tests are pure unit tests — no device or emulator required (iOS tests run on the simulator but don't need a running automation server).
 
 ### Test Coverage
 
@@ -373,6 +413,9 @@ adb shell am force-stop com.example.automationserver
 | `automation-server/` | `UiAutomatorModelsTest.kt` | All data classes, default values, enum entries (SwipeSpeed, SwipeDirection, SwipeDistance) |
 | `automation-server/` | `ServerConfigPortTest.kt` | Port validation boundaries, constants |
 | `automation-server/` | `XmlUtilsTest.kt` | XML character stripping (invalid ranges, preserved chars, mixed input) |
+| `ios-automation-server/` | `JsonRpcModelsTests.swift` | JSON-RPC request parsing, error factory methods, error codes, success/error responses |
+| `ios-automation-server/` | `AutomationModelsTests.swift` | All result model `toDictionary()` conversions, enum raw values (SwipeDirection, SwipeDistance, SwipeSpeed) |
+| `ios-automation-server/` | `HelpersTests.swift` | `escapeXML` character escaping, `boundsString` from CGRect, `intParam` type coercion |
 
 ## Configuration
 

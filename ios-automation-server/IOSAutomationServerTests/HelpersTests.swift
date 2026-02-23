@@ -102,14 +102,9 @@ final class HelpersTests: XCTestCase {
         XCTAssertNil(intParam(params, "x"))
     }
 
-    func testIntParamBoolNotConverted() {
+    func testIntParamBoolConvertsToOne() {
         let params: [String: Any] = ["x": true]
-        // Bool is bridged to NSNumber in Swift, so it may be treated as Int(1)
-        // This test documents the actual behavior
-        let result = intParam(params, "x")
-        // Bool bridges to NSNumber, which conforms to Int - this is expected
-        if result != nil {
-            XCTAssertEqual(result, 1)
-        }
+        // Bool is bridged to NSNumber in Swift, so it is treated as Int(1)
+        XCTAssertEqual(intParam(params, "x"), 1)
     }
 }

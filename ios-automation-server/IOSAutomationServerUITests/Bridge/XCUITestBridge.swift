@@ -363,7 +363,7 @@ class XCUITestBridge {
     }
 
     internal func boundsString(from frame: CGRect) -> String {
-        return IOSAutomationServerUITests.boundsString(from: frame)
+        return boundsString(from: frame)
     }
 
     private func stringValue(of element: XCUIElement) -> String? {
@@ -379,7 +379,7 @@ class XCUITestBridge {
     }
 
     internal func escapeXML(_ text: String?) -> String {
-        return IOSAutomationServerUITests.escapeXML(text)
+        return escapeXML(text)
     }
 
     /// Maps XCUIElement.ElementType to a human-readable string name.

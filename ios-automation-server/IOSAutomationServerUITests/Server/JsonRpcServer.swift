@@ -196,7 +196,7 @@ class JsonRpcServer {
     // MARK: - Helpers
 
     internal func intParam(_ params: [String: Any]?, _ key: String) -> Int? {
-        return IOSAutomationServerUITests.intParam(params, key)
+        return intParam(params, key)
     }
 
     /// Executes a block synchronously on the main thread.

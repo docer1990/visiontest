@@ -90,7 +90,6 @@ Most GitHub Actions in this workflow are pinned to commit SHAs for supply-chain 
 
 Used for development and Claude Desktop config. JAR resolution order:
 
-Used for development and Claude Desktop config. JAR resolution order:
 1. Repo build: `app/build/libs/visiontest.jar` (sets up `ANDROID_HOME`, APK path, `cd` to project root)
 2. Installed JAR: `~/.local/share/visiontest/visiontest.jar` (skips Android SDK setup)
 3. Error with build/install instructions

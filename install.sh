@@ -254,19 +254,18 @@ configure_claude_desktop() {
         info "Backed up existing config"
     fi
 
-    # Build the MCP server entry
-    VISIONTEST_ENTRY='{
-  "command": "java",
-  "args": ["-jar", "'"$VISIONTEST_HOME/visiontest.jar"'"]
-}'
-
-    # Merge into existing config using Python (available on macOS + most Linux)
+    # Build entry and merge config in Python to guarantee valid JSON escaping
     if command -v python3 >/dev/null 2>&1; then
-        python3 - "$CONFIG_FILE" "$VISIONTEST_ENTRY" <<'PYEOF'
+        python3 - "$CONFIG_FILE" "$VISIONTEST_HOME/visiontest.jar" <<'PYEOF'
 import json, sys, os
 
 config_path = sys.argv[1]
-entry = json.loads(sys.argv[2])
+jar_path = sys.argv[2]
+
+entry = {
+    "command": "java",
+    "args": ["-jar", jar_path]
+}
 
 if os.path.isfile(config_path):
     with open(config_path) as f:
@@ -288,15 +287,8 @@ with open(config_path, "w") as f:
 PYEOF
         ok "Added visiontest to Claude Desktop config"
     else
-        # Fallback: create minimal config if no Python available
-        if [ ! -f "$CONFIG_FILE" ]; then
-            mkdir -p "$CONFIG_DIR"
-            printf '{\n  "mcpServers": {\n    "visiontest": %s\n  }\n}\n' "$VISIONTEST_ENTRY" > "$CONFIG_FILE"
-            ok "Created Claude Desktop config"
-        else
-            warn "Could not merge config (python3 not found). Add manually:"
-            echo "  $CONFIG_FILE"
-        fi
+        warn "Could not update Claude Desktop config (python3 not found). Add manually:"
+        echo "  $CONFIG_FILE"
     fi
 }
 

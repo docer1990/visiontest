@@ -82,13 +82,13 @@ Users install with `curl -fsSL https://github.com/docer1990/visiontest/releases/
 
 ### Release Workflow (`.github/workflows/release.yaml`)
 
-Triggered by `v*` tags. Two jobs:
-1. **`test`** — runs `./gradlew test` (all modules) — release is blocked if tests fail
-2. **`release`** (needs: test) — builds fat JAR via `shadowJar`, generates SHA-256 checksum, creates GitHub Release with assets: `visiontest.jar`, `visiontest.jar.sha256`, `install.sh`, `run-visiontest.sh`
+Triggered by git tags matching `v*`. The workflow runs the test suite, builds the fat JAR via `shadowJar`, generates a SHA-256 checksum, and creates a GitHub Release with the following assets: `visiontest.jar`, `visiontest.jar.sha256`, `install.sh`, `run-visiontest.sh`.
 
-All GitHub Actions are pinned to commit SHAs for supply-chain security.
+Most GitHub Actions in this workflow are pinned to commit SHAs for supply-chain security. When updating or adding actions, prefer SHA-pinned references instead of floating version tags where possible.
 
 ### Launcher Script (`run-visiontest.sh`)
+
+Used for development and Claude Desktop config. JAR resolution order:
 
 Used for development and Claude Desktop config. JAR resolution order:
 1. Repo build: `app/build/libs/visiontest.jar` (sets up `ANDROID_HOME`, APK path, `cd` to project root)

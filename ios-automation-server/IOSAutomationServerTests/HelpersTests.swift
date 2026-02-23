@@ -118,9 +118,9 @@ final class HelpersTests: XCTestCase {
         XCTAssertEqual(intParam(params, "x"), -1)
     }
 
-    func testIntParamBoolConvertsToOne() {
+    func testIntParamBoolReturnsNil() {
         let params: [String: Any] = ["x": true]
-        // Bool is bridged to NSNumber in Swift, so it is treated as Int(1)
-        XCTAssertEqual(intParam(params, "x"), 1)
+        // Bool values are not castable to Int using `as? Int`, so this should return nil
+        XCTAssertNil(intParam(params, "x"))
     }
 }

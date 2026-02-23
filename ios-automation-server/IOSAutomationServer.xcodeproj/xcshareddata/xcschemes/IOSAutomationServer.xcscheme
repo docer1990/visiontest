@@ -38,6 +38,16 @@
                ReferencedContainer = "container:IOSAutomationServer.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A5000003"
+               BuildableName = "IOSAutomationServerTests.xctest"
+               BlueprintName = "IOSAutomationServerTests"
+               ReferencedContainer = "container:IOSAutomationServer.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

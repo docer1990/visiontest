@@ -196,14 +196,6 @@ class JsonRpcServer {
 
     // MARK: - Helpers
 
-    internal func intParam(_ params: [String: Any]?, _ key: String) -> Int? {
-        guard let value = params?[key] else { return nil }
-        if let intVal = value as? Int { return intVal }
-        if let doubleVal = value as? Double { return Int(doubleVal) }
-        if let strVal = value as? String { return Int(strVal) }
-        return nil
-    }
-
     /// Executes a block synchronously on the main thread.
     /// XCUITest APIs (XCUIDevice, XCUIElement, etc.) must be called from the main thread.
     /// - Throws: `MainThreadTimeoutError` if the block doesn't complete within 30 seconds.

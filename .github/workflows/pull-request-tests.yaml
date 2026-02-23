@@ -61,7 +61,7 @@ jobs:
 
   ios-automation-tests:
     name: iOS Automation Server Tests
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 20
 
     steps:
@@ -79,5 +79,5 @@ jobs:
           xcodebuild test \
             -project ios-automation-server/IOSAutomationServer.xcodeproj \
             -scheme IOSAutomationServer \
-            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -destination 'platform=iOS Simulator,name=iPhone 17' \
             -only-testing:IOSAutomationServerTests

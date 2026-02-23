@@ -45,6 +45,9 @@ dependencies {
     // MockWebServer for HTTP client testing
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 
+    // MockK for mocking dependencies in unit tests
+    testImplementation("io.mockk:mockk:1.13.10")
+
     // Kotlin coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-io:0.1.16")

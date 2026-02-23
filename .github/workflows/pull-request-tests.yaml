@@ -27,7 +27,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run MCP tests
-        run: ./gradlew :app:test --no-deamon
+        run: ./gradlew :app:test --no-daemon
 
   automation-server-tests:
     name: Automation Server Tests (:automation-server)
@@ -49,27 +49,28 @@ jobs:
       - name: Accept Android licenses
         run: yes | sdkmanager --licenses
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
       - name: Run Automation Server tests
         run: ./gradlew :automation-server:test --no-daemon
 
 
   ios-automation-tests:
-  name: iOS Automation Server Tests
-  runs-on: macos-latest
-  steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    name: iOS Automation Server Tests
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Select Xcode Version
-      run: sudo xcode-select -switch /Applications/Xcode.app
+      - name: Select Xcode Version
+        run: sudo xcode-select -switch /Applications/Xcode.app
 
-    - name: Show Xcode version
-      run: xcodebuild -version
+      - name: Show Xcode version
+        run: xcodebuild -version
 
-    - name: Run iOS tests
-      run: |
-        xcodebuild test \
-          -project ios-automation-server/IOSAutomationServer.xcodeproj \
-          -scheme IOSAutomationServer \
-          -destination 'platform=iOS Simulator,name=iPhone 15' \
-          -only-testing:IOSAutomationServerTests
+      - name: Run iOS tests
+        run: |
+          xcodebuild test \
+            -scheme IOSAutomationServer \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -only-testing:IOSAutomationServerTests

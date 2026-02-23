@@ -320,10 +320,16 @@ All Gradle tests are pure JVM (no device/emulator needed). iOS tests run on the 
 | Test File | What It Tests |
 |-----------|---------------|
 | `utils/ErrorHandlerTest.kt` | 12 exception→error-code mappings, `retryOperation` exponential backoff |
+| `utils/ErrorHandlerCoroutineTest.kt` | `retryOperation` exponential backoff delays with `TestCoroutineScheduler` |
 | `ios/IOSSimulatorParsingTest.kt` | `parseDeviceList`, `parseAppListFromPlist`, `isValidBundleId`, `isValidShellCommand` |
+| `ios/IOSSimulatorTest.kt` | `listDevices`, `getFirstAvailableDevice`, `listApps`, `getAppInfo`, `launchApp`, `executeShell`, `ensureDeviceBooted` (MockK'd ProcessExecutor) |
+| `ios/ProcessExecutorTest.kt` | Exit codes, stdout capture, timeout handling, non-existent commands |
+| `ios/IOSAutomationClientTest.kt` | JSON-RPC requests, `isServerRunning`, Gson serialization (MockWebServer) |
 | `android/AndroidValidationTest.kt` | `isValidPackageName`, `validateForwardArgs`, `validateShellArgs`, `validateInstallArgs` |
+| `android/AutomationClientTest.kt` | `sendRequest` POST/params/errors, `isServerRunning` health check (MockWebServer) |
 | `config/AppConfigTest.kt` | Default config values and log level |
 | `ToolFactoryHelpersTest.kt` | `extractProperty`, `extractPattern`, `formatAppInfo` |
+| `ToolFactoryPathTest.kt` | `findProjectRoot` (settings.gradle discovery, depth limit, edge cases), `findAutomationServerApk` (env var, search roots, ordering) |
 
 ### Automation Server (`automation-server/src/test/java/com/example/automationserver/`)
 

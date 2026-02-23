@@ -405,10 +405,16 @@ All Gradle tests are pure JVM unit tests (no device or emulator required). iOS t
 | Module | Test File | Coverage Area |
 |--------|-----------|---------------|
 | `app/` | `ErrorHandlerTest.kt` | Exception-to-error-code mappings, retry with exponential backoff |
+| `app/` | `ErrorHandlerCoroutineTest.kt` | Exponential backoff delays with `TestCoroutineScheduler` |
 | `app/` | `IOSSimulatorParsingTest.kt` | Device list parsing, plist parsing, bundle ID & shell command validation |
+| `app/` | `IOSSimulatorTest.kt` | Simulator operations with mocked ProcessExecutor (listDevices, getFirstAvailableDevice, launchApp, etc.) |
+| `app/` | `ProcessExecutorTest.kt` | Exit codes, stdout capture, timeout handling, non-existent commands |
+| `app/` | `IOSAutomationClientTest.kt` | JSON-RPC requests, `isServerRunning`, Gson serialization (MockWebServer) |
 | `app/` | `AndroidValidationTest.kt` | Package name validation, ADB argument validation (forward, shell, install) |
+| `app/` | `AutomationClientTest.kt` | `sendRequest` POST/params/errors, `isServerRunning` health check (MockWebServer) |
 | `app/` | `AppConfigTest.kt` | Default configuration values |
 | `app/` | `ToolFactoryHelpersTest.kt` | Property extraction, pattern matching, app info formatting |
+| `app/` | `ToolFactoryPathTest.kt` | `findProjectRoot` (settings.gradle discovery, depth limit), `findAutomationServerApk` (env var, search roots, ordering) |
 | `automation-server/` | `JsonRpcModelsTest.kt` | JSON-RPC error factory methods, request/response defaults and field handling |
 | `automation-server/` | `UiAutomatorModelsTest.kt` | All data classes, default values, enum entries (SwipeSpeed, SwipeDirection, SwipeDistance) |
 | `automation-server/` | `ServerConfigPortTest.kt` | Port validation boundaries, constants |

@@ -1670,14 +1670,25 @@ class ToolFactory(
 
     // ==================== Android APK Discovery ====================
 
-    private fun findAutomationServerApk(): String? {
+    internal fun findAutomationServerApk(): String? {
+        val cwd = File(".").absoluteFile
+        val codeSourceRoot = findCodeSourceRoot()
+        return findAutomationServerApk(
+            envApkPath = System.getenv("VISION_TEST_APK_PATH"),
+            searchRoots = listOfNotNull(cwd, codeSourceRoot, findProjectRoot(cwd))
+        )
+    }
+
+    internal fun findAutomationServerApk(
+        envApkPath: String?,
+        searchRoots: List<File>
+    ): String? {
         val apkRelativePath = "automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk"
 
         logger.debug("Searching for automation server APK...")
-        logger.debug("Current working directory: ${File(".").absolutePath}")
 
         // 1. Check environment variable first (allows explicit configuration)
-        System.getenv("VISION_TEST_APK_PATH")?.let { envPath ->
+        envApkPath?.let { envPath ->
             val file = File(envPath)
             if (file.exists()) {
                 logger.info("Using APK from VISION_TEST_APK_PATH: $envPath")
@@ -1686,39 +1697,17 @@ class ToolFactory(
             logger.warn("VISION_TEST_APK_PATH set but file not found: $envPath")
         }
 
-        // 2. Try relative to current working directory
-        val cwdFile = File(apkRelativePath)
-        if (cwdFile.exists()) {
-            logger.info("Found APK relative to CWD: ${cwdFile.absolutePath}")
-            return cwdFile.absolutePath
-        }
-
-        // 3. Try relative to code source location (JAR or classes directory)
-        val codeSourceRoot = findCodeSourceRoot()
-        if (codeSourceRoot != null) {
-            val codeSourceApk = File(codeSourceRoot, apkRelativePath)
-            logger.debug("Checking code source path: ${codeSourceApk.absolutePath}")
-            if (codeSourceApk.exists()) {
-                logger.info("Found APK relative to code source: ${codeSourceApk.absolutePath}")
-                return codeSourceApk.absolutePath
+        // 2. Try relative to each search root (CWD, code source, project root)
+        for (root in searchRoots) {
+            val apkFile = File(root, apkRelativePath)
+            logger.debug("Checking path: ${apkFile.absolutePath}")
+            if (apkFile.exists()) {
+                logger.info("Found APK at: ${apkFile.absolutePath}")
+                return apkFile.absolutePath
             }
         }
 
-        // 4. Try to find project root by looking for settings.gradle.kts from CWD
-        val projectRoot = findProjectRoot(File(".").absoluteFile)
-        if (projectRoot != null) {
-            val projectApk = File(projectRoot, apkRelativePath)
-            logger.debug("Checking project root path: ${projectApk.absolutePath}")
-            if (projectApk.exists()) {
-                logger.info("Found APK relative to project root: ${projectApk.absolutePath}")
-                return projectApk.absolutePath
-            }
-        }
-
-        logger.warn("APK not found. Searched locations:")
-        logger.warn("  - CWD: ${File(".").absolutePath}")
-        logger.warn("  - Code source root: $codeSourceRoot")
-        logger.warn("  - Project root: $projectRoot")
+        logger.warn("APK not found in ${searchRoots.size} search roots.")
         logger.warn("Set VISION_TEST_APK_PATH environment variable to specify the APK location explicitly.")
         return null
     }
@@ -1751,7 +1740,7 @@ class ToolFactory(
         }
     }
 
-    private fun findProjectRoot(startFrom: File): File? {
+    internal fun findProjectRoot(startFrom: File): File? {
         var current = startFrom.absoluteFile
         // Handle trailing "." in path
         if (current.name == ".") {

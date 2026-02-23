@@ -398,7 +398,7 @@ xcodebuild build-for-testing \
   -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
-All tests are pure unit tests — no device or emulator required (iOS tests run on the simulator but don't need a running automation server).
+All Gradle tests are pure JVM unit tests (no device or emulator required). iOS tests are pure unit tests that run on the simulator but don't need a running automation server.
 
 ### Test Coverage
 

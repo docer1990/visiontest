@@ -130,10 +130,7 @@ class ToolFactoryPathTest {
 
     @Test
     fun `findAutomationServerApk returns env var path when file exists`(@TempDir tempDir: File) {
-        val apkFile = File(tempDir, "custom.apk").apply {
-            parentFile.mkdirs()
-            createNewFile()
-        }
+        val apkFile = File(tempDir, "custom.apk").apply { createNewFile() }
 
         val result = factory.findAutomationServerApk(
             envApkPath = apkFile.absolutePath,

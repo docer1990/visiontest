@@ -18,6 +18,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew test --tests "ErrorHandlerTest"  # Run a specific test class
 ./gradlew shadowJar                     # Build fat JAR -> app/build/libs/visiontest.jar
 
+# === Installation & Release ===
+bash install.sh                         # Install locally (or curl -fsSL <url> | bash)
+# Release: push a tag to trigger the GitHub Actions release workflow
+# git tag v0.1.0 && git push --tags    # Builds JAR, runs tests, creates GitHub Release
+
 # === Automation Server Android App ===
 ./gradlew :automation-server:assembleDebug                # Build debug APK
 ./gradlew :automation-server:assembleDebugAndroidTest     # Build test APK (instrumentation)
@@ -59,6 +64,36 @@ xcodebuild test \
 # Test the server (in another terminal)
 curl http://localhost:9009/health
 ```
+
+## Installation & Distribution
+
+### One-Command Installer (`install.sh`)
+
+Users install with `curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash`. The script:
+1. Detects OS (macOS/Linux) and arch (arm64/x86_64)
+2. Validates Java 17+ with platform-specific install suggestions
+3. Fetches latest release tag from GitHub API, validates format (`v[0-9]*`) and rejects dangerous characters
+4. Downloads `visiontest.jar` + SHA-256 checksum, verifies integrity
+5. Installs JAR to `~/.local/share/visiontest/` (customizable via `VISIONTEST_DIR` env var, must be under `$HOME`)
+6. Creates wrapper script at `~/.local/bin/visiontest`, ensures PATH
+7. Auto-configures Claude Desktop (prompts user, backs up existing config, merges via Python)
+
+**Security hardening:** `umask 077`, explicit `chmod` on all files/dirs, tag validation, checksum verification, install path restricted to `$HOME`.
+
+### Release Workflow (`.github/workflows/release.yaml`)
+
+Triggered by `v*` tags. Two jobs:
+1. **`test`** — runs `./gradlew test` (all modules) — release is blocked if tests fail
+2. **`release`** (needs: test) — builds fat JAR via `shadowJar`, generates SHA-256 checksum, creates GitHub Release with assets: `visiontest.jar`, `visiontest.jar.sha256`, `install.sh`, `run-visiontest.sh`
+
+All GitHub Actions are pinned to commit SHAs for supply-chain security.
+
+### Launcher Script (`run-visiontest.sh`)
+
+Used for development and Claude Desktop config. JAR resolution order:
+1. Repo build: `app/build/libs/visiontest.jar` (sets up `ANDROID_HOME`, APK path, `cd` to project root)
+2. Installed JAR: `~/.local/share/visiontest/visiontest.jar` (skips Android SDK setup)
+3. Error with build/install instructions
 
 ## Architecture Overview
 
@@ -370,6 +405,7 @@ See `.claude/unit-testing-strategy.md` for the full testing roadmap (Plans 1-7).
 |----------|---------|-------------|
 | `VISION_TEST_LOG_LEVEL` | `PRODUCTION` | `PRODUCTION`, `DEVELOPMENT`, `DEBUG` |
 | `VISION_TEST_APK_PATH` | (auto-detected) | Explicit path to test APK |
+| `VISIONTEST_DIR` | `~/.local/share/visiontest` | Override install directory (must be under `$HOME`) |
 
 ### Default Timeouts (in `config/AppConfig.kt`)
 
@@ -390,9 +426,12 @@ See `.claude/unit-testing-strategy.md` for the full testing roadmap (Plans 1-7).
 ## Prerequisites
 
 - JDK 17+
-- Android Platform Tools (ADB) in PATH
-- Xcode Command Line Tools (for iOS simulator support)
-- Android SDK (for automation-server module)
+- macOS or Linux (arm64 or x86_64)
+- Android Platform Tools (ADB) in PATH — for Android automation
+- Xcode Command Line Tools — for iOS simulator support (macOS only)
+- Android SDK — only needed for building the automation-server module from source
+
+> **Quick start:** Users who just need the MCP server can run `curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash` — only Java 17+ is required.
 
 ## Important Design Decisions
 

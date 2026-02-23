@@ -47,62 +47,80 @@ This architecture allows for:
 ## Prerequisites
 
 - **JDK 17 or higher**
-- **Kotlin 2.1+**
-- **Android Platform Tools**: Contains ADB for device communication
-   - [Download Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)
-   - Add the platform-tools directory to your system PATH
-- **Android SDK** (for building the Automation Server app)
-- **Connected Android device(s) or emulator(s)** with USB Debugging enabled
-   - Minimum SDK: 21 (Android 5.0)
-   - Target SDK: 34 (Android 14)
-- **Xcode Command Line Tools** (for iOS simulator support on macOS)
+- **macOS or Linux** (arm64 or x86_64)
+- **Android Platform Tools** (for Android automation): [Download](https://developer.android.com/tools/releases/platform-tools)
+- **Xcode Command Line Tools** (for iOS simulator automation, macOS only)
 
 ## Installation
 
-### 1. Clone and Build
+### Quick Install (Recommended)
+
+Install the MCP server with a single command:
+
+```bash
+curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
+```
+
+This will:
+- Check that Java 17+ is installed
+- Download the latest release JAR to `~/.local/share/visiontest/`
+- Create a `visiontest` command in `~/.local/bin/`
+- Offer to configure Claude Desktop automatically (with backup)
+- Verify the download via SHA-256 checksum
+
+You can customize the install directory with the `VISIONTEST_DIR` environment variable:
+
+```bash
+VISIONTEST_DIR=~/my-tools/visiontest curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
+```
+
+To update, re-run the same command.
+
+#### Configure Claude Code
+
+After installing, add VisionTest to Claude Code:
+
+```bash
+claude mcp add visiontest java -- -jar ~/.local/share/visiontest/visiontest.jar
+```
+
+#### Configure Claude Desktop Manually
+
+If you skipped the auto-configuration during install, edit the config file:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "visiontest": {
+      "command": "java",
+      "args": ["-jar", "/HOME/.local/share/visiontest/visiontest.jar"]
+    }
+  }
+}
+```
+
+### Build from Source
+
+For development or if you need the Android Automation Server APKs:
 
 ```bash
 git clone https://github.com/docer1990/visiontest.git
 cd visiontest
 
-# Build entire project
-./gradlew build
-
 # Build MCP Server JAR
 ./gradlew shadowJar
 # Output: app/build/libs/visiontest.jar
 
-# Build Automation Server APKs
+# Build Android Automation Server APKs
 ./gradlew :automation-server:assembleDebug :automation-server:assembleDebugAndroidTest
-# Output:
-#   - automation-server/build/outputs/apk/debug/automation-server-debug.apk
-#   - automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk
-```
 
-### 2. Install Automation Server on Device
-
-Both APKs (main and test) are required for instrumentation-based automation:
-
-```bash
-# Connect your Android device via USB (or start an emulator)
-adb devices
-
-# Install both APKs
+# Install both APKs on a connected device (required for Android automation)
 ./gradlew :automation-server:installDebug :automation-server:installDebugAndroidTest
-
-# Or manually:
-adb install automation-server/build/outputs/apk/debug/automation-server-debug.apk
-adb install automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk
 ```
 
-### 3. Configure Claude Desktop
-
-Create/edit the MCP configuration file:
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-- **Linux**: `~/.config/Claude/claude_desktop_config.json`
-
-#### Option A: Using the Launcher Script (Recommended)
+#### Configure Claude Desktop (from source)
 
 ```json
 {
@@ -114,22 +132,7 @@ Create/edit the MCP configuration file:
 }
 ```
 
-#### Option B: Manual Configuration
-
-```json
-{
-  "mcpServers": {
-    "visiontest": {
-      "command": "/path/to/java",
-      "args": ["-jar", "/ABSOLUTE/PATH/TO/visiontest/app/build/libs/visiontest.jar"],
-      "env": {
-        "PATH": "/path/to/android/sdk/platform-tools:/usr/bin:/bin",
-        "ANDROID_HOME": "/path/to/android/sdk"
-      }
-    }
-  }
-}
-```
+The `run-visiontest.sh` launcher handles `JAVA_HOME`, `ANDROID_HOME`, and APK path setup automatically.
 
 ## Usage
 

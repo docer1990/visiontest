@@ -1,6 +1,6 @@
 #!/bin/sh
 # VisionTest MCP Server Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/docer1990/visiontest/main/install.sh | bash
+# Usage: curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
 #
 # Environment variables:
 #   VISIONTEST_DIR  — override install directory (default: ~/.local/share/visiontest)
@@ -15,7 +15,15 @@ BIN_DIR="$HOME/.local/bin"
 
 VISIONTEST_HOME="${VISIONTEST_DIR:-$HOME/.local/share/visiontest}"
 
-# Resolve to absolute path and ensure it's under $HOME (prevent path traversal)
+# Reject path traversal segments before checking prefix
+case "$VISIONTEST_HOME" in
+    *..*)
+        printf '  \033[1;31mx\033[0m VISIONTEST_DIR must not contain ".." (got: %s)\n' "$VISIONTEST_HOME" >&2
+        exit 1
+        ;;
+esac
+
+# Ensure install dir is under $HOME
 case "$VISIONTEST_HOME" in
     "$HOME"/*) ;; # OK — under home directory
     *)
@@ -126,7 +134,7 @@ download_jar() {
     DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/visiontest.jar"
 
     mkdir -p "$VISIONTEST_HOME"
-    chmod 755 "$VISIONTEST_HOME"
+    chmod 700 "$VISIONTEST_HOME"
     info "Downloading visiontest.jar..."
 
     CHECKSUM_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/visiontest.jar.sha256"
@@ -147,8 +155,10 @@ download_jar() {
     elif command -v shasum >/dev/null 2>&1; then
         ACTUAL_SHA=$(shasum -a 256 "$VISIONTEST_HOME/visiontest.jar" | cut -d ' ' -f 1)
     else
-        warn "Cannot verify checksum (sha256sum/shasum not found)"
-        ACTUAL_SHA="$EXPECTED_SHA"
+        error "Cannot verify checksum: neither 'sha256sum' nor 'shasum' is available."
+        error "Please install one of these tools and rerun the installer."
+        rm -f "$VISIONTEST_HOME/visiontest.jar" "$VISIONTEST_HOME/visiontest.jar.sha256"
+        exit 1
     fi
 
     if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
@@ -160,7 +170,7 @@ download_jar() {
     fi
     ok "Checksum verified"
 
-    chmod 644 "$VISIONTEST_HOME/visiontest.jar"
+    chmod 600 "$VISIONTEST_HOME/visiontest.jar"
     printf '%s\n' "$LATEST_TAG" > "$VISIONTEST_HOME/version.txt"
     ok "Installed to $VISIONTEST_HOME/visiontest.jar"
 }

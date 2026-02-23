@@ -3,7 +3,8 @@
 # This script handles environment setup automatically
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-INSTALLED_JAR="$HOME/.local/share/visiontest/visiontest.jar"
+INSTALL_DIR="${VISIONTEST_DIR:-$HOME/.local/share/visiontest}"
+INSTALLED_JAR="$INSTALL_DIR/visiontest.jar"
 REPO_JAR="$SCRIPT_DIR/app/build/libs/visiontest.jar"
 APK_PATH="$SCRIPT_DIR/automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk"
 
@@ -15,7 +16,7 @@ elif [ -f "$INSTALLED_JAR" ]; then
 else
     echo "Error: visiontest.jar not found." >&2
     echo "  Build with: ./gradlew shadowJar" >&2
-    echo "  Or install: curl -fsSL https://raw.githubusercontent.com/docer1990/visiontest/main/install.sh | bash" >&2
+    echo "  Or install from a tagged release: see https://github.com/docer1990/visiontest/releases" >&2
     exit 1
 fi
 

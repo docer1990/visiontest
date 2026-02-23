@@ -25,6 +25,10 @@ final class JsonRpcModelsTests: XCTestCase {
         XCTAssertNil(JsonRpcRequest.parse(from: json))
     }
 
+    func testParseEmptyDataReturnsNil() {
+        XCTAssertNil(JsonRpcRequest.parse(from: Data()))
+    }
+
     func testParseMalformedJsonReturnsNil() {
         let json = "not json".data(using: .utf8)!
         XCTAssertNil(JsonRpcRequest.parse(from: json))

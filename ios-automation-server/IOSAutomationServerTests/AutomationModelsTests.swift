@@ -204,6 +204,10 @@ final class AutomationModelsTests: XCTestCase {
         XCTAssertEqual(SwipeDistance.long.percent, 0.60, accuracy: 0.001)
     }
 
+    func testSwipeDistanceInvalidRawValue() {
+        XCTAssertNil(SwipeDistance(rawValue: "TINY"))
+    }
+
     func testSwipeDistanceRawValues() {
         XCTAssertEqual(SwipeDistance.short.rawValue, "SHORT")
         XCTAssertEqual(SwipeDistance.medium.rawValue, "MEDIUM")
@@ -216,6 +220,10 @@ final class AutomationModelsTests: XCTestCase {
         XCTAssertEqual(SwipeSpeed.slow.duration, 2.5, accuracy: 0.001)
         XCTAssertEqual(SwipeSpeed.normal.duration, 1.0, accuracy: 0.001)
         XCTAssertEqual(SwipeSpeed.fast.duration, 0.25, accuracy: 0.001)
+    }
+
+    func testSwipeSpeedInvalidRawValue() {
+        XCTAssertNil(SwipeSpeed(rawValue: "TURBO"))
     }
 
     func testSwipeSpeedRawValues() {

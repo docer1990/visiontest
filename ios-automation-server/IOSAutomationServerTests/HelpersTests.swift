@@ -61,6 +61,12 @@ final class HelpersTests: XCTestCase {
         XCTAssertEqual(boundsString(from: rect), "[50,50][50,50]")
     }
 
+    func testBoundsStringFractionalTruncates() {
+        let rect = CGRect(x: 10.7, y: 20.9, width: 80.5, height: 160.3)
+        // Int() truncates: left=10, top=20, right=Int(10.7+80.5)=91, bottom=Int(20.9+160.3)=181
+        XCTAssertEqual(boundsString(from: rect), "[10,20][91,181]")
+    }
+
     func testBoundsStringLargeValues() {
         let rect = CGRect(x: 0, y: 0, width: 1080, height: 1920)
         XCTAssertEqual(boundsString(from: rect), "[0,0][1080,1920]")
@@ -75,6 +81,11 @@ final class HelpersTests: XCTestCase {
 
     func testIntParamDoubleValue() {
         let params: [String: Any] = ["x": 1.0]
+        XCTAssertEqual(intParam(params, "x"), 1)
+    }
+
+    func testIntParamDoubleTruncates() {
+        let params: [String: Any] = ["x": 1.9]
         XCTAssertEqual(intParam(params, "x"), 1)
     }
 
@@ -100,6 +111,11 @@ final class HelpersTests: XCTestCase {
     func testIntParamEmptyDictReturnsNil() {
         let params: [String: Any] = [:]
         XCTAssertNil(intParam(params, "x"))
+    }
+
+    func testIntParamNegativeDoubleTruncatesTowardZero() {
+        let params: [String: Any] = ["x": -1.9]
+        XCTAssertEqual(intParam(params, "x"), -1)
     }
 
     func testIntParamBoolConvertsToOne() {

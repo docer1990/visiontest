@@ -27,7 +27,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run MCP tests
-        run: ./gradlew :app:test --no-deamon
+        run: ./gradlew :app:test --no-daemon
 
   automation-server-tests:
     name: Automation Server Tests (:automation-server)

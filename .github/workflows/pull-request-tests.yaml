@@ -49,6 +49,8 @@ jobs:
       - name: Accept Android licenses
         run: yes | sdkmanager --licenses
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
       - name: Run Automation Server tests
         run: ./gradlew :automation-server:test --no-daemon
 

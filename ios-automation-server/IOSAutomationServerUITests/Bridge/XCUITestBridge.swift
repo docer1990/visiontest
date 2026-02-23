@@ -362,10 +362,6 @@ class XCUITestBridge {
         }
     }
 
-    internal func boundsString(from frame: CGRect) -> String {
-        return boundsString(from: frame)
-    }
-
     private func stringValue(of element: XCUIElement) -> String? {
         guard let value = element.value else { return nil }
         let str = "\(value)"
@@ -376,10 +372,6 @@ class XCUITestBridge {
         guard let value = snapshot.value else { return nil }
         let str = "\(value)"
         return str.isEmpty ? nil : str
-    }
-
-    internal func escapeXML(_ text: String?) -> String {
-        return escapeXML(text)
     }
 
     /// Maps XCUIElement.ElementType to a human-readable string name.

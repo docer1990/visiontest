@@ -95,7 +95,7 @@ If you skipped the auto-configuration during install, edit the config file:
   "mcpServers": {
     "visiontest": {
       "command": "java",
-      "args": ["-jar", "/HOME/.local/share/visiontest/visiontest.jar"]
+      "args": ["-jar", "~/.local/share/visiontest/visiontest.jar"]
     }
   }
 }

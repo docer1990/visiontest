@@ -74,9 +74,25 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios-automation-server/IOSAutomationServer.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: spm-${{ hashFiles('ios-automation-server/IOSAutomationServer.xcodeproj/project.pbxproj') }}
+          restore-keys: spm-
+
+      - name: Build for testing
+        run: |
+          xcodebuild build-for-testing \
+            -project ios-automation-server/IOSAutomationServer.xcodeproj \
+            -scheme IOSAutomationServer \
+            -destination 'platform=iOS Simulator,name=iPhone 17'
+
       - name: Run iOS tests
         run: |
-          xcodebuild test \
+          xcodebuild test-without-building \
             -project ios-automation-server/IOSAutomationServer.xcodeproj \
             -scheme IOSAutomationServer \
             -destination 'platform=iOS Simulator,name=iPhone 17' \

@@ -39,6 +39,12 @@ dependencies {
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
+    // Coroutine test support (virtual time, TestCoroutineScheduler)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion")
+
+    // MockWebServer for HTTP client testing
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+
     // Kotlin coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-io:0.1.16")

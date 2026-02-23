@@ -726,7 +726,7 @@ abstract class BaseUiAutomatorBridge {
      *
      * Uses multiple heuristics since developers often forget to set proper accessibility properties.
      */
-    private fun getIncludedElementBounds(
+    internal fun getIncludedElementBounds(
         node: AccessibilityNodeInfo,
         displayRect: Rect,
         includeDisabled: Boolean

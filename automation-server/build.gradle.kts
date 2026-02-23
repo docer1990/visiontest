@@ -36,6 +36,12 @@ android {
         jvmTarget = "17"
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     buildFeatures {
         viewBinding = true
     }
@@ -92,6 +98,8 @@ dependencies {
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation(kotlin("test"))
+    testImplementation("io.mockk:mockk-android:1.13.10")
+    testImplementation("org.robolectric:robolectric:4.12.1")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 

@@ -98,7 +98,7 @@ detect_platform() {
 check_java() {
     if command -v java >/dev/null 2>&1; then
         # Prefer java.version property (reliable across vendors); fall back to parsing -version output
-        JAVA_VER=$(java -XshowSettings:properties -version 2>&1 | grep 'java.version ' | sed 's/.*= \(1\.\)\?\([0-9]*\).*/\2/')
+        JAVA_VER=$(java -XshowSettings:properties -version 2>&1 | grep '^ *java\.version = ' | sed 's/.*= \(1\.\)\?\([0-9]*\).*/\2/')
         if [ -z "$JAVA_VER" ]; then
             JAVA_VER=$(java -version 2>&1 | head -1 | sed 's/.*"\(1\.\)\?\([0-9]*\).*/\2/')
         fi
@@ -147,8 +147,9 @@ fetch_latest_version() {
 
     # Validate tag format strictly:
     # - must start with 'v'
-    # - followed by at least one digit
-    # - remaining characters (if any) must be only [A-Za-z0-9._-]
+    # - followed by a digit and at least one more alphanumeric/punctuation char
+    #   (e.g. v0.1.0, v1.0-beta — rejects bare 'v' or single-char like 'v1')
+    # - remaining characters must be only [A-Za-z0-9._-]
     case "$LATEST_TAG" in
         v[0-9][0-9A-Za-z._-]*)
             ;; # OK
@@ -166,36 +167,37 @@ fetch_latest_version() {
 download_jar() {
     DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/visiontest.jar"
 
-    mkdir -p "$VISIONTEST_HOME"
-    chmod 700 "$VISIONTEST_HOME"
+    # Use resolved path for all filesystem operations to close TOCTOU gaps
+    mkdir -p "$RESOLVED_VISIONTEST_HOME"
+    chmod 700 "$RESOLVED_VISIONTEST_HOME"
     info "Downloading visiontest.jar..."
 
     CHECKSUM_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/visiontest.jar.sha256"
 
     if command -v curl >/dev/null 2>&1; then
-        curl -fSL --progress-bar -o "$VISIONTEST_HOME/visiontest.jar" "$DOWNLOAD_URL"
-        curl -fsSL -o "$VISIONTEST_HOME/visiontest.jar.sha256" "$CHECKSUM_URL"
+        curl -fSL --progress-bar -o "$RESOLVED_VISIONTEST_HOME/visiontest.jar" "$DOWNLOAD_URL"
+        curl -fsSL -o "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256" "$CHECKSUM_URL"
     else
-        wget -q --show-progress -O "$VISIONTEST_HOME/visiontest.jar" "$DOWNLOAD_URL"
-        wget -q -O "$VISIONTEST_HOME/visiontest.jar.sha256" "$CHECKSUM_URL"
+        wget -q --show-progress -O "$RESOLVED_VISIONTEST_HOME/visiontest.jar" "$DOWNLOAD_URL"
+        wget -q -O "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256" "$CHECKSUM_URL"
     fi
 
     # Verify checksum
     info "Verifying checksum..."
-    EXPECTED_SHA=$(cut -d ' ' -f 1 "$VISIONTEST_HOME/visiontest.jar.sha256")
+    EXPECTED_SHA=$(cut -d ' ' -f 1 "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256")
     if command -v sha256sum >/dev/null 2>&1; then
-        ACTUAL_SHA=$(sha256sum "$VISIONTEST_HOME/visiontest.jar" | cut -d ' ' -f 1)
+        ACTUAL_SHA=$(sha256sum "$RESOLVED_VISIONTEST_HOME/visiontest.jar" | cut -d ' ' -f 1)
     elif command -v shasum >/dev/null 2>&1; then
-        ACTUAL_SHA=$(shasum -a 256 "$VISIONTEST_HOME/visiontest.jar" | cut -d ' ' -f 1)
+        ACTUAL_SHA=$(shasum -a 256 "$RESOLVED_VISIONTEST_HOME/visiontest.jar" | cut -d ' ' -f 1)
     else
         error "Cannot verify checksum: neither 'sha256sum' nor 'shasum' is available."
         error "Please install one of these tools and rerun the installer."
-        rm -f "$VISIONTEST_HOME/visiontest.jar" "$VISIONTEST_HOME/visiontest.jar.sha256"
+        rm -f "$RESOLVED_VISIONTEST_HOME/visiontest.jar" "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256"
         exit 1
     fi
 
     if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
-        rm -f "$VISIONTEST_HOME/visiontest.jar" "$VISIONTEST_HOME/visiontest.jar.sha256"
+        rm -f "$RESOLVED_VISIONTEST_HOME/visiontest.jar" "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256"
         error "Checksum verification failed!"
         error "  Expected: $EXPECTED_SHA"
         error "  Got:      $ACTUAL_SHA"
@@ -204,10 +206,10 @@ download_jar() {
     fi
     ok "Checksum verified"
 
-    chmod 600 "$VISIONTEST_HOME/visiontest.jar"
-    printf '%s\n' "$LATEST_TAG" > "$VISIONTEST_HOME/version.txt"
-    chmod 600 "$VISIONTEST_HOME/version.txt"
-    ok "Installed to $VISIONTEST_HOME/visiontest.jar"
+    chmod 600 "$RESOLVED_VISIONTEST_HOME/visiontest.jar"
+    printf '%s\n' "$LATEST_TAG" > "$RESOLVED_VISIONTEST_HOME/version.txt"
+    chmod 600 "$RESOLVED_VISIONTEST_HOME/version.txt"
+    ok "Installed to $RESOLVED_VISIONTEST_HOME/visiontest.jar"
 }
 
 # ---------- create wrapper script ----------
@@ -216,8 +218,9 @@ create_wrapper() {
     mkdir -p "$BIN_DIR"
     chmod 755 "$BIN_DIR"
 
-    # Shell-escape VISIONTEST_HOME so it can be safely embedded in the wrapper
-    ESCAPED_VISIONTEST_HOME=$(printf '%s' "$VISIONTEST_HOME" | sed "s/'/'\\\\''/g")
+    # Shell-escape the resolved path so it can be safely embedded in the wrapper
+    # Turns ' into '\'' for safe single-quote embedding
+    ESCAPED_VISIONTEST_HOME=$(printf '%s' "$RESOLVED_VISIONTEST_HOME" | sed "s/'/'\\\\''/g")
 
     cat > "$BIN_DIR/visiontest" <<WRAPPER
 #!/bin/sh
@@ -255,7 +258,7 @@ ensure_path() {
 
     # Also create .zshrc if on macOS and it doesn't exist (zsh is default)
     if [ "$PLATFORM" = "macOS" ] && [ ! -f "$HOME/.zshrc" ]; then
-        printf '# Added by VisionTest installer\nexport PATH="%s:$PATH"\n' "$BIN_DIR" > "$HOME/.zshrc"
+        printf '# Added by VisionTest installer\nexport PATH="%s:$PATH"\n' "$BIN_DIR" >> "$HOME/.zshrc"
         info "Created $HOME/.zshrc"
     fi
 
@@ -283,7 +286,7 @@ main() {
     echo "    visiontest"
     echo ""
     echo "  For Claude Code, add with:"
-    echo "    claude mcp add visiontest java -- -jar $VISIONTEST_HOME/visiontest.jar"
+    echo "    claude mcp add visiontest java -- -jar $RESOLVED_VISIONTEST_HOME/visiontest.jar"
     echo ""
     echo "  To update later, re-run this script."
     echo ""

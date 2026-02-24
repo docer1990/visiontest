@@ -72,7 +72,7 @@ curl http://localhost:9009/health
 Users install with `curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash`. The script:
 1. Detects OS (macOS/Linux) and arch (arm64/x86_64)
 2. Validates Java 17+ with platform-specific install suggestions
-3. Fetches latest release tag from GitHub API, validates format (`v[0-9]*`) and rejects dangerous characters
+3. Fetches latest release tag from GitHub API, validates format (`v[0-9][0-9A-Za-z._-]*`) and rejects dangerous characters
 4. Downloads `visiontest.jar` + SHA-256 checksum, verifies integrity
 5. Installs JAR to `~/.local/share/visiontest/` (customizable via `VISIONTEST_DIR` env var, must be under `$HOME`)
 6. Creates wrapper script at `~/.local/bin/visiontest`, ensures PATH
@@ -84,7 +84,7 @@ Users install with `curl -fsSL https://github.com/docer1990/visiontest/releases/
 
 Triggered by git tags matching `v*`. The workflow runs the test suite, builds the fat JAR via `shadowJar`, generates a SHA-256 checksum, and creates a GitHub Release with the following assets: `visiontest.jar`, `visiontest.jar.sha256`, `install.sh`, `run-visiontest.sh`.
 
-Most GitHub Actions in this workflow are pinned to commit SHAs for supply-chain security. When updating or adding actions, prefer SHA-pinned references instead of floating version tags where possible.
+All GitHub Actions in both workflows are pinned to commit SHAs for supply-chain security. When updating or adding actions, always use SHA-pinned references instead of floating version tags.
 
 ### Launcher Script (`run-visiontest.sh`)
 

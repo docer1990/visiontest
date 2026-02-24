@@ -491,6 +491,7 @@ All Gradle tests are pure JVM unit tests (no device or emulator required). iOS t
 |----------|---------|-------------|
 | `VISION_TEST_LOG_LEVEL` | `PRODUCTION` | `PRODUCTION`, `DEVELOPMENT`, `DEBUG` |
 | `VISION_TEST_APK_PATH` | (auto-detected) | Explicit path to test APK |
+| `VISIONTEST_DIR` | `~/.local/share/visiontest` | Override install directory (must be under `$HOME`) |
 
 ### Default Timeouts (hardcoded in `AppConfig.kt`)
 

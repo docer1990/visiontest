@@ -2,7 +2,8 @@
 # VisionTest MCP Server Launcher
 # This script handles environment setup automatically
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Resolve symlinks so SCRIPT_DIR points to the real repo location
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
 INSTALL_DIR="${VISIONTEST_DIR:-$HOME/.local/share/visiontest}"
 INSTALLED_JAR="$INSTALL_DIR/visiontest.jar"
 REPO_JAR="$SCRIPT_DIR/app/build/libs/visiontest.jar"

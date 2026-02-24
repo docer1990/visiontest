@@ -91,9 +91,9 @@ detect_platform() {
 check_java() {
     if command -v java >/dev/null 2>&1; then
         # Prefer java.version property (reliable across vendors); fall back to parsing -version output
-        JAVA_VER=$(java -XshowSettings:properties -version 2>&1 | grep '^ *java\.version = ' | sed 's/.*= \(1\.\)\?\([0-9]*\).*/\2/')
+        JAVA_VER=$(java -XshowSettings:properties -version 2>&1 | grep '^ *java\.version = ' | sed -E 's/.*= (1\.)?([0-9]*).*/\2/')
         if [ -z "$JAVA_VER" ]; then
-            JAVA_VER=$(java -version 2>&1 | head -1 | sed 's/.*"\(1\.\)\?\([0-9]*\).*/\2/')
+            JAVA_VER=$(java -version 2>&1 | head -1 | sed -E 's/.*"(1\.)?([0-9]*).*/\2/')
         fi
         if [ "$JAVA_VER" -ge 17 ] 2>/dev/null; then
             ok "Java $JAVA_VER found"

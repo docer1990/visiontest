@@ -33,7 +33,7 @@ enum class LogLevel {
 data class AppConfig(
     // Server configuration
     val serverName: String = "vision-test",
-    val serverVersion: String = "1.0.0",
+    val serverVersion: String = "0.1.0",
 
     // ADB Configuration
     val adbTimeoutMillis: Long = 5000L,

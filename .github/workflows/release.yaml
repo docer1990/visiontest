@@ -140,4 +140,5 @@ jobs:
           files: |
             app/build/libs/visiontest.jar
             app/build/libs/visiontest.jar.sha256
+            install.sh
             run-visiontest.sh

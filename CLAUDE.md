@@ -69,7 +69,7 @@ curl http://localhost:9009/health
 
 ### One-Command Installer (`install.sh`)
 
-Users install with `https://raw.githubusercontent.com/docer1990/visiontest/main/install.sh | bash`. The script:
+Users install with `curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash`. The script:
 1. Detects OS (macOS/Linux) and arch (arm64/x86_64)
 2. Validates Java 17+ with platform-specific install suggestions
 3. Fetches latest release tag from GitHub API, validates format (`v[0-9]*`) and rejects dangerous characters
@@ -430,7 +430,7 @@ See `.claude/unit-testing-strategy.md` for the full testing roadmap (Plans 1-7).
 - Xcode Command Line Tools — for iOS simulator support (macOS only)
 - Android SDK — only needed for building the automation-server module from source
 
-> **Quick start:** Users who just need the MCP server can run `curl -fsSL https://raw.githubusercontent.com/docer1990/visiontest/main/install.sh | bash` — only Java 17+ is required.
+> **Quick start:** Users who just need the MCP server can run `curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash` — only Java 17+ is required.
 
 ## Important Design Decisions
 

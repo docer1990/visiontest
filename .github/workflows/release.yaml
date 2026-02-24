@@ -1,12 +1,12 @@
-name: Run Test Suites on Pull Request
+name: Release
 
 on:
-  pull_request:
-    branches: [ main, develop ]
+  push:
+    tags:
+      - 'v*'
 
-concurrency:
-  group: pr-${{ github.ref }}
-  cancel-in-progress: true
+permissions:
+  contents: write
 
 jobs:
   mcp-server-tests:
@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup JDK 17
@@ -32,7 +32,7 @@ jobs:
         run: ./gradlew :app:test --no-daemon
 
   automation-server-tests:
-    name: Automation Server Tests (:automation-server)
+    name: Automation Server Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -55,9 +55,9 @@ jobs:
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
+
       - name: Run Automation Server tests
         run: ./gradlew :automation-server:test --no-daemon
-
 
   ios-automation-tests:
     name: iOS Automation Server Tests
@@ -97,3 +97,48 @@ jobs:
             -scheme IOSAutomationServer \
             -destination 'platform=iOS Simulator,name=iPhone 17' \
             -only-testing:IOSAutomationServerTests
+
+  release:
+    name: Build & Release
+    needs: [mcp-server-tests, automation-server-tests, ios-automation-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build fat JAR
+        run: ./gradlew shadowJar --no-daemon
+
+      - name: Verify JAR exists
+        run: ls -lh app/build/libs/visiontest.jar
+
+      - name: Generate checksums
+        run: |
+          cd app/build/libs
+          sha256sum visiontest.jar > visiontest.jar.sha256
+          if [ ! -f visiontest.jar.sha256 ]; then
+            echo "Error: Checksum file not created"
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@c95fe1b7996d2d1cec2da36c161a9aee9010b181 # v2.2.1
+        with:
+          generate_release_notes: true
+          files: |
+            app/build/libs/visiontest.jar
+            app/build/libs/visiontest.jar.sha256
+            install.sh
+            run-visiontest.sh

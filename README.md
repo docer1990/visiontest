@@ -65,7 +65,7 @@ This will:
 - Check that Java 17+ is installed
 - Download the latest release JAR to `~/.local/share/visiontest/`
 - Create a `visiontest` command in `~/.local/bin/`
-- Offer to configure Claude Desktop automatically (with backup)
+- Print post-install instructions, including how to integrate with Claude Desktop
 - Verify the download via SHA-256 checksum
 
 You can customize the install directory with the `VISIONTEST_DIR` environment variable:

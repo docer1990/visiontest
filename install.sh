@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # VisionTest MCP Server Installer
 # Usage: curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
 #
@@ -15,19 +15,38 @@ BIN_DIR="$HOME/.local/bin"
 
 VISIONTEST_HOME="${VISIONTEST_DIR:-$HOME/.local/share/visiontest}"
 
+# Resolve physical path to avoid symlink escapes out of $HOME
+RESOLVED_VISIONTEST_HOME="$VISIONTEST_HOME"
+if command -v realpath >/dev/null 2>&1; then
+    if RESOLVED_TMP=$(realpath -m "$VISIONTEST_HOME" 2>/dev/null); then
+        RESOLVED_VISIONTEST_HOME="$RESOLVED_TMP"
+    fi
+else
+    # Fallback: if directory exists, resolve via pwd -P
+    if [ -d "$VISIONTEST_HOME" ]; then
+        RESOLVED_VISIONTEST_HOME=$(cd "$VISIONTEST_HOME" 2>/dev/null && pwd -P || printf '%s' "$VISIONTEST_HOME")
+    fi
+fi
+
+# Reject install dirs that are symlinks themselves
+if [ -L "$VISIONTEST_HOME" ]; then
+    printf '  \033[1;31mx\033[0m VISIONTEST_DIR must not be a symlink (got: %s)\n' "$VISIONTEST_HOME" >&2
+    exit 1
+fi
+
 # Reject path traversal segments before checking prefix
-case "$VISIONTEST_HOME" in
+case "$RESOLVED_VISIONTEST_HOME" in
     *..*)
-        printf '  \033[1;31mx\033[0m VISIONTEST_DIR must not contain ".." (got: %s)\n' "$VISIONTEST_HOME" >&2
+        printf '  \033[1;31mx\033[0m VISIONTEST_DIR must not contain ".." (resolved: %s)\n' "$RESOLVED_VISIONTEST_HOME" >&2
         exit 1
         ;;
 esac
 
-# Ensure install dir is under $HOME
-case "$VISIONTEST_HOME" in
-    "$HOME"/*) ;; # OK — under home directory
+# Ensure resolved install dir is a subdirectory under $HOME (not $HOME itself)
+case "$RESOLVED_VISIONTEST_HOME" in
+    "$HOME"/?*) ;; # OK — under home directory with at least one path component
     *)
-        printf '  \033[1;31mx\033[0m VISIONTEST_DIR must be under $HOME (got: %s)\n' "$VISIONTEST_HOME" >&2
+        printf '  \033[1;31mx\033[0m VISIONTEST_DIR must be under \$HOME (resolved: %s)\n' "$RESOLVED_VISIONTEST_HOME" >&2
         exit 1
         ;;
 esac
@@ -162,16 +181,18 @@ download_jar() {
     fi
 
     if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
-        rm -f "$VISIONTEST_HOME/visiontest.jar"
+        rm -f "$VISIONTEST_HOME/visiontest.jar" "$VISIONTEST_HOME/visiontest.jar.sha256"
         error "Checksum verification failed!"
         error "  Expected: $EXPECTED_SHA"
         error "  Got:      $ACTUAL_SHA"
+        error "The download may be incomplete (e.g. network interruption). Please retry."
         exit 1
     fi
     ok "Checksum verified"
 
     chmod 600 "$VISIONTEST_HOME/visiontest.jar"
     printf '%s\n' "$LATEST_TAG" > "$VISIONTEST_HOME/version.txt"
+    chmod 600 "$VISIONTEST_HOME/version.txt"
     ok "Installed to $VISIONTEST_HOME/visiontest.jar"
 }
 
@@ -183,7 +204,14 @@ create_wrapper() {
 
     cat > "$BIN_DIR/visiontest" <<WRAPPER
 #!/bin/sh
-exec java -jar "$VISIONTEST_HOME/visiontest.jar" "\$@"
+VISIONTEST_HOME="$VISIONTEST_HOME"
+if [ ! -f "\$VISIONTEST_HOME/visiontest.jar" ]; then
+    DEFAULT_HOME="\$HOME/.local/share/visiontest"
+    if [ -f "\$DEFAULT_HOME/visiontest.jar" ]; then
+        VISIONTEST_HOME="\$DEFAULT_HOME"
+    fi
+fi
+exec java -jar "\$VISIONTEST_HOME/visiontest.jar" "\$@"
 WRAPPER
 
     chmod 755 "$BIN_DIR/visiontest"
@@ -201,7 +229,7 @@ ensure_path() {
 
     for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
         if [ -f "$rc" ]; then
-            if ! grep -q "$BIN_DIR" "$rc" 2>/dev/null; then
+            if ! grep -Fq "$BIN_DIR" "$rc" 2>/dev/null; then
                 printf '\n# Added by VisionTest installer\nexport PATH="%s:$PATH"\n' "$BIN_DIR" >> "$rc"
                 info "Updated $rc"
             fi
@@ -217,81 +245,6 @@ ensure_path() {
     export PATH="$BIN_DIR:$PATH"
 }
 
-# ---------- Claude Desktop config ----------
-
-configure_claude_desktop() {
-    if [ "$PLATFORM" = "macOS" ]; then
-        CONFIG_DIR="$HOME/Library/Application Support/Claude"
-    else
-        CONFIG_DIR="$HOME/.config/Claude"
-    fi
-    CONFIG_FILE="$CONFIG_DIR/claude_desktop_config.json"
-
-    if [ ! -d "$CONFIG_DIR" ]; then
-        # Claude Desktop not installed — skip silently
-        return
-    fi
-
-    echo ""
-    info "Claude Desktop detected at $CONFIG_DIR"
-    printf "  Configure VisionTest as an MCP server in Claude Desktop? [Y/n] "
-
-    # When piped from curl, stdin is the script itself — reattach to terminal
-    REPLY="y"
-    if [ -t 0 ]; then
-        read -r REPLY
-    elif [ -e /dev/tty ]; then
-        read -r REPLY < /dev/tty
-    fi
-
-    case "$REPLY" in
-        [nN]*) info "Skipped Claude Desktop configuration"; return ;;
-    esac
-
-    # Back up existing config
-    if [ -f "$CONFIG_FILE" ]; then
-        cp "$CONFIG_FILE" "$CONFIG_FILE.backup.$(date +%s)"
-        info "Backed up existing config"
-    fi
-
-    # Build entry and merge config in Python to guarantee valid JSON escaping
-    if command -v python3 >/dev/null 2>&1; then
-        python3 - "$CONFIG_FILE" "$VISIONTEST_HOME/visiontest.jar" <<'PYEOF'
-import json, sys, os
-
-config_path = sys.argv[1]
-jar_path = sys.argv[2]
-
-entry = {
-    "command": "java",
-    "args": ["-jar", jar_path]
-}
-
-if os.path.isfile(config_path):
-    with open(config_path) as f:
-        try:
-            config = json.load(f)
-        except json.JSONDecodeError:
-            config = {}
-else:
-    config = {}
-
-config.setdefault("mcpServers", {})
-if "visiontest" in config["mcpServers"]:
-    print("  \033[1;33m!\033[0m Existing visiontest config found — updating JAR path")
-config["mcpServers"]["visiontest"] = entry
-
-with open(config_path, "w") as f:
-    json.dump(config, f, indent=2)
-    f.write("\n")
-PYEOF
-        ok "Added visiontest to Claude Desktop config"
-    else
-        warn "Could not update Claude Desktop config (python3 not found). Add manually:"
-        echo "  $CONFIG_FILE"
-    fi
-}
-
 # ---------- main ----------
 
 main() {
@@ -305,7 +258,6 @@ main() {
     download_jar
     create_wrapper
     ensure_path
-    configure_claude_desktop
 
     echo ""
     ok "VisionTest $LATEST_TAG installed successfully!"

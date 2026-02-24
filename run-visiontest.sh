@@ -16,7 +16,7 @@ elif [ -f "$INSTALLED_JAR" ]; then
 else
     echo "Error: visiontest.jar not found." >&2
     echo "  Build with: ./gradlew shadowJar" >&2
-    echo "  Or install from a tagged release: see https://github.com/docer1990/visiontest/releases" >&2
+    echo "  Or install with: curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash" >&2
     exit 1
 fi
 

@@ -71,22 +71,25 @@ This will:
 You can customize the install directory with the `VISIONTEST_DIR` environment variable:
 
 ```bash
-VISIONTEST_DIR=~/my-tools/visiontest curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
+VISIONTEST_DIR="$HOME/my-tools/visiontest" curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
 ```
 
 To update, re-run the same command.
 
-#### Configure Claude Code
+#### Configure Your AI Coding Tool
 
-After installing, add VisionTest to Claude Code:
+<details>
+<summary><b>Claude Code</b></summary>
 
 ```bash
 claude mcp add visiontest java -- -jar ~/.local/share/visiontest/visiontest.jar
 ```
+</details>
 
-#### Configure Claude Desktop Manually
+<details>
+<summary><b>Claude Desktop</b></summary>
 
-If you skipped the auto-configuration during install, edit the config file:
+To configure manually, edit the config file:
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
@@ -95,11 +98,65 @@ If you skipped the auto-configuration during install, edit the config file:
   "mcpServers": {
     "visiontest": {
       "command": "java",
-      "args": ["-jar", "~/.local/share/visiontest/visiontest.jar"]
+      "args": ["-jar", "/ABSOLUTE/PATH/TO/.local/share/visiontest/visiontest.jar"]
     }
   }
 }
 ```
+
+> **Note:** Replace `/ABSOLUTE/PATH/TO` with your home directory (e.g. `/Users/yourname` on macOS, `/home/yourname` on Linux). JSON does not expand `~`.
+</details>
+
+<details>
+<summary><b>GitHub Copilot CLI</b></summary>
+
+Add to `~/.copilot/mcp-config.json`:
+
+```json
+{
+  "mcpServers": {
+    "visiontest": {
+      "command": "java",
+      "args": ["-jar", "/ABSOLUTE/PATH/TO/.local/share/visiontest/visiontest.jar"],
+      "type": "stdio"
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>OpenAI Codex CLI</b></summary>
+
+```bash
+codex mcp add visiontest -- java -jar ~/.local/share/visiontest/visiontest.jar
+```
+
+Or add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.visiontest]
+command = "java"
+args = ["-jar", "/ABSOLUTE/PATH/TO/.local/share/visiontest/visiontest.jar"]
+```
+</details>
+
+<details>
+<summary><b>OpenCode</b></summary>
+
+Add to `opencode.json` (project root or `~/.config/opencode/opencode.json`):
+
+```json
+{
+  "mcp": {
+    "visiontest": {
+      "type": "local",
+      "command": ["java", "-jar", "/ABSOLUTE/PATH/TO/.local/share/visiontest/visiontest.jar"]
+    }
+  }
+}
+```
+</details>
 
 ### Build from Source
 

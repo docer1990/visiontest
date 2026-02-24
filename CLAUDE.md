@@ -76,7 +76,7 @@ Users install with `curl -fsSL https://github.com/docer1990/visiontest/releases/
 4. Downloads `visiontest.jar` + SHA-256 checksum, verifies integrity
 5. Installs JAR to `~/.local/share/visiontest/` (customizable via `VISIONTEST_DIR` env var, must be under `$HOME`)
 6. Creates wrapper script at `~/.local/bin/visiontest`, ensures PATH
-7. Auto-configures Claude Desktop (prompts user, backs up existing config, merges via Python)
+7. Does not modify Claude Desktop configuration; use `run-visiontest.sh` or manual setup for Claude integration.
 
 **Security hardening:** `umask 077`, explicit `chmod` on all files/dirs, tag validation, checksum verification, install path restricted to `$HOME`.
 

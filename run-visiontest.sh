@@ -31,7 +31,7 @@ else
 fi
 
 # Only set up Android SDK and project-relative paths when running from the repo
-if [ "$JAR_PATH" = "$REPO_JAR" ]; then
+if [ -f "$SCRIPT_DIR/gradlew" ] && [ "$JAR_PATH" = "$REPO_JAR" ]; then
     # Find Android SDK
     if [ -z "$ANDROID_HOME" ]; then
         # Try common locations
@@ -53,7 +53,10 @@ if [ "$JAR_PATH" = "$REPO_JAR" ]; then
 
     # Change to project root so relative paths (Xcode project, APKs) resolve correctly
     # This is needed when MCP clients launch the script from a different working directory
-    cd "$SCRIPT_DIR"
+    cd "$SCRIPT_DIR" || {
+        echo "Error: Cannot change to project directory: $SCRIPT_DIR" >&2
+        exit 1
+    }
 fi
 
 # Run the server

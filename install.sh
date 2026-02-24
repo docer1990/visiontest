@@ -16,20 +16,34 @@ BIN_DIR="$HOME/.local/bin"
 VISIONTEST_HOME="${VISIONTEST_DIR:-$HOME/.local/share/visiontest}"
 
 # Resolve physical path to avoid symlink escapes out of $HOME
+# python3 is the most portable; realpath (without -m) works on both GNU and BSD;
+# pwd -P is the last resort for existing directories.
 RESOLVED_VISIONTEST_HOME="$VISIONTEST_HOME"
-if command -v realpath >/dev/null 2>&1; then
-    if RESOLVED_TMP=$(realpath -m "$VISIONTEST_HOME" 2>/dev/null); then
+if command -v python3 >/dev/null 2>&1; then
+    if RESOLVED_TMP=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$VISIONTEST_HOME" 2>/dev/null); then
+        RESOLVED_VISIONTEST_HOME="$RESOLVED_TMP"
+    fi
+elif command -v realpath >/dev/null 2>&1; then
+    if RESOLVED_TMP=$(realpath "$VISIONTEST_HOME" 2>/dev/null); then
         RESOLVED_VISIONTEST_HOME="$RESOLVED_TMP"
     fi
 else
-    # Fallback: if directory exists, resolve via pwd -P
+    # Fallback when neither python3 nor realpath is available
     if [ -d "$VISIONTEST_HOME" ]; then
+        # If the directory already exists, resolve it directly
         RESOLVED_VISIONTEST_HOME=$(cd "$VISIONTEST_HOME" 2>/dev/null && pwd -P || printf '%s' "$VISIONTEST_HOME")
+    elif [ ! -e "$VISIONTEST_HOME" ]; then
+        # If the target does not exist yet (e.g., first install), resolve its parent
+        PARENT_DIR=$(dirname "$VISIONTEST_HOME")
+        if [ -d "$PARENT_DIR" ]; then
+            RESOLVED_PARENT=$(cd "$PARENT_DIR" 2>/dev/null && pwd -P || printf '%s' "$PARENT_DIR")
+            RESOLVED_VISIONTEST_HOME="$RESOLVED_PARENT/$(basename "$VISIONTEST_HOME")"
+        fi
     fi
 fi
 
-# Reject install dirs that are symlinks themselves
-if [ -L "$VISIONTEST_HOME" ]; then
+# Reject install dirs that are symlinks themselves (original or resolved path)
+if [ -L "$VISIONTEST_HOME" ] || { [ "$RESOLVED_VISIONTEST_HOME" != "$VISIONTEST_HOME" ] && [ -e "$RESOLVED_VISIONTEST_HOME" ] && [ -L "$RESOLVED_VISIONTEST_HOME" ]; }; then
     printf '  \033[1;31mx\033[0m VISIONTEST_DIR must not be a symlink (got: %s)\n' "$VISIONTEST_HOME" >&2
     exit 1
 fi
@@ -83,7 +97,11 @@ detect_platform() {
 
 check_java() {
     if command -v java >/dev/null 2>&1; then
-        JAVA_VER=$(java -version 2>&1 | head -1 | sed 's/.*"\(1\.\)\?\([0-9]*\).*/\2/')
+        # Prefer java.version property (reliable across vendors); fall back to parsing -version output
+        JAVA_VER=$(java -XshowSettings:properties -version 2>&1 | grep 'java.version ' | sed 's/.*= \(1\.\)\?\([0-9]*\).*/\2/')
+        if [ -z "$JAVA_VER" ]; then
+            JAVA_VER=$(java -version 2>&1 | head -1 | sed 's/.*"\(1\.\)\?\([0-9]*\).*/\2/')
+        fi
         if [ "$JAVA_VER" -ge 17 ] 2>/dev/null; then
             ok "Java $JAVA_VER found"
             return
@@ -127,19 +145,15 @@ fetch_latest_version() {
         exit 1
     fi
 
-    # Validate tag format (v followed by semver-like: v1.0.0, v0.1.0-beta, etc.)
+    # Validate tag format strictly:
+    # - must start with 'v'
+    # - followed by at least one digit
+    # - remaining characters (if any) must be only [A-Za-z0-9._-]
     case "$LATEST_TAG" in
-        v[0-9]*) ;; # OK
+        v[0-9][0-9A-Za-z._-]*)
+            ;; # OK
         *)
-            error "Unexpected release tag format: $LATEST_TAG"
-            exit 1
-            ;;
-    esac
-
-    # Reject tags with path traversal or shell metacharacters
-    case "$LATEST_TAG" in
-        *..* | */* | *\\* | *\;* | *\|* | *\&* | *\$* | *\(* | *\)* | *\<* | *\>*)
-            error "Release tag contains invalid characters: $LATEST_TAG"
+            error "Unexpected or invalid release tag format: $LATEST_TAG"
             exit 1
             ;;
     esac
@@ -202,9 +216,12 @@ create_wrapper() {
     mkdir -p "$BIN_DIR"
     chmod 755 "$BIN_DIR"
 
+    # Shell-escape VISIONTEST_HOME so it can be safely embedded in the wrapper
+    ESCAPED_VISIONTEST_HOME=$(printf '%s' "$VISIONTEST_HOME" | sed "s/'/'\\\\''/g")
+
     cat > "$BIN_DIR/visiontest" <<WRAPPER
 #!/bin/sh
-VISIONTEST_HOME="$VISIONTEST_HOME"
+VISIONTEST_HOME='$ESCAPED_VISIONTEST_HOME'
 if [ ! -f "\$VISIONTEST_HOME/visiontest.jar" ]; then
     DEFAULT_HOME="\$HOME/.local/share/visiontest"
     if [ -f "\$DEFAULT_HOME/visiontest.jar" ]; then

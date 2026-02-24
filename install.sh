@@ -48,15 +48,8 @@ if [ -L "$VISIONTEST_HOME" ] || { [ "$RESOLVED_VISIONTEST_HOME" != "$VISIONTEST_
     exit 1
 fi
 
-# Reject path traversal segments before checking prefix
-case "$RESOLVED_VISIONTEST_HOME" in
-    *..*)
-        printf '  \033[1;31mx\033[0m VISIONTEST_DIR must not contain ".." (resolved: %s)\n' "$RESOLVED_VISIONTEST_HOME" >&2
-        exit 1
-        ;;
-esac
-
 # Ensure resolved install dir is a subdirectory under $HOME (not $HOME itself)
+# Note: path traversal via ".." is already neutralized by the realpath resolution above.
 case "$RESOLVED_VISIONTEST_HOME" in
     "$HOME"/?*) ;; # OK — under home directory with at least one path component
     *)
@@ -174,30 +167,34 @@ download_jar() {
 
     CHECKSUM_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/visiontest.jar.sha256"
 
+    # Download to temporary files so the final path never holds unverified content
+    TEMP_JAR=$(mktemp "$RESOLVED_VISIONTEST_HOME/visiontest.jar.XXXXXX")
+    TEMP_SHA=$(mktemp "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256.XXXXXX")
+    # Clean up temp files on any failure
+    trap 'rm -f "$TEMP_JAR" "$TEMP_SHA"' EXIT
+
     if command -v curl >/dev/null 2>&1; then
-        curl -fSL --progress-bar -o "$RESOLVED_VISIONTEST_HOME/visiontest.jar" "$DOWNLOAD_URL"
-        curl -fsSL -o "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256" "$CHECKSUM_URL"
+        curl -fSL --progress-bar -o "$TEMP_JAR" "$DOWNLOAD_URL"
+        curl -fsSL -o "$TEMP_SHA" "$CHECKSUM_URL"
     else
-        wget -q --show-progress -O "$RESOLVED_VISIONTEST_HOME/visiontest.jar" "$DOWNLOAD_URL"
-        wget -q -O "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256" "$CHECKSUM_URL"
+        wget -q --show-progress -O "$TEMP_JAR" "$DOWNLOAD_URL"
+        wget -q -O "$TEMP_SHA" "$CHECKSUM_URL"
     fi
 
-    # Verify checksum
+    # Verify checksum before moving to final location
     info "Verifying checksum..."
-    EXPECTED_SHA=$(cut -d ' ' -f 1 "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256")
+    EXPECTED_SHA=$(cut -d ' ' -f 1 "$TEMP_SHA")
     if command -v sha256sum >/dev/null 2>&1; then
-        ACTUAL_SHA=$(sha256sum "$RESOLVED_VISIONTEST_HOME/visiontest.jar" | cut -d ' ' -f 1)
+        ACTUAL_SHA=$(sha256sum "$TEMP_JAR" | cut -d ' ' -f 1)
     elif command -v shasum >/dev/null 2>&1; then
-        ACTUAL_SHA=$(shasum -a 256 "$RESOLVED_VISIONTEST_HOME/visiontest.jar" | cut -d ' ' -f 1)
+        ACTUAL_SHA=$(shasum -a 256 "$TEMP_JAR" | cut -d ' ' -f 1)
     else
         error "Cannot verify checksum: neither 'sha256sum' nor 'shasum' is available."
         error "Please install one of these tools and rerun the installer."
-        rm -f "$RESOLVED_VISIONTEST_HOME/visiontest.jar" "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256"
         exit 1
     fi
 
     if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
-        rm -f "$RESOLVED_VISIONTEST_HOME/visiontest.jar" "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256"
         error "Checksum verification failed!"
         error "  Expected: $EXPECTED_SHA"
         error "  Got:      $ACTUAL_SHA"
@@ -206,7 +203,13 @@ download_jar() {
     fi
     ok "Checksum verified"
 
-    chmod 600 "$RESOLVED_VISIONTEST_HOME/visiontest.jar"
+    # Checksum passed — move verified files to final location
+    chmod 600 "$TEMP_JAR"
+    mv -f "$TEMP_JAR" "$RESOLVED_VISIONTEST_HOME/visiontest.jar"
+    mv -f "$TEMP_SHA" "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256"
+    # Disarm the trap since temp files are now moved
+    trap - EXIT
+
     printf '%s\n' "$LATEST_TAG" > "$RESOLVED_VISIONTEST_HOME/version.txt"
     chmod 600 "$RESOLVED_VISIONTEST_HOME/version.txt"
     ok "Installed to $RESOLVED_VISIONTEST_HOME/visiontest.jar"

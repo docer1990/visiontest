@@ -1157,8 +1157,8 @@ class ToolFactory(
                     // Find the Xcode project
                     val projectPath = findXcodeProject()
                         ?: return@runWithTimeout "Xcode project not found at ${IOSAutomationConfig.XCODE_PROJECT_PATH}. " +
-                            "To fix: git clone https://github.com/docer1990/visiontest.git && " +
-                            "export ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV}=/path/to/visiontest/${IOSAutomationConfig.XCODE_PROJECT_PATH}"
+                            "To fix: ensure you have a local checkout of the VisionTest repository that contains the iOS Xcode project, then " +
+                            "set the ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} environment variable to the absolute path of ${IOSAutomationConfig.XCODE_PROJECT_PATH} within that checkout."
 
                     // Get the booted simulator
                     val device = ios.getFirstAvailableDevice()

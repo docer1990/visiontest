@@ -398,7 +398,7 @@ class ToolFactory(
                     // Find the APK file
                     val apkPath = findAutomationServerApk()
                     if (apkPath == null) {
-                        return@runWithTimeout "Automation server APK not found. Please build it first with: ./gradlew :automation-server:assembleDebug :automation-server:assembleDebugAndroidTest"
+                        return@runWithTimeout "Automation server APK not found. Re-run install.sh to download APKs, or set VISION_TEST_APK_PATH environment variable. To build from source: ./gradlew :automation-server:assembleDebug :automation-server:assembleDebugAndroidTest"
                     }
 
                     // Install the APKs
@@ -411,11 +411,19 @@ class ToolFactory(
                     val mainApkPath = apkPath
                         .replace("androidTest/", "")
                         .replace("-androidTest", "")
-                    if (File(mainApkPath).exists()) {
-                        androidDevice.executeAdb("install", "-r", mainApkPath)
-                        logger.info("Installed main APK: $mainApkPath")
+                    val mainApkFile = File(mainApkPath)
+                    val resolvedMainApk = if (mainApkFile.exists()) {
+                        mainApkPath
                     } else {
-                        return@runWithTimeout "Main APK not found at: $mainApkPath"
+                        // Fallback: check for simple-named APK in the same directory (install dir)
+                        val siblingApk = File(File(apkPath).parentFile, "automation-server.apk")
+                        if (siblingApk.exists()) siblingApk.absolutePath else null
+                    }
+                    if (resolvedMainApk != null) {
+                        androidDevice.executeAdb("install", "-r", resolvedMainApk)
+                        logger.info("Installed main APK: $resolvedMainApk")
+                    } else {
+                        return@runWithTimeout "Main APK not found at: $mainApkPath. Re-run install.sh or set VISION_TEST_APK_PATH."
                     }
 
                     // Install test APK
@@ -1146,7 +1154,9 @@ class ToolFactory(
 
                     // Find the Xcode project
                     val projectPath = findXcodeProject()
-                        ?: return@runWithTimeout "Xcode project not found at ${IOSAutomationConfig.XCODE_PROJECT_PATH}. Make sure you're running from the project root."
+                        ?: return@runWithTimeout "Xcode project not found at ${IOSAutomationConfig.XCODE_PROJECT_PATH}. " +
+                            "To fix: git clone https://github.com/docer1990/visiontest.git && " +
+                            "export ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV}=/path/to/visiontest/${IOSAutomationConfig.XCODE_PROJECT_PATH}"
 
                     // Get the booted simulator
                     val device = ios.getFirstAvailableDevice()
@@ -1639,6 +1649,16 @@ class ToolFactory(
     }
 
     private fun findXcodeProject(): String? {
+        // 0. Check environment variable first (allows explicit override)
+        System.getenv(IOSAutomationConfig.XCODE_PROJECT_PATH_ENV)?.let { envPath ->
+            val envFile = File(envPath)
+            if (envFile.exists()) {
+                logger.info("Using Xcode project from ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV}: $envPath")
+                return envFile.absolutePath
+            }
+            logger.warn("${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} set but path not found: $envPath")
+        }
+
         val relativePath = IOSAutomationConfig.XCODE_PROJECT_PATH
 
         // 1. Try relative to current working directory
@@ -1673,15 +1693,19 @@ class ToolFactory(
     internal fun findAutomationServerApk(): String? {
         val cwd = File(".").absoluteFile
         val codeSourceRoot = findCodeSourceRoot()
+        val installDirPath = System.getenv("VISIONTEST_DIR")
+            ?: "${System.getProperty("user.home")}/.local/share/visiontest"
         return findAutomationServerApk(
             envApkPath = System.getenv("VISION_TEST_APK_PATH"),
-            searchRoots = listOfNotNull(cwd, codeSourceRoot, findProjectRoot(cwd))
+            searchRoots = listOfNotNull(cwd, codeSourceRoot, findProjectRoot(cwd)),
+            installDir = File(installDirPath)
         )
     }
 
     internal fun findAutomationServerApk(
         envApkPath: String?,
-        searchRoots: List<File>
+        searchRoots: List<File>,
+        installDir: File? = null
     ): String? {
         val apkRelativePath = "automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk"
 
@@ -1707,8 +1731,17 @@ class ToolFactory(
             }
         }
 
+        // 3. Try install directory as lowest-priority fallback
+        if (installDir != null) {
+            val installedApk = File(installDir, "automation-server-test.apk")
+            if (installedApk.exists()) {
+                logger.info("Found APK in install directory: ${installedApk.absolutePath}")
+                return installedApk.absolutePath
+            }
+        }
+
         logger.warn("APK not found in ${searchRoots.size} search roots.")
-        logger.warn("Set VISION_TEST_APK_PATH environment variable to specify the APK location explicitly.")
+        logger.warn("Re-run install.sh to download APKs, or set VISION_TEST_APK_PATH environment variable.")
         return null
     }
 

@@ -74,15 +74,16 @@ Users install with `curl -fsSL https://github.com/docer1990/visiontest/releases/
 2. Validates Java 17+ with platform-specific install suggestions
 3. Fetches latest release tag from GitHub API, validates format (`v[0-9][0-9A-Za-z._-]*`) and rejects dangerous characters
 4. Downloads `visiontest.jar` + SHA-256 checksum, verifies integrity
-5. Installs JAR to `~/.local/share/visiontest/` (customizable via `VISIONTEST_DIR` env var, must be under `$HOME`)
-6. Creates wrapper script at `~/.local/bin/visiontest`, ensures PATH
-7. Does not modify Claude Desktop configuration; use `run-visiontest.sh` or manual setup for Claude integration.
+5. Downloads Android APKs (`automation-server.apk`, `automation-server-test.apk`) + checksums, verifies integrity
+6. Installs JAR and APKs to `~/.local/share/visiontest/` (customizable via `VISIONTEST_DIR` env var, must be under `$HOME`)
+7. Creates wrapper script at `~/.local/bin/visiontest`, ensures PATH
+8. Does not modify Claude Desktop configuration; use `run-visiontest.sh` or manual setup for Claude integration.
 
 **Security hardening:** `umask 077`, explicit `chmod` on all files/dirs, tag validation, checksum verification, install path restricted to `$HOME`.
 
 ### Release Workflow (`.github/workflows/release.yaml`)
 
-Triggered by git tags matching `v*`. The workflow runs the test suite, builds the fat JAR via `shadowJar`, generates a SHA-256 checksum, and creates a GitHub Release with the following assets: `visiontest.jar`, `visiontest.jar.sha256`, `install.sh`, `run-visiontest.sh`.
+Triggered by git tags matching `v*`. The workflow runs the test suite, builds the fat JAR via `shadowJar` and Android APKs, generates SHA-256 checksums, and creates a GitHub Release with the following assets: `visiontest.jar`, `visiontest.jar.sha256`, `automation-server.apk`, `automation-server.apk.sha256`, `automation-server-test.apk`, `automation-server-test.apk.sha256`, `install.sh`, `run-visiontest.sh`.
 
 All GitHub Actions in both workflows are pinned to commit SHAs for supply-chain security. When updating or adding actions, always use SHA-pinned references instead of floating version tags.
 
@@ -404,6 +405,7 @@ See `.claude/unit-testing-strategy.md` for the full testing roadmap (Plans 1-7).
 |----------|---------|-------------|
 | `VISION_TEST_LOG_LEVEL` | `PRODUCTION` | `PRODUCTION`, `DEVELOPMENT`, `DEBUG` |
 | `VISION_TEST_APK_PATH` | (auto-detected) | Explicit path to test APK |
+| `VISION_TEST_IOS_PROJECT_PATH` | (auto-detected) | Explicit path to iOS `.xcodeproj` |
 | `VISIONTEST_DIR` | `~/.local/share/visiontest` | Override install directory (must be under `$HOME`) |
 
 ### Default Timeouts (in `config/AppConfig.kt`)

@@ -247,4 +247,78 @@ class ToolFactoryPathTest {
         assertNotNull(result)
         assertTrue(result.endsWith("automation-server-debug-androidTest.apk"))
     }
+
+    // ==================== findAutomationServerApk — installDir ====================
+
+    @Test
+    fun `findAutomationServerApk finds APK in installDir`(@TempDir tempDir: File) {
+        val installDir = File(tempDir, "install").apply { mkdirs() }
+        File(installDir, "automation-server-test.apk").createNewFile()
+
+        val result = factory.findAutomationServerApk(
+            envApkPath = null,
+            searchRoots = emptyList(),
+            installDir = installDir
+        )
+
+        assertNotNull(result)
+        assertTrue(result.endsWith("automation-server-test.apk"))
+    }
+
+    @Test
+    fun `findAutomationServerApk prefers env var over installDir`(@TempDir tempDir: File) {
+        val envApk = File(tempDir, "env-apk.apk").apply { createNewFile() }
+        val installDir = File(tempDir, "install").apply { mkdirs() }
+        File(installDir, "automation-server-test.apk").createNewFile()
+
+        val result = factory.findAutomationServerApk(
+            envApkPath = envApk.absolutePath,
+            searchRoots = emptyList(),
+            installDir = installDir
+        )
+
+        assertNotNull(result)
+        assertEquals(envApk.absolutePath, result)
+    }
+
+    @Test
+    fun `findAutomationServerApk prefers search roots over installDir`(@TempDir tempDir: File) {
+        val searchRoot = File(tempDir, "project").apply { mkdirs() }
+        val gradleApk = createApkIn(searchRoot)
+        val installDir = File(tempDir, "install").apply { mkdirs() }
+        File(installDir, "automation-server-test.apk").createNewFile()
+
+        val result = factory.findAutomationServerApk(
+            envApkPath = null,
+            searchRoots = listOf(searchRoot),
+            installDir = installDir
+        )
+
+        assertNotNull(result)
+        assertEquals(gradleApk.absolutePath, result)
+    }
+
+    @Test
+    fun `findAutomationServerApk returns null when installDir has no APK`(@TempDir tempDir: File) {
+        val installDir = File(tempDir, "install").apply { mkdirs() }
+
+        val result = factory.findAutomationServerApk(
+            envApkPath = null,
+            searchRoots = emptyList(),
+            installDir = installDir
+        )
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `findAutomationServerApk returns null when installDir is null`() {
+        val result = factory.findAutomationServerApk(
+            envApkPath = null,
+            searchRoots = emptyList(),
+            installDir = null
+        )
+
+        assertNull(result)
+    }
 }

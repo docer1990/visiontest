@@ -155,64 +155,96 @@ fetch_latest_version() {
     ok "Latest version: $LATEST_TAG"
 }
 
-# ---------- download JAR ----------
+# ---------- download and verify helper ----------
 
-download_jar() {
-    DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/visiontest.jar"
+# Downloads a file and its SHA-256 checksum, verifies integrity, moves to dest.
+# Usage: download_and_verify <download_url> <checksum_url> <dest_path> <label>
+download_and_verify() {
+    DV_URL="$1"
+    DV_CHECKSUM_URL="$2"
+    DV_DEST="$3"
+    DV_LABEL="$4"
 
-    # Use resolved path for all filesystem operations to close TOCTOU gaps
-    mkdir -p "$RESOLVED_VISIONTEST_HOME"
-    chmod 700 "$RESOLVED_VISIONTEST_HOME"
-    info "Downloading visiontest.jar..."
-
-    CHECKSUM_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/visiontest.jar.sha256"
-
-    # Download to temporary files so the final path never holds unverified content
-    TEMP_JAR=$(mktemp "$RESOLVED_VISIONTEST_HOME/visiontest.jar.XXXXXX")
-    TEMP_SHA=$(mktemp "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256.XXXXXX")
-    # Clean up temp files on any failure
-    trap 'rm -f "$TEMP_JAR" "$TEMP_SHA"' EXIT
+    DV_TEMP_FILE=$(mktemp "$RESOLVED_VISIONTEST_HOME/${DV_LABEL}.XXXXXX")
+    DV_TEMP_SHA=$(mktemp "$RESOLVED_VISIONTEST_HOME/${DV_LABEL}.sha256.XXXXXX")
+    # Track temp files for cleanup
+    CLEANUP_FILES="$CLEANUP_FILES $DV_TEMP_FILE $DV_TEMP_SHA"
 
     if command -v curl >/dev/null 2>&1; then
-        curl -fSL --progress-bar -o "$TEMP_JAR" "$DOWNLOAD_URL"
-        curl -fsSL -o "$TEMP_SHA" "$CHECKSUM_URL"
+        curl -fSL --progress-bar -o "$DV_TEMP_FILE" "$DV_URL"
+        curl -fsSL -o "$DV_TEMP_SHA" "$DV_CHECKSUM_URL"
     else
-        wget -q --show-progress -O "$TEMP_JAR" "$DOWNLOAD_URL"
-        wget -q -O "$TEMP_SHA" "$CHECKSUM_URL"
+        wget -q --show-progress -O "$DV_TEMP_FILE" "$DV_URL"
+        wget -q -O "$DV_TEMP_SHA" "$DV_CHECKSUM_URL"
     fi
 
-    # Verify checksum before moving to final location
-    info "Verifying checksum..."
-    EXPECTED_SHA=$(cut -d ' ' -f 1 "$TEMP_SHA")
+    info "Verifying $DV_LABEL checksum..."
+    DV_EXPECTED=$(cut -d ' ' -f 1 "$DV_TEMP_SHA")
     if command -v sha256sum >/dev/null 2>&1; then
-        ACTUAL_SHA=$(sha256sum "$TEMP_JAR" | cut -d ' ' -f 1)
+        DV_ACTUAL=$(sha256sum "$DV_TEMP_FILE" | cut -d ' ' -f 1)
     elif command -v shasum >/dev/null 2>&1; then
-        ACTUAL_SHA=$(shasum -a 256 "$TEMP_JAR" | cut -d ' ' -f 1)
+        DV_ACTUAL=$(shasum -a 256 "$DV_TEMP_FILE" | cut -d ' ' -f 1)
     else
         error "Cannot verify checksum: neither 'sha256sum' nor 'shasum' is available."
         error "Please install one of these tools and rerun the installer."
         exit 1
     fi
 
-    if [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
-        error "Checksum verification failed!"
-        error "  Expected: $EXPECTED_SHA"
-        error "  Got:      $ACTUAL_SHA"
+    if [ "$DV_ACTUAL" != "$DV_EXPECTED" ]; then
+        error "Checksum verification failed for $DV_LABEL!"
+        error "  Expected: $DV_EXPECTED"
+        error "  Got:      $DV_ACTUAL"
         error "The download may be incomplete (e.g. network interruption). Please retry."
         exit 1
     fi
-    ok "Checksum verified"
+    ok "$DV_LABEL checksum verified"
 
-    # Checksum passed — move verified files to final location
-    chmod 600 "$TEMP_JAR"
-    mv -f "$TEMP_JAR" "$RESOLVED_VISIONTEST_HOME/visiontest.jar"
-    mv -f "$TEMP_SHA" "$RESOLVED_VISIONTEST_HOME/visiontest.jar.sha256"
-    # Disarm the trap since temp files are now moved
-    trap - EXIT
+    chmod 600 "$DV_TEMP_FILE"
+    mv -f "$DV_TEMP_FILE" "$DV_DEST"
+    mv -f "$DV_TEMP_SHA" "${DV_DEST}.sha256"
+}
+
+# ---------- download JAR ----------
+
+download_jar() {
+    # Use resolved path for all filesystem operations to close TOCTOU gaps
+    mkdir -p "$RESOLVED_VISIONTEST_HOME"
+    chmod 700 "$RESOLVED_VISIONTEST_HOME"
+
+    # Initialize cleanup tracking
+    CLEANUP_FILES=""
+    trap 'rm -f $CLEANUP_FILES' EXIT
+
+    info "Downloading visiontest.jar..."
+    download_and_verify \
+        "https://github.com/$REPO/releases/download/$LATEST_TAG/visiontest.jar" \
+        "https://github.com/$REPO/releases/download/$LATEST_TAG/visiontest.jar.sha256" \
+        "$RESOLVED_VISIONTEST_HOME/visiontest.jar" \
+        "visiontest.jar"
 
     printf '%s\n' "$LATEST_TAG" > "$RESOLVED_VISIONTEST_HOME/version.txt"
     chmod 600 "$RESOLVED_VISIONTEST_HOME/version.txt"
     ok "Installed to $RESOLVED_VISIONTEST_HOME/visiontest.jar"
+}
+
+# ---------- download APKs ----------
+
+download_apks() {
+    info "Downloading Android automation APKs..."
+
+    download_and_verify \
+        "https://github.com/$REPO/releases/download/$LATEST_TAG/automation-server.apk" \
+        "https://github.com/$REPO/releases/download/$LATEST_TAG/automation-server.apk.sha256" \
+        "$RESOLVED_VISIONTEST_HOME/automation-server.apk" \
+        "automation-server.apk"
+
+    download_and_verify \
+        "https://github.com/$REPO/releases/download/$LATEST_TAG/automation-server-test.apk" \
+        "https://github.com/$REPO/releases/download/$LATEST_TAG/automation-server-test.apk.sha256" \
+        "$RESOLVED_VISIONTEST_HOME/automation-server-test.apk" \
+        "automation-server-test.apk"
+
+    ok "APKs installed to $RESOLVED_VISIONTEST_HOME/"
 }
 
 # ---------- create wrapper script ----------
@@ -279,11 +311,19 @@ main() {
     check_java
     fetch_latest_version
     download_jar
+    download_apks
+    # Disarm the cleanup trap since all downloads succeeded
+    trap - EXIT
     create_wrapper
     ensure_path
 
     echo ""
     ok "VisionTest $LATEST_TAG installed successfully!"
+    echo ""
+    echo "  Installed:"
+    echo "    JAR:  $RESOLVED_VISIONTEST_HOME/visiontest.jar"
+    echo "    APKs: $RESOLVED_VISIONTEST_HOME/automation-server.apk"
+    echo "          $RESOLVED_VISIONTEST_HOME/automation-server-test.apk"
     echo ""
     echo "  Run the MCP server:"
     echo "    visiontest"

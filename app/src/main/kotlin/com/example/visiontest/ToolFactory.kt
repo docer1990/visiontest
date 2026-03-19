@@ -1691,7 +1691,8 @@ class ToolFactory(
         val codeSourceRoot = findCodeSourceRoot()
         val jarDir = findJarDirectory()
         val installDirPath = System.getenv("VISIONTEST_DIR")
-            ?.takeIf { it.isNotBlank() }
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
             ?: jarDir?.absolutePath
             ?: "${System.getProperty("user.home")}/.local/share/visiontest"
         return findAutomationServerApk(

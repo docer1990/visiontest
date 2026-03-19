@@ -412,7 +412,9 @@ class ToolFactory(
                         .replace("androidTest/", "")
                         .replace("-androidTest", "")
                     val mainApkFile = File(mainApkPath)
-                    val resolvedMainApk = if (mainApkFile.exists()) {
+                    val isSamePath = mainApkPath == apkPath
+                    val isKnownTestName = apkPath.endsWith("automation-server-test.apk")
+                    val resolvedMainApk = if (mainApkFile.exists() && !isSamePath && !isKnownTestName) {
                         mainApkPath
                     } else {
                         // Fallback: check for simple-named APK in the same directory (install dir)
@@ -1648,22 +1650,30 @@ class ToolFactory(
         }
     }
 
+    private fun isValidXcodeProjectPath(file: File): Boolean {
+        return file.exists() && file.isDirectory && file.name.endsWith(".xcodeproj")
+    }
+
     private fun findXcodeProject(): String? {
         // 0. Check environment variable first (allows explicit override)
         System.getenv(IOSAutomationConfig.XCODE_PROJECT_PATH_ENV)?.let { envPath ->
             val envFile = File(envPath)
-            if (envFile.exists()) {
+            if (isValidXcodeProjectPath(envFile)) {
                 logger.info("Using Xcode project from ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV}: $envPath")
                 return envFile.absolutePath
             }
-            logger.warn("${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} set but path not found: $envPath")
+            if (envFile.exists()) {
+                logger.warn("${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} path is not a valid .xcodeproj directory: $envPath")
+            } else {
+                logger.warn("${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} set but path not found: $envPath")
+            }
         }
 
         val relativePath = IOSAutomationConfig.XCODE_PROJECT_PATH
 
         // 1. Try relative to current working directory
         val cwdFile = File(relativePath)
-        if (cwdFile.exists()) {
+        if (isValidXcodeProjectPath(cwdFile)) {
             return cwdFile.absolutePath
         }
 
@@ -1671,7 +1681,7 @@ class ToolFactory(
         val projectRoot = findProjectRoot(File(".").absoluteFile)
         if (projectRoot != null) {
             val projectFile = File(projectRoot, relativePath)
-            if (projectFile.exists()) {
+            if (isValidXcodeProjectPath(projectFile)) {
                 return projectFile.absolutePath
             }
         }
@@ -1680,7 +1690,7 @@ class ToolFactory(
         val codeSourceRoot = findCodeSourceRoot()
         if (codeSourceRoot != null) {
             val codeSourceFile = File(codeSourceRoot, relativePath)
-            if (codeSourceFile.exists()) {
+            if (isValidXcodeProjectPath(codeSourceFile)) {
                 return codeSourceFile.absolutePath
             }
         }
@@ -1694,6 +1704,7 @@ class ToolFactory(
         val cwd = File(".").absoluteFile
         val codeSourceRoot = findCodeSourceRoot()
         val installDirPath = System.getenv("VISIONTEST_DIR")
+            ?.takeIf { it.isNotBlank() }
             ?: "${System.getProperty("user.home")}/.local/share/visiontest"
         return findAutomationServerApk(
             envApkPath = System.getenv("VISION_TEST_APK_PATH"),

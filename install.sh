@@ -13,7 +13,11 @@ BIN_DIR="$HOME/.local/bin"
 
 # ---------- validate install dir ----------
 
-VISIONTEST_HOME="${VISIONTEST_DIR:-$HOME/.local/share/visiontest}"
+# Treat blank/whitespace-only VISIONTEST_DIR as unset
+_VISIONTEST_DIR="${VISIONTEST_DIR:-}"
+_VISIONTEST_DIR="${_VISIONTEST_DIR#"${_VISIONTEST_DIR%%[![:space:]]*}"}"
+VISIONTEST_HOME="${_VISIONTEST_DIR:-$HOME/.local/share/visiontest}"
+unset _VISIONTEST_DIR
 
 # Resolve physical path to avoid symlink escapes out of $HOME
 # python3 is the most portable; realpath (without -m) works on both GNU and BSD;
@@ -160,15 +164,16 @@ fetch_latest_version() {
 # Downloads a file and its SHA-256 checksum, verifies integrity, moves to dest.
 # Usage: download_and_verify <download_url> <checksum_url> <dest_path> <label>
 download_and_verify() {
-    DV_URL="$1"
-    DV_CHECKSUM_URL="$2"
-    DV_DEST="$3"
-    DV_LABEL="$4"
+    local DV_URL="$1"
+    local DV_CHECKSUM_URL="$2"
+    local DV_DEST="$3"
+    local DV_LABEL="$4"
 
+    local DV_TEMP_FILE DV_TEMP_SHA
     DV_TEMP_FILE=$(mktemp "$RESOLVED_VISIONTEST_HOME/${DV_LABEL}.XXXXXX")
     DV_TEMP_SHA=$(mktemp "$RESOLVED_VISIONTEST_HOME/${DV_LABEL}.sha256.XXXXXX")
     # Track temp files for cleanup
-    CLEANUP_FILES="$CLEANUP_FILES $DV_TEMP_FILE $DV_TEMP_SHA"
+    CLEANUP_FILES+=("$DV_TEMP_FILE" "$DV_TEMP_SHA")
 
     if command -v curl >/dev/null 2>&1; then
         curl -fSL --progress-bar -o "$DV_TEMP_FILE" "$DV_URL"
@@ -179,6 +184,7 @@ download_and_verify() {
     fi
 
     info "Verifying $DV_LABEL checksum..."
+    local DV_EXPECTED DV_ACTUAL
     DV_EXPECTED=$(cut -d ' ' -f 1 "$DV_TEMP_SHA")
     if command -v sha256sum >/dev/null 2>&1; then
         DV_ACTUAL=$(sha256sum "$DV_TEMP_FILE" | cut -d ' ' -f 1)
@@ -212,8 +218,8 @@ download_jar() {
     chmod 700 "$RESOLVED_VISIONTEST_HOME"
 
     # Initialize cleanup tracking
-    CLEANUP_FILES=""
-    trap 'rm -f $CLEANUP_FILES' EXIT
+    CLEANUP_FILES=()
+    trap 'if [ "${#CLEANUP_FILES[@]}" -gt 0 ]; then rm -f -- "${CLEANUP_FILES[@]}"; fi' EXIT
 
     info "Downloading visiontest.jar..."
     download_and_verify \

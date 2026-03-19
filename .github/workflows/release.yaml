@@ -145,11 +145,16 @@ jobs:
           cp automation-server/build/outputs/apk/debug/automation-server-debug.apk "$STAGING/automation-server.apk"
           cp automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk "$STAGING/automation-server-test.apk"
 
-          # Generate checksums
+          # Generate checksums (sha256sum on Linux, shasum on macOS)
           cd "$STAGING"
-          sha256sum visiontest.jar > visiontest.jar.sha256
-          sha256sum automation-server.apk > automation-server.apk.sha256
-          sha256sum automation-server-test.apk > automation-server-test.apk.sha256
+          if command -v sha256sum >/dev/null 2>&1; then
+            HASH_CMD="sha256sum"
+          else
+            HASH_CMD="shasum -a 256"
+          fi
+          $HASH_CMD visiontest.jar > visiontest.jar.sha256
+          $HASH_CMD automation-server.apk > automation-server.apk.sha256
+          $HASH_CMD automation-server-test.apk > automation-server-test.apk.sha256
 
           # Verify all files exist
           for f in visiontest.jar visiontest.jar.sha256 \

@@ -13,6 +13,8 @@ APK_PATH="$SCRIPT_DIR/automation-server/build/outputs/apk/androidTest/debug/auto
 if [ -f "$REPO_JAR" ]; then
     JAR_PATH="$REPO_JAR"
 elif [ -f "$INSTALLED_JAR" ]; then
+    # When running from installed JAR, APKs in the install dir are discovered
+    # automatically by the MCP server (no VISION_TEST_APK_PATH needed).
     JAR_PATH="$INSTALLED_JAR"
 else
     echo "Error: visiontest.jar not found." >&2

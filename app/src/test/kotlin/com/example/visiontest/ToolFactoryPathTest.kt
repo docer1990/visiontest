@@ -247,4 +247,133 @@ class ToolFactoryPathTest {
         assertNotNull(result)
         assertTrue(result.endsWith("automation-server-debug-androidTest.apk"))
     }
+
+    // ==================== findAutomationServerApk — installDir ====================
+
+    @Test
+    fun `findAutomationServerApk finds APK in installDir`(@TempDir tempDir: File) {
+        val installDir = File(tempDir, "install").apply { mkdirs() }
+        File(installDir, "automation-server-test.apk").createNewFile()
+
+        val result = factory.findAutomationServerApk(
+            envApkPath = null,
+            searchRoots = emptyList(),
+            installDir = installDir
+        )
+
+        assertNotNull(result)
+        assertTrue(result.endsWith("automation-server-test.apk"))
+    }
+
+    @Test
+    fun `findAutomationServerApk prefers env var over installDir`(@TempDir tempDir: File) {
+        val envApk = File(tempDir, "env-apk.apk").apply { createNewFile() }
+        val installDir = File(tempDir, "install").apply { mkdirs() }
+        File(installDir, "automation-server-test.apk").createNewFile()
+
+        val result = factory.findAutomationServerApk(
+            envApkPath = envApk.absolutePath,
+            searchRoots = emptyList(),
+            installDir = installDir
+        )
+
+        assertNotNull(result)
+        assertEquals(envApk.absolutePath, result)
+    }
+
+    @Test
+    fun `findAutomationServerApk prefers search roots over installDir`(@TempDir tempDir: File) {
+        val searchRoot = File(tempDir, "project").apply { mkdirs() }
+        val gradleApk = createApkIn(searchRoot)
+        val installDir = File(tempDir, "install").apply { mkdirs() }
+        File(installDir, "automation-server-test.apk").createNewFile()
+
+        val result = factory.findAutomationServerApk(
+            envApkPath = null,
+            searchRoots = listOf(searchRoot),
+            installDir = installDir
+        )
+
+        assertNotNull(result)
+        assertEquals(gradleApk.absolutePath, result)
+    }
+
+    @Test
+    fun `findAutomationServerApk returns null when installDir has no APK`(@TempDir tempDir: File) {
+        val installDir = File(tempDir, "install").apply { mkdirs() }
+
+        val result = factory.findAutomationServerApk(
+            envApkPath = null,
+            searchRoots = emptyList(),
+            installDir = installDir
+        )
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `findAutomationServerApk returns null when installDir is null`() {
+        val result = factory.findAutomationServerApk(
+            envApkPath = null,
+            searchRoots = emptyList(),
+            installDir = null
+        )
+
+        assertNull(result)
+    }
+
+    // ==================== resolveMainApkPath ====================
+
+    @Test
+    fun `resolveMainApkPath derives main APK from Gradle androidTest path`(@TempDir tempDir: File) {
+        // Simulate Gradle build output structure
+        val testApkDir = File(tempDir, "apk/androidTest/debug").apply { mkdirs() }
+        val mainApkDir = File(tempDir, "apk/debug").apply { mkdirs() }
+        val testApk = File(testApkDir, "automation-server-debug-androidTest.apk").apply { createNewFile() }
+        val mainApk = File(mainApkDir, "automation-server-debug.apk").apply { createNewFile() }
+
+        val result = factory.resolveMainApkPath(testApk.absolutePath)
+
+        assertNotNull(result)
+        assertEquals(mainApk.absolutePath, result)
+    }
+
+    @Test
+    fun `resolveMainApkPath resolves sibling main APK for install-dir test APK`(@TempDir tempDir: File) {
+        val testApk = File(tempDir, "automation-server-test.apk").apply { createNewFile() }
+        val mainApk = File(tempDir, "automation-server.apk").apply { createNewFile() }
+
+        val result = factory.resolveMainApkPath(testApk.absolutePath)
+
+        assertNotNull(result)
+        assertEquals(mainApk.absolutePath, result)
+    }
+
+    @Test
+    fun `resolveMainApkPath returns null when no main APK exists`(@TempDir tempDir: File) {
+        val testApk = File(tempDir, "automation-server-test.apk").apply { createNewFile() }
+
+        val result = factory.resolveMainApkPath(testApk.absolutePath)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `resolveMainApkPath does not return test APK as main APK when replacements are no-ops`(@TempDir tempDir: File) {
+        // automation-server-test.apk has no "androidTest/" or "-androidTest" to strip,
+        // so the derived path equals the input — should NOT treat test APK as main APK
+        val testApk = File(tempDir, "automation-server-test.apk").apply { createNewFile() }
+
+        val result = factory.resolveMainApkPath(testApk.absolutePath)
+
+        // Without a sibling automation-server.apk, result should be null
+        assertNull(result)
+    }
+
+    @Test
+    fun `resolveMainApkPath returns null for bare filename with no parent directory`() {
+        val result = factory.resolveMainApkPath("test.apk")
+
+        assertNull(result)
+    }
 }

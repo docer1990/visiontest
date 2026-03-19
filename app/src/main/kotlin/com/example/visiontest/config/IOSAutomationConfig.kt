@@ -38,6 +38,11 @@ object IOSAutomationConfig {
     const val XCODE_PROJECT_PATH = "ios-automation-server/IOSAutomationServer.xcodeproj"
 
     /**
+     * Environment variable to override the Xcode project path.
+     */
+    const val XCODE_PROJECT_PATH_ENV = "VISION_TEST_IOS_PROJECT_PATH"
+
+    /**
      * UI Test target name in the Xcode project.
      */
     const val UI_TEST_TARGET = "IOSAutomationServerUITests"

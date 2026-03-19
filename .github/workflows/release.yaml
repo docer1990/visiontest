@@ -115,30 +115,67 @@ jobs:
           java-version: 17
           cache: gradle
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Build fat JAR
         run: ./gradlew shadowJar --no-daemon
 
+      - name: Build Android APKs
+        run: ./gradlew :automation-server:assembleDebug :automation-server:assembleDebugAndroidTest --no-daemon
+
       - name: Verify JAR exists
         run: ls -lh app/build/libs/visiontest.jar
 
-      - name: Generate checksums
+      - name: Stage APKs and generate checksums
         run: |
-          cd app/build/libs
-          sha256sum visiontest.jar > visiontest.jar.sha256
-          if [ ! -f visiontest.jar.sha256 ]; then
-            echo "Error: Checksum file not created"
-            exit 1
+          STAGING="release-staging"
+          mkdir -p "$STAGING"
+
+          # Copy JAR
+          cp app/build/libs/visiontest.jar "$STAGING/"
+
+          # Copy APKs with simple names
+          cp automation-server/build/outputs/apk/debug/automation-server-debug.apk "$STAGING/automation-server.apk"
+          cp automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk "$STAGING/automation-server-test.apk"
+
+          # Generate checksums (sha256sum on Linux, shasum on macOS)
+          cd "$STAGING"
+          if command -v sha256sum >/dev/null 2>&1; then
+            HASH_CMD="sha256sum"
+          else
+            HASH_CMD="shasum -a 256"
           fi
+          $HASH_CMD visiontest.jar > visiontest.jar.sha256
+          $HASH_CMD automation-server.apk > automation-server.apk.sha256
+          $HASH_CMD automation-server-test.apk > automation-server-test.apk.sha256
+
+          # Verify all files exist
+          for f in visiontest.jar visiontest.jar.sha256 \
+                   automation-server.apk automation-server.apk.sha256 \
+                   automation-server-test.apk automation-server-test.apk.sha256; do
+            if [ ! -f "$f" ]; then
+              echo "Error: $f not created"
+              exit 1
+            fi
+          done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           generate_release_notes: true
           files: |
-            app/build/libs/visiontest.jar
-            app/build/libs/visiontest.jar.sha256
+            release-staging/visiontest.jar
+            release-staging/visiontest.jar.sha256
+            release-staging/automation-server.apk
+            release-staging/automation-server.apk.sha256
+            release-staging/automation-server-test.apk
+            release-staging/automation-server-test.apk.sha256
             install.sh
             run-visiontest.sh

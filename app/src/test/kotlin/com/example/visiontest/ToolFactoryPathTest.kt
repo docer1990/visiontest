@@ -321,4 +321,59 @@ class ToolFactoryPathTest {
 
         assertNull(result)
     }
+
+    // ==================== resolveMainApkPath ====================
+
+    @Test
+    fun `resolveMainApkPath derives main APK from Gradle androidTest path`(@TempDir tempDir: File) {
+        // Simulate Gradle build output structure
+        val testApkDir = File(tempDir, "apk/androidTest/debug").apply { mkdirs() }
+        val mainApkDir = File(tempDir, "apk/debug").apply { mkdirs() }
+        val testApk = File(testApkDir, "automation-server-debug-androidTest.apk").apply { createNewFile() }
+        val mainApk = File(mainApkDir, "automation-server-debug.apk").apply { createNewFile() }
+
+        val result = factory.resolveMainApkPath(testApk.absolutePath)
+
+        assertNotNull(result)
+        assertEquals(mainApk.absolutePath, result)
+    }
+
+    @Test
+    fun `resolveMainApkPath resolves sibling main APK for install-dir test APK`(@TempDir tempDir: File) {
+        val testApk = File(tempDir, "automation-server-test.apk").apply { createNewFile() }
+        val mainApk = File(tempDir, "automation-server.apk").apply { createNewFile() }
+
+        val result = factory.resolveMainApkPath(testApk.absolutePath)
+
+        assertNotNull(result)
+        assertEquals(mainApk.absolutePath, result)
+    }
+
+    @Test
+    fun `resolveMainApkPath returns null when no main APK exists`(@TempDir tempDir: File) {
+        val testApk = File(tempDir, "automation-server-test.apk").apply { createNewFile() }
+
+        val result = factory.resolveMainApkPath(testApk.absolutePath)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `resolveMainApkPath does not return test APK as main APK when replacements are no-ops`(@TempDir tempDir: File) {
+        // automation-server-test.apk has no "androidTest/" or "-androidTest" to strip,
+        // so the derived path equals the input — should NOT treat test APK as main APK
+        val testApk = File(tempDir, "automation-server-test.apk").apply { createNewFile() }
+
+        val result = factory.resolveMainApkPath(testApk.absolutePath)
+
+        // Without a sibling automation-server.apk, result should be null
+        assertNull(result)
+    }
+
+    @Test
+    fun `resolveMainApkPath returns null for bare filename with no parent directory`() {
+        val result = factory.resolveMainApkPath("test.apk")
+
+        assertNull(result)
+    }
 }

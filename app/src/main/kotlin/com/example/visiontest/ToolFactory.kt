@@ -406,26 +406,12 @@ class ToolFactory(
                         ?: return@runWithTimeout "Android device configuration not available"
 
                     // Install main APK
-                    // Test APK: .../apk/androidTest/debug/automation-server-debug-androidTest.apk
-                    // Main APK: .../apk/debug/automation-server-debug.apk
-                    val mainApkPath = apkPath
-                        .replace("androidTest/", "")
-                        .replace("-androidTest", "")
-                    val mainApkFile = File(mainApkPath)
-                    val isSamePath = mainApkPath == apkPath
-                    val isKnownTestName = apkPath.endsWith("automation-server-test.apk")
-                    val resolvedMainApk = if (mainApkFile.exists() && !isSamePath && !isKnownTestName) {
-                        mainApkPath
-                    } else {
-                        // Fallback: check for simple-named APK in the same directory (install dir)
-                        val siblingApk = File(File(apkPath).parentFile, "automation-server.apk")
-                        if (siblingApk.exists()) siblingApk.absolutePath else null
-                    }
+                    val resolvedMainApk = resolveMainApkPath(apkPath)
                     if (resolvedMainApk != null) {
                         androidDevice.executeAdb("install", "-r", resolvedMainApk)
                         logger.info("Installed main APK: $resolvedMainApk")
                     } else {
-                        return@runWithTimeout "Main APK not found at: $mainApkPath. Re-run install.sh or set VISION_TEST_APK_PATH."
+                        return@runWithTimeout "Main APK not found alongside test APK: $apkPath. Re-run install.sh or set VISION_TEST_APK_PATH."
                     }
 
                     // Install test APK
@@ -1703,14 +1689,58 @@ class ToolFactory(
     internal fun findAutomationServerApk(): String? {
         val cwd = File(".").absoluteFile
         val codeSourceRoot = findCodeSourceRoot()
+        val jarDir = findJarDirectory()
         val installDirPath = System.getenv("VISIONTEST_DIR")
             ?.takeIf { it.isNotBlank() }
+            ?: jarDir?.absolutePath
             ?: "${System.getProperty("user.home")}/.local/share/visiontest"
         return findAutomationServerApk(
             envApkPath = System.getenv("VISION_TEST_APK_PATH"),
             searchRoots = listOfNotNull(cwd, codeSourceRoot, findProjectRoot(cwd)),
             installDir = File(installDirPath)
         )
+    }
+
+    /**
+     * Given the path to a test APK, resolves the corresponding main APK path.
+     *
+     * For Gradle build output (androidTest path), derives the main APK by stripping "androidTest/" and "-androidTest".
+     * For install-dir APKs (e.g. automation-server-test.apk), looks for a sibling automation-server.apk.
+     * Returns null if no main APK can be found.
+     */
+    internal fun resolveMainApkPath(testApkPath: String): String? {
+        // Derive main APK path from Gradle androidTest layout
+        val derivedPath = testApkPath
+            .replaceFirst("androidTest/", "")
+            .replaceFirst("-androidTest", "")
+        val derivedFile = File(derivedPath)
+        val isSamePath = derivedPath == testApkPath
+        val isKnownTestName = testApkPath.endsWith("automation-server-test.apk")
+
+        if (derivedFile.exists() && !isSamePath && !isKnownTestName) {
+            return derivedPath
+        }
+
+        // Fallback: check for simple-named APK in the same directory (install dir)
+        val parent = File(testApkPath).parentFile ?: return null
+        val siblingApk = File(parent, "automation-server.apk")
+        return if (siblingApk.exists()) siblingApk.absolutePath else null
+    }
+
+    /**
+     * Returns the directory containing the running JAR, or null if not running from a JAR.
+     * Used to discover APKs co-located with the JAR in custom install directories.
+     */
+    private fun findJarDirectory(): File? {
+        return try {
+            val location = this::class.java.protectionDomain?.codeSource?.location?.toURI()?.let { File(it) }
+            if (location != null && location.isFile && location.name.endsWith(".jar")) {
+                location.parentFile
+            } else null
+        } catch (e: Exception) {
+            logger.debug("Could not determine JAR directory: ${e.message}")
+            null
+        }
     }
 
     internal fun findAutomationServerApk(

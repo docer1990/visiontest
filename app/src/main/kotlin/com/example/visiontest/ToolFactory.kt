@@ -411,7 +411,7 @@ class ToolFactory(
                         androidDevice.executeAdb("install", "-r", resolvedMainApk)
                         logger.info("Installed main APK: $resolvedMainApk")
                     } else {
-                        return@runWithTimeout "Main APK not found alongside test APK: $apkPath. Re-run install.sh or set VISION_TEST_APK_PATH."
+                        return@runWithTimeout "Main APK not found at the expected path derived from test APK: $apkPath. Ensure the main automation-server APK is built/installed (e.g., via :automation-server:assembleDebug), or re-run install.sh or set VISION_TEST_APK_PATH."
                     }
 
                     // Install test APK

@@ -15,7 +15,10 @@ BIN_DIR="$HOME/.local/bin"
 
 # Treat blank/whitespace-only VISIONTEST_DIR as unset
 _VISIONTEST_DIR="${VISIONTEST_DIR:-}"
+# Trim leading whitespace
 _VISIONTEST_DIR="${_VISIONTEST_DIR#"${_VISIONTEST_DIR%%[![:space:]]*}"}"
+# Trim trailing whitespace
+_VISIONTEST_DIR="${_VISIONTEST_DIR%"${_VISIONTEST_DIR##*[![:space:]]}"}"
 VISIONTEST_HOME="${_VISIONTEST_DIR:-$HOME/.local/share/visiontest}"
 unset _VISIONTEST_DIR
 

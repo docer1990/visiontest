@@ -279,12 +279,22 @@ download_ios_bundle() {
         "ios-automation-server.tar.gz"
 
     # Extract preserving directory structure for xcodebuild test-without-building
+    # Remove previous bundle to avoid stale .xctestrun files from older SDK versions
+    rm -rf "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
     mkdir -p "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
     chmod 700 "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
-    tar -xzf "$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz" \
+
+    # Validate archive entries: reject absolute paths, parent traversal, and symlinks
+    IOS_ARCHIVE="$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz"
+    if tar -tzf "$IOS_ARCHIVE" | grep -qE '(^/|\.\./)'; then
+        error "iOS bundle archive contains unsafe paths (absolute or parent traversal)"
+        rm -f "$IOS_ARCHIVE"
+        exit 1
+    fi
+    tar -xzf "$IOS_ARCHIVE" --no-same-owner \
         -C "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
-    rm -f "$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz"
-    rm -f "$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz.sha256"
+    rm -f "$IOS_ARCHIVE"
+    rm -f "${IOS_ARCHIVE}.sha256"
 
     ok "iOS bundle installed to $RESOLVED_VISIONTEST_HOME/ios-automation-server/"
 }

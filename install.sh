@@ -256,6 +256,39 @@ download_apks() {
     ok "APKs installed to $RESOLVED_VISIONTEST_HOME/"
 }
 
+# ---------- download iOS bundle (macOS arm64 only) ----------
+
+download_ios_bundle() {
+    if [ "$PLATFORM" != "macOS" ]; then
+        info "Skipping iOS automation bundle (macOS only)"
+        return
+    fi
+
+    if [ "$ARCH" != "arm64" ]; then
+        info "Skipping iOS automation bundle (pre-built bundle is arm64 only)"
+        info "For iOS automation on Intel Mac, build from source: clone the repo and use Xcode"
+        return
+    fi
+
+    info "Downloading iOS automation bundle..."
+
+    download_and_verify \
+        "https://github.com/$REPO/releases/download/$LATEST_TAG/ios-automation-server.tar.gz" \
+        "https://github.com/$REPO/releases/download/$LATEST_TAG/ios-automation-server.tar.gz.sha256" \
+        "$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz" \
+        "ios-automation-server.tar.gz"
+
+    # Extract preserving directory structure for xcodebuild test-without-building
+    mkdir -p "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
+    chmod 700 "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
+    tar -xzf "$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz" \
+        -C "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
+    rm -f "$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz"
+    rm -f "$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz.sha256"
+
+    ok "iOS bundle installed to $RESOLVED_VISIONTEST_HOME/ios-automation-server/"
+}
+
 # ---------- create wrapper script ----------
 
 create_wrapper() {
@@ -321,6 +354,7 @@ main() {
     fetch_latest_version
     download_jar
     download_apks
+    download_ios_bundle
     # Disarm the cleanup trap since all downloads succeeded
     trap - EXIT
     create_wrapper
@@ -333,6 +367,13 @@ main() {
     echo "    JAR:  $RESOLVED_VISIONTEST_HOME/visiontest.jar"
     echo "    APKs: $RESOLVED_VISIONTEST_HOME/automation-server.apk"
     echo "          $RESOLVED_VISIONTEST_HOME/automation-server-test.apk"
+    if [ "$PLATFORM" = "macOS" ] && [ "$ARCH" = "arm64" ]; then
+        echo "    iOS:  $RESOLVED_VISIONTEST_HOME/ios-automation-server/"
+    elif [ "$PLATFORM" = "macOS" ]; then
+        echo "    iOS:  (not installed — pre-built bundle is arm64 only; build from source)"
+    else
+        echo "    iOS:  (not installed — macOS only)"
+    fi
     echo ""
     echo "  Run the MCP server:"
     echo "    visiontest"

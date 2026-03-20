@@ -376,4 +376,102 @@ class ToolFactoryPathTest {
 
         assertNull(result)
     }
+
+    // ==================== findXctestrun ====================
+
+    @Test
+    fun `findXctestrun finds xctestrun file in install directory`(@TempDir tempDir: File) {
+        val bundleDir = File(tempDir, "ios-automation-server").apply { mkdirs() }
+        File(bundleDir, "IOSAutomationServer_iphonesimulator18.0-arm64.xctestrun").createNewFile()
+
+        val result = factory.findXctestrun(tempDir)
+
+        assertNotNull(result)
+        assertTrue(result.endsWith(".xctestrun"))
+    }
+
+    @Test
+    fun `findXctestrun returns null when install directory has no xctestrun`(@TempDir tempDir: File) {
+        File(tempDir, "ios-automation-server").mkdirs()
+
+        val result = factory.findXctestrun(tempDir)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `findXctestrun returns null when install directory does not exist`(@TempDir tempDir: File) {
+        val nonExistent = File(tempDir, "nonexistent")
+
+        val result = factory.findXctestrun(nonExistent)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `findXctestrun selects first file alphabetically when multiple xctestrun files exist`(@TempDir tempDir: File) {
+        val bundleDir = File(tempDir, "ios-automation-server").apply { mkdirs() }
+        File(bundleDir, "B_iphonesimulator18.0.xctestrun").createNewFile()
+        File(bundleDir, "A_iphonesimulator17.0.xctestrun").createNewFile()
+
+        val result = factory.findXctestrun(tempDir)
+
+        assertNotNull(result)
+        assertTrue(result.contains("A_iphonesimulator17.0.xctestrun"))
+    }
+
+    @Test
+    fun `findXctestrun returns absolute path`(@TempDir tempDir: File) {
+        val bundleDir = File(tempDir, "ios-automation-server").apply { mkdirs() }
+        File(bundleDir, "Test.xctestrun").createNewFile()
+
+        val result = factory.findXctestrun(tempDir)
+
+        assertNotNull(result)
+        assertTrue(File(result).isAbsolute)
+    }
+
+    @Test
+    fun `findXctestrun ignores non-xctestrun files`(@TempDir tempDir: File) {
+        val bundleDir = File(tempDir, "ios-automation-server").apply { mkdirs() }
+        File(bundleDir, "IOSAutomationServer.app").mkdirs()
+        File(bundleDir, "readme.txt").createNewFile()
+
+        val result = factory.findXctestrun(tempDir)
+
+        assertNull(result)
+    }
+
+    // ==================== buildXcodebuildCommand ====================
+
+    @Test
+    fun `buildXcodebuildCommand produces test-without-building for pre-built path`() {
+        val command = factory.buildXcodebuildCommand(
+            xctestrunPath = "/path/to/Test.xctestrun",
+            projectPath = null,
+            simulatorName = "iPhone 16"
+        )
+
+        assertEquals("xcodebuild", command[0])
+        assertEquals("test-without-building", command[1])
+        assertTrue(command.contains("-xctestrun"))
+        assertTrue(command.contains("/path/to/Test.xctestrun"))
+        assertTrue(command.contains("platform=iOS Simulator,name=iPhone 16"))
+    }
+
+    @Test
+    fun `buildXcodebuildCommand produces test for source path`() {
+        val command = factory.buildXcodebuildCommand(
+            xctestrunPath = null,
+            projectPath = "/path/to/Project.xcodeproj",
+            simulatorName = "iPhone 16"
+        )
+
+        assertEquals("xcodebuild", command[0])
+        assertEquals("test", command[1])
+        assertTrue(command.contains("-project"))
+        assertTrue(command.contains("/path/to/Project.xcodeproj"))
+        assertTrue(command.contains("-scheme"))
+        assertTrue(command.contains("platform=iOS Simulator,name=iPhone 16"))
+    }
 }

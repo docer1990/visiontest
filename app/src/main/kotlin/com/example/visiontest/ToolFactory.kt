@@ -1165,6 +1165,8 @@ class ToolFactory(
 
             val process = iosXcodebuildProcess
             if (process != null && !process.isAlive) {
+                val exitCode = process.exitValue()
+                logger.warn("xcodebuild ($label) exited early with code $exitCode")
                 iosXcodebuildProcess = null
                 return null // Process exited early — signal caller to try fallback
             }

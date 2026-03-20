@@ -144,6 +144,12 @@ jobs:
             echo "Error: xctestrun does not contain __TESTROOT__ placeholders — bundle will not be portable"
             exit 1
           fi
+          # Reject CI-specific absolute paths that would break on user machines
+          if grep -qE '/Users/' "$XCTESTRUN"; then
+            echo "Error: xctestrun contains non-portable /Users/ paths"
+            grep -nE '/Users/' "$XCTESTRUN" || true
+            exit 1
+          fi
 
       - name: Archive iOS test bundle
         run: |

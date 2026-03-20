@@ -286,8 +286,13 @@ download_ios_bundle() {
 
     # Validate archive entries: reject absolute paths, parent traversal, and symlinks
     IOS_ARCHIVE="$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz"
-    if tar -tzf "$IOS_ARCHIVE" | grep -qE '(^/|\.\./)'; then
+    if tar -tzf "$IOS_ARCHIVE" | grep -qE '(^/|/\.\.(/|$)|^\.\./|^\.\.$)'; then
         error "iOS bundle archive contains unsafe paths (absolute or parent traversal)"
+        rm -f "$IOS_ARCHIVE"
+        exit 1
+    fi
+    if tar -tvzf "$IOS_ARCHIVE" | grep -qE '^l'; then
+        error "iOS bundle archive contains symbolic links"
         rm -f "$IOS_ARCHIVE"
         exit 1
     fi

@@ -138,16 +138,21 @@ jobs:
             exit 1
           fi
           echo "Found xctestrun: $XCTESTRUN"
-          if grep -q '__TESTROOT__' "$XCTESTRUN"; then
+          # Convert plist to XML first — Xcode may emit binary plists, making plain grep unreliable
+          XML_PLIST=$(plutil -convert xml1 -o - "$XCTESTRUN") || {
+            echo "Error: Failed to convert .xctestrun plist to XML"
+            exit 1
+          }
+          if grep -q '__TESTROOT__' <<< "$XML_PLIST"; then
             echo "xctestrun uses __TESTROOT__ placeholders (portable)"
           else
             echo "Error: xctestrun does not contain __TESTROOT__ placeholders — bundle will not be portable"
             exit 1
           fi
           # Reject CI-specific absolute paths that would break on user machines
-          if grep -qE '/Users/' "$XCTESTRUN"; then
+          if grep -qE '/Users/' <<< "$XML_PLIST"; then
             echo "Error: xctestrun contains non-portable /Users/ paths"
-            grep -nE '/Users/' "$XCTESTRUN" || true
+            grep -nE '/Users/' <<< "$XML_PLIST" || true
             exit 1
           fi
 

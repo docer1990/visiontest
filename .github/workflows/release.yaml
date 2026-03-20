@@ -242,7 +242,8 @@ jobs:
           # Verify all files exist
           for f in visiontest.jar visiontest.jar.sha256 \
                    automation-server.apk automation-server.apk.sha256 \
-                   automation-server-test.apk automation-server-test.apk.sha256; do
+                   automation-server-test.apk automation-server-test.apk.sha256 \
+                   ios-automation-server.tar.gz ios-automation-server.tar.gz.sha256; do
             if [ ! -f "$f" ]; then
               echo "Error: $f not created"
               exit 1

@@ -278,13 +278,8 @@ download_ios_bundle() {
         "$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz" \
         "ios-automation-server.tar.gz"
 
-    # Extract preserving directory structure for xcodebuild test-without-building
-    # Remove previous bundle to avoid stale .xctestrun files from older SDK versions
-    rm -rf "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
-    mkdir -p "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
-    chmod 700 "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
-
     # Validate archive entries: reject absolute paths, parent traversal, and symlinks
+    # Done BEFORE removing the existing bundle to avoid data loss on failure
     IOS_ARCHIVE="$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz"
     if tar -tzf "$IOS_ARCHIVE" | grep -qE '(^/|/\.\.(/|$)|^\.\./|^\.\.$)'; then
         error "iOS bundle archive contains unsafe paths (absolute or parent traversal)"
@@ -296,8 +291,24 @@ download_ios_bundle() {
         rm -f "$IOS_ARCHIVE"
         exit 1
     fi
-    tar -xzf "$IOS_ARCHIVE" --no-same-owner \
-        -C "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
+
+    # Extract into a temp directory, then atomically replace the old bundle
+    # This avoids deleting a working bundle if extraction fails
+    IOS_TMP_DIR="$RESOLVED_VISIONTEST_HOME/ios-automation-server.tmp"
+    rm -rf "$IOS_TMP_DIR"
+    mkdir -p "$IOS_TMP_DIR"
+    chmod 700 "$IOS_TMP_DIR"
+
+    if ! tar -xzf "$IOS_ARCHIVE" --no-same-owner -C "$IOS_TMP_DIR"; then
+        error "Failed to extract iOS bundle archive"
+        rm -rf "$IOS_TMP_DIR"
+        rm -f "$IOS_ARCHIVE"
+        exit 1
+    fi
+
+    # Atomic swap: remove old bundle and move new one into place
+    rm -rf "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
+    mv "$IOS_TMP_DIR" "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
     rm -f "$IOS_ARCHIVE"
     rm -f "${IOS_ARCHIVE}.sha256"
 

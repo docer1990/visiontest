@@ -302,7 +302,7 @@ download_ios_bundle() {
     if ! tar -xzf "$IOS_ARCHIVE" --no-same-owner -C "$IOS_TMP_DIR"; then
         error "Failed to extract iOS bundle archive"
         rm -rf "$IOS_TMP_DIR"
-        rm -f "$IOS_ARCHIVE"
+        rm -f "$IOS_ARCHIVE" "${IOS_ARCHIVE}.sha256"
         exit 1
     fi
 

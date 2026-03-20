@@ -1150,6 +1150,17 @@ class ToolFactory(
         val earlyExitCode: Int? = null
     )
 
+    /** Formats a command list as a shell-safe string, quoting arguments that contain spaces or special characters. */
+    private fun shellQuote(command: List<String>): String {
+        return command.joinToString(" ") { arg ->
+            if (arg.any { it.isWhitespace() || it in setOf('(', ')', '&', '|', ';', '*', '?', '<', '>', '$', '!', '`', '"') }) {
+                "'${arg.replace("'", "'\\''")}'"
+            } else {
+                arg
+            }
+        }
+    }
+
     /**
      * Starts an xcodebuild process and polls until the server responds or the process exits.
      * Returns a [ServerPollResult] with [earlyExitCode] set when the process exits early.
@@ -1180,7 +1191,7 @@ class ToolFactory(
                 iosXcodebuildProcess = null
                 return ServerPollResult(
                     message = "xcodebuild ($label) exited with code $exitCode before the server started. " +
-                        "Run manually to see errors:\n${command.joinToString(" ")}",
+                        "Run manually to see errors:\n${shellQuote(command)}",
                     earlyExitCode = exitCode
                 )
             }

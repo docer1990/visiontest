@@ -119,6 +119,7 @@ jobs:
           path: |
             ios-automation-server/IOSAutomationServer.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
             ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            build/SourcePackages
           key: spm-${{ hashFiles('ios-automation-server/IOSAutomationServer.xcodeproj/project.pbxproj') }}
           restore-keys: spm-
 

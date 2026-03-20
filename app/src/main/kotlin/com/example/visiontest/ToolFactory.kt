@@ -1127,14 +1127,57 @@ class ToolFactory(
                 "-only-testing:$testId"
             )
         } else {
+            val resolvedProject = requireNotNull(projectPath) {
+                "projectPath must be set when xctestrunPath is null"
+            }
             listOf(
                 "xcodebuild", "test",
-                "-project", projectPath!!,
+                "-project", resolvedProject,
                 "-scheme", IOSAutomationConfig.XCODE_SCHEME,
                 "-destination", "platform=iOS Simulator,name=$simulatorName",
                 "-only-testing:$testId"
             )
         }
+    }
+
+    /**
+     * Starts an xcodebuild process and polls until the server responds or the process exits.
+     * Returns a success/timeout message, or null if the process exited early (caller should fallback).
+     */
+    private suspend fun startAndPollServer(
+        command: List<String>,
+        maxAttempts: Int,
+        port: Int,
+        label: String
+    ): String? {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            logger.info("Starting iOS automation server ($label): ${command.joinToString(" ")}")
+            val process = ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .start()
+            iosXcodebuildProcess = process
+        }
+
+        var attempts = 0
+        while (attempts < maxAttempts) {
+            kotlinx.coroutines.delay(2000)
+
+            val process = iosXcodebuildProcess
+            if (process != null && !process.isAlive) {
+                iosXcodebuildProcess = null
+                return null // Process exited early — signal caller to try fallback
+            }
+
+            if (iosAutomationClient.isServerRunning()) {
+                logger.info("iOS automation server started successfully ($label)")
+                return "iOS automation server started successfully ($label). Server is listening on localhost:$port"
+            }
+            attempts++
+            logger.debug("Waiting for iOS server to start ($label)... attempt $attempts/$maxAttempts")
+        }
+
+        return "iOS automation server did not respond after ${maxAttempts * 2}s. xcodebuild may still be building. Check with 'ios_automation_server_status' or run xcodebuild manually to see output."
     }
 
     private fun registerIOSStartAutomationServerTool(server: Server) {
@@ -1150,7 +1193,8 @@ class ToolFactory(
             inputSchema = Tool.Input()
         ) {
             try {
-                val result = runWithTimeout(120000) {
+                // Timeout accounts for worst case: pre-built attempt (60s) + source fallback (120s)
+                val result = runWithTimeout(200000) {
                     val port = IOSAutomationConfig.DEFAULT_PORT
 
                     // Check if already running
@@ -1189,75 +1233,26 @@ class ToolFactory(
                     val device = ios.getFirstAvailableDevice()
                     val simulatorName = device.name
 
-                    // Start xcodebuild in background
-                    val command = buildXcodebuildCommand(xctestrunPath, projectPath, simulatorName)
-
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        logger.info("Starting iOS automation server: ${command.joinToString(" ")}")
-
-                        val process = ProcessBuilder(command)
-                            .redirectErrorStream(true)
-                            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                            .start()
-                        iosXcodebuildProcess = process
-                    }
-
                     // Pre-built path starts faster (no compilation), use shorter timeout
+                    val command = buildXcodebuildCommand(xctestrunPath, projectPath, simulatorName)
                     val maxAttempts = if (usingPrebuilt) 30 else 60
-                    var attempts = 0
 
-                    while (attempts < maxAttempts) {
-                        kotlinx.coroutines.delay(2000)
+                    val primaryResult = startAndPollServer(command, maxAttempts, port, if (usingPrebuilt) "pre-built bundle" else "source build")
 
-                        // Check if xcodebuild exited early (build failure, signing error, etc.)
-                        iosXcodebuildProcess?.let { process ->
-                            if (!process.isAlive) {
-                                val exitCode = process.exitValue()
-                                iosXcodebuildProcess = null
-
-                                // If pre-built failed and source is available, retry with source build
-                                if (usingPrebuilt && projectPath != null) {
-                                    logger.warn("Pre-built bundle failed (exit code $exitCode), falling back to source build")
-                                    val fallbackCommand = buildXcodebuildCommand(null, projectPath, simulatorName)
-                                    val fallbackProcess = ProcessBuilder(fallbackCommand)
-                                        .redirectErrorStream(true)
-                                        .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                                        .start()
-                                    iosXcodebuildProcess = fallbackProcess
-                                    // Continue polling with extended timeout for source build
-                                    var fallbackAttempts = 0
-                                    while (fallbackAttempts < 60) {
-                                        kotlinx.coroutines.delay(2000)
-                                        iosXcodebuildProcess?.let { fb ->
-                                            if (!fb.isAlive) {
-                                                val fbExit = fb.exitValue()
-                                                iosXcodebuildProcess = null
-                                                return@runWithTimeout "xcodebuild source build exited with code $fbExit. Run xcodebuild manually to see errors."
-                                            }
-                                        }
-                                        if (iosAutomationClient.isServerRunning()) {
-                                            logger.info("iOS automation server started via source build fallback")
-                                            return@runWithTimeout "iOS automation server started successfully (source build fallback). Server is listening on localhost:$port"
-                                        }
-                                        fallbackAttempts++
-                                    }
-                                    return@runWithTimeout "iOS automation server did not respond after source build fallback. Check with 'ios_automation_server_status'."
-                                }
-
-                                return@runWithTimeout "xcodebuild exited with code $exitCode before the server started. Run the xcodebuild command manually to see build errors."
-                            }
-                        }
-
-                        if (iosAutomationClient.isServerRunning()) {
-                            logger.info("iOS automation server started successfully")
-                            val method = if (usingPrebuilt) "pre-built bundle" else "source build"
-                            return@runWithTimeout "iOS automation server started successfully ($method). Server is listening on localhost:$port"
-                        }
-                        attempts++
-                        logger.debug("Waiting for iOS server to start... attempt $attempts/$maxAttempts")
+                    if (primaryResult != null) {
+                        return@runWithTimeout primaryResult
                     }
 
-                    "iOS automation server did not respond after ${maxAttempts * 2}s. xcodebuild may still be building. Check with 'ios_automation_server_status' or run xcodebuild manually to see output."
+                    // Primary attempt exited early — try source build fallback if available
+                    if (usingPrebuilt && projectPath != null) {
+                        logger.warn("Pre-built bundle failed, falling back to source build")
+                        val fallbackCommand = buildXcodebuildCommand(null, projectPath, simulatorName)
+                        val fallbackResult = startAndPollServer(fallbackCommand, 60, port, "source build fallback")
+                        return@runWithTimeout fallbackResult
+                            ?: "xcodebuild source build exited unexpectedly. Run xcodebuild manually to see errors."
+                    }
+
+                    "xcodebuild exited before the server started. Run the xcodebuild command manually to see build errors."
                 }
 
                 CallToolResult(

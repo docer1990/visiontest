@@ -139,9 +139,10 @@ jobs:
           fi
           echo "Found xctestrun: $XCTESTRUN"
           if grep -q '__TESTROOT__' "$XCTESTRUN"; then
-            echo "✓ xctestrun uses __TESTROOT__ placeholders (portable)"
+            echo "xctestrun uses __TESTROOT__ placeholders (portable)"
           else
-            echo "Warning: xctestrun may contain absolute paths — verify manually"
+            echo "Error: xctestrun does not contain __TESTROOT__ placeholders — bundle will not be portable"
+            exit 1
           fi
 
       - name: Archive iOS test bundle

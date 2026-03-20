@@ -306,13 +306,36 @@ download_ios_bundle() {
         exit 1
     fi
 
-    # Atomic swap: remove old bundle and move new one into place
-    rm -rf "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
-    mv "$IOS_TMP_DIR" "$RESOLVED_VISIONTEST_HOME/ios-automation-server"
-    rm -f "$IOS_ARCHIVE"
-    rm -f "${IOS_ARCHIVE}.sha256"
+    # Safe swap: backup old bundle, move new one in, then drop backup
+    IOS_FINAL_DIR="$RESOLVED_VISIONTEST_HOME/ios-automation-server"
+    IOS_BACKUP_DIR="${IOS_FINAL_DIR}.bak.$$"
+    if [ -d "$IOS_FINAL_DIR" ]; then
+        rm -rf "$IOS_BACKUP_DIR"
+        if ! mv "$IOS_FINAL_DIR" "$IOS_BACKUP_DIR"; then
+            error "Failed to create backup of existing iOS bundle"
+            rm -rf "$IOS_TMP_DIR"
+            rm -f "$IOS_ARCHIVE" "${IOS_ARCHIVE}.sha256"
+            exit 1
+        fi
+    fi
+    if ! mv "$IOS_TMP_DIR" "$IOS_FINAL_DIR"; then
+        error "Failed to install new iOS bundle"
+        rm -rf "$IOS_TMP_DIR"
+        # Attempt to restore previous bundle if backup exists
+        if [ -d "$IOS_BACKUP_DIR" ]; then
+            if mv "$IOS_BACKUP_DIR" "$IOS_FINAL_DIR"; then
+                info "Restored previous iOS bundle from backup"
+            else
+                error "Failed to restore previous iOS bundle from backup; manual intervention required"
+            fi
+        fi
+        rm -f "$IOS_ARCHIVE" "${IOS_ARCHIVE}.sha256"
+        exit 1
+    fi
+    rm -rf "$IOS_BACKUP_DIR"
+    rm -f "$IOS_ARCHIVE" "${IOS_ARCHIVE}.sha256"
 
-    ok "iOS bundle installed to $RESOLVED_VISIONTEST_HOME/ios-automation-server/"
+    ok "iOS bundle installed to $IOS_FINAL_DIR/"
 }
 
 # ---------- create wrapper script ----------

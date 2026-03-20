@@ -1179,7 +1179,8 @@ class ToolFactory(
                 logger.warn("xcodebuild ($label) exited early with code $exitCode")
                 iosXcodebuildProcess = null
                 return ServerPollResult(
-                    message = "xcodebuild ($label) exited with code $exitCode before the server started. Run xcodebuild manually to see errors.",
+                    message = "xcodebuild ($label) exited with code $exitCode before the server started. " +
+                        "Run manually to see errors:\n${command.joinToString(" ")}",
                     earlyExitCode = exitCode
                 )
             }

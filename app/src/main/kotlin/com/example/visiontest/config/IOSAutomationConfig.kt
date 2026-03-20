@@ -61,4 +61,9 @@ object IOSAutomationConfig {
      * Scheme name in the Xcode project.
      */
     const val XCODE_SCHEME = "IOSAutomationServer"
+
+    /**
+     * Subdirectory name for the pre-built iOS test bundle within the install directory.
+     */
+    const val XCTESTRUN_BUNDLE_DIR = "ios-automation-server"
 }

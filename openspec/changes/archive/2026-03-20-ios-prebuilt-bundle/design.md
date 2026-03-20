@@ -23,10 +23,12 @@ The release workflow already has an `ios-automation-tests` job on `macos-26` tha
 
 ### 1. Archive format: tar.gz of derived data products + xctestrun
 
-`xcodebuild build-for-testing -derivedDataPath build/` produces:
-- `build/Build/Products/*.xctestrun` — the test plan file
+`xcodebuild build-for-testing -project ios-automation-server/IOSAutomationServer.xcodeproj -scheme IOSAutomationServer -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath build/` produces:
+- `build/Build/Products/*.xctestrun` — the test plan file (uses `__TESTROOT__` placeholders for portable product paths)
 - `build/Build/Products/Debug-iphonesimulator/IOSAutomationServer.app` — host app
 - `build/Build/Products/Debug-iphonesimulator/IOSAutomationServerUITests-Runner.app` — test runner
+
+Note: The `.xctestrun` file name includes the SDK version and architecture (e.g., `IOSAutomationServer_iphonesimulator18.0-arm64.xctestrun`). The discovery logic should glob for `*.xctestrun`.
 
 We tar these into `ios-automation-server.tar.gz` for the release. At install time, extract to `~/.local/share/visiontest/ios-automation-server/`.
 
@@ -40,16 +42,16 @@ The `.xctestrun` file baked during CI contains a hardcoded `__TESTHOST__` path a
 - Pass `-destination 'platform=iOS Simulator,name=<actual simulator>'` to `xcodebuild test-without-building`
 - The `__TESTHOST__` and `__PLATFORMS__` placeholders in `.xctestrun` are resolved by xcodebuild relative to the products directory
 
-No manual rewriting is needed — `xcodebuild test-without-building -xctestrun <path> -destination <dest>` handles this natively. The `-destination` flag overrides whatever was baked in.
+No manual rewriting is needed — `xcodebuild test-without-building -xctestrun <path> -destination <dest>` handles this natively. The `-destination` flag overrides whatever was baked in. The `__TESTROOT__` placeholder in the `.xctestrun` plist resolves product paths relative to the `.xctestrun` file's parent directory, so the archive works from any extraction path as long as the directory structure is preserved.
 
 ### 3. macOS-only download in install.sh
 
-On Linux, skip the iOS bundle download entirely with an info message. iOS automation only works on macOS. This avoids downloading ~50MB of unnecessary data on Linux.
+On Linux, skip the iOS bundle download entirely with an info message. On macOS x86_64 (Intel), also skip — the pre-built bundle is arm64-only. Only download on macOS arm64 (Apple Silicon). This avoids downloading ~50MB of unusable data on Linux and Intel Macs.
 
 ### 4. Release workflow: separate macOS job for iOS build
 
 The release job currently runs on `ubuntu-latest` (for JAR + APKs). iOS builds require macOS + Xcode. Add a new `ios-release-build` job on `macos-26` that:
-1. Runs `xcodebuild build-for-testing -derivedDataPath build/`
+1. Runs `xcodebuild build-for-testing -project ios-automation-server/IOSAutomationServer.xcodeproj -scheme IOSAutomationServer -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath build/`
 2. Archives the products into `ios-automation-server.tar.gz`
 3. Uploads as a workflow artifact
 
@@ -69,3 +71,5 @@ This means dev workflows (running from repo) continue to work as before, while i
 - **[Larger release asset]** ~50MB for the iOS bundle. → Mitigation: Only downloaded on macOS. tar.gz compression helps. Acceptable trade-off for zero-config experience.
 - **[CI cost]** macOS runners are more expensive. → Mitigation: The `ios-automation-tests` job already runs on macOS — we're adding build artifact packaging, not a new build from scratch.
 - **[Simulator name mismatch]** The `.xctestrun` may reference a simulator that doesn't exist on the user's machine. → Mitigation: `-destination` flag overrides this. We already detect the booted simulator name.
+- **[Architecture mismatch]** A bundle compiled on Apple Silicon CI (arm64) will not work on Intel Macs (x86_64). → Mitigation: `install.sh` checks `uname -m` and skips the iOS bundle download on x86_64 with a message directing Intel users to build from source. No wasted bandwidth or confusing failures.
+- **[Pre-built bundle failure]** `test-without-building` may fail for reasons beyond Xcode version (corrupted download, missing simulator runtime). → Mitigation: Implement automatic fallback to source build when pre-built path fails and source project is available.

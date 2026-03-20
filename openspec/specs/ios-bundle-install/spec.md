@@ -3,9 +3,13 @@
 ### Requirement: Install script downloads iOS bundle on macOS
 The `install.sh` script SHALL download `ios-automation-server.tar.gz` and its checksum on macOS, verify integrity, and extract to the install directory.
 
-#### Scenario: macOS installation
-- **WHEN** `install.sh` runs on macOS
+#### Scenario: macOS Apple Silicon installation
+- **WHEN** `install.sh` runs on macOS with `arm64` architecture (`uname -m` returns `arm64`)
 - **THEN** the iOS test bundle is downloaded, SHA-256 verified, and extracted to `~/.local/share/visiontest/ios-automation-server/`
+
+#### Scenario: macOS Intel installation skips iOS bundle
+- **WHEN** `install.sh` runs on macOS with `x86_64` architecture
+- **THEN** the iOS bundle download is skipped with an informational message explaining the pre-built bundle is arm64-only and iOS automation requires building from source (clone repo + Xcode)
 
 #### Scenario: Linux installation skips iOS bundle
 - **WHEN** `install.sh` runs on Linux
@@ -25,9 +29,13 @@ The extracted bundle SHALL maintain the relative paths expected by `xcodebuild t
 ### Requirement: Install success message includes iOS status
 The install success message SHALL indicate whether the iOS automation bundle was installed (macOS) or skipped (Linux).
 
-#### Scenario: macOS success message
-- **WHEN** installation completes on macOS
+#### Scenario: macOS arm64 success message
+- **WHEN** installation completes on macOS arm64
 - **THEN** the success message lists the iOS bundle alongside the JAR and APKs
+
+#### Scenario: macOS x86_64 success message
+- **WHEN** installation completes on macOS x86_64
+- **THEN** the success message notes iOS automation requires building from source
 
 #### Scenario: Linux success message
 - **WHEN** installation completes on Linux

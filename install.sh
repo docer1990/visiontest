@@ -256,6 +256,88 @@ download_apks() {
     ok "APKs installed to $RESOLVED_VISIONTEST_HOME/"
 }
 
+# ---------- download iOS bundle (macOS arm64 only) ----------
+
+download_ios_bundle() {
+    if [ "$PLATFORM" != "macOS" ]; then
+        info "Skipping iOS automation bundle (macOS only)"
+        return
+    fi
+
+    if [ "$ARCH" != "arm64" ]; then
+        info "Skipping iOS automation bundle (pre-built bundle is arm64 only)"
+        info "For iOS automation on Intel Mac, build from source: clone the repo and use Xcode"
+        return
+    fi
+
+    info "Downloading iOS automation bundle..."
+
+    download_and_verify \
+        "https://github.com/$REPO/releases/download/$LATEST_TAG/ios-automation-server.tar.gz" \
+        "https://github.com/$REPO/releases/download/$LATEST_TAG/ios-automation-server.tar.gz.sha256" \
+        "$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz" \
+        "ios-automation-server.tar.gz"
+
+    # Validate archive entries: reject absolute paths, parent traversal, and symlinks
+    # Done BEFORE removing the existing bundle to avoid data loss on failure
+    IOS_ARCHIVE="$RESOLVED_VISIONTEST_HOME/ios-automation-server.tar.gz"
+    if tar -tzf "$IOS_ARCHIVE" | grep -qE '(^/|/\.\.(/|$)|^\.\./|^\.\.$)'; then
+        error "iOS bundle archive contains unsafe paths (absolute or parent traversal)"
+        rm -f "$IOS_ARCHIVE"
+        exit 1
+    fi
+    if tar -tvzf "$IOS_ARCHIVE" | grep -qE '^l'; then
+        error "iOS bundle archive contains symbolic links"
+        rm -f "$IOS_ARCHIVE"
+        exit 1
+    fi
+
+    # Extract into a temp directory, then atomically replace the old bundle
+    # This avoids deleting a working bundle if extraction fails
+    IOS_TMP_DIR="$RESOLVED_VISIONTEST_HOME/ios-automation-server.tmp"
+    rm -rf "$IOS_TMP_DIR"
+    mkdir -p "$IOS_TMP_DIR"
+    chmod 700 "$IOS_TMP_DIR"
+
+    if ! tar -xzf "$IOS_ARCHIVE" --no-same-owner -C "$IOS_TMP_DIR"; then
+        error "Failed to extract iOS bundle archive"
+        rm -rf "$IOS_TMP_DIR"
+        rm -f "$IOS_ARCHIVE" "${IOS_ARCHIVE}.sha256"
+        exit 1
+    fi
+
+    # Safe swap: backup old bundle, move new one in, then drop backup
+    IOS_FINAL_DIR="$RESOLVED_VISIONTEST_HOME/ios-automation-server"
+    IOS_BACKUP_DIR="${IOS_FINAL_DIR}.bak.$$"
+    if [ -d "$IOS_FINAL_DIR" ]; then
+        rm -rf "$IOS_BACKUP_DIR"
+        if ! mv "$IOS_FINAL_DIR" "$IOS_BACKUP_DIR"; then
+            error "Failed to create backup of existing iOS bundle"
+            rm -rf "$IOS_TMP_DIR"
+            rm -f "$IOS_ARCHIVE" "${IOS_ARCHIVE}.sha256"
+            exit 1
+        fi
+    fi
+    if ! mv "$IOS_TMP_DIR" "$IOS_FINAL_DIR"; then
+        error "Failed to install new iOS bundle"
+        rm -rf "$IOS_TMP_DIR"
+        # Attempt to restore previous bundle if backup exists
+        if [ -d "$IOS_BACKUP_DIR" ]; then
+            if mv "$IOS_BACKUP_DIR" "$IOS_FINAL_DIR"; then
+                info "Restored previous iOS bundle from backup"
+            else
+                error "Failed to restore previous iOS bundle from backup; manual intervention required"
+            fi
+        fi
+        rm -f "$IOS_ARCHIVE" "${IOS_ARCHIVE}.sha256"
+        exit 1
+    fi
+    rm -rf "$IOS_BACKUP_DIR"
+    rm -f "$IOS_ARCHIVE" "${IOS_ARCHIVE}.sha256"
+
+    ok "iOS bundle installed to $IOS_FINAL_DIR/"
+}
+
 # ---------- create wrapper script ----------
 
 create_wrapper() {
@@ -321,6 +403,7 @@ main() {
     fetch_latest_version
     download_jar
     download_apks
+    download_ios_bundle
     # Disarm the cleanup trap since all downloads succeeded
     trap - EXIT
     create_wrapper
@@ -333,6 +416,13 @@ main() {
     echo "    JAR:  $RESOLVED_VISIONTEST_HOME/visiontest.jar"
     echo "    APKs: $RESOLVED_VISIONTEST_HOME/automation-server.apk"
     echo "          $RESOLVED_VISIONTEST_HOME/automation-server-test.apk"
+    if [ "$PLATFORM" = "macOS" ] && [ "$ARCH" = "arm64" ]; then
+        echo "    iOS:  $RESOLVED_VISIONTEST_HOME/ios-automation-server/"
+    elif [ "$PLATFORM" = "macOS" ]; then
+        echo "    iOS:  (not installed — pre-built bundle is arm64 only; build from source)"
+    else
+        echo "    iOS:  (not installed — macOS only)"
+    fi
     echo ""
     echo "  Run the MCP server:"
     echo "    visiontest"

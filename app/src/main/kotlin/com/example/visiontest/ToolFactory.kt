@@ -1109,13 +1109,110 @@ class ToolFactory(
     @Volatile
     private var iosXcodebuildProcess: Process? = null
 
+    /**
+     * Builds the xcodebuild command for launching the iOS automation server.
+     * Returns the command list for either pre-built bundle or source build path.
+     */
+    internal fun buildXcodebuildCommand(
+        xctestrunPath: String?,
+        projectPath: String?,
+        simulatorName: String
+    ): List<String> {
+        val testId = "${IOSAutomationConfig.UI_TEST_TARGET}/${IOSAutomationConfig.TEST_CLASS}/${IOSAutomationConfig.TEST_METHOD}"
+        return if (xctestrunPath != null) {
+            listOf(
+                "xcodebuild", "test-without-building",
+                "-xctestrun", xctestrunPath,
+                "-destination", "platform=iOS Simulator,name=$simulatorName",
+                "-only-testing:$testId"
+            )
+        } else {
+            val resolvedProject = requireNotNull(projectPath) {
+                "projectPath must be set when xctestrunPath is null"
+            }
+            listOf(
+                "xcodebuild", "test",
+                "-project", resolvedProject,
+                "-scheme", IOSAutomationConfig.XCODE_SCHEME,
+                "-destination", "platform=iOS Simulator,name=$simulatorName",
+                "-only-testing:$testId"
+            )
+        }
+    }
+
+    /**
+     * Result of polling for the iOS automation server to start.
+     * [message] is the user-facing result. [earlyExitCode] is non-null when
+     * the xcodebuild process exited before the server came up (caller may fallback).
+     */
+    private data class ServerPollResult(
+        val message: String,
+        val earlyExitCode: Int? = null
+    )
+
+    /** Formats a command list as a shell-safe string, quoting arguments that contain spaces or special characters. */
+    private fun shellQuote(command: List<String>): String {
+        return command.joinToString(" ") { arg ->
+            if (arg.any { it.isWhitespace() || it in setOf('(', ')', '&', '|', ';', '*', '?', '<', '>', '$', '!', '`', '"') }) {
+                "'${arg.replace("'", "'\\''")}'"
+            } else {
+                arg
+            }
+        }
+    }
+
+    /**
+     * Starts an xcodebuild process and polls until the server responds or the process exits.
+     * Returns a [ServerPollResult] with [earlyExitCode] set when the process exits early.
+     */
+    private suspend fun startAndPollServer(
+        command: List<String>,
+        maxAttempts: Int,
+        port: Int,
+        label: String
+    ): ServerPollResult {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            logger.info("Starting iOS automation server ($label): ${command.joinToString(" ")}")
+            val process = ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .start()
+            iosXcodebuildProcess = process
+        }
+
+        var attempts = 0
+        while (attempts < maxAttempts) {
+            kotlinx.coroutines.delay(2000)
+
+            val process = iosXcodebuildProcess
+            if (process != null && !process.isAlive) {
+                val exitCode = process.exitValue()
+                logger.warn("xcodebuild ($label) exited early with code $exitCode")
+                iosXcodebuildProcess = null
+                return ServerPollResult(
+                    message = "xcodebuild ($label) exited with code $exitCode before the server started. " +
+                        "Run manually to see errors:\n${shellQuote(command)}",
+                    earlyExitCode = exitCode
+                )
+            }
+
+            if (iosAutomationClient.isServerRunning()) {
+                logger.info("iOS automation server started successfully ($label)")
+                return ServerPollResult("iOS automation server started successfully ($label). Server is listening on localhost:$port")
+            }
+            attempts++
+            logger.debug("Waiting for iOS server to start ($label)... attempt $attempts/$maxAttempts")
+        }
+
+        return ServerPollResult("iOS automation server did not respond after ${maxAttempts * 2}s. xcodebuild may still be building. Check with 'ios_automation_server_status' or run xcodebuild manually to see output.")
+    }
+
     private fun registerIOSStartAutomationServerTool(server: Server) {
         server.addTool(
             name = "ios_start_automation_server",
             description = """
                 Starts the iOS automation server on the booted iOS simulator.
-                Builds and runs the XCUITest automation server via xcodebuild.
-                No installation step needed — xcodebuild handles build + install.
+                Uses pre-built test bundle if available, otherwise builds from source.
 
                 The server starts on port ${IOSAutomationConfig.DEFAULT_PORT} and is directly
                 accessible at localhost (no port forwarding needed for iOS simulators).
@@ -1123,7 +1220,8 @@ class ToolFactory(
             inputSchema = Tool.Input()
         ) {
             try {
-                val result = runWithTimeout(120000) {
+                // Timeout accounts for worst case: pre-built attempt (60s) + source fallback (120s)
+                val result = runWithTimeout(200000) {
                     val port = IOSAutomationConfig.DEFAULT_PORT
 
                     // Check if already running
@@ -1140,59 +1238,48 @@ class ToolFactory(
                         iosXcodebuildProcess = null
                     }
 
-                    // Find the Xcode project
+                    // Discover launch path: pre-built bundle preferred, source build as fallback
+                    val xctestrunPath = findXctestrun()
                     val projectPath = findXcodeProject()
-                        ?: return@runWithTimeout "Xcode project not found at ${IOSAutomationConfig.XCODE_PROJECT_PATH}. " +
-                            "To fix: ensure you have a local checkout of the VisionTest repository that contains the iOS Xcode project, then " +
-                            "set the ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} environment variable to the absolute path of ${IOSAutomationConfig.XCODE_PROJECT_PATH} within that checkout."
+
+                    if (xctestrunPath == null && projectPath == null) {
+                        return@runWithTimeout "Neither pre-built iOS test bundle nor Xcode source project found. " +
+                            "To fix: re-run install.sh on macOS to download the pre-built bundle, " +
+                            "or clone the VisionTest repository and set ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} " +
+                            "to build from source."
+                    }
+
+                    val usingPrebuilt = xctestrunPath != null
+                    if (usingPrebuilt) {
+                        logger.info("Using pre-built iOS test bundle: $xctestrunPath")
+                    } else {
+                        logger.info("Using source build from Xcode project: $projectPath")
+                    }
 
                     // Get the booted simulator
                     val device = ios.getFirstAvailableDevice()
                     val simulatorName = device.name
 
-                    // Start xcodebuild test in background
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        val testId = "${IOSAutomationConfig.UI_TEST_TARGET}/${IOSAutomationConfig.TEST_CLASS}/${IOSAutomationConfig.TEST_METHOD}"
-                        val command = listOf(
-                            "xcodebuild", "test",
-                            "-project", projectPath,
-                            "-scheme", IOSAutomationConfig.XCODE_SCHEME,
-                            "-destination", "platform=iOS Simulator,name=$simulatorName",
-                            "-only-testing:$testId"
-                        )
-                        logger.info("Starting iOS automation server: ${command.joinToString(" ")}")
+                    // Pre-built path starts faster (no compilation), use shorter timeout
+                    val command = buildXcodebuildCommand(xctestrunPath, projectPath, simulatorName)
+                    val maxAttempts = if (usingPrebuilt) 30 else 60
 
-                        val process = ProcessBuilder(command)
-                            .redirectErrorStream(true)
-                            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                            .start()
-                        iosXcodebuildProcess = process
+                    val label = if (usingPrebuilt) "pre-built bundle" else "source build"
+                    val primaryResult = startAndPollServer(command, maxAttempts, port, label)
+
+                    if (primaryResult.earlyExitCode == null) {
+                        return@runWithTimeout primaryResult.message
                     }
 
-                    // Wait for server to start and verify via health check
-                    var attempts = 0
-                    val maxAttempts = 60 // xcodebuild needs time to build
-                    while (attempts < maxAttempts) {
-                        kotlinx.coroutines.delay(2000)
-
-                        // Check if xcodebuild exited early (build failure, signing error, etc.)
-                        iosXcodebuildProcess?.let { process ->
-                            if (!process.isAlive) {
-                                val exitCode = process.exitValue()
-                                iosXcodebuildProcess = null
-                                return@runWithTimeout "xcodebuild exited with code $exitCode before the server started. Run the xcodebuild command manually to see build errors."
-                            }
-                        }
-
-                        if (iosAutomationClient.isServerRunning()) {
-                            logger.info("iOS automation server started successfully")
-                            return@runWithTimeout "iOS automation server started successfully. Server is listening on localhost:$port"
-                        }
-                        attempts++
-                        logger.debug("Waiting for iOS server to start... attempt $attempts/$maxAttempts")
+                    // Primary attempt exited early — try source build fallback if available
+                    if (usingPrebuilt && projectPath != null) {
+                        logger.warn("Pre-built bundle failed (exit code ${primaryResult.earlyExitCode}), falling back to source build")
+                        val fallbackCommand = buildXcodebuildCommand(null, projectPath, simulatorName)
+                        val fallbackResult = startAndPollServer(fallbackCommand, 60, port, "source build fallback")
+                        return@runWithTimeout fallbackResult.message
                     }
 
-                    "iOS automation server did not respond after ${maxAttempts * 2}s. xcodebuild may still be building. Check with 'ios_automation_server_status' or run xcodebuild manually to see output."
+                    primaryResult.message
                 }
 
                 CallToolResult(
@@ -1684,21 +1771,30 @@ class ToolFactory(
         return null
     }
 
+    // ==================== Install Directory Resolution ====================
+
+    /**
+     * Resolves the install directory from VISIONTEST_DIR env var, JAR directory, or default.
+     * Shared by APK discovery and iOS xctestrun discovery.
+     */
+    internal fun resolveInstallDir(): File {
+        val installDirPath = System.getenv("VISIONTEST_DIR")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: findJarDirectory()?.absolutePath
+            ?: "${System.getProperty("user.home")}/.local/share/visiontest"
+        return File(installDirPath)
+    }
+
     // ==================== Android APK Discovery ====================
 
     internal fun findAutomationServerApk(): String? {
         val cwd = File(".").absoluteFile
         val codeSourceRoot = findCodeSourceRoot()
-        val jarDir = findJarDirectory()
-        val installDirPath = System.getenv("VISIONTEST_DIR")
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
-            ?: jarDir?.absolutePath
-            ?: "${System.getProperty("user.home")}/.local/share/visiontest"
         return findAutomationServerApk(
             envApkPath = System.getenv("VISION_TEST_APK_PATH"),
             searchRoots = listOfNotNull(cwd, codeSourceRoot, findProjectRoot(cwd)),
-            installDir = File(installDirPath)
+            installDir = resolveInstallDir()
         )
     }
 
@@ -1785,6 +1881,46 @@ class ToolFactory(
         logger.warn("APK not found in ${searchRoots.size} search roots.")
         logger.warn("Re-run install.sh to download APKs, or set VISION_TEST_APK_PATH environment variable.")
         return null
+    }
+
+    // ==================== iOS xctestrun Discovery ====================
+
+    private fun findXctestrun(): String? {
+        return findXctestrun(resolveInstallDir())
+    }
+
+    /**
+     * Searches for a pre-built .xctestrun file in the install directory's
+     * ios-automation-server/ subdirectory.
+     *
+     * Returns the absolute path to the first .xctestrun file found (sorted alphabetically),
+     * or null if none exists.
+     */
+    internal fun findXctestrun(installDir: File): String? {
+        val bundleDir = File(installDir, IOSAutomationConfig.XCTESTRUN_BUNDLE_DIR)
+        logger.debug("Searching for .xctestrun in: ${bundleDir.absolutePath}")
+
+        if (!bundleDir.isDirectory) {
+            logger.debug("iOS bundle directory does not exist: ${bundleDir.absolutePath}")
+            return null
+        }
+
+        val xctestrunFiles = bundleDir.listFiles { file ->
+            file.isFile && file.name.endsWith(".xctestrun")
+        }?.sortedBy { it.name }
+
+        if (xctestrunFiles.isNullOrEmpty()) {
+            logger.debug("No .xctestrun files found in: ${bundleDir.absolutePath}")
+            return null
+        }
+
+        if (xctestrunFiles.size > 1) {
+            logger.info("Multiple .xctestrun files found, using first: ${xctestrunFiles.first().name}")
+        }
+
+        val result = xctestrunFiles.first().absolutePath
+        logger.info("Found xctestrun: $result")
+        return result
     }
 
     private fun findCodeSourceRoot(): File? {

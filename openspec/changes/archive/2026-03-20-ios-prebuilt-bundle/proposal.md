@@ -26,4 +26,5 @@ When VisionTest is installed via `install.sh`, the iOS automation server (`ios_s
 - `install.sh` — conditional iOS bundle download on macOS
 - `app/src/main/kotlin/com/example/visiontest/ToolFactory.kt` — `ios_start_automation_server` dual path (pre-built vs source), new `findXctestrun()` discovery
 - `app/src/main/kotlin/com/example/visiontest/config/IOSAutomationConfig.kt` — new constants for xctestrun filenames
+- `app/src/main/kotlin/com/example/visiontest/ToolFactory.kt` — extracted shared `resolveInstallDir()` helper (refactored from `findAutomationServerApk`)
 - `CLAUDE.md` — updated iOS workflow docs, install description, env vars

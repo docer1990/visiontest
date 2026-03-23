@@ -6,8 +6,8 @@
 
 ## 2. Extract Helpers
 
-- [ ] 2.1 Create `app/src/main/kotlin/com/example/visiontest/tools/ToolHelpers.kt` with `object ToolHelpers` containing `extractProperty()`, `extractPattern()`, `formatAppInfo()` — exact same logic as current `ToolFactory`.
-- [ ] 2.2 Update `app/src/test/kotlin/com/example/visiontest/ToolFactoryHelpersTest.kt`: change to test `ToolHelpers` directly, remove the stub `DeviceConfig` and `ToolFactory` instantiation.
+- [x] 2.1 Create `app/src/main/kotlin/com/example/visiontest/tools/ToolHelpers.kt` with `object ToolHelpers` containing `extractProperty()`, `extractPattern()`, `formatAppInfo()` — exact same logic as current `ToolFactory`.
+- [x] 2.2 Update `app/src/test/kotlin/com/example/visiontest/ToolFactoryHelpersTest.kt`: change to test `ToolHelpers` directly, remove the stub `DeviceConfig` and `ToolFactory` instantiation.
 
 ## 3. Extract Discovery
 

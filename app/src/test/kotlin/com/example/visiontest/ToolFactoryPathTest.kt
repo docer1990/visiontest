@@ -2,6 +2,8 @@ package com.example.visiontest
 
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.discovery.ToolDiscovery
+import com.example.visiontest.ios.IOSAutomationClient
+import com.example.visiontest.tools.IOSAutomationToolRegistrar
 import io.mockk.mockk
 import org.junit.jupiter.api.io.TempDir
 import org.slf4j.LoggerFactory
@@ -17,12 +19,10 @@ class ToolFactoryPathTest {
     private val logger = LoggerFactory.getLogger("test")
     private val discovery = ToolDiscovery(logger)
 
-    // ToolFactory still needed for buildXcodebuildCommand tests (moves in a later step)
-    private val mockAndroid = mockk<DeviceConfig>(relaxed = true)
-    private val mockIos = mockk<DeviceConfig>(relaxed = true)
-    private val factory = ToolFactory(
-        android = mockAndroid,
-        ios = mockIos,
+    private val iosRegistrar = IOSAutomationToolRegistrar(
+        ios = mockk<DeviceConfig>(relaxed = true),
+        iosAutomationClient = mockk<IOSAutomationClient>(relaxed = true),
+        discovery = discovery,
         logger = logger
     )
 
@@ -446,11 +446,10 @@ class ToolFactoryPathTest {
     }
 
     // ==================== buildXcodebuildCommand ====================
-    // These tests still reference ToolFactory — will move to IOSAutomationToolRegistrar tests later
 
     @Test
     fun `buildXcodebuildCommand produces test-without-building for pre-built path`() {
-        val command = factory.buildXcodebuildCommand(
+        val command = iosRegistrar.buildXcodebuildCommand(
             xctestrunPath = "/path/to/Test.xctestrun",
             projectPath = null,
             simulatorName = "iPhone 16"
@@ -465,7 +464,7 @@ class ToolFactoryPathTest {
 
     @Test
     fun `buildXcodebuildCommand produces test for source path`() {
-        val command = factory.buildXcodebuildCommand(
+        val command = iosRegistrar.buildXcodebuildCommand(
             xctestrunPath = null,
             projectPath = "/path/to/Project.xcodeproj",
             simulatorName = "iPhone 16"

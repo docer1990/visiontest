@@ -21,8 +21,8 @@
 
 ## 5. iOS Registrars
 
-- [ ] 5.1 Create `app/src/main/kotlin/com/example/visiontest/tools/IOSDeviceToolRegistrar.kt` implementing `ToolRegistrar`. Constructor takes `DeviceConfig`. Register 4 tools: `ios_available_device`, `ios_list_apps`, `ios_info_app`, `ios_launch_app`. Use `ToolScope.tool()` DSL.
-- [ ] 5.2 Create `app/src/main/kotlin/com/example/visiontest/tools/IOSAutomationToolRegistrar.kt` implementing `ToolRegistrar`. Constructor takes `DeviceConfig`, `IOSAutomationClient`, `ToolDiscovery`. Move `@Volatile iosXcodebuildProcess`, `buildXcodebuildCommand()`, `shellQuote()`, `startAndPollServer()`, `ServerPollResult` into this class. Register 12 tools: `ios_start_automation_server`, `ios_automation_server_status`, `ios_get_ui_hierarchy`, `ios_get_interactive_elements`, `ios_tap_by_coordinates`, `ios_swipe`, `ios_swipe_direction`, `ios_find_element`, `ios_get_device_info`, `ios_press_home`, `ios_input_text`, `ios_stop_automation_server`. Use `ToolScope.tool()` DSL.
+- [x] 5.1 Create `app/src/main/kotlin/com/example/visiontest/tools/IOSDeviceToolRegistrar.kt` implementing `ToolRegistrar`. Constructor takes `DeviceConfig`. Register 4 tools: `ios_available_device`, `ios_list_apps`, `ios_info_app`, `ios_launch_app`. Use `ToolScope.tool()` DSL.
+- [x] 5.2 Create `app/src/main/kotlin/com/example/visiontest/tools/IOSAutomationToolRegistrar.kt` implementing `ToolRegistrar`. Constructor takes `DeviceConfig`, `IOSAutomationClient`, `ToolDiscovery`. Move `@Volatile iosXcodebuildProcess`, `buildXcodebuildCommand()`, `shellQuote()`, `startAndPollServer()`, `ServerPollResult` into this class. Register 12 tools: `ios_start_automation_server`, `ios_automation_server_status`, `ios_get_ui_hierarchy`, `ios_get_interactive_elements`, `ios_tap_by_coordinates`, `ios_swipe`, `ios_swipe_direction`, `ios_find_element`, `ios_get_device_info`, `ios_press_home`, `ios_input_text`, `ios_stop_automation_server`. Use `ToolScope.tool()` DSL.
 
 ## 6. Wire Up and Replace
 

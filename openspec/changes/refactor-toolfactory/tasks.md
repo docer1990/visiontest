@@ -16,8 +16,8 @@
 
 ## 4. Android Registrars
 
-- [ ] 4.1 Create `app/src/main/kotlin/com/example/visiontest/tools/AndroidDeviceToolRegistrar.kt` implementing `ToolRegistrar`. Constructor takes `DeviceConfig`. Register 4 tools: `available_device_android`, `list_apps_android`, `info_app_android`, `launch_app_android`. Use `ToolScope.tool()` DSL and `ToolHelpers` for property extraction/formatting.
-- [ ] 4.2 Create `app/src/main/kotlin/com/example/visiontest/tools/AndroidAutomationToolRegistrar.kt` implementing `ToolRegistrar`. Constructor takes `DeviceConfig`, `AutomationClient`, `ToolDiscovery`. Register 14 tools: `install_automation_server`, `start_automation_server`, `automation_server_status`, `get_ui_hierarchy`, `find_element`, `android_tap_by_coordinates`, `android_swipe`, `android_swipe_direction`, `android_swipe_on_element`, `android_press_back`, `android_press_home`, `android_input_text`, `android_get_device_info`, `get_interactive_elements`. Use `ToolScope.tool()` DSL and request extension helpers.
+- [x] 4.1 Create `app/src/main/kotlin/com/example/visiontest/tools/AndroidDeviceToolRegistrar.kt` implementing `ToolRegistrar`. Constructor takes `DeviceConfig`. Register 4 tools: `available_device_android`, `list_apps_android`, `info_app_android`, `launch_app_android`. Use `ToolScope.tool()` DSL and `ToolHelpers` for property extraction/formatting.
+- [x] 4.2 Create `app/src/main/kotlin/com/example/visiontest/tools/AndroidAutomationToolRegistrar.kt` implementing `ToolRegistrar`. Constructor takes `DeviceConfig`, `AutomationClient`, `ToolDiscovery`. Register 14 tools: `install_automation_server`, `start_automation_server`, `automation_server_status`, `get_ui_hierarchy`, `find_element`, `android_tap_by_coordinates`, `android_swipe`, `android_swipe_direction`, `android_swipe_on_element`, `android_press_back`, `android_press_home`, `android_input_text`, `android_get_device_info`, `get_interactive_elements`. Use `ToolScope.tool()` DSL and request extension helpers.
 
 ## 5. iOS Registrars
 

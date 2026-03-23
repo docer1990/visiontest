@@ -26,8 +26,8 @@
 
 ## 6. Wire Up and Replace
 
-- [ ] 6.1 Replace `ToolFactory.kt` content with thin coordinator: constructor stays the same, creates `ToolDiscovery` and 4 registrars, `registerAllTools()` creates `ToolScope` and delegates. Remove all tool registration methods, helpers, and discovery functions.
-- [ ] 6.2 Verify `Main.kt` requires zero changes — `ToolFactory(android, ios, logger).registerAllTools(server)` still compiles.
+- [x] 6.1 Replace `ToolFactory.kt` content with thin coordinator: constructor stays the same, creates `ToolDiscovery` and 4 registrars, `registerAllTools()` creates `ToolScope` and delegates. Remove all tool registration methods, helpers, and discovery functions.
+- [x] 6.2 Verify `Main.kt` requires zero changes — `ToolFactory(android, ios, logger).registerAllTools(server)` still compiles.
 
 ## 7. Verify and Document
 

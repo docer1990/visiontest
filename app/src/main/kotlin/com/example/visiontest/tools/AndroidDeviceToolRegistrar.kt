@@ -1,7 +1,6 @@
 package com.example.visiontest.tools
 
 import com.example.visiontest.common.DeviceConfig
-import com.example.visiontest.utils.ErrorHandler.PACKAGE_NAME_REQUIRED
 import io.modelcontextprotocol.kotlin.sdk.Tool
 
 class AndroidDeviceToolRegistrar(

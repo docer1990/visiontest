@@ -66,3 +66,22 @@ fun CallToolRequest.optionalInt(key: String): Int? {
     return raw.toIntOrNull()
         ?: throw IllegalArgumentException("Parameter '$key' must be an integer, got '$raw'")
 }
+
+fun CallToolRequest.optionalBoolean(key: String): Boolean? {
+    val raw = this.optionalString(key) ?: return null
+    return when (raw) {
+        "true" -> true
+        "false" -> false
+        else -> throw IllegalArgumentException("Parameter '$key' must be true or false, got '$raw'")
+    }
+}
+
+private val VALID_DIRECTIONS = listOf("up", "down", "left", "right")
+
+fun CallToolRequest.requireDirection(key: String = "direction"): String {
+    val direction = this.requireString(key)
+    if (direction.lowercase() !in VALID_DIRECTIONS) {
+        throw IllegalArgumentException("Invalid direction '$direction'. Must be one of: ${VALID_DIRECTIONS.joinToString()}")
+    }
+    return direction
+}

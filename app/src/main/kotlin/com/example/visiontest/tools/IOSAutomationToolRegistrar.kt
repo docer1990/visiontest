@@ -266,13 +266,7 @@ class IOSAutomationToolRegistrar(
                 return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
             }
 
-            val includeDisabledRaw = request.optionalString("includeDisabled")
-            val includeDisabled = when (includeDisabledRaw) {
-                null -> false
-                "true" -> true
-                "false" -> false
-                else -> return@tool "Invalid value for 'includeDisabled': '$includeDisabledRaw'. Must be true or false."
-            }
+            val includeDisabled = request.optionalBoolean("includeDisabled") ?: false
             val bundleId = request.optionalString("bundleId")
 
             iosAutomationClient.getInteractiveElements(includeDisabled, bundleId)
@@ -352,11 +346,7 @@ class IOSAutomationToolRegistrar(
                 return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
             }
 
-            val direction = request.requireString("direction")
-            val validDirections = listOf("up", "down", "left", "right")
-            if (direction.lowercase() !in validDirections) {
-                return@tool "Error: Invalid direction '$direction'. Must be one of: ${validDirections.joinToString()}"
-            }
+            val direction = request.requireDirection()
 
             val distance = request.optionalString("distance") ?: "medium"
             val speed = request.optionalString("speed") ?: "normal"

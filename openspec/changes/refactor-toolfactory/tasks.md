@@ -31,7 +31,7 @@
 
 ## 7. Verify and Document
 
-- [ ] 7.1 Run `./gradlew test` — all existing tests must pass with updated imports.
-- [ ] 7.2 Run `./gradlew build` — full build must succeed with no warnings related to the refactor.
-- [ ] 7.3 Update `CLAUDE.md` Architecture Overview section to reflect the new `tools/` and `discovery/` packages and file structure.
-- [ ] 7.4 Update `CLAUDE.md` Unit Tests section to reflect the renamed/relocated test files.
+- [x] 7.1 Run `./gradlew test` — all existing tests must pass with updated imports.
+- [x] 7.2 Run `./gradlew build` — full build must succeed with no warnings related to the refactor.
+- [x] 7.3 Update `CLAUDE.md` Architecture Overview section to reflect the new `tools/` and `discovery/` packages and file structure.
+- [x] 7.4 Update `CLAUDE.md` Unit Tests section to reflect the renamed/relocated test files.

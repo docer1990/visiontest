@@ -11,8 +11,8 @@
 
 ## 3. Extract Discovery
 
-- [ ] 3.1 Create `app/src/main/kotlin/com/example/visiontest/discovery/ToolDiscovery.kt` with `class ToolDiscovery(private val logger: Logger)`. Move functions: `findAutomationServerApk()` (both overloads), `resolveMainApkPath()`, `findXcodeProject()`, `isValidXcodeProjectPath()`, `findXctestrun()` (both overloads), `findProjectRoot()`, `findCodeSourceRoot()`, `resolveInstallDir()`, `findJarDirectory()`.
-- [ ] 3.2 Update `app/src/test/kotlin/com/example/visiontest/ToolFactoryPathTest.kt`: change to test `ToolDiscovery` directly, remove mock `DeviceConfig` and `ToolFactory` instantiation. Keep all existing test cases.
+- [x] 3.1 Create `app/src/main/kotlin/com/example/visiontest/discovery/ToolDiscovery.kt` with `class ToolDiscovery(private val logger: Logger)`. Move functions: `findAutomationServerApk()` (both overloads), `resolveMainApkPath()`, `findXcodeProject()`, `isValidXcodeProjectPath()`, `findXctestrun()` (both overloads), `findProjectRoot()`, `findCodeSourceRoot()`, `resolveInstallDir()`, `findJarDirectory()`.
+- [x] 3.2 Update `app/src/test/kotlin/com/example/visiontest/ToolFactoryPathTest.kt`: change to test `ToolDiscovery` directly, remove mock `DeviceConfig` and `ToolFactory` instantiation. Keep all existing test cases.
 
 ## 4. Android Registrars
 

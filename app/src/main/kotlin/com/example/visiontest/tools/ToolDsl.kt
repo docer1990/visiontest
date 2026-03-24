@@ -6,8 +6,10 @@ import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import io.modelcontextprotocol.kotlin.sdk.server.Server
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.jsonPrimitive
+import java.util.concurrent.TimeoutException
 import org.slf4j.Logger
 
 /**
@@ -37,6 +39,11 @@ class ToolScope(
                     handler(request)
                 }
                 CallToolResult(content = listOf(TextContent(result)))
+            } catch (e: TimeoutCancellationException) {
+                ErrorHandler.handleToolError(
+                    TimeoutException("Tool '$name' timed out after ${timeoutMs}ms"),
+                    logger, name
+                )
             } catch (e: Exception) {
                 ErrorHandler.handleToolError(e, logger, name)
             }

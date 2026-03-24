@@ -1,6 +1,9 @@
 package com.example.visiontest
 
 import com.example.visiontest.common.DeviceConfig
+import com.example.visiontest.discovery.ToolDiscovery
+import com.example.visiontest.ios.IOSAutomationClient
+import com.example.visiontest.tools.IOSAutomationToolRegistrar
 import io.mockk.mockk
 import org.junit.jupiter.api.io.TempDir
 import org.slf4j.LoggerFactory
@@ -14,12 +17,12 @@ import kotlin.test.assertTrue
 class ToolFactoryPathTest {
 
     private val logger = LoggerFactory.getLogger("test")
-    private val mockAndroid = mockk<DeviceConfig>(relaxed = true)
-    private val mockIos = mockk<DeviceConfig>(relaxed = true)
+    private val discovery = ToolDiscovery(logger)
 
-    private val factory = ToolFactory(
-        android = mockAndroid,
-        ios = mockIos,
+    private val iosRegistrar = IOSAutomationToolRegistrar(
+        ios = mockk<DeviceConfig>(relaxed = true),
+        iosAutomationClient = mockk<IOSAutomationClient>(relaxed = true),
+        discovery = discovery,
         logger = logger
     )
 
@@ -43,7 +46,7 @@ class ToolFactoryPathTest {
         File(tempDir, "settings.gradle.kts").createNewFile()
         val subDir = File(tempDir, "app/src").apply { mkdirs() }
 
-        val result = factory.findProjectRoot(subDir)
+        val result = discovery.findProjectRoot(subDir)
 
         assertNotNull(result)
         assertEquals(tempDir.absolutePath, result.absolutePath)
@@ -54,7 +57,7 @@ class ToolFactoryPathTest {
         File(tempDir, "settings.gradle").createNewFile()
         val subDir = File(tempDir, "module/deep").apply { mkdirs() }
 
-        val result = factory.findProjectRoot(subDir)
+        val result = discovery.findProjectRoot(subDir)
 
         assertNotNull(result)
         assertEquals(tempDir.absolutePath, result.absolutePath)
@@ -67,7 +70,7 @@ class ToolFactoryPathTest {
             dir = File(dir, "level$i").apply { mkdirs() }
         }
 
-        val result = factory.findProjectRoot(dir)
+        val result = discovery.findProjectRoot(dir)
 
         assertNull(result)
     }
@@ -76,7 +79,7 @@ class ToolFactoryPathTest {
     fun `findProjectRoot handles startFrom being the root itself`(@TempDir tempDir: File) {
         File(tempDir, "settings.gradle.kts").createNewFile()
 
-        val result = factory.findProjectRoot(tempDir)
+        val result = discovery.findProjectRoot(tempDir)
 
         assertNotNull(result)
         assertEquals(tempDir.absolutePath, result.absolutePath)
@@ -87,7 +90,7 @@ class ToolFactoryPathTest {
         File(tempDir, "settings.gradle.kts").createNewFile()
         val dotDir = File(tempDir, ".")
 
-        val result = factory.findProjectRoot(dotDir)
+        val result = discovery.findProjectRoot(dotDir)
 
         assertNotNull(result)
         assertEquals(tempDir.absolutePath, result.absolutePath)
@@ -99,7 +102,7 @@ class ToolFactoryPathTest {
         File(tempDir, "settings.gradle").createNewFile()
         val subDir = File(tempDir, "sub").apply { mkdirs() }
 
-        val result = factory.findProjectRoot(subDir)
+        val result = discovery.findProjectRoot(subDir)
 
         assertNotNull(result)
         assertEquals(tempDir.absolutePath, result.absolutePath)
@@ -110,7 +113,7 @@ class ToolFactoryPathTest {
         File(tempDir, "settings.gradle.kts").createNewFile()
         val child = File(tempDir, "app").apply { mkdirs() }
 
-        val result = factory.findProjectRoot(child)
+        val result = discovery.findProjectRoot(child)
 
         assertNotNull(result)
         assertEquals(tempDir.absolutePath, result.absolutePath)
@@ -120,7 +123,7 @@ class ToolFactoryPathTest {
 
     @Test
     fun `findAutomationServerApk returns null when no APK and no env var`(@TempDir tempDir: File) {
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = null,
             searchRoots = listOf(tempDir)
         )
@@ -132,7 +135,7 @@ class ToolFactoryPathTest {
     fun `findAutomationServerApk returns env var path when file exists`(@TempDir tempDir: File) {
         val apkFile = File(tempDir, "custom.apk").apply { createNewFile() }
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = apkFile.absolutePath,
             searchRoots = emptyList()
         )
@@ -143,7 +146,7 @@ class ToolFactoryPathTest {
 
     @Test
     fun `findAutomationServerApk returns null when env var points to missing file`(@TempDir tempDir: File) {
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = File(tempDir, "nonexistent.apk").absolutePath,
             searchRoots = emptyList()
         )
@@ -155,7 +158,7 @@ class ToolFactoryPathTest {
     fun `findAutomationServerApk finds APK relative to search root`(@TempDir tempDir: File) {
         val apkFile = createApkIn(tempDir)
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = null,
             searchRoots = listOf(tempDir)
         )
@@ -171,7 +174,7 @@ class ToolFactoryPathTest {
         val searchRoot = File(tempDir, "project").apply { mkdirs() }
         createApkIn(searchRoot)
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = envApk.absolutePath,
             searchRoots = listOf(searchRoot)
         )
@@ -185,7 +188,7 @@ class ToolFactoryPathTest {
         val searchRoot = File(tempDir, "project").apply { mkdirs() }
         val apkFile = createApkIn(searchRoot)
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = File(tempDir, "missing.apk").absolutePath,
             searchRoots = listOf(searchRoot)
         )
@@ -201,7 +204,7 @@ class ToolFactoryPathTest {
         val firstApk = createApkIn(first)
         createApkIn(second)
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = null,
             searchRoots = listOf(first, second)
         )
@@ -216,7 +219,7 @@ class ToolFactoryPathTest {
         val validRoot = File(tempDir, "valid").apply { mkdirs() }
         val apkFile = createApkIn(validRoot)
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = null,
             searchRoots = listOf(emptyRoot, validRoot)
         )
@@ -227,7 +230,7 @@ class ToolFactoryPathTest {
 
     @Test
     fun `findAutomationServerApk returns null with empty search roots and no env var`() {
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = null,
             searchRoots = emptyList()
         )
@@ -239,7 +242,7 @@ class ToolFactoryPathTest {
     fun `findAutomationServerApk returned path ends with expected APK filename`(@TempDir tempDir: File) {
         createApkIn(tempDir)
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = null,
             searchRoots = listOf(tempDir)
         )
@@ -255,7 +258,7 @@ class ToolFactoryPathTest {
         val installDir = File(tempDir, "install").apply { mkdirs() }
         File(installDir, "automation-server-test.apk").createNewFile()
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = null,
             searchRoots = emptyList(),
             installDir = installDir
@@ -271,7 +274,7 @@ class ToolFactoryPathTest {
         val installDir = File(tempDir, "install").apply { mkdirs() }
         File(installDir, "automation-server-test.apk").createNewFile()
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = envApk.absolutePath,
             searchRoots = emptyList(),
             installDir = installDir
@@ -288,7 +291,7 @@ class ToolFactoryPathTest {
         val installDir = File(tempDir, "install").apply { mkdirs() }
         File(installDir, "automation-server-test.apk").createNewFile()
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = null,
             searchRoots = listOf(searchRoot),
             installDir = installDir
@@ -302,7 +305,7 @@ class ToolFactoryPathTest {
     fun `findAutomationServerApk returns null when installDir has no APK`(@TempDir tempDir: File) {
         val installDir = File(tempDir, "install").apply { mkdirs() }
 
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = null,
             searchRoots = emptyList(),
             installDir = installDir
@@ -313,7 +316,7 @@ class ToolFactoryPathTest {
 
     @Test
     fun `findAutomationServerApk returns null when installDir is null`() {
-        val result = factory.findAutomationServerApk(
+        val result = discovery.findAutomationServerApk(
             envApkPath = null,
             searchRoots = emptyList(),
             installDir = null
@@ -332,7 +335,7 @@ class ToolFactoryPathTest {
         val testApk = File(testApkDir, "automation-server-debug-androidTest.apk").apply { createNewFile() }
         val mainApk = File(mainApkDir, "automation-server-debug.apk").apply { createNewFile() }
 
-        val result = factory.resolveMainApkPath(testApk.absolutePath)
+        val result = discovery.resolveMainApkPath(testApk.absolutePath)
 
         assertNotNull(result)
         assertEquals(mainApk.absolutePath, result)
@@ -343,7 +346,7 @@ class ToolFactoryPathTest {
         val testApk = File(tempDir, "automation-server-test.apk").apply { createNewFile() }
         val mainApk = File(tempDir, "automation-server.apk").apply { createNewFile() }
 
-        val result = factory.resolveMainApkPath(testApk.absolutePath)
+        val result = discovery.resolveMainApkPath(testApk.absolutePath)
 
         assertNotNull(result)
         assertEquals(mainApk.absolutePath, result)
@@ -353,7 +356,7 @@ class ToolFactoryPathTest {
     fun `resolveMainApkPath returns null when no main APK exists`(@TempDir tempDir: File) {
         val testApk = File(tempDir, "automation-server-test.apk").apply { createNewFile() }
 
-        val result = factory.resolveMainApkPath(testApk.absolutePath)
+        val result = discovery.resolveMainApkPath(testApk.absolutePath)
 
         assertNull(result)
     }
@@ -364,7 +367,7 @@ class ToolFactoryPathTest {
         // so the derived path equals the input — should NOT treat test APK as main APK
         val testApk = File(tempDir, "automation-server-test.apk").apply { createNewFile() }
 
-        val result = factory.resolveMainApkPath(testApk.absolutePath)
+        val result = discovery.resolveMainApkPath(testApk.absolutePath)
 
         // Without a sibling automation-server.apk, result should be null
         assertNull(result)
@@ -372,7 +375,7 @@ class ToolFactoryPathTest {
 
     @Test
     fun `resolveMainApkPath returns null for bare filename with no parent directory`() {
-        val result = factory.resolveMainApkPath("test.apk")
+        val result = discovery.resolveMainApkPath("test.apk")
 
         assertNull(result)
     }
@@ -384,7 +387,7 @@ class ToolFactoryPathTest {
         val bundleDir = File(tempDir, "ios-automation-server").apply { mkdirs() }
         File(bundleDir, "IOSAutomationServer_iphonesimulator18.0-arm64.xctestrun").createNewFile()
 
-        val result = factory.findXctestrun(tempDir)
+        val result = discovery.findXctestrun(tempDir)
 
         assertNotNull(result)
         assertTrue(result.endsWith(".xctestrun"))
@@ -394,7 +397,7 @@ class ToolFactoryPathTest {
     fun `findXctestrun returns null when install directory has no xctestrun`(@TempDir tempDir: File) {
         File(tempDir, "ios-automation-server").mkdirs()
 
-        val result = factory.findXctestrun(tempDir)
+        val result = discovery.findXctestrun(tempDir)
 
         assertNull(result)
     }
@@ -403,7 +406,7 @@ class ToolFactoryPathTest {
     fun `findXctestrun returns null when install directory does not exist`(@TempDir tempDir: File) {
         val nonExistent = File(tempDir, "nonexistent")
 
-        val result = factory.findXctestrun(nonExistent)
+        val result = discovery.findXctestrun(nonExistent)
 
         assertNull(result)
     }
@@ -414,7 +417,7 @@ class ToolFactoryPathTest {
         File(bundleDir, "B_iphonesimulator18.0.xctestrun").createNewFile()
         File(bundleDir, "A_iphonesimulator17.0.xctestrun").createNewFile()
 
-        val result = factory.findXctestrun(tempDir)
+        val result = discovery.findXctestrun(tempDir)
 
         assertNotNull(result)
         assertTrue(result.contains("A_iphonesimulator17.0.xctestrun"))
@@ -425,7 +428,7 @@ class ToolFactoryPathTest {
         val bundleDir = File(tempDir, "ios-automation-server").apply { mkdirs() }
         File(bundleDir, "Test.xctestrun").createNewFile()
 
-        val result = factory.findXctestrun(tempDir)
+        val result = discovery.findXctestrun(tempDir)
 
         assertNotNull(result)
         assertTrue(File(result).isAbsolute)
@@ -437,7 +440,7 @@ class ToolFactoryPathTest {
         File(bundleDir, "IOSAutomationServer.app").mkdirs()
         File(bundleDir, "readme.txt").createNewFile()
 
-        val result = factory.findXctestrun(tempDir)
+        val result = discovery.findXctestrun(tempDir)
 
         assertNull(result)
     }
@@ -446,7 +449,7 @@ class ToolFactoryPathTest {
 
     @Test
     fun `buildXcodebuildCommand produces test-without-building for pre-built path`() {
-        val command = factory.buildXcodebuildCommand(
+        val command = iosRegistrar.buildXcodebuildCommand(
             xctestrunPath = "/path/to/Test.xctestrun",
             projectPath = null,
             simulatorName = "iPhone 16"
@@ -461,7 +464,7 @@ class ToolFactoryPathTest {
 
     @Test
     fun `buildXcodebuildCommand produces test for source path`() {
-        val command = factory.buildXcodebuildCommand(
+        val command = iosRegistrar.buildXcodebuildCommand(
             xctestrunPath = null,
             projectPath = "/path/to/Project.xcodeproj",
             simulatorName = "iPhone 16"

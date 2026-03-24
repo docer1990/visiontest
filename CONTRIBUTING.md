@@ -52,7 +52,17 @@ visiontest/
 ├── app/                              # MCP Server (Kotlin/JVM)
 │   └── src/main/kotlin/com/example/visiontest/
 │       ├── Main.kt                   # Entry point
-│       ├── ToolFactory.kt            # MCP tool registration
+│       ├── ToolFactory.kt            # Thin coordinator wiring registrars
+│       ├── tools/
+│       │   ├── ToolDsl.kt            # ToolScope DSL + CallToolRequest helpers
+│       │   ├── ToolRegistrar.kt      # Interface for modular registration
+│       │   ├── ToolHelpers.kt        # Pure utility functions
+│       │   ├── AndroidDeviceToolRegistrar.kt
+│       │   ├── AndroidAutomationToolRegistrar.kt
+│       │   ├── IOSDeviceToolRegistrar.kt
+│       │   └── IOSAutomationToolRegistrar.kt
+│       ├── discovery/
+│       │   └── ToolDiscovery.kt      # APK, Xcode project, xctestrun discovery
 │       ├── android/
 │       │   ├── Android.kt            # ADB communication (Adam library)
 │       │   └── AutomationClient.kt   # JSON-RPC client (Android)
@@ -247,8 +257,8 @@ All Gradle tests are pure JVM unit tests (no device or emulator required). iOS t
 | `app/` | `AndroidValidationTest.kt` | Package name validation, ADB argument validation |
 | `app/` | `AutomationClientTest.kt` | `sendRequest` POST/params/errors, `isServerRunning` health check |
 | `app/` | `AppConfigTest.kt` | Default configuration values |
-| `app/` | `ToolFactoryHelpersTest.kt` | Property extraction, pattern matching, app info formatting |
-| `app/` | `ToolFactoryPathTest.kt` | `findProjectRoot`, `findAutomationServerApk`, `findXctestrun` |
+| `app/` | `ToolFactoryHelpersTest.kt` | `ToolHelpers.extractProperty`, `extractPattern`, `formatAppInfo` |
+| `app/` | `ToolFactoryPathTest.kt` | `ToolDiscovery.findProjectRoot`, `findAutomationServerApk`, `resolveMainApkPath`, `findXctestrun`; `IOSAutomationToolRegistrar.buildXcodebuildCommand` |
 | `automation-server/` | `JsonRpcModelsTest.kt` | JSON-RPC error factory methods, request/response defaults |
 | `automation-server/` | `UiAutomatorModelsTest.kt` | Data classes, default values, enum entries |
 | `automation-server/` | `ServerConfigPortTest.kt` | Port validation boundaries |
@@ -300,12 +310,12 @@ curl -X POST http://localhost:9009/jsonrpc -H 'Content-Type: application/json' \
 1. Add method to `BaseUiAutomatorBridge.kt` (uses `getUiDevice()`, `getUiAutomation()`, `getDisplayRect()`)
 2. Register in `JsonRpcServerInstrumented.kt` `executeMethod()`
 3. Add client method to `AutomationClient.kt`
-4. Create MCP tool in `ToolFactory.kt`
+4. Add the MCP tool to the appropriate registrar in `tools/` (e.g., `AndroidAutomationToolRegistrar.kt`)
 
 ### Adding New MCP Tools
 
-1. Create method in `ToolFactory.kt`
-2. Register in `registerAllTools()`
+1. Add the tool to the appropriate registrar in `tools/` using the `ToolScope` DSL
+2. The tool is automatically registered via `ToolFactory.registerAllTools()`
 
 ## Error Codes
 

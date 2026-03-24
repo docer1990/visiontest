@@ -104,7 +104,15 @@ VisionTest is an MCP (Model Context Protocol) server enabling AI agents to inter
 
 Kotlin/JVM server using stdio transport. Key files:
 - `Main.kt` - Entry point, initializes managers and connects via stdio
-- `ToolFactory.kt` - Registers all MCP tools (Android, iOS, and Automation)
+- `ToolFactory.kt` - Thin coordinator that wires registrars and delegates tool registration
+- `tools/ToolDsl.kt` - `ToolScope` DSL wrapping timeout/error handling + `CallToolRequest` extension helpers
+- `tools/ToolRegistrar.kt` - Interface for modular tool registration
+- `tools/ToolHelpers.kt` - Pure utility functions (`extractProperty`, `formatAppInfo`, etc.)
+- `tools/AndroidDeviceToolRegistrar.kt` - 4 Android device tools
+- `tools/AndroidAutomationToolRegistrar.kt` - 14 Android automation tools
+- `tools/IOSDeviceToolRegistrar.kt` - 4 iOS device tools
+- `tools/IOSAutomationToolRegistrar.kt` - 12 iOS automation tools + xcodebuild process management
+- `discovery/ToolDiscovery.kt` - APK, Xcode project, xctestrun, and project root discovery
 - `android/Android.kt` - ADB communication via Adam library
 - `android/AutomationClient.kt` - HTTP client for Android Automation Server JSON-RPC
 - `ios/IOSManager.kt` - iOS simulator operations via `xcrun simctl`
@@ -364,8 +372,8 @@ All Gradle tests are pure JVM (no device/emulator needed). iOS tests run on the 
 | `android/AndroidValidationTest.kt` | `isValidPackageName`, `validateForwardArgs`, `validateShellArgs`, `validateInstallArgs` |
 | `android/AutomationClientTest.kt` | `sendRequest` POST/params/errors, `isServerRunning` health check (MockWebServer) |
 | `config/AppConfigTest.kt` | Default config values and log level |
-| `ToolFactoryHelpersTest.kt` | `extractProperty`, `extractPattern`, `formatAppInfo` |
-| `ToolFactoryPathTest.kt` | `findProjectRoot` (settings.gradle discovery, depth limit, edge cases), `findAutomationServerApk` (env var, search roots, ordering) |
+| `ToolFactoryHelpersTest.kt` | `ToolHelpers.extractProperty`, `extractPattern`, `formatAppInfo` |
+| `ToolFactoryPathTest.kt` | `ToolDiscovery.findProjectRoot`, `findAutomationServerApk`, `resolveMainApkPath`, `findXctestrun`; `IOSAutomationToolRegistrar.buildXcodebuildCommand` |
 
 ### Automation Server (`automation-server/src/test/java/com/example/automationserver/`)
 
@@ -392,7 +400,7 @@ See `.claude/unit-testing-strategy.md` for the full testing roadmap (Plans 1-7).
 - Device list caching reduces ADB overhead (validity: 1000ms default)
 - Retry logic with exponential backoff in `ErrorHandler.retryOperation()`
 - Custom exception hierarchy in `Exceptions.kt` with platform-specific error codes
-- Tool timeout wrapper: `runWithTimeout()` in ToolFactory (default: 10s, 30s for UI hierarchy)
+- Tool timeout wrapper: `ToolScope` DSL with `withTimeout` (default: 10s, 30s for UI hierarchy, 200s for iOS server startup)
 - Automation Server uses Ktor/Netty for HTTP server with Gson serialization
 - Template Method Pattern: `BaseUiAutomatorBridge` defines operations, subclasses provide `UiDevice`, `UiAutomation`, and display bounds
 - Reflection-based hierarchy dumping via `UiDevice.getWindowRoots()` for Flutter app support

@@ -87,6 +87,7 @@ class AndroidAutomationToolRegistrar(
                 )
                 ProcessBuilder(command)
                     .redirectErrorStream(true)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                     .start()
             }
 

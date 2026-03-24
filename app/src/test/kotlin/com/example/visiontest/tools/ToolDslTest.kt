@@ -9,6 +9,7 @@ import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
@@ -234,6 +235,15 @@ class ToolDslTest {
         val result = captured(request())
         val text = (result.content.first() as TextContent).text!!
         assertTrue(text.contains("test_tool"), "Expected tool name in: $text")
+    }
+
+    @Test
+    fun `tool rethrows CancellationException for structured concurrency`() = runBlocking {
+        val captured = captureHandler {
+            throw CancellationException("job cancelled")
+        }
+
+        assertFailsWith<CancellationException> { captured(request()) }
     }
 
     @Test

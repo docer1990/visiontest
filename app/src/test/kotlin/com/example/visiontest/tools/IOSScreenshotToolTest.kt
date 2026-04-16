@@ -175,6 +175,80 @@ class IOSScreenshotToolTest {
         assertFalse(target.exists())
     }
 
+    @Test
+    fun `JSON-RPC methodNotFound maps to outdated-bundle guidance`() = runBlocking {
+        enqueueHealthOk()
+        // Standard JSON-RPC 2.0 error envelope for methodNotFound (code -32601).
+        // This is what an older pre-built bundle would return for ui.screenshot.
+        mockServer.enqueue(
+            MockResponse().setBody(
+                """{"jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found: ui.screenshot"},"id":1}"""
+            )
+        )
+
+        val target = File(tempDir, "out.png")
+        val message = registrar.captureScreenshot(target.absolutePath)
+
+        assertTrue(message.contains("methodNotFound"), "Got: $message")
+        assertTrue(message.contains("outdated iOS automation server bundle"), "Got: $message")
+        assertFalse(target.exists())
+    }
+
+    @Test
+    fun `other JSON-RPC errors surface code and message`() = runBlocking {
+        enqueueHealthOk()
+        mockServer.enqueue(
+            MockResponse().setBody(
+                """{"jsonrpc":"2.0","error":{"code":-32000,"message":"XCUITest crashed"},"id":1}"""
+            )
+        )
+
+        val target = File(tempDir, "out.png")
+        val message = registrar.captureScreenshot(target.absolutePath)
+
+        assertTrue(message.contains("-32000"), "Got: $message")
+        assertTrue(message.contains("XCUITest crashed"), "Got: $message")
+        assertFalse(target.exists())
+    }
+
+    @Test
+    fun `result present but not a JSON object is rejected gracefully`() = runBlocking {
+        enqueueHealthOk()
+        mockServer.enqueue(MockResponse().setBody("""{"jsonrpc":"2.0","result":"oops","id":1}"""))
+
+        val target = File(tempDir, "out.png")
+        val message = registrar.captureScreenshot(target.absolutePath)
+
+        assertTrue(message.contains("'result' is not a JSON object"), "Got: $message")
+        assertFalse(target.exists())
+    }
+
+    @Test
+    fun `invalid base64 in pngBase64 surfaces a decode error and writes no file`() = runBlocking {
+        enqueueHealthOk()
+        enqueueScreenshotResult(successBody("!!!not-base64!!!"))
+
+        val target = File(tempDir, "out.png")
+        val message = registrar.captureScreenshot(target.absolutePath)
+
+        assertTrue(message.contains("invalid base64 PNG data"), "Got: $message")
+        assertFalse(target.exists())
+    }
+
+    @Test
+    fun `atomic write leaves no temp file on success`() = runBlocking {
+        enqueueHealthOk()
+        enqueueScreenshotResult(successBody(fixturePngBase64))
+
+        val target = File(tempDir, "out.png")
+        registrar.captureScreenshot(target.absolutePath)
+
+        // Confirm the final file exists and no .png.tmp sidecar was left behind
+        assertTrue(target.exists())
+        val leftovers = tempDir.listFiles { f -> f.name.endsWith(".png.tmp") }.orEmpty()
+        assertEquals(0, leftovers.size, "Temp files left behind: ${leftovers.map { it.name }}")
+    }
+
     // --- helpers ---
 
     private fun enqueueHealthOk() {

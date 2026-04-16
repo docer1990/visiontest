@@ -11,7 +11,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.slf4j.Logger
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Base64
@@ -508,8 +510,34 @@ class IOSAutomationToolRegistrar(
         } catch (e: Exception) {
             return "Screenshot failed: unable to parse response from iOS automation server (${e.message})."
         }
-        val result = root.getAsJsonObject("result")
-            ?: return "Screenshot failed: response missing 'result' object."
+
+        // JSON-RPC 2.0 envelope: either `result` OR `error` is present at the top level.
+        // Check `error` first so we can surface the server's message and map `methodNotFound`
+        // to the outdated-bundle guidance (older bundles won't know about `ui.screenshot`).
+        val errorElement = root.get("error")
+        if (errorElement != null && !errorElement.isJsonNull) {
+            if (errorElement.isJsonObject) {
+                val errorObj = errorElement.asJsonObject
+                val code = errorObj.get("code")?.asInt
+                val message = errorObj.get("message")?.asString ?: "unknown error"
+                if (code == JSON_RPC_METHOD_NOT_FOUND) {
+                    return "Screenshot failed: the iOS automation server does not recognize 'ui.screenshot' " +
+                        "(JSON-RPC methodNotFound). This indicates an outdated iOS automation server bundle " +
+                        "— rebuild from source or update the installed bundle."
+                }
+                return "Screenshot failed: iOS automation server returned error ($code): $message"
+            }
+            return "Screenshot failed: iOS automation server returned a malformed error envelope."
+        }
+
+        val resultElement = root.get("result")
+        if (resultElement == null || resultElement.isJsonNull) {
+            return "Screenshot failed: response missing 'result' object."
+        }
+        if (!resultElement.isJsonObject) {
+            return "Screenshot failed: response 'result' is not a JSON object."
+        }
+        val result = resultElement.asJsonObject
 
         val success = result.get("success")?.asBoolean ?: false
         if (!success) {
@@ -523,9 +551,7 @@ class IOSAutomationToolRegistrar(
         }
 
         val targetFile = resolveScreenshotPath(outputPath)
-        writeScreenshot(targetFile, pngBase64)
-
-        return "Screenshot saved to ${targetFile.absolutePath}"
+        return writeScreenshot(targetFile, pngBase64)
     }
 
     internal fun resolveScreenshotPath(outputPath: String?): File {
@@ -539,13 +565,59 @@ class IOSAutomationToolRegistrar(
         return File("screenshots/ios_screenshot_$timestamp.png").absoluteFile
     }
 
-    private fun writeScreenshot(target: File, pngBase64: String) {
-        val parent = target.parentFile
-        if (parent != null) {
-            Files.createDirectories(parent.toPath())
+    /**
+     * Decodes the base64 PNG and writes it atomically to [target].
+     * Runs on Dispatchers.IO so we don't block the tool handler's coroutine context.
+     * Writes to a sibling temp file first, then moves into place so a failure or cancellation
+     * mid-write cannot leave a partial PNG at [target].
+     *
+     * Returns a user-facing result string (success or a specific error message).
+     */
+    internal suspend fun writeScreenshot(target: File, pngBase64: String): String = withContext(Dispatchers.IO) {
+        val bytes = try {
+            Base64.getDecoder().decode(pngBase64)
+        } catch (e: IllegalArgumentException) {
+            return@withContext "Screenshot failed: iOS automation server returned invalid base64 PNG data (${e.message})."
         }
-        val bytes = Base64.getDecoder().decode(pngBase64)
-        Files.write(target.toPath(), bytes)
+
+        val targetPath = target.toPath()
+        val parentDir = target.parentFile
+            ?: return@withContext "Screenshot failed: cannot determine parent directory for ${target.absolutePath}."
+
+        try {
+            Files.createDirectories(parentDir.toPath())
+        } catch (e: IOException) {
+            return@withContext "Screenshot failed: unable to create parent directory ${parentDir.absolutePath} (${e.message})."
+        }
+
+        val tempFile = try {
+            Files.createTempFile(parentDir.toPath(), ".ios_screenshot_", ".png.tmp")
+        } catch (e: IOException) {
+            return@withContext "Screenshot failed: unable to create temp file in ${parentDir.absolutePath} (${e.message})."
+        }
+
+        try {
+            Files.write(tempFile, bytes)
+            // ATOMIC_MOVE isn't guaranteed across filesystems, but tempFile is a sibling of
+            // target so they're on the same FS. Fall back to plain replace on rare failures.
+            try {
+                Files.move(tempFile, targetPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+                Files.move(tempFile, targetPath, StandardCopyOption.REPLACE_EXISTING)
+            }
+            "Screenshot saved to ${target.absolutePath}"
+        } catch (e: IOException) {
+            Files.deleteIfExists(tempFile)
+            "Screenshot failed: unable to write PNG to ${target.absolutePath} (${e.message})."
+        } catch (e: Exception) {
+            Files.deleteIfExists(tempFile)
+            throw e
+        }
+    }
+
+    companion object {
+        /** Standard JSON-RPC 2.0 error code for an unknown method. */
+        private const val JSON_RPC_METHOD_NOT_FOUND = -32601
     }
 
     private fun registerStopAutomationServer(scope: ToolScope) {

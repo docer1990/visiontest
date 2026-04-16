@@ -518,14 +518,24 @@ class IOSAutomationToolRegistrar(
         if (errorElement != null && !errorElement.isJsonNull) {
             if (errorElement.isJsonObject) {
                 val errorObj = errorElement.asJsonObject
-                val code = errorObj.get("code")?.asInt
-                val message = errorObj.get("message")?.asString ?: "unknown error"
+                val codeElement = errorObj.get("code")
+                val code = if (codeElement?.isJsonPrimitive == true && codeElement.asJsonPrimitive.isNumber) {
+                    codeElement.asInt
+                } else null
+                val messageElement = errorObj.get("message")
+                val message = if (messageElement?.isJsonPrimitive == true) {
+                    messageElement.asString
+                } else "unknown error"
                 if (code == JSON_RPC_METHOD_NOT_FOUND) {
                     return "Screenshot failed: the iOS automation server does not recognize 'ui.screenshot' " +
                         "(JSON-RPC methodNotFound). This indicates an outdated iOS automation server bundle " +
                         "— rebuild from source or update the installed bundle."
                 }
-                return "Screenshot failed: iOS automation server returned error ($code): $message"
+                return if (code != null) {
+                    "Screenshot failed: iOS automation server returned error ($code): $message"
+                } else {
+                    "Screenshot failed: iOS automation server returned an error: $message"
+                }
             }
             return "Screenshot failed: iOS automation server returned a malformed error envelope."
         }

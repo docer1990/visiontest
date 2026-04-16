@@ -4,11 +4,17 @@ import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.config.IOSAutomationConfig
 import com.example.visiontest.discovery.ToolDiscovery
 import com.example.visiontest.ios.IOSAutomationClient
+import com.google.gson.JsonParser
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.slf4j.Logger
+import java.io.File
+import java.nio.file.Files
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Base64
 
 class IOSAutomationToolRegistrar(
     private val ios: DeviceConfig,
@@ -32,6 +38,7 @@ class IOSAutomationToolRegistrar(
         registerGetDeviceInfo(scope)
         registerPressHome(scope)
         registerInputText(scope)
+        registerScreenshot(scope)
         registerStopAutomationServer(scope)
     }
 
@@ -465,6 +472,80 @@ class IOSAutomationToolRegistrar(
             val bundleId = request.optionalString("bundleId")
             iosAutomationClient.inputText(text, bundleId)
         }
+    }
+
+    private fun registerScreenshot(scope: ToolScope) {
+        scope.tool(
+            name = "ios_screenshot",
+            description = """
+                Captures a screenshot of the current iOS simulator display and saves it as a PNG file on the host.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                OPTIONAL PARAMETERS:
+                - outputPath: Absolute or relative path where the PNG will be written.
+                  Relative paths resolve against the MCP server's working directory (typically the
+                  user's current project). If the file already exists it will be overwritten.
+                  Missing parent directories are created automatically.
+                  If omitted, saves to ./screenshots/ios_screenshot_<yyyyMMdd_HHmmss>.png relative to
+                  the server's working directory (i.e. the current project, not the visiontest install dir).
+
+                Returns the absolute path of the saved PNG.
+            """.trimIndent(),
+            timeoutMs = 30000
+        ) { request ->
+            captureScreenshot(request.optionalString("outputPath"))
+        }
+    }
+
+    internal suspend fun captureScreenshot(outputPath: String?): String {
+        if (!iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
+        }
+
+        val response = iosAutomationClient.screenshot()
+        val root = try {
+            JsonParser.parseString(response).asJsonObject
+        } catch (e: Exception) {
+            return "Screenshot failed: unable to parse response from iOS automation server (${e.message})."
+        }
+        val result = root.getAsJsonObject("result")
+            ?: return "Screenshot failed: response missing 'result' object."
+
+        val success = result.get("success")?.asBoolean ?: false
+        if (!success) {
+            val error = result.get("error")?.asString ?: "unknown error"
+            return "Screenshot failed on the iOS automation server: $error"
+        }
+
+        val pngBase64 = result.get("pngBase64")?.asString
+        if (pngBase64.isNullOrEmpty()) {
+            return "Screenshot failed: response missing 'pngBase64'. This may indicate an outdated iOS automation server bundle — rebuild from source or update the installed bundle."
+        }
+
+        val targetFile = resolveScreenshotPath(outputPath)
+        writeScreenshot(targetFile, pngBase64)
+
+        return "Screenshot saved to ${targetFile.absolutePath}"
+    }
+
+    internal fun resolveScreenshotPath(outputPath: String?): File {
+        if (outputPath != null && outputPath.isNotBlank()) {
+            return File(outputPath).absoluteFile
+        }
+        val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
+        // Default to the MCP server's working directory so screenshots land in the
+        // user's current project (not the visiontest install dir). Coding agents like
+        // Claude Code launch the server with CWD set to the project they're working on.
+        return File("screenshots/ios_screenshot_$timestamp.png").absoluteFile
+    }
+
+    private fun writeScreenshot(target: File, pngBase64: String) {
+        val parent = target.parentFile
+        if (parent != null) {
+            Files.createDirectories(parent.toPath())
+        }
+        val bytes = Base64.getDecoder().decode(pngBase64)
+        Files.write(target.toPath(), bytes)
     }
 
     private fun registerStopAutomationServer(scope: ToolScope) {

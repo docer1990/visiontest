@@ -110,6 +110,18 @@ class XCUITestBridge {
         )
     }
 
+    // MARK: - Screenshot
+
+    /// Captures the current simulator display as a PNG and returns it base64-encoded.
+    func screenshot() -> ScreenshotResult {
+        let pngData = XCUIScreen.main.screenshot().pngRepresentation
+        if pngData.isEmpty {
+            return ScreenshotResult(success: false, pngBase64: nil, error: "Screenshot returned empty PNG data")
+        }
+        let base64 = pngData.base64EncodedString()
+        return ScreenshotResult(success: true, pngBase64: base64, error: nil)
+    }
+
     // MARK: - Tap
 
     /// Taps at absolute screen coordinates using the springboard coordinate space.

@@ -38,6 +38,19 @@ struct DeviceInfoResult {
     }
 }
 
+struct ScreenshotResult {
+    let success: Bool
+    let pngBase64: String?
+    let error: String?
+
+    func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = ["success": success]
+        if let pngBase64 = pngBase64 { dict["pngBase64"] = pngBase64 }
+        if let error = error { dict["error"] = error }
+        return dict
+    }
+}
+
 struct OperationResult {
     let success: Bool
     let error: String?

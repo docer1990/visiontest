@@ -387,6 +387,7 @@ abstract class BaseUiAutomatorBridge {
     fun screenshot(): ScreenshotResult {
         var bitmap: android.graphics.Bitmap? = null
         return try {
+            getUiDevice().waitForIdle(1000)
             bitmap = getUiAutomation().takeScreenshot()
             if (bitmap == null) {
                 return ScreenshotResult(

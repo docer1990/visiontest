@@ -96,6 +96,10 @@ class JsonRpcServer {
             let bundleId = params?["bundleId"] as? String
             return bridge.getInteractiveElements(includeDisabled: includeDisabled, bundleId: bundleId).toDictionary()
 
+        // Screenshot
+        case "ui.screenshot":
+            return bridge.screenshot().toDictionary()
+
         // Device methods
         case "device.getInfo":
             return bridge.getDeviceInfo().toDictionary()

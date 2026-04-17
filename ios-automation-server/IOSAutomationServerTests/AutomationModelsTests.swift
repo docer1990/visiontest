@@ -20,6 +20,24 @@ final class AutomationModelsTests: XCTestCase {
         XCTAssertEqual(dict["error"] as? String, "timeout")
     }
 
+    // MARK: - ScreenshotResult
+
+    func testScreenshotResultSuccess() {
+        let result = ScreenshotResult(success: true, pngBase64: "iVBORw0KGgo=", error: nil)
+        let dict = result.toDictionary()
+        XCTAssertEqual(dict["success"] as? Bool, true)
+        XCTAssertEqual(dict["pngBase64"] as? String, "iVBORw0KGgo=")
+        XCTAssertNil(dict["error"])
+    }
+
+    func testScreenshotResultFailure() {
+        let result = ScreenshotResult(success: false, pngBase64: nil, error: "capture failed")
+        let dict = result.toDictionary()
+        XCTAssertEqual(dict["success"] as? Bool, false)
+        XCTAssertNil(dict["pngBase64"])
+        XCTAssertEqual(dict["error"] as? String, "capture failed")
+    }
+
     // MARK: - DeviceInfoResult
 
     func testDeviceInfoResultAllFields() {

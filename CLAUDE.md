@@ -121,6 +121,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `ios_get_device_info` | Get display size, rotation, and iOS version |
 | `ios_input_text` | Type text into the currently focused element |
 | `ios_press_home` | Press home button |
+| `ios_screenshot` | Capture the simulator display and save as a PNG file (optional `outputPath`; defaults to `./screenshots/` in the project's CWD) |
 | `ios_stop_automation_server` | Stop the running XCUITest server |
 
 ### Typical Automation Workflow

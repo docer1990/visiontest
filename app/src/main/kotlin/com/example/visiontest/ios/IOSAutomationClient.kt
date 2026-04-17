@@ -182,6 +182,14 @@ class IOSAutomationClient(
     }
 
     /**
+     * Captures a screenshot of the current simulator display.
+     * Returns the raw JSON-RPC response containing a base64-encoded PNG in `result.pngBase64`.
+     */
+    suspend fun screenshot(): String {
+        return sendRequest("ui.screenshot")
+    }
+
+    /**
      * Finds an element by selector. Returns element info if found.
      * @param text Exact text match
      * @param textContains Partial text match

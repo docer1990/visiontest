@@ -549,14 +549,33 @@ class IOSAutomationToolRegistrar(
         }
         val result = resultElement.asJsonObject
 
-        val success = result.get("success")?.asBoolean ?: false
-        if (!success) {
-            val error = result.get("error")?.asString ?: "unknown error"
+        val successElement = result.get("success")
+        if (successElement == null || successElement.isJsonNull || !successElement.isJsonPrimitive) {
+            return "Screenshot failed: response 'result' has a missing or non-primitive 'success' field."
+        }
+        val successPrimitive = successElement.asJsonPrimitive
+        if (!successPrimitive.isBoolean) {
+            return "Screenshot failed: response 'result.success' is not a boolean (got: $successElement)."
+        }
+        if (!successPrimitive.asBoolean) {
+            val errorElement = result.get("error")
+            val error = if (errorElement != null && !errorElement.isJsonNull && errorElement.isJsonPrimitive && errorElement.asJsonPrimitive.isString) {
+                errorElement.asString
+            } else {
+                "unknown error"
+            }
             return "Screenshot failed on the iOS automation server: $error"
         }
 
-        val pngBase64 = result.get("pngBase64")?.asString
-        if (pngBase64.isNullOrEmpty()) {
+        val pngBase64Element = result.get("pngBase64")
+        if (pngBase64Element == null || pngBase64Element.isJsonNull) {
+            return "Screenshot failed: response missing 'pngBase64'. This may indicate an outdated iOS automation server bundle — rebuild from source or update the installed bundle."
+        }
+        if (!pngBase64Element.isJsonPrimitive || !pngBase64Element.asJsonPrimitive.isString) {
+            return "Screenshot failed: response 'result.pngBase64' is not a string (got: $pngBase64Element)."
+        }
+        val pngBase64 = pngBase64Element.asString
+        if (pngBase64.isEmpty()) {
             return "Screenshot failed: response missing 'pngBase64'. This may indicate an outdated iOS automation server bundle — rebuild from source or update the installed bundle."
         }
 

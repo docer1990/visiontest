@@ -10,6 +10,15 @@ data class UiHierarchyResult(
 )
 
 /**
+ * Result of a screenshot capture operation.
+ */
+data class ScreenshotResult(
+    val success: Boolean,
+    val pngBase64: String? = null,
+    val error: String? = null
+)
+
+/**
  * Device display and system information.
  */
 data class DeviceInfo(

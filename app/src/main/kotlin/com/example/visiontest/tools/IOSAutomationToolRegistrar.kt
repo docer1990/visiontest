@@ -636,10 +636,10 @@ class IOSAutomationToolRegistrar(
             }
             "Screenshot saved to ${target.absolutePath}"
         } catch (e: IOException) {
-            Files.deleteIfExists(tempFile)
+            runCatching { Files.deleteIfExists(tempFile) }
             "Screenshot failed: unable to write PNG to ${target.absolutePath} (${e.message})."
         } catch (e: Exception) {
-            Files.deleteIfExists(tempFile)
+            runCatching { Files.deleteIfExists(tempFile) }
             throw e
         }
     }

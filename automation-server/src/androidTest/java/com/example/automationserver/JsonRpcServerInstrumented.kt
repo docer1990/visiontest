@@ -160,6 +160,9 @@ class JsonRpcServerInstrumented(
             "device.pressBack" -> uiAutomator.pressBack()
             "device.pressHome" -> uiAutomator.pressHome()
 
+            // Screenshot
+            "ui.screenshot" -> uiAutomator.screenshot()
+
             // Click methods
             "ui.tapByCoordinates" -> {
                 val x = params?.get("x")?.asInt

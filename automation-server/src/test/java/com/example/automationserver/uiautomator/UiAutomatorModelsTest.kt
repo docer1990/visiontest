@@ -33,6 +33,31 @@ class UiAutomatorModelsTest {
         assertNull(result.error)
     }
 
+    // --- ScreenshotResult ---
+
+    @Test
+    fun `ScreenshotResult success with pngBase64`() {
+        val result = ScreenshotResult(success = true, pngBase64 = "iVBORw0KGgo=")
+        assertTrue(result.success)
+        assertEquals("iVBORw0KGgo=", result.pngBase64)
+        assertNull(result.error)
+    }
+
+    @Test
+    fun `ScreenshotResult failure with error`() {
+        val result = ScreenshotResult(success = false, error = "capture failed")
+        assertFalse(result.success)
+        assertNull(result.pngBase64)
+        assertEquals("capture failed", result.error)
+    }
+
+    @Test
+    fun `ScreenshotResult defaults pngBase64 and error to null`() {
+        val result = ScreenshotResult(success = true)
+        assertNull(result.pngBase64)
+        assertNull(result.error)
+    }
+
     // --- DeviceInfo ---
 
     @Test

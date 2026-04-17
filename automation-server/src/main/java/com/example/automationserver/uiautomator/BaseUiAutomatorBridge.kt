@@ -377,6 +377,40 @@ abstract class BaseUiAutomatorBridge {
     }
 
     /**
+     * Captures the current device display as a PNG and returns it base64-encoded.
+     *
+     * Uses [android.app.UiAutomation.takeScreenshot] which returns a [android.graphics.Bitmap]
+     * in the instrumentation test process, then compresses to PNG in-memory. The base64
+     * payload crosses the JSON-RPC/ADB-forward boundary to the host, where the MCP tool
+     * decodes and writes it to disk.
+     */
+    fun screenshot(): ScreenshotResult {
+        return try {
+            val bitmap = getUiAutomation().takeScreenshot()
+            if (bitmap == null) {
+                return ScreenshotResult(
+                    success = false,
+                    error = "Screenshot capture returned no bitmap (display unavailable or content is FLAG_SECURE)"
+                )
+            }
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream)
+            val bytes = outputStream.toByteArray()
+            if (bytes.isEmpty()) {
+                return ScreenshotResult(
+                    success = false,
+                    error = "Screenshot capture returned no bitmap (display unavailable or content is FLAG_SECURE)"
+                )
+            }
+            val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+            ScreenshotResult(success = true, pngBase64 = base64)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error capturing screenshot", e)
+            ScreenshotResult(success = false, error = e.message ?: "Unknown error")
+        }
+    }
+
+    /**
      * Finds a UI element using various selectors.
      *
      * Provide at least one selector parameter. If multiple are provided,

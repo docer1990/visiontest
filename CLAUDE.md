@@ -106,6 +106,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `android_input_text` | Type text into the currently focused element |
 | `android_press_back` | Press the back button |
 | `android_press_home` | Press the home button |
+| `android_screenshot` | Capture the device display and save as a PNG file (optional `outputPath`; defaults to `./screenshots/` in the project's CWD) |
 
 ### UI Automation (iOS)
 | Tool | Description |

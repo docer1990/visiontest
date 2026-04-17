@@ -96,6 +96,14 @@ class AutomationClient(
     }
 
     /**
+     * Captures the current device display as a PNG and returns the raw JSON-RPC response.
+     * The response `result` contains `success: Boolean`, `pngBase64: String?`, and `error: String?`.
+     */
+    suspend fun screenshot(): String {
+        return sendRequest("ui.screenshot")
+    }
+
+    /**
      * Gets device information.
      */
     suspend fun getDeviceInfo(): String {

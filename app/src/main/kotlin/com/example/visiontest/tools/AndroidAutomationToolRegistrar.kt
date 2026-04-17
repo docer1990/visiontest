@@ -580,14 +580,24 @@ class AndroidAutomationToolRegistrar(
         if (errorElement != null && !errorElement.isJsonNull) {
             if (errorElement.isJsonObject) {
                 val errorObj = errorElement.asJsonObject
-                val code = errorObj.get("code")?.asInt
-                val message = errorObj.get("message")?.asString ?: "unknown error"
+                val codeElement = errorObj.get("code")
+                val code = if (codeElement?.isJsonPrimitive == true && codeElement.asJsonPrimitive.isNumber) {
+                    codeElement.asInt
+                } else null
+                val messageElement = errorObj.get("message")
+                val message = if (messageElement?.isJsonPrimitive == true && messageElement.asJsonPrimitive.isString) {
+                    messageElement.asString
+                } else "unknown error"
                 if (code == JSON_RPC_METHOD_NOT_FOUND) {
                     return "Screenshot failed: the Android automation server does not recognize 'ui.screenshot' " +
                         "(JSON-RPC methodNotFound). This indicates an outdated Android automation server APK " +
                         "— rebuild from source or update the installed APK."
                 }
-                return "Screenshot failed: Android automation server returned error ($code): $message"
+                return if (code != null) {
+                    "Screenshot failed: Android automation server returned error ($code): $message"
+                } else {
+                    "Screenshot failed: Android automation server returned an error: $message"
+                }
             }
             return "Screenshot failed: Android automation server returned a malformed error envelope."
         }

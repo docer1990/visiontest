@@ -385,8 +385,9 @@ abstract class BaseUiAutomatorBridge {
      * decodes and writes it to disk.
      */
     fun screenshot(): ScreenshotResult {
+        var bitmap: android.graphics.Bitmap? = null
         return try {
-            val bitmap = getUiAutomation().takeScreenshot()
+            bitmap = getUiAutomation().takeScreenshot()
             if (bitmap == null) {
                 return ScreenshotResult(
                     success = false,
@@ -394,12 +395,20 @@ abstract class BaseUiAutomatorBridge {
                 )
             }
             val outputStream = ByteArrayOutputStream()
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream)
+            val compressed = outputStream.use { stream ->
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+            }
+            if (!compressed) {
+                return ScreenshotResult(
+                    success = false,
+                    error = "PNG compression failed (Bitmap.compress returned false)"
+                )
+            }
             val bytes = outputStream.toByteArray()
             if (bytes.isEmpty()) {
                 return ScreenshotResult(
                     success = false,
-                    error = "Screenshot capture returned no bitmap (display unavailable or content is FLAG_SECURE)"
+                    error = "PNG compression produced empty output"
                 )
             }
             val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
@@ -407,6 +416,8 @@ abstract class BaseUiAutomatorBridge {
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing screenshot", e)
             ScreenshotResult(success = false, error = e.message ?: "Unknown error")
+        } finally {
+            bitmap?.recycle()
         }
     }
 

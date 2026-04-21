@@ -1,6 +1,6 @@
 package com.example.visiontest.cli
 
-import com.github.ajalt.clikt.core.CliktCommand
+import com.example.visiontest.cli.commands.*
 import com.github.ajalt.clikt.core.NoOpCliktCommand
 import com.github.ajalt.clikt.core.subcommands
 
@@ -10,39 +10,30 @@ import com.github.ajalt.clikt.core.subcommands
  * The JAR's `main(args)` enters this command only when invoked with arguments that
  * are not the MCP stdio sentinel (empty args or `serve`). See [com.example.visiontest.main].
  *
- * Phase 4 will replace the stubs with real implementations; the stubs exist here
- * so that Phase 3 compiles and `--help` already lists all 13 commands.
+ * A [ComponentHolder] is created once to provide the same dependency graph as the MCP path.
  */
 class VisionTestCli : NoOpCliktCommand(name = "visiontest") {
     init {
+        val components = ComponentHolder.createDefault()
         subcommands(
             // Setup
-            StubCommand("install_automation_server", "Install automation server APKs (Android only)"),
-            StubCommand("start_automation_server", "Start the automation server"),
-            StubCommand("automation_server_status", "Check automation server status"),
+            InstallAutomationServerCommand(components),
+            StartAutomationServerCommand(components),
+            AutomationServerStatusCommand(components),
             // Inspection
-            StubCommand("get_interactive_elements", "Get interactive UI elements"),
-            StubCommand("get_ui_hierarchy", "Get full UI hierarchy XML"),
-            StubCommand("get_device_info", "Get device display info"),
-            StubCommand("screenshot", "Capture a screenshot"),
+            GetInteractiveElementsCommand(components),
+            GetUiHierarchyCommand(components),
+            GetDeviceInfoCommand(components),
+            ScreenshotCommand(components),
             // Interaction
-            StubCommand("tap_by_coordinates", "Tap at screen coordinates"),
-            StubCommand("input_text", "Type text into focused element"),
-            StubCommand("swipe_direction", "Swipe in a direction"),
+            TapByCoordinatesCommand(components),
+            InputTextCommand(components),
+            SwipeDirectionCommand(components),
             // Navigation
-            StubCommand("press_back", "Press the back button (Android only)"),
-            StubCommand("press_home", "Press the home button"),
+            PressBackCommand(components),
+            PressHomeCommand(components),
             // Apps
-            StubCommand("launch_app", "Launch an app by package/bundle ID"),
+            LaunchAppCommand(components),
         )
-    }
-}
-
-/**
- * Temporary stub subcommand. Replaced in Phase 4 with real implementations.
- */
-private class StubCommand(name: String, help: String) : CliktCommand(name = name, help = help) {
-    override fun run() {
-        echo("Not yet implemented: $commandName")
     }
 }

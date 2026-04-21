@@ -30,31 +30,31 @@ Each subcommand lives in its own file under `cli/commands/`. Every command parse
 
 ### Setup
 
-- [ ] 4.1 `InstallAutomationServerCommand` — `visiontest install_automation_server --platform android`. Reject `--platform ios` (exit 5). Delegates to `AndroidAutomationToolRegistrar.installAutomationServer()`
-- [ ] 4.2 `StartAutomationServerCommand` — `visiontest start_automation_server --platform android|ios`. Delegates to the platform's `startAutomationServer()` extracted function. Timeout mirrors the MCP tool's (30 s Android, 200 s iOS)
-- [ ] 4.3 `AutomationServerStatusCommand` — `visiontest automation_server_status --platform android|ios`. Delegates to the platform's `automationServerStatus()` function
+- [x] 4.1 `InstallAutomationServerCommand` — `visiontest install_automation_server --platform android`. Reject `--platform ios` (exit 5). Delegates to `AndroidAutomationToolRegistrar.installAutomationServer()`
+- [x] 4.2 `StartAutomationServerCommand` — `visiontest start_automation_server --platform android|ios`. Delegates to the platform's `startAutomationServer()` extracted function. Timeout mirrors the MCP tool's (30 s Android, 200 s iOS)
+- [x] 4.3 `AutomationServerStatusCommand` — `visiontest automation_server_status --platform android|ios`. Delegates to the platform's `automationServerStatus()` function
 
 ### Inspection
 
-- [ ] 4.4 `GetInteractiveElementsCommand` — `visiontest get_interactive_elements --platform android|ios [--include-disabled]`. Delegates to `getInteractiveElements(includeDisabled: Boolean)` on the relevant registrar
-- [ ] 4.5 `GetUiHierarchyCommand` — `visiontest get_ui_hierarchy --platform android|ios`. Delegates to `getUiHierarchy()`. Use 30 s timeout to match MCP
-- [ ] 4.6 `GetDeviceInfoCommand` — `visiontest get_device_info --platform android|ios`. Delegates to `getDeviceInfo()`
-- [ ] 4.7 `ScreenshotCommand` — `visiontest screenshot --platform android|ios [--output PATH]`. Delegates to the platform's `captureScreenshot(outputPath: String?)` (already exists on both registrars). Default path behavior is preserved (resolves `./screenshots/<platform>_screenshot_<ts>.png` against CWD). 30 s timeout
+- [x] 4.4 `GetInteractiveElementsCommand` — `visiontest get_interactive_elements --platform android|ios [--include-disabled]`. Delegates to `getInteractiveElements(includeDisabled: Boolean)` on the relevant registrar
+- [x] 4.5 `GetUiHierarchyCommand` — `visiontest get_ui_hierarchy --platform android|ios`. Delegates to `getUiHierarchy()`. Use 30 s timeout to match MCP
+- [x] 4.6 `GetDeviceInfoCommand` — `visiontest get_device_info --platform android|ios`. Delegates to `getDeviceInfo()`
+- [x] 4.7 `ScreenshotCommand` — `visiontest screenshot --platform android|ios [--output PATH]`. Delegates to the platform's `captureScreenshot(outputPath: String?)` (already exists on both registrars). Default path behavior is preserved (resolves `./screenshots/<platform>_screenshot_<ts>.png` against CWD). 30 s timeout
 
 ### Interaction
 
-- [ ] 4.8 `TapByCoordinatesCommand` — `visiontest tap_by_coordinates --platform android|ios <x> <y>`. `x` and `y` are required integer positional args. Delegates to `tapByCoordinates(x, y)`
-- [ ] 4.9 `InputTextCommand` — `visiontest input_text --platform android|ios <text>`. `text` is a required positional arg (single value; the skill can quote strings containing spaces). Delegates to `inputText(text)`
-- [ ] 4.10 `SwipeDirectionCommand` — `visiontest swipe_direction --platform android|ios <direction> [--distance short|medium|long] [--speed slow|normal|fast]`. `direction` is a required positional from `{up,down,left,right}`. Clikt `choice(...)` validates it (invalid → exit 2). Defaults mirror MCP (distance=medium, speed=normal). Delegates to `swipeByDirection(direction, distance, speed)`
+- [x] 4.8 `TapByCoordinatesCommand` — `visiontest tap_by_coordinates --platform android|ios <x> <y>`. `x` and `y` are required integer positional args. Delegates to `tapByCoordinates(x, y)`
+- [x] 4.9 `InputTextCommand` — `visiontest input_text --platform android|ios <text>`. `text` is a required positional arg (single value; the skill can quote strings containing spaces). Delegates to `inputText(text)`
+- [x] 4.10 `SwipeDirectionCommand` — `visiontest swipe_direction --platform android|ios <direction> [--distance short|medium|long] [--speed slow|normal|fast]`. `direction` is a required positional from `{up,down,left,right}`. Clikt `choice(...)` validates it (invalid → exit 2). Defaults mirror MCP (distance=medium, speed=normal). Delegates to `swipeByDirection(direction, distance, speed)`
 
 ### Navigation
 
-- [ ] 4.11 `PressBackCommand` — `visiontest press_back --platform android`. Android-only; rejects `--platform ios` → exit 5. Delegates to `pressBack()`
-- [ ] 4.12 `PressHomeCommand` — `visiontest press_home --platform android|ios`. Delegates to the platform's `pressHome()`
+- [x] 4.11 `PressBackCommand` — `visiontest press_back --platform android`. Android-only; rejects `--platform ios` → exit 5. Delegates to `pressBack()`
+- [x] 4.12 `PressHomeCommand` — `visiontest press_home --platform android|ios`. Delegates to the platform's `pressHome()`
 
 ### Apps
 
-- [ ] 4.13 `LaunchAppCommand` — `visiontest launch_app --platform android|ios <id>`. `id` is a required positional (package name for Android, bundle ID for iOS). Delegates to the platform's launch-app function
+- [x] 4.13 `LaunchAppCommand` — `visiontest launch_app --platform android|ios <id>`. `id` is a required positional (package name for Android, bundle ID for iOS). Delegates to the platform's launch-app function
 
 ## 5. Exit-code mapping
 

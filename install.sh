@@ -2,11 +2,22 @@
 # VisionTest MCP Server Installer
 # Usage: curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
 #
+# Flags:
+#   --skip-agent-setup  Skip installing AI agent instructions
+#
 # Environment variables:
 #   VISIONTEST_DIR  — override install directory (default: ~/.local/share/visiontest)
 
 set -eu
 umask 077
+
+# ---------- parse flags ----------
+SKIP_AGENT_SETUP=false
+for arg in "$@"; do
+    case "$arg" in
+        --skip-agent-setup) SKIP_AGENT_SETUP=true ;;
+    esac
+done
 
 REPO="docer1990/visiontest"
 BIN_DIR="$HOME/.local/bin"
@@ -391,6 +402,126 @@ ensure_path() {
     export PATH="$BIN_DIR:$PATH"
 }
 
+# ---------- install AI agent instructions ----------
+
+MARKER_BEGIN="<!-- BEGIN VISIONTEST -->"
+MARKER_END="<!-- END VISIONTEST -->"
+
+download_agent_instructions() {
+    info "Downloading agent instructions..."
+    local INSTRUCTIONS_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/AGENT_INSTRUCTIONS.md"
+    local DEST="$RESOLVED_VISIONTEST_HOME/AGENT_INSTRUCTIONS.md"
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$DEST" "$INSTRUCTIONS_URL"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O "$DEST" "$INSTRUCTIONS_URL"
+    fi
+    chmod 600 "$DEST"
+}
+
+# Appends or replaces the VisionTest instruction block in a target file.
+# Uses BEGIN/END markers for idempotent updates.
+# Usage: append_with_markers <target_file> <instructions_content>
+append_with_markers() {
+    local TARGET="$1"
+    local CONTENT="$2"
+
+    if [ -f "$TARGET" ] && grep -qF "$MARKER_BEGIN" "$TARGET"; then
+        # Replace existing block: remove old markers + content, append new
+        # Use a temp file to avoid sed -i portability issues (GNU vs BSD)
+        local TMP
+        TMP=$(mktemp "${TARGET}.XXXXXX")
+        awk -v begin="$MARKER_BEGIN" -v end="$MARKER_END" '
+            $0 == begin { skip=1; next }
+            $0 == end   { skip=0; next }
+            !skip { print }
+        ' "$TARGET" > "$TMP"
+        mv -f "$TMP" "$TARGET"
+    fi
+
+    # Append the block
+    {
+        echo ""
+        echo "$MARKER_BEGIN"
+        echo "$CONTENT"
+        echo "$MARKER_END"
+    } >> "$TARGET"
+}
+
+install_agent_instructions() {
+    if [ "$SKIP_AGENT_SETUP" = "true" ]; then
+        info "Skipping AI agent setup (--skip-agent-setup)"
+        return
+    fi
+
+    local INSTRUCTIONS_FILE="$RESOLVED_VISIONTEST_HOME/AGENT_INSTRUCTIONS.md"
+    if [ ! -f "$INSTRUCTIONS_FILE" ]; then
+        warn "Agent instructions not found, skipping agent setup"
+        return
+    fi
+
+    local INSTRUCTIONS
+    INSTRUCTIONS=$(cat "$INSTRUCTIONS_FILE")
+    local AGENTS_CONFIGURED=""
+
+    # --- Claude Code ---
+    if command -v claude >/dev/null 2>&1; then
+        local CLAUDE_SKILL_DIR="$HOME/.claude/skills/visiontest-mobile"
+        mkdir -p "$CLAUDE_SKILL_DIR"
+        cat > "$CLAUDE_SKILL_DIR/SKILL.md" <<CLAUDE_EOF
+---
+name: visiontest-mobile
+description: Automate mobile device interactions (Android/iOS) via the VisionTest CLI. Use when testing, inspecting, or interacting with mobile apps through screenshots, taps, swipes, and text input.
+when-to-use: When you need to interact with a mobile device or simulator — take screenshots, tap elements, type text, or inspect UI hierarchy.
+---
+
+$INSTRUCTIONS
+CLAUDE_EOF
+        chmod 644 "$CLAUDE_SKILL_DIR/SKILL.md"
+        ok "Claude Code: installed skill to $CLAUDE_SKILL_DIR/SKILL.md"
+        AGENTS_CONFIGURED="${AGENTS_CONFIGURED}claude "
+    fi
+
+    # --- OpenCode ---
+    if command -v opencode >/dev/null 2>&1; then
+        local OPENCODE_DIR="$HOME/.config/opencode"
+        mkdir -p "$OPENCODE_DIR"
+        local OPENCODE_TARGET="$OPENCODE_DIR/AGENTS.md"
+        append_with_markers "$OPENCODE_TARGET" "$INSTRUCTIONS"
+        chmod 644 "$OPENCODE_TARGET"
+        ok "OpenCode: updated $OPENCODE_TARGET"
+        AGENTS_CONFIGURED="${AGENTS_CONFIGURED}opencode "
+    fi
+
+    # --- Codex (OpenAI) ---
+    if command -v codex >/dev/null 2>&1; then
+        local CODEX_DIR="$HOME/.codex"
+        mkdir -p "$CODEX_DIR"
+        local CODEX_TARGET="$CODEX_DIR/instructions.md"
+        append_with_markers "$CODEX_TARGET" "$INSTRUCTIONS"
+        chmod 644 "$CODEX_TARGET"
+        ok "Codex: updated $CODEX_TARGET"
+        AGENTS_CONFIGURED="${AGENTS_CONFIGURED}codex "
+    fi
+
+    # --- GitHub Copilot CLI ---
+    if command -v gh >/dev/null 2>&1 && gh extension list 2>/dev/null | grep -q "copilot"; then
+        local COPILOT_DIR="$HOME/.github"
+        mkdir -p "$COPILOT_DIR"
+        local COPILOT_TARGET="$COPILOT_DIR/copilot-instructions.md"
+        append_with_markers "$COPILOT_TARGET" "$INSTRUCTIONS"
+        chmod 644 "$COPILOT_TARGET"
+        ok "Copilot: updated $COPILOT_TARGET"
+        AGENTS_CONFIGURED="${AGENTS_CONFIGURED}copilot "
+    fi
+
+    if [ -z "$AGENTS_CONFIGURED" ]; then
+        info "No supported AI coding agents detected (checked: claude, opencode, codex, gh copilot)"
+        info "You can manually copy $INSTRUCTIONS_FILE into your agent's config"
+    fi
+}
+
 # ---------- main ----------
 
 main() {
@@ -404,10 +535,12 @@ main() {
     download_jar
     download_apks
     download_ios_bundle
+    download_agent_instructions
     # Disarm the cleanup trap since all downloads succeeded
     trap - EXIT
     create_wrapper
     ensure_path
+    install_agent_instructions
 
     echo ""
     ok "VisionTest $LATEST_TAG installed successfully!"
@@ -430,7 +563,11 @@ main() {
     echo "  For Claude Code, add with:"
     echo "    claude mcp add visiontest java -- -jar $RESOLVED_VISIONTEST_HOME/visiontest.jar"
     echo ""
+    echo "  CLI usage (in any project):"
+    echo "    visiontest --help"
+    echo ""
     echo "  To update later, re-run this script."
+    echo "  To skip agent config: install.sh --skip-agent-setup"
     echo ""
 }
 

@@ -1,9 +1,14 @@
 package com.example.visiontest
 
 import com.example.visiontest.android.Android
+import com.example.visiontest.cli.CliExit
+import com.example.visiontest.cli.ExitCode
 import com.example.visiontest.cli.VisionTestCli
 import com.example.visiontest.ios.IOSManager
 import com.example.visiontest.config.AppConfig
+import com.github.ajalt.clikt.core.CliktError
+import com.github.ajalt.clikt.core.PrintHelpMessage
+import com.github.ajalt.clikt.core.UsageError
 import io.ktor.utils.io.streams.asInput
 import io.modelcontextprotocol.kotlin.sdk.*
 import io.modelcontextprotocol.kotlin.sdk.server.*
@@ -17,7 +22,34 @@ import org.slf4j.LoggerFactory
 fun main(args: Array<String>) {
     when (route(args)) {
         Route.McpServer -> runMcpServer()
-        Route.Cli -> VisionTestCli().main(args)
+        Route.Cli -> runCli(args)
+    }
+}
+
+private fun runCli(args: Array<String>) {
+    try {
+        VisionTestCli().parse(args)
+    } catch (e: CliExit) {
+        System.err.println(e.message)
+        kotlin.system.exitProcess(e.code.value)
+    } catch (e: UsageError) {
+        val defaultFormatter = object : com.github.ajalt.clikt.output.ParameterFormatter {
+            override fun formatOption(name: String) = name
+            override fun formatArgument(name: String) = "<$name>"
+            override fun formatSubcommand(name: String) = name
+        }
+        val loc = e.context?.localization ?: object : com.github.ajalt.clikt.output.Localization {}
+        val msg = e.formatMessage(loc, defaultFormatter)
+        System.err.println(msg)
+        kotlin.system.exitProcess(ExitCode.UsageError.value)
+    } catch (e: PrintHelpMessage) {
+        val cmd = e.context?.command
+        if (cmd != null) {
+            println(cmd.getFormattedHelp())
+        }
+        kotlin.system.exitProcess(if (e.error) 1 else 0)
+    } catch (e: CliktError) {
+        println(e.message.orEmpty())
     }
 }
 

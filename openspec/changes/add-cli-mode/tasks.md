@@ -83,11 +83,11 @@ Each subcommand lives in its own file under `cli/commands/`. Every command parse
 
 ## 9. Verification
 
-- [ ] 9.1 `./gradlew build` passes
-- [ ] 9.2 `./gradlew test` passes (app + automation-server)
-- [ ] 9.3 `./gradlew shadowJar` produces a JAR that runs both `java -jar visiontest.jar` (MCP stdio, unchanged behavior) and `java -jar visiontest.jar <command> --platform <p> [args]` (CLI)
-- [ ] 9.4 Manual smoke: with an Android emulator running, `visiontest install_automation_server --platform android && visiontest start_automation_server --platform android && visiontest screenshot --platform android` produces a PNG under `./screenshots/`
-- [ ] 9.5 Manual smoke: with an iOS simulator booted, `visiontest start_automation_server --platform ios && visiontest get_interactive_elements --platform ios` returns a non-empty elements list
-- [ ] 9.6 Manual smoke: `visiontest press_back --platform ios` exits with code 5 and a clear message
-- [ ] 9.7 Manual smoke: `visiontest tap_by_coordinates --platform android 100` exits with code 2 and clikt's missing-argument message
-- [ ] 9.8 Manual smoke: `visiontest screenshot --platform android` with the automation server stopped exits with code 3 and a message instructing the caller to run `start_automation_server`
+- [x] 9.1 `./gradlew build` passes
+- [x] 9.2 `./gradlew test` passes (app + automation-server)
+- [x] 9.3 `./gradlew shadowJar` produces a JAR that runs both `java -jar visiontest.jar` (MCP stdio, unchanged behavior) and `java -jar visiontest.jar <command> --platform <p> [args]` (CLI)
+- [x] 9.4 Manual smoke: with an Android emulator running, `visiontest install_automation_server --platform android && visiontest start_automation_server --platform android && visiontest screenshot --platform android` produces a PNG under `./screenshots/`
+- [x] 9.5 Manual smoke: with an iOS simulator booted, `visiontest start_automation_server --platform ios && visiontest get_interactive_elements --platform ios` returns a non-empty elements list
+- [x] 9.6 Manual smoke: `visiontest press_back --platform ios` exits with code 5 and a clear message
+- [x] 9.7 Manual smoke: `visiontest tap_by_coordinates --platform android 100` exits with code 2 and clikt's missing-argument message
+- [x] 9.8 Manual smoke: `visiontest screenshot --platform android` with the automation server stopped exits with code 3 and a message instructing the caller to run `start_automation_server`

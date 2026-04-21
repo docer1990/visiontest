@@ -1,6 +1,7 @@
 package com.example.visiontest.cli.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.CliktError
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
@@ -41,7 +42,9 @@ class InitCommand(
         """.trimMargin()
 
         fun loadClasspathResource(name: String): String? =
-            InitCommand::class.java.classLoader.getResourceAsStream(name)?.bufferedReader()?.readText()
+            InitCommand::class.java.classLoader.getResourceAsStream(name)
+                ?.bufferedReader()
+                ?.use { it.readText() }
     }
 
     private val agents by option("--agent", help = "Comma-separated agent names: claude, opencode, codex")
@@ -50,7 +53,7 @@ class InitCommand(
 
     override fun run() {
         // Validate agent names
-        val invalid = agents.filter { it !in AGENT_PATHS }
+        val invalid = agents.filter { it.isBlank() || it !in AGENT_PATHS }
         if (invalid.isNotEmpty()) {
             throw UsageError(
                 "Unknown agent(s): ${invalid.joinToString()}. Valid agents: ${AGENT_PATHS.keys.joinToString()}"
@@ -58,7 +61,7 @@ class InitCommand(
         }
 
         val instructions = resourceLoader(RESOURCE_PATH)
-            ?: error("Embedded resource '$RESOURCE_PATH' not found in JAR")
+            ?: throw CliktError("Internal error: embedded resource '$RESOURCE_PATH' not found in JAR")
 
         val content = YAML_FRONTMATTER + instructions
 

@@ -3,7 +3,8 @@ package com.example.visiontest.cli
 import com.example.visiontest.cli.commands.InitCommand
 import com.github.ajalt.clikt.core.MissingOption
 import com.github.ajalt.clikt.core.UsageError
-import kotlin.io.path.createTempDirectory
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
 import kotlin.io.path.readText
 import kotlin.io.path.exists
 import kotlin.test.Test
@@ -14,14 +15,17 @@ import kotlin.test.assertContains
 
 class InitCommandTest {
 
+    @TempDir
+    lateinit var tmp: Path
+
     private val fakeInstructions = "# Fake Instructions\nSome content here."
 
-    private fun createCommand(tmpDir: java.nio.file.Path) = InitCommand(
-        workingDir = tmpDir,
+    private fun createCommand(dir: Path = tmp) = InitCommand(
+        workingDir = dir,
         resourceLoader = { fakeInstructions },
     )
 
-    // --- Task 1.2: resource loads from classpath ---
+    // --- resource loads from classpath ---
 
     @Test
     fun `embedded resource loads from classpath`() {
@@ -29,28 +33,27 @@ class InitCommandTest {
         assertTrue(content != null && content.contains("VisionTest"), "Resource should contain VisionTest content")
     }
 
-    // --- Task 3.1: single agent writes correct file ---
+    // --- single agent writes correct file ---
 
     @Test
     fun `single agent writes SKILL file to correct path`() {
-        val tmp = createTempDirectory("init-test")
-        val cmd = createCommand(tmp)
+        val cmd = createCommand()
         cmd.parse(listOf("--agent", "claude"))
 
         val file = tmp.resolve(".claude/skills/visiontest/SKILL.md")
         assertTrue(file.exists(), "SKILL.md should be created")
         val content = file.readText()
-        assertContains(content, "---")
+        assertTrue(content.startsWith("---\n"), "SKILL.md should start with YAML frontmatter delimiter")
+        assertContains(content, "\n---\n", message = "SKILL.md should have closing frontmatter delimiter")
         assertContains(content, "name: visiontest")
         assertContains(content, fakeInstructions)
     }
 
-    // --- Task 3.2: multiple agents ---
+    // --- multiple agents ---
 
     @Test
     fun `comma-separated agents writes all files`() {
-        val tmp = createTempDirectory("init-test")
-        val cmd = createCommand(tmp)
+        val cmd = createCommand()
         cmd.parse(listOf("--agent", "claude,opencode,codex"))
 
         for ((agent, path) in InitCommand.AGENT_PATHS) {
@@ -58,46 +61,54 @@ class InitCommandTest {
         }
     }
 
-    // --- Task 3.3: invalid agent name ---
+    // --- invalid agent name ---
 
     @Test
     fun `invalid agent name produces UsageError`() {
-        val tmp = createTempDirectory("init-test")
-        val cmd = createCommand(tmp)
+        val cmd = createCommand()
         val ex = assertFailsWith<UsageError> {
             cmd.parse(listOf("--agent", "gemini"))
         }
         assertContains(ex.message ?: "", "Unknown agent")
     }
 
-    // --- Task 3.4: missing --agent ---
+    // --- blank agent name in comma list ---
+
+    @Test
+    fun `blank agent name in comma list produces UsageError`() {
+        val cmd = createCommand()
+        val ex = assertFailsWith<UsageError> {
+            cmd.parse(listOf("--agent", ",claude"))
+        }
+        assertContains(ex.message ?: "", "Unknown agent")
+    }
+
+    // --- missing --agent ---
 
     @Test
     fun `missing agent flag produces MissingOption`() {
-        val tmp = createTempDirectory("init-test")
-        val cmd = createCommand(tmp)
+        val cmd = createCommand()
         assertFailsWith<MissingOption> {
             cmd.parse(emptyList())
         }
     }
 
-    // --- Task 3.5: idempotent overwrite ---
+    // --- idempotent overwrite ---
 
     @Test
     fun `running init twice produces same content`() {
-        val tmp = createTempDirectory("init-test")
-        val cmd1 = createCommand(tmp)
+        val cmd1 = createCommand()
         cmd1.parse(listOf("--agent", "claude"))
         val first = tmp.resolve(".claude/skills/visiontest/SKILL.md").readText()
 
-        val cmd2 = createCommand(tmp)
+        val cmd2 = createCommand()
         cmd2.parse(listOf("--agent", "claude"))
         val second = tmp.resolve(".claude/skills/visiontest/SKILL.md").readText()
 
         assertEquals(first, second)
     }
 
-    // --- Agent path mapping ---
+    // --- agent path mapping ---
 
     @Test
     fun `agent paths map correctly`() {

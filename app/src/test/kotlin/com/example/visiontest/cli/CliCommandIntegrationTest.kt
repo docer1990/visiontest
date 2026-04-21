@@ -12,7 +12,6 @@ import com.example.visiontest.tools.AndroidAutomationToolRegistrar
 import com.example.visiontest.tools.AndroidDeviceToolRegistrar
 import com.example.visiontest.tools.IOSAutomationToolRegistrar
 import com.example.visiontest.tools.IOSDeviceToolRegistrar
-import com.github.ajalt.clikt.core.BadParameterValue
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.slf4j.LoggerFactory
@@ -80,11 +79,7 @@ class CliCommandIntegrationTest {
     @Test
     fun `automation_server_status android when running`() {
         androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
-        val cmd = AutomationServerStatusCommand(lazyOf(components))
         val result = executeCliCommand {
-            cmd.parse(listOf("--platform", "android"))
-            // The command calls runCliCommand internally which calls exitProcess;
-            // we test via the registrar directly instead
             components.androidAutomationRegistrar.automationServerStatus()
         }
         assertEquals(0, result.exitCode)
@@ -95,7 +90,8 @@ class CliCommandIntegrationTest {
 
     @Test
     fun `tap_by_coordinates parses and delegates`() {
-        // Enqueue health check (for requireServerRunning) + tap response
+        // Enqueue health check (for requireServerRunning) + health check (for requireServer) + tap response
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         androidMock.enqueue(MockResponse().setResponseCode(200).setBody(
             """{"jsonrpc":"2.0","id":1,"result":"Tapped at (100, 200)"}"""
@@ -127,10 +123,12 @@ class CliCommandIntegrationTest {
 
     @Test
     fun `press_back rejects ios platform`() {
-        val cmd = PressBackCommand(lazyOf(components))
-        assertFailsWith<BadParameterValue> {
-            cmd.parse(listOf("--platform", "ios"))
+        val result = executeCliCommand {
+            requireAndroid(Platform.Ios, "press_back")
+            components.androidAutomationRegistrar.pressBack()
         }
+        assertEquals(5, result.exitCode)
+        assertTrue(result.stderr!!.contains("only supported on Android"))
     }
 
     // --- launch_app delegates to device registrar ---
@@ -148,7 +146,8 @@ class CliCommandIntegrationTest {
 
     @Test
     fun `swipe_direction with valid args dispatches`() {
-        // health check + swipe response
+        // health check (requireServerRunning) + health check (requireServer) + swipe response
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         androidMock.enqueue(MockResponse().setResponseCode(200).setBody(
             """{"jsonrpc":"2.0","id":1,"result":"Swiped up"}"""
@@ -164,6 +163,7 @@ class CliCommandIntegrationTest {
 
     @Test
     fun `input_text delegates with correct text`() {
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         androidMock.enqueue(MockResponse().setResponseCode(200).setBody(
             """{"jsonrpc":"2.0","id":1,"result":"Text entered"}"""

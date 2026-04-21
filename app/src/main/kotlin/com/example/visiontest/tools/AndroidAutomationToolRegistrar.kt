@@ -1,5 +1,6 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.ServerNotRunningException
 import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
@@ -44,8 +45,9 @@ class AndroidAutomationToolRegistrar(
 
     // ==================== Extracted business logic ====================
 
-    private suspend fun requireServer(): String? =
-        if (!automationClient.isServerRunning()) "Automation server is not running. Use 'start_automation_server' first." else null
+    private suspend fun requireServer() {
+        if (!automationClient.isServerRunning()) throw ServerNotRunningException("Automation server is not running. Use 'start_automation_server' first.")
+    }
 
     internal suspend fun installAutomationServer(): String {
         val device = android.getFirstAvailableDevice()
@@ -118,7 +120,7 @@ class AndroidAutomationToolRegistrar(
     }
 
     internal suspend fun getUiHierarchy(): String {
-        requireServer()?.let { return it }
+        requireServer()
         return automationClient.getUiHierarchy()
     }
 
@@ -129,7 +131,7 @@ class AndroidAutomationToolRegistrar(
         className: String?,
         contentDescription: String?
     ): String {
-        requireServer()?.let { return it }
+        requireServer()
 
         if (text == null && textContains == null && resourceId == null &&
             className == null && contentDescription == null) {
@@ -146,17 +148,17 @@ class AndroidAutomationToolRegistrar(
     }
 
     internal suspend fun tapByCoordinates(x: Int, y: Int): String {
-        requireServer()?.let { return it }
+        requireServer()
         return automationClient.tapByCoordinates(x, y)
     }
 
     internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String {
-        requireServer()?.let { return it }
+        requireServer()
         return automationClient.swipe(startX, startY, endX, endY, steps)
     }
 
     internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String {
-        requireServer()?.let { return it }
+        requireServer()
         return automationClient.swipeByDirection(direction, distance, speed)
     }
 
@@ -169,7 +171,7 @@ class AndroidAutomationToolRegistrar(
         contentDescription: String?,
         speed: String = "normal"
     ): String {
-        requireServer()?.let { return it }
+        requireServer()
 
         if (text == null && textContains == null && resourceId == null &&
             className == null && contentDescription == null) {
@@ -188,27 +190,27 @@ class AndroidAutomationToolRegistrar(
     }
 
     internal suspend fun pressBack(): String {
-        requireServer()?.let { return it }
+        requireServer()
         return automationClient.pressBack()
     }
 
     internal suspend fun pressHome(): String {
-        requireServer()?.let { return it }
+        requireServer()
         return automationClient.pressHome()
     }
 
     internal suspend fun inputText(text: String): String {
-        requireServer()?.let { return it }
+        requireServer()
         return automationClient.inputText(text)
     }
 
     internal suspend fun getDeviceInfo(): String {
-        requireServer()?.let { return it }
+        requireServer()
         return automationClient.getDeviceInfo()
     }
 
     internal suspend fun getInteractiveElements(includeDisabled: Boolean = false): String {
-        requireServer()?.let { return it }
+        requireServer()
         return automationClient.getInteractiveElements(includeDisabled)
     }
 
@@ -613,7 +615,7 @@ class AndroidAutomationToolRegistrar(
     // ==================== Screenshot helpers ====================
 
     internal suspend fun captureScreenshot(outputPath: String?): String {
-        requireServer()?.let { return it }
+        requireServer()
 
         val response = automationClient.screenshot()
         val root = try {

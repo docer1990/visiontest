@@ -2,6 +2,7 @@ package com.example.visiontest.cli
 
 import com.example.visiontest.NoDeviceAvailableException
 import com.example.visiontest.NoSimulatorAvailableException
+import com.example.visiontest.ServerNotRunningException
 import com.github.ajalt.clikt.core.CliktError
 import com.github.ajalt.clikt.core.UsageError
 import kotlinx.coroutines.runBlocking
@@ -36,6 +37,8 @@ internal fun executeCliCommand(block: suspend () -> String): CliResult {
         CliResult(ExitCode.Success.value, stdout = output, stderr = null)
     } catch (e: CliExit) {
         CliResult(e.code.value, stdout = null, stderr = e.message)
+    } catch (e: ServerNotRunningException) {
+        CliResult(ExitCode.ServerNotReachable.value, stdout = null, stderr = e.message)
     } catch (e: NoDeviceAvailableException) {
         CliResult(ExitCode.DeviceNotFound.value, stdout = null, stderr = e.message)
     } catch (e: NoSimulatorAvailableException) {
@@ -57,12 +60,9 @@ internal fun executeCliCommand(block: suspend () -> String): CliResult {
  * server should call this before delegating to the extracted registrar function.
  *
  * Note: the extracted registrar functions also check `isServerRunning()` internally
- * (for MCP tool compatibility, where they return a user-friendly error string instead
- * of throwing). This means the CLI path performs two health checks — one here for the
- * proper exit code, and one in the registrar for the error message. The duplicate
- * localhost HTTP call is negligible (<5ms) and avoids a more invasive refactor that
- * would either break MCP error messages or require a `skipCheck` parameter on every
- * extracted function.
+ * and throw [ServerNotRunningException] if the server drops mid-operation. The CLI
+ * pre-check here provides a fast-fail with the proper exit code, while the registrar
+ * check closes the TOCTOU gap (both are caught by [executeCliCommand]).
  */
 suspend fun requireServerRunning(isRunning: suspend () -> Boolean) {
     if (!isRunning()) {

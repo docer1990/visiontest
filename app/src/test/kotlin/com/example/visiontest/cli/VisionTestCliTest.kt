@@ -90,10 +90,13 @@ class VisionTestCliTest {
     }
 
     @Test
-    fun `android-only command rejects ios with BadParameterValue`() {
+    fun `android-only command parses ios then requireAndroid rejects`() {
         val cmd = TestAndroidOnlyCommand("test")
-        assertFailsWith<BadParameterValue> {
-            cmd.parse(listOf("--platform", "ios"))
+        cmd.parse(listOf("--platform", "ios"))
+        // Parsing succeeds; the command's run() would call requireAndroid() to reject
+        assertEquals(Platform.Ios, cmd.platform)
+        assertFailsWith<CliExit> {
+            requireAndroid(cmd.platform, "test")
         }
     }
 

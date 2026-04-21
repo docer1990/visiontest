@@ -51,7 +51,8 @@ private fun runCli(args: Array<String>) {
         }
         kotlin.system.exitProcess(if (e.error) 1 else 0)
     } catch (e: CliktError) {
-        println(e.message.orEmpty())
+        System.err.println(e.message.orEmpty())
+        kotlin.system.exitProcess(ExitCode.GenericFailure.value)
     }
 }
 

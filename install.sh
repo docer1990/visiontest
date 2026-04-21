@@ -28,6 +28,11 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+if [ "${_EXPECT_JAR_PATH:-}" = "true" ]; then
+    printf '  \033[1;31mx\033[0m --local-jar requires a file path argument\n' >&2
+    exit 2
+fi
 unset _EXPECT_JAR_PATH
 
 if [ -n "$LOCAL_JAR" ] && [ ! -f "$LOCAL_JAR" ]; then
@@ -455,6 +460,9 @@ download_agent_instructions() {
         curl -fsSL -o "$DEST" "$INSTRUCTIONS_URL"
     elif command -v wget >/dev/null 2>&1; then
         wget -q -O "$DEST" "$INSTRUCTIONS_URL"
+    else
+        warn "Neither curl nor wget found; skipping agent instructions download"
+        return
     fi
     chmod 600 "$DEST"
 }

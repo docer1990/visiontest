@@ -1,5 +1,6 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.ServerNotRunningException
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.common.DeviceType
@@ -67,59 +68,59 @@ class AndroidAutomationToolRegistrarTest {
     // --- server-not-running guard on various functions ---
 
     @Test
-    fun `tapByCoordinates returns error when server not running`() = runBlocking {
+    fun `tapByCoordinates throws when server not running`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(500))
-        val result = registrar.tapByCoordinates(100, 200)
-        assertTrue(result.contains("Automation server is not running"))
+        val ex = assertFailsWith<ServerNotRunningException> { registrar.tapByCoordinates(100, 200) }
+        assertTrue(ex.message!!.contains("not running"))
     }
 
     @Test
-    fun `getUiHierarchy returns error when server not running`() = runBlocking {
+    fun `getUiHierarchy throws when server not running`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(500))
-        val result = registrar.getUiHierarchy()
-        assertTrue(result.contains("Automation server is not running"))
+        val ex = assertFailsWith<ServerNotRunningException> { registrar.getUiHierarchy() }
+        assertTrue(ex.message!!.contains("not running"))
     }
 
     @Test
-    fun `pressBack returns error when server not running`() = runBlocking {
+    fun `pressBack throws when server not running`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(500))
-        val result = registrar.pressBack()
-        assertTrue(result.contains("Automation server is not running"))
+        val ex = assertFailsWith<ServerNotRunningException> { registrar.pressBack() }
+        assertTrue(ex.message!!.contains("not running"))
     }
 
     @Test
-    fun `pressHome returns error when server not running`() = runBlocking {
+    fun `pressHome throws when server not running`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(500))
-        val result = registrar.pressHome()
-        assertTrue(result.contains("Automation server is not running"))
+        val ex = assertFailsWith<ServerNotRunningException> { registrar.pressHome() }
+        assertTrue(ex.message!!.contains("not running"))
     }
 
     @Test
-    fun `inputText returns error when server not running`() = runBlocking {
+    fun `inputText throws when server not running`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(500))
-        val result = registrar.inputText("hello")
-        assertTrue(result.contains("Automation server is not running"))
+        val ex = assertFailsWith<ServerNotRunningException> { registrar.inputText("hello") }
+        assertTrue(ex.message!!.contains("not running"))
     }
 
     @Test
-    fun `getDeviceInfo returns error when server not running`() = runBlocking {
+    fun `getDeviceInfo throws when server not running`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(500))
-        val result = registrar.getDeviceInfo()
-        assertTrue(result.contains("Automation server is not running"))
+        val ex = assertFailsWith<ServerNotRunningException> { registrar.getDeviceInfo() }
+        assertTrue(ex.message!!.contains("not running"))
     }
 
     @Test
-    fun `getInteractiveElements returns error when server not running`() = runBlocking {
+    fun `getInteractiveElements throws when server not running`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(500))
-        val result = registrar.getInteractiveElements()
-        assertTrue(result.contains("Automation server is not running"))
+        val ex = assertFailsWith<ServerNotRunningException> { registrar.getInteractiveElements() }
+        assertTrue(ex.message!!.contains("not running"))
     }
 
     @Test
-    fun `swipeByDirection returns error when server not running`() = runBlocking {
+    fun `swipeByDirection throws when server not running`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(500))
-        val result = registrar.swipeByDirection("up")
-        assertTrue(result.contains("Automation server is not running"))
+        val ex = assertFailsWith<ServerNotRunningException> { registrar.swipeByDirection("up") }
+        assertTrue(ex.message!!.contains("not running"))
     }
 
     // --- findElement validation ---
@@ -132,10 +133,12 @@ class AndroidAutomationToolRegistrarTest {
     }
 
     @Test
-    fun `findElement returns error when server not running`() = runBlocking {
+    fun `findElement throws when server not running`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(500))
-        val result = registrar.findElement(text = "hello", textContains = null, resourceId = null, className = null, contentDescription = null)
-        assertTrue(result.contains("Automation server is not running"))
+        val ex = assertFailsWith<ServerNotRunningException> {
+            registrar.findElement(text = "hello", textContains = null, resourceId = null, className = null, contentDescription = null)
+        }
+        assertTrue(ex.message!!.contains("not running"))
     }
 
     // --- swipeOnElement validation ---

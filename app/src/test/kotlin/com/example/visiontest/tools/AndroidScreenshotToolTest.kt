@@ -1,5 +1,6 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.ServerNotRunningException
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.discovery.ToolDiscovery
@@ -115,9 +116,11 @@ class AndroidScreenshotToolTest {
         mockServer.enqueue(MockResponse().setResponseCode(500))
 
         val target = File(tempDir, "out.png")
-        val message = registrar.captureScreenshot(target.absolutePath)
+        val ex = assertFailsWith<ServerNotRunningException> {
+            registrar.captureScreenshot(target.absolutePath)
+        }
 
-        assertTrue(message.contains("Automation server is not running"))
+        assertTrue(ex.message!!.contains("not running"))
         assertFalse(target.exists(), "No file should be written when server is not running")
         assertEquals(1, mockServer.requestCount, "Only the health check should have been attempted")
     }

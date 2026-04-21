@@ -24,9 +24,26 @@ fun CliktCommand.platformOption() =
 
 /**
  * `--platform` option for Android-only CLI subcommands.
- * Accepts only `"android"`. Passing any other value triggers a Clikt error.
+ * Accepts both platforms at parse time so that passing `--platform ios` yields
+ * exit code 5 ([ExitCode.PlatformNotSupported]) instead of Clikt's generic
+ * exit code 2 ([ExitCode.UsageError]).
+ *
+ * Commands using this option must call [requireAndroid] in their `run()` body.
  */
 fun CliktCommand.androidOnlyPlatformOption() =
     option("--platform", "-p", help = "Target platform (android only)")
-        .choice("android" to Platform.Android)
+        .choice("android" to Platform.Android, "ios" to Platform.Ios)
         .required()
+
+/**
+ * Throws [CliExit] with [ExitCode.PlatformNotSupported] if [platform] is not Android.
+ * Call at the start of `run()` in Android-only commands.
+ */
+fun requireAndroid(platform: Platform, commandName: String) {
+    if (platform != Platform.Android) {
+        throw CliExit(
+            ExitCode.PlatformNotSupported,
+            "'$commandName' is only supported on Android."
+        )
+    }
+}

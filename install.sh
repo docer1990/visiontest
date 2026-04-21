@@ -4,6 +4,8 @@
 #
 # Flags:
 #   --skip-agent-setup  Skip installing AI agent instructions
+#   --local-jar PATH    Use a local JAR instead of downloading from GitHub Releases
+#                       (also skips APK/iOS bundle download — useful for testing)
 #
 # Environment variables:
 #   VISIONTEST_DIR  — override install directory (default: ~/.local/share/visiontest)
@@ -13,11 +15,25 @@ umask 077
 
 # ---------- parse flags ----------
 SKIP_AGENT_SETUP=false
+LOCAL_JAR=""
 for arg in "$@"; do
     case "$arg" in
         --skip-agent-setup) SKIP_AGENT_SETUP=true ;;
+        --local-jar)        _EXPECT_JAR_PATH=true ;;
+        *)
+            if [ "${_EXPECT_JAR_PATH:-}" = "true" ]; then
+                LOCAL_JAR="$arg"
+                _EXPECT_JAR_PATH=""
+            fi
+            ;;
     esac
 done
+unset _EXPECT_JAR_PATH
+
+if [ -n "$LOCAL_JAR" ] && [ ! -f "$LOCAL_JAR" ]; then
+    printf '  \033[1;31mx\033[0m --local-jar: file not found: %s\n' "$LOCAL_JAR" >&2
+    exit 2
+fi
 
 REPO="docer1990/visiontest"
 BIN_DIR="$HOME/.local/bin"
@@ -349,6 +365,29 @@ download_ios_bundle() {
     ok "iOS bundle installed to $IOS_FINAL_DIR/"
 }
 
+# ---------- install from local JAR (testing mode) ----------
+
+install_local_jar() {
+    mkdir -p "$RESOLVED_VISIONTEST_HOME"
+    chmod 700 "$RESOLVED_VISIONTEST_HOME"
+
+    info "Installing from local JAR: $LOCAL_JAR"
+    cp -f "$LOCAL_JAR" "$RESOLVED_VISIONTEST_HOME/visiontest.jar"
+    chmod 600 "$RESOLVED_VISIONTEST_HOME/visiontest.jar"
+    printf 'local-dev\n' > "$RESOLVED_VISIONTEST_HOME/version.txt"
+    chmod 600 "$RESOLVED_VISIONTEST_HOME/version.txt"
+    ok "Installed local JAR to $RESOLVED_VISIONTEST_HOME/visiontest.jar"
+
+    # Copy AGENT_INSTRUCTIONS.md from repo if present alongside install.sh
+    local SCRIPT_DIR
+    SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+    if [ -f "$SCRIPT_DIR/AGENT_INSTRUCTIONS.md" ]; then
+        cp -f "$SCRIPT_DIR/AGENT_INSTRUCTIONS.md" "$RESOLVED_VISIONTEST_HOME/AGENT_INSTRUCTIONS.md"
+        chmod 600 "$RESOLVED_VISIONTEST_HOME/AGENT_INSTRUCTIONS.md"
+        ok "Copied AGENT_INSTRUCTIONS.md from repo"
+    fi
+}
+
 # ---------- create wrapper script ----------
 
 create_wrapper() {
@@ -531,13 +570,20 @@ main() {
 
     detect_platform
     check_java
-    fetch_latest_version
-    download_jar
-    download_apks
-    download_ios_bundle
-    download_agent_instructions
-    # Disarm the cleanup trap since all downloads succeeded
-    trap - EXIT
+
+    if [ -n "$LOCAL_JAR" ]; then
+        install_local_jar
+        LATEST_TAG="local-dev"
+    else
+        fetch_latest_version
+        download_jar
+        download_apks
+        download_ios_bundle
+        download_agent_instructions
+        # Disarm the cleanup trap since all downloads succeeded
+        trap - EXIT
+    fi
+
     create_wrapper
     ensure_path
     install_agent_instructions
@@ -547,14 +593,16 @@ main() {
     echo ""
     echo "  Installed:"
     echo "    JAR:  $RESOLVED_VISIONTEST_HOME/visiontest.jar"
-    echo "    APKs: $RESOLVED_VISIONTEST_HOME/automation-server.apk"
-    echo "          $RESOLVED_VISIONTEST_HOME/automation-server-test.apk"
-    if [ "$PLATFORM" = "macOS" ] && [ "$ARCH" = "arm64" ]; then
-        echo "    iOS:  $RESOLVED_VISIONTEST_HOME/ios-automation-server/"
-    elif [ "$PLATFORM" = "macOS" ]; then
-        echo "    iOS:  (not installed — pre-built bundle is arm64 only; build from source)"
-    else
-        echo "    iOS:  (not installed — macOS only)"
+    if [ -z "$LOCAL_JAR" ]; then
+        echo "    APKs: $RESOLVED_VISIONTEST_HOME/automation-server.apk"
+        echo "          $RESOLVED_VISIONTEST_HOME/automation-server-test.apk"
+        if [ "$PLATFORM" = "macOS" ] && [ "$ARCH" = "arm64" ]; then
+            echo "    iOS:  $RESOLVED_VISIONTEST_HOME/ios-automation-server/"
+        elif [ "$PLATFORM" = "macOS" ]; then
+            echo "    iOS:  (not installed — pre-built bundle is arm64 only; build from source)"
+        else
+            echo "    iOS:  (not installed — macOS only)"
+        fi
     fi
     echo ""
     echo "  Run the MCP server:"

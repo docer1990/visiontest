@@ -317,6 +317,27 @@ curl -X POST http://localhost:9009/jsonrpc -H 'Content-Type: application/json' \
 # Stop the server: kill the xcodebuild process (Ctrl+C in Terminal 1)
 ```
 
+### Testing the Installer
+
+You can test `install.sh` locally without publishing a release using `--local-jar`:
+
+```bash
+# Build the fat JAR first
+./gradlew shadowJar
+
+# Run the installer against a temporary directory
+VISIONTEST_DIR=~/.local/share/visiontest-test \
+  bash install.sh --local-jar app/build/libs/visiontest.jar
+
+# Verify it works
+~/.local/bin/visiontest --help
+
+# Clean up
+rm -rf ~/.local/share/visiontest-test
+```
+
+This skips downloading the JAR, APKs, and iOS bundle from GitHub Releases — it copies your local build instead. Agent instructions are still installed from `AGENT_INSTRUCTIONS.md` in the repo root. Add `--skip-agent-setup` to skip that too.
+
 ## Extending VisionTest
 
 ### Adding New JSON-RPC Methods

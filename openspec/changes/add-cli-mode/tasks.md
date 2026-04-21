@@ -65,10 +65,10 @@ Each subcommand lives in its own file under `cli/commands/`. Every command parse
 
 ## 6. Tests
 
-- [ ] 6.1 `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt` — table test covering (a) each command parses its required args, (b) missing args produces usage error (exit 2), (c) bad `--platform` value is rejected, (d) Android-only commands reject `--platform ios`
-- [ ] 6.2 `app/src/test/kotlin/com/example/visiontest/cli/CliErrorHandlerTest.kt` — covers exit-code mapping for each `CliExit` variant, for uncaught exceptions, and for success
-- [ ] 6.3 One integration-style test per CLI command using fakes for `Android` / `IOSManager` / `AutomationClient` / `IOSAutomationClient`, verifying the command delegates with the right parameters and prints the expected stdout on success
-- [ ] 6.4 Ensure `./gradlew test` stays green end-to-end (app + automation-server)
+- [x] 6.1 `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt` — table test covering (a) each command parses its required args, (b) missing args produces usage error (exit 2), (c) bad `--platform` value is rejected, (d) Android-only commands reject `--platform ios`
+- [x] 6.2 `app/src/test/kotlin/com/example/visiontest/cli/CliErrorHandlerTest.kt` — covers exit-code mapping for each `CliExit` variant, for uncaught exceptions, and for success
+- [x] 6.3 One integration-style test per CLI command using fakes for `Android` / `IOSManager` / `AutomationClient` / `IOSAutomationClient`, verifying the command delegates with the right parameters and prints the expected stdout on success
+- [x] 6.4 Ensure `./gradlew test` stays green end-to-end (app + automation-server)
 
 ## 7. Reference skill
 

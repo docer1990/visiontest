@@ -8,37 +8,46 @@ import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
 
 /**
+ * Result of executing a CLI command, before process exit.
+ * Used internally for testability — tests inspect this instead of trapping `exitProcess`.
+ */
+data class CliResult(val exitCode: Int, val stdout: String?, val stderr: String?)
+
+/**
  * Runs a CLI command [block], prints its result to stdout on success (exit 0),
  * and maps exceptions to the appropriate exit code on stderr.
  *
  * This is the single exit-code gateway for every CLI subcommand.
  */
 fun runCliCommand(block: suspend () -> String): Nothing {
-    try {
-        val result = runBlocking { block() }
-        println(result)
-        exitProcess(ExitCode.Success.value)
+    val result = executeCliCommand(block)
+    if (result.stdout != null) println(result.stdout)
+    if (result.stderr != null) System.err.println(result.stderr)
+    exitProcess(result.exitCode)
+}
+
+/**
+ * Executes [block] and returns a [CliResult] without calling `exitProcess`.
+ * This is the testable core of [runCliCommand].
+ */
+internal fun executeCliCommand(block: suspend () -> String): CliResult {
+    return try {
+        val output = runBlocking { block() }
+        CliResult(ExitCode.Success.value, stdout = output, stderr = null)
     } catch (e: CliExit) {
-        System.err.println(e.message)
-        exitProcess(e.code.value)
+        CliResult(e.code.value, stdout = null, stderr = e.message)
     } catch (e: NoDeviceAvailableException) {
-        System.err.println(e.message)
-        exitProcess(ExitCode.DeviceNotFound.value)
+        CliResult(ExitCode.DeviceNotFound.value, stdout = null, stderr = e.message)
     } catch (e: NoSimulatorAvailableException) {
-        System.err.println(e.message)
-        exitProcess(ExitCode.DeviceNotFound.value)
+        CliResult(ExitCode.DeviceNotFound.value, stdout = null, stderr = e.message)
     } catch (e: UsageError) {
-        System.err.println(e.message)
-        exitProcess(ExitCode.UsageError.value)
+        CliResult(ExitCode.UsageError.value, stdout = null, stderr = e.message)
     } catch (e: CliktError) {
-        System.err.println(e.message)
-        exitProcess(ExitCode.UsageError.value)
+        CliResult(ExitCode.UsageError.value, stdout = null, stderr = e.message)
     } catch (e: IllegalArgumentException) {
-        System.err.println(e.message ?: "Invalid argument")
-        exitProcess(ExitCode.UsageError.value)
+        CliResult(ExitCode.UsageError.value, stdout = null, stderr = e.message ?: "Invalid argument")
     } catch (e: Exception) {
-        System.err.println(e.message ?: "Unknown error")
-        exitProcess(ExitCode.GenericFailure.value)
+        CliResult(ExitCode.GenericFailure.value, stdout = null, stderr = e.message ?: "Unknown error")
     }
 }
 

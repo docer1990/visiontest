@@ -131,7 +131,171 @@ class IOSAutomationToolRegistrar(
         return ServerPollResult("iOS automation server did not respond after ${maxAttempts * 2}s. xcodebuild may still be building. Check with 'ios_automation_server_status' or run xcodebuild manually to see output.")
     }
 
-    // ==================== Tool Registrations ====================
+    // ==================== Extracted business logic ====================
+
+    internal suspend fun startAutomationServer(): String {
+        val port = IOSAutomationConfig.DEFAULT_PORT
+
+        if (iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is already running on localhost:$port"
+        }
+
+        // Clean up any orphaned previous process
+        iosXcodebuildProcess?.let { process ->
+            if (process.isAlive) {
+                logger.info("Destroying orphaned xcodebuild process before starting a new one")
+                process.destroyForcibly()
+            }
+            iosXcodebuildProcess = null
+        }
+
+        // Discover launch path: pre-built bundle preferred, source build as fallback
+        val xctestrunPath = discovery.findXctestrun()
+        val projectPath = discovery.findXcodeProject()
+
+        if (xctestrunPath == null && projectPath == null) {
+            return "Neither pre-built iOS test bundle nor Xcode source project found. " +
+                "To fix: re-run install.sh on macOS to download the pre-built bundle, " +
+                "or clone the VisionTest repository and set ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} " +
+                "to build from source."
+        }
+
+        val usingPrebuilt = xctestrunPath != null
+        if (usingPrebuilt) {
+            logger.info("Using pre-built iOS test bundle: $xctestrunPath")
+        } else {
+            logger.info("Using source build from Xcode project: $projectPath")
+        }
+
+        val device = ios.getFirstAvailableDevice()
+        val simulatorName = device.name
+
+        val command = buildXcodebuildCommand(xctestrunPath, projectPath, simulatorName)
+        val maxAttempts = if (usingPrebuilt) 30 else 60
+
+        val label = if (usingPrebuilt) "pre-built bundle" else "source build"
+        val primaryResult = startAndPollServer(command, maxAttempts, port, label)
+
+        if (primaryResult.earlyExitCode == null) {
+            return primaryResult.message
+        }
+
+        // Primary attempt exited early — try source build fallback if available
+        if (usingPrebuilt && projectPath != null) {
+            logger.warn("Pre-built bundle failed (exit code ${primaryResult.earlyExitCode}), falling back to source build")
+            val fallbackCommand = buildXcodebuildCommand(null, projectPath, simulatorName)
+            val fallbackResult = startAndPollServer(fallbackCommand, 60, port, "source build fallback")
+            return fallbackResult.message
+        }
+
+        return primaryResult.message
+    }
+
+    internal suspend fun automationServerStatus(): String {
+        val isRunning = iosAutomationClient.isServerRunning()
+        return if (isRunning) {
+            "iOS automation server is running and accessible at localhost:${IOSAutomationConfig.DEFAULT_PORT}"
+        } else {
+            "iOS automation server is not running. Use 'ios_start_automation_server' to start it."
+        }
+    }
+
+    internal suspend fun getUiHierarchy(bundleId: String? = null): String {
+        if (!iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
+        }
+        return iosAutomationClient.getUiHierarchy(bundleId)
+    }
+
+    internal suspend fun getInteractiveElements(includeDisabled: Boolean = false, bundleId: String? = null): String {
+        if (!iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
+        }
+        return iosAutomationClient.getInteractiveElements(includeDisabled, bundleId)
+    }
+
+    internal suspend fun tapByCoordinates(x: Int, y: Int): String {
+        if (!iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
+        }
+        return iosAutomationClient.tapByCoordinates(x, y)
+    }
+
+    internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String {
+        if (!iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
+        }
+        return iosAutomationClient.swipe(startX, startY, endX, endY, steps)
+    }
+
+    internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String {
+        if (!iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
+        }
+        return iosAutomationClient.swipeByDirection(direction, distance, speed)
+    }
+
+    internal suspend fun findElement(
+        text: String?,
+        textContains: String?,
+        identifier: String?,
+        elementType: String?,
+        label: String?,
+        bundleId: String?
+    ): String {
+        if (!iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
+        }
+
+        if (text == null && textContains == null && identifier == null &&
+            elementType == null && label == null) {
+            return "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+        }
+
+        return iosAutomationClient.findElement(
+            text = text,
+            textContains = textContains,
+            identifier = identifier,
+            elementType = elementType,
+            label = label,
+            bundleId = bundleId
+        )
+    }
+
+    internal suspend fun getDeviceInfo(): String {
+        if (!iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
+        }
+        return iosAutomationClient.getDeviceInfo()
+    }
+
+    internal suspend fun pressHome(): String {
+        if (!iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
+        }
+        return iosAutomationClient.pressHome()
+    }
+
+    internal suspend fun inputText(text: String, bundleId: String? = null): String {
+        if (!iosAutomationClient.isServerRunning()) {
+            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
+        }
+        return iosAutomationClient.inputText(text, bundleId)
+    }
+
+    internal suspend fun stopAutomationServer(): String {
+        val process = iosXcodebuildProcess
+        return if (process != null && process.isAlive) {
+            process.destroyForcibly()
+            iosXcodebuildProcess = null
+            "iOS automation server stopped successfully."
+        } else {
+            iosXcodebuildProcess = null
+            "iOS automation server is not running."
+        }
+    }
+
+    // ==================== MCP Tool Registrations ====================
 
     private fun registerStartAutomationServer(scope: ToolScope) {
         scope.tool(
@@ -145,61 +309,7 @@ class IOSAutomationToolRegistrar(
             """.trimIndent(),
             timeoutMs = 200000
         ) {
-            val port = IOSAutomationConfig.DEFAULT_PORT
-
-            if (iosAutomationClient.isServerRunning()) {
-                return@tool "iOS automation server is already running on localhost:$port"
-            }
-
-            // Clean up any orphaned previous process
-            iosXcodebuildProcess?.let { process ->
-                if (process.isAlive) {
-                    logger.info("Destroying orphaned xcodebuild process before starting a new one")
-                    process.destroyForcibly()
-                }
-                iosXcodebuildProcess = null
-            }
-
-            // Discover launch path: pre-built bundle preferred, source build as fallback
-            val xctestrunPath = discovery.findXctestrun()
-            val projectPath = discovery.findXcodeProject()
-
-            if (xctestrunPath == null && projectPath == null) {
-                return@tool "Neither pre-built iOS test bundle nor Xcode source project found. " +
-                    "To fix: re-run install.sh on macOS to download the pre-built bundle, " +
-                    "or clone the VisionTest repository and set ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} " +
-                    "to build from source."
-            }
-
-            val usingPrebuilt = xctestrunPath != null
-            if (usingPrebuilt) {
-                logger.info("Using pre-built iOS test bundle: $xctestrunPath")
-            } else {
-                logger.info("Using source build from Xcode project: $projectPath")
-            }
-
-            val device = ios.getFirstAvailableDevice()
-            val simulatorName = device.name
-
-            val command = buildXcodebuildCommand(xctestrunPath, projectPath, simulatorName)
-            val maxAttempts = if (usingPrebuilt) 30 else 60
-
-            val label = if (usingPrebuilt) "pre-built bundle" else "source build"
-            val primaryResult = startAndPollServer(command, maxAttempts, port, label)
-
-            if (primaryResult.earlyExitCode == null) {
-                return@tool primaryResult.message
-            }
-
-            // Primary attempt exited early — try source build fallback if available
-            if (usingPrebuilt && projectPath != null) {
-                logger.warn("Pre-built bundle failed (exit code ${primaryResult.earlyExitCode}), falling back to source build")
-                val fallbackCommand = buildXcodebuildCommand(null, projectPath, simulatorName)
-                val fallbackResult = startAndPollServer(fallbackCommand, 60, port, "source build fallback")
-                return@tool fallbackResult.message
-            }
-
-            primaryResult.message
+            startAutomationServer()
         }
     }
 
@@ -208,12 +318,7 @@ class IOSAutomationToolRegistrar(
             name = "ios_automation_server_status",
             description = "Checks if the iOS automation server is running on the simulator. Returns server status and connection information."
         ) {
-            val isRunning = iosAutomationClient.isServerRunning()
-            if (isRunning) {
-                "iOS automation server is running and accessible at localhost:${IOSAutomationConfig.DEFAULT_PORT}"
-            } else {
-                "iOS automation server is not running. Use 'ios_start_automation_server' to start it."
-            }
+            automationServerStatus()
         }
     }
 
@@ -240,11 +345,7 @@ class IOSAutomationToolRegistrar(
             """.trimIndent(),
             timeoutMs = 30000
         ) { request ->
-            if (!iosAutomationClient.isServerRunning()) {
-                return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            }
-            val bundleId = request.optionalString("bundleId")
-            iosAutomationClient.getUiHierarchy(bundleId)
+            getUiHierarchy(request.optionalString("bundleId"))
         }
     }
 
@@ -271,14 +372,10 @@ class IOSAutomationToolRegistrar(
             """.trimIndent(),
             timeoutMs = 30000
         ) { request ->
-            if (!iosAutomationClient.isServerRunning()) {
-                return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            }
-
-            val includeDisabled = request.optionalBoolean("includeDisabled") ?: false
-            val bundleId = request.optionalString("bundleId")
-
-            iosAutomationClient.getInteractiveElements(includeDisabled, bundleId)
+            getInteractiveElements(
+                includeDisabled = request.optionalBoolean("includeDisabled") ?: false,
+                bundleId = request.optionalString("bundleId")
+            )
         }
     }
 
@@ -294,12 +391,7 @@ class IOSAutomationToolRegistrar(
             """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("x", "y"))
         ) { request ->
-            if (!iosAutomationClient.isServerRunning()) {
-                return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            }
-            val x = request.requireInt("x")
-            val y = request.requireInt("y")
-            iosAutomationClient.tapByCoordinates(x, y)
+            tapByCoordinates(request.requireInt("x"), request.requireInt("y"))
         }
     }
 
@@ -317,15 +409,13 @@ class IOSAutomationToolRegistrar(
             """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("startX", "startY", "endX", "endY"))
         ) { request ->
-            if (!iosAutomationClient.isServerRunning()) {
-                return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            }
-            val startX = request.requireInt("startX")
-            val startY = request.requireInt("startY")
-            val endX = request.requireInt("endX")
-            val endY = request.requireInt("endY")
-            val steps = request.optionalInt("steps") ?: 20
-            iosAutomationClient.swipe(startX, startY, endX, endY, steps)
+            swipe(
+                startX = request.requireInt("startX"),
+                startY = request.requireInt("startY"),
+                endX = request.requireInt("endX"),
+                endY = request.requireInt("endY"),
+                steps = request.optionalInt("steps") ?: 20
+            )
         }
     }
 
@@ -351,16 +441,11 @@ class IOSAutomationToolRegistrar(
             """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("direction"))
         ) { request ->
-            if (!iosAutomationClient.isServerRunning()) {
-                return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            }
-
-            val direction = request.requireDirection()
-
-            val distance = request.optionalString("distance") ?: "medium"
-            val speed = request.optionalString("speed") ?: "normal"
-
-            iosAutomationClient.swipeByDirection(direction, distance, speed)
+            swipeByDirection(
+                direction = request.requireDirection(),
+                distance = request.optionalString("distance") ?: "medium",
+                speed = request.optionalString("speed") ?: "normal"
+            )
         }
     }
 
@@ -383,29 +468,13 @@ class IOSAutomationToolRegistrar(
             """.trimIndent(),
             timeoutMs = 30000
         ) { request ->
-            if (!iosAutomationClient.isServerRunning()) {
-                return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            }
-
-            val text = request.optionalString("text")
-            val textContains = request.optionalString("textContains")
-            val identifier = request.optionalString("resourceId")
-            val elementType = request.optionalString("className")
-            val label = request.optionalString("contentDescription")
-            val bundleId = request.optionalString("bundleId")
-
-            if (text == null && textContains == null && identifier == null &&
-                elementType == null && label == null) {
-                return@tool "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
-            }
-
-            iosAutomationClient.findElement(
-                text = text,
-                textContains = textContains,
-                identifier = identifier,
-                elementType = elementType,
-                label = label,
-                bundleId = bundleId
+            findElement(
+                text = request.optionalString("text"),
+                textContains = request.optionalString("textContains"),
+                identifier = request.optionalString("resourceId"),
+                elementType = request.optionalString("className"),
+                label = request.optionalString("contentDescription"),
+                bundleId = request.optionalString("bundleId")
             )
         }
     }
@@ -424,10 +493,7 @@ class IOSAutomationToolRegistrar(
                 - Device model
             """.trimIndent()
         ) {
-            if (!iosAutomationClient.isServerRunning()) {
-                return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            }
-            iosAutomationClient.getDeviceInfo()
+            getDeviceInfo()
         }
     }
 
@@ -441,10 +507,7 @@ class IOSAutomationToolRegistrar(
                 Returns to the home screen. The current app moves to the background.
             """.trimIndent()
         ) {
-            if (!iosAutomationClient.isServerRunning()) {
-                return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            }
-            iosAutomationClient.pressHome()
+            pressHome()
         }
     }
 
@@ -467,12 +530,10 @@ class IOSAutomationToolRegistrar(
             """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("text"))
         ) { request ->
-            if (!iosAutomationClient.isServerRunning()) {
-                return@tool "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            }
-            val text = request.requireString("text")
-            val bundleId = request.optionalString("bundleId")
-            iosAutomationClient.inputText(text, bundleId)
+            inputText(
+                text = request.requireString("text"),
+                bundleId = request.optionalString("bundleId")
+            )
         }
     }
 
@@ -498,6 +559,8 @@ class IOSAutomationToolRegistrar(
             captureScreenshot(request.optionalString("outputPath"))
         }
     }
+
+    // ==================== Screenshot helpers ====================
 
     internal suspend fun captureScreenshot(outputPath: String?): String {
         if (!iosAutomationClient.isServerRunning()) {
@@ -654,15 +717,7 @@ class IOSAutomationToolRegistrar(
             name = "ios_stop_automation_server",
             description = "Stops the iOS automation server running on the simulator."
         ) {
-            val process = iosXcodebuildProcess
-            if (process != null && process.isAlive) {
-                process.destroyForcibly()
-                iosXcodebuildProcess = null
-                "iOS automation server stopped successfully."
-            } else {
-                iosXcodebuildProcess = null
-                "iOS automation server is not running."
-            }
+            stopAutomationServer()
         }
     }
 }

@@ -19,9 +19,14 @@ class IOSDeviceToolRegistrar(
             name = "ios_available_device",
             description = "Returns detailed information about the first available iOS device or simulator. Includes device ID, name, type, state (Booted/Shutdown), iOS version, and model. Prioritizes booted simulators over shutdown ones."
         ) {
-            val device = ios.getFirstAvailableDevice()
+            availableDevice()
+        }
+    }
 
-            """
+    internal suspend fun availableDevice(): String {
+        val device = ios.getFirstAvailableDevice()
+
+        return """
             |iOS Device found:
             |ID: ${device.id}
             |Name: ${device.name}
@@ -30,7 +35,6 @@ class IOSDeviceToolRegistrar(
             |OS Version: ${device.osVersion ?: "Unknown"}
             |Model: ${device.modelName ?: "Unknown"}
             """.trimMargin()
-        }
     }
 
     private fun registerListApps(scope: ToolScope) {
@@ -38,12 +42,16 @@ class IOSDeviceToolRegistrar(
             name = "ios_list_apps",
             description = "Returns a complete list of all applications installed on the iOS device or simulator. Returns bundle IDs (e.g., com.apple.mobilesafari) for all installed apps. Device must be booted."
         ) {
-            val result = ios.listApps()
-            if (result.isEmpty()) {
-                "No apps found on the iOS device"
-            } else {
-                "Found these apps: ${result.joinToString(", ")}"
-            }
+            listApps()
+        }
+    }
+
+    internal suspend fun listApps(): String {
+        val result = ios.listApps()
+        return if (result.isEmpty()) {
+            "No apps found on the iOS device"
+        } else {
+            "Found these apps: ${result.joinToString(", ")}"
         }
     }
 
@@ -54,9 +62,13 @@ class IOSDeviceToolRegistrar(
             inputSchema = Tool.Input(required = listOf("bundleId"))
         ) { request ->
             val bundleId = request.requireString("bundleId")
-            val rawResult = ios.getAppInfo(bundleId)
-            "App Information for $bundleId:\n$rawResult"
+            infoApp(bundleId)
         }
+    }
+
+    internal suspend fun infoApp(bundleId: String): String {
+        val rawResult = ios.getAppInfo(bundleId)
+        return "App Information for $bundleId:\n$rawResult"
     }
 
     private fun registerLaunchApp(scope: ToolScope) {
@@ -66,12 +78,16 @@ class IOSDeviceToolRegistrar(
             inputSchema = Tool.Input(required = listOf("bundleId"))
         ) { request ->
             val bundleId = request.requireString("bundleId")
-            val result = ios.launchApp(bundleId)
-            if (result) {
-                "Successfully launched the iOS app: $bundleId"
-            } else {
-                "Failed to launch the iOS app: $bundleId"
-            }
+            launchApp(bundleId)
+        }
+    }
+
+    internal suspend fun launchApp(bundleId: String): String {
+        val result = ios.launchApp(bundleId)
+        return if (result) {
+            "Successfully launched the iOS app: $bundleId"
+        } else {
+            "Failed to launch the iOS app: $bundleId"
         }
     }
 }

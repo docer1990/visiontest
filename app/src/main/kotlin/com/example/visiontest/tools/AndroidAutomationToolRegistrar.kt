@@ -42,29 +42,203 @@ class AndroidAutomationToolRegistrar(
         registerScreenshot(scope)
     }
 
+    // ==================== Extracted business logic ====================
+
+    internal suspend fun installAutomationServer(): String {
+        val device = android.getFirstAvailableDevice()
+
+        val apkPath = discovery.findAutomationServerApk()
+            ?: return "Automation server APK not found. Re-run install.sh to download APKs, or set VISION_TEST_APK_PATH environment variable. To build from source: ./gradlew :automation-server:assembleDebug :automation-server:assembleDebugAndroidTest"
+
+        val androidDevice = android as? Android
+            ?: return "Android device configuration not available"
+
+        val resolvedMainApk = discovery.resolveMainApkPath(apkPath)
+        if (resolvedMainApk != null) {
+            androidDevice.executeAdb("install", "-r", resolvedMainApk)
+        } else {
+            return "Main APK not found at the expected path derived from test APK: $apkPath. Ensure the main automation-server APK is built/installed (e.g., via :automation-server:assembleDebug), or re-run install.sh or set VISION_TEST_APK_PATH."
+        }
+
+        androidDevice.executeAdb("install", "-r", apkPath)
+
+        return "Automation server APKs installed successfully on device ${device.id}. Use 'start_automation_server' to start the server."
+    }
+
+    internal suspend fun startAutomationServer(): String {
+        val device = android.getFirstAvailableDevice()
+        val androidDevice = android as? Android
+            ?: return "Android device configuration not available"
+
+        val port = AutomationConfig.DEFAULT_PORT
+
+        if (automationClient.isServerRunning()) {
+            return "Automation server is already running on localhost:$port"
+        }
+
+        androidDevice.executeAdb("forward", "tcp:$port", "tcp:$port")
+
+        withContext(Dispatchers.IO) {
+            val command = listOf(
+                "adb", "-s", device.id, "shell",
+                "am", "instrument", "-w",
+                "-e", "port", port.toString(),
+                "-e", "class", AutomationConfig.AUTOMATION_SERVER_TEST_CLASS,
+                "${AutomationConfig.AUTOMATION_SERVER_TEST_PACKAGE}/${AutomationConfig.INSTRUMENTATION_RUNNER}"
+            )
+            ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .start()
+        }
+
+        var attempts = 0
+        val maxAttempts = 10
+        while (attempts < maxAttempts) {
+            delay(500)
+            if (automationClient.isServerRunning()) {
+                return "Automation server started successfully on device ${device.id}. Server is listening on localhost:$port"
+            }
+            attempts++
+        }
+
+        return "Automation server may not have started properly. Check device logs with: adb logcat | grep AutomationServer"
+    }
+
+    internal suspend fun automationServerStatus(): String {
+        val isRunning = automationClient.isServerRunning()
+        return if (isRunning) {
+            "Automation server is running and accessible at localhost:${AutomationConfig.DEFAULT_PORT}"
+        } else {
+            "Automation server is not running. Use 'start_automation_server' to start it."
+        }
+    }
+
+    internal suspend fun getUiHierarchy(): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+        return automationClient.getUiHierarchy()
+    }
+
+    internal suspend fun findElement(
+        text: String?,
+        textContains: String?,
+        resourceId: String?,
+        className: String?,
+        contentDescription: String?
+    ): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+
+        if (text == null && textContains == null && resourceId == null &&
+            className == null && contentDescription == null) {
+            return "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+        }
+
+        return automationClient.findElement(
+            text = text,
+            textContains = textContains,
+            resourceId = resourceId,
+            className = className,
+            contentDescription = contentDescription
+        )
+    }
+
+    internal suspend fun tapByCoordinates(x: Int, y: Int): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+        return automationClient.tapByCoordinates(x, y)
+    }
+
+    internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+        return automationClient.swipe(startX, startY, endX, endY, steps)
+    }
+
+    internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+        return automationClient.swipeByDirection(direction, distance, speed)
+    }
+
+    internal suspend fun swipeOnElement(
+        direction: String,
+        text: String?,
+        textContains: String?,
+        resourceId: String?,
+        className: String?,
+        contentDescription: String?,
+        speed: String = "normal"
+    ): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+
+        if (text == null && textContains == null && resourceId == null &&
+            className == null && contentDescription == null) {
+            return "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+        }
+
+        return automationClient.swipeOnElement(
+            direction = direction,
+            text = text,
+            textContains = textContains,
+            resourceId = resourceId,
+            className = className,
+            contentDescription = contentDescription,
+            speed = speed
+        )
+    }
+
+    internal suspend fun pressBack(): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+        return automationClient.pressBack()
+    }
+
+    internal suspend fun pressHome(): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+        return automationClient.pressHome()
+    }
+
+    internal suspend fun inputText(text: String): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+        return automationClient.inputText(text)
+    }
+
+    internal suspend fun getDeviceInfo(): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+        return automationClient.getDeviceInfo()
+    }
+
+    internal suspend fun getInteractiveElements(includeDisabled: Boolean = false): String {
+        if (!automationClient.isServerRunning()) {
+            return "Automation server is not running. Use 'start_automation_server' first."
+        }
+        return automationClient.getInteractiveElements(includeDisabled)
+    }
+
+    // ==================== MCP Tool Registrations ====================
+
     private fun registerInstallAutomationServer(scope: ToolScope) {
         scope.tool(
             name = "install_automation_server",
             description = "Installs the automation server APKs on the connected Android device. Run this once before using start_automation_server."
         ) {
-            val device = android.getFirstAvailableDevice()
-
-            val apkPath = discovery.findAutomationServerApk()
-                ?: return@tool "Automation server APK not found. Re-run install.sh to download APKs, or set VISION_TEST_APK_PATH environment variable. To build from source: ./gradlew :automation-server:assembleDebug :automation-server:assembleDebugAndroidTest"
-
-            val androidDevice = android as? Android
-                ?: return@tool "Android device configuration not available"
-
-            val resolvedMainApk = discovery.resolveMainApkPath(apkPath)
-            if (resolvedMainApk != null) {
-                androidDevice.executeAdb("install", "-r", resolvedMainApk)
-            } else {
-                return@tool "Main APK not found at the expected path derived from test APK: $apkPath. Ensure the main automation-server APK is built/installed (e.g., via :automation-server:assembleDebug), or re-run install.sh or set VISION_TEST_APK_PATH."
-            }
-
-            androidDevice.executeAdb("install", "-r", apkPath)
-
-            "Automation server APKs installed successfully on device ${device.id}. Use 'start_automation_server' to start the server."
+            installAutomationServer()
         }
     }
 
@@ -74,43 +248,7 @@ class AndroidAutomationToolRegistrar(
             description = "Starts the automation server on the connected Android device. The APKs must be installed first using install_automation_server. Sets up port forwarding and starts the instrumentation server.",
             timeoutMs = 30000
         ) {
-            val device = android.getFirstAvailableDevice()
-            val androidDevice = android as? Android
-                ?: return@tool "Android device configuration not available"
-
-            val port = AutomationConfig.DEFAULT_PORT
-
-            if (automationClient.isServerRunning()) {
-                return@tool "Automation server is already running on localhost:$port"
-            }
-
-            androidDevice.executeAdb("forward", "tcp:$port", "tcp:$port")
-
-            withContext(Dispatchers.IO) {
-                val command = listOf(
-                    "adb", "-s", device.id, "shell",
-                    "am", "instrument", "-w",
-                    "-e", "port", port.toString(),
-                    "-e", "class", AutomationConfig.AUTOMATION_SERVER_TEST_CLASS,
-                    "${AutomationConfig.AUTOMATION_SERVER_TEST_PACKAGE}/${AutomationConfig.INSTRUMENTATION_RUNNER}"
-                )
-                ProcessBuilder(command)
-                    .redirectErrorStream(true)
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .start()
-            }
-
-            var attempts = 0
-            val maxAttempts = 10
-            while (attempts < maxAttempts) {
-                delay(500)
-                if (automationClient.isServerRunning()) {
-                    return@tool "Automation server started successfully on device ${device.id}. Server is listening on localhost:$port"
-                }
-                attempts++
-            }
-
-            "Automation server may not have started properly. Check device logs with: adb logcat | grep AutomationServer"
+            startAutomationServer()
         }
     }
 
@@ -119,12 +257,7 @@ class AndroidAutomationToolRegistrar(
             name = "automation_server_status",
             description = "Checks if the automation server is running on the connected Android device. Returns server status and connection information."
         ) {
-            val isRunning = automationClient.isServerRunning()
-            if (isRunning) {
-                "Automation server is running and accessible at localhost:${AutomationConfig.DEFAULT_PORT}"
-            } else {
-                "Automation server is not running. Use 'start_automation_server' to start it."
-            }
+            automationServerStatus()
         }
     }
 
@@ -155,10 +288,7 @@ class AndroidAutomationToolRegistrar(
             """.trimIndent(),
             timeoutMs = 30000
         ) {
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-            automationClient.getUiHierarchy()
+            getUiHierarchy()
         }
     }
 
@@ -182,27 +312,12 @@ class AndroidAutomationToolRegistrar(
             """.trimIndent(),
             timeoutMs = 30000
         ) { request ->
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-
-            val text = request.optionalString("text")
-            val textContains = request.optionalString("textContains")
-            val resourceId = request.optionalString("resourceId")
-            val className = request.optionalString("className")
-            val contentDescription = request.optionalString("contentDescription")
-
-            if (text == null && textContains == null && resourceId == null &&
-                className == null && contentDescription == null) {
-                return@tool "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
-            }
-
-            automationClient.findElement(
-                text = text,
-                textContains = textContains,
-                resourceId = resourceId,
-                className = className,
-                contentDescription = contentDescription
+            findElement(
+                text = request.optionalString("text"),
+                textContains = request.optionalString("textContains"),
+                resourceId = request.optionalString("resourceId"),
+                className = request.optionalString("className"),
+                contentDescription = request.optionalString("contentDescription")
             )
         }
     }
@@ -231,12 +346,7 @@ class AndroidAutomationToolRegistrar(
                 """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("x", "y"))
         ) { request ->
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-            val x = request.requireInt("x")
-            val y = request.requireInt("y")
-            automationClient.tapByCoordinates(x, y)
+            tapByCoordinates(request.requireInt("x"), request.requireInt("y"))
         }
     }
 
@@ -262,15 +372,13 @@ class AndroidAutomationToolRegistrar(
             """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("startX", "startY", "endX", "endY"))
         ) { request ->
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-            val startX = request.requireInt("startX")
-            val startY = request.requireInt("startY")
-            val endX = request.requireInt("endX")
-            val endY = request.requireInt("endY")
-            val steps = request.optionalInt("steps") ?: 20
-            automationClient.swipe(startX, startY, endX, endY, steps)
+            swipe(
+                startX = request.requireInt("startX"),
+                startY = request.requireInt("startY"),
+                endX = request.requireInt("endX"),
+                endY = request.requireInt("endY"),
+                steps = request.optionalInt("steps") ?: 20
+            )
         }
     }
 
@@ -308,16 +416,11 @@ class AndroidAutomationToolRegistrar(
             """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("direction"))
         ) { request ->
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-
-            val direction = request.requireDirection()
-
-            val distance = request.optionalString("distance") ?: "medium"
-            val speed = request.optionalString("speed") ?: "normal"
-
-            automationClient.swipeByDirection(direction, distance, speed)
+            swipeByDirection(
+                direction = request.requireDirection(),
+                distance = request.optionalString("distance") ?: "medium",
+                speed = request.optionalString("speed") ?: "normal"
+            )
         }
     }
 
@@ -359,33 +462,14 @@ class AndroidAutomationToolRegistrar(
             """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("direction"))
         ) { request ->
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-
-            val direction = request.requireDirection()
-
-            val text = request.optionalString("text")
-            val textContains = request.optionalString("textContains")
-            val resourceId = request.optionalString("resourceId")
-            val className = request.optionalString("className")
-            val contentDescription = request.optionalString("contentDescription")
-
-            if (text == null && textContains == null && resourceId == null &&
-                className == null && contentDescription == null) {
-                return@tool "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
-            }
-
-            val speed = request.optionalString("speed") ?: "normal"
-
-            automationClient.swipeOnElement(
-                direction = direction,
-                text = text,
-                textContains = textContains,
-                resourceId = resourceId,
-                className = className,
-                contentDescription = contentDescription,
-                speed = speed
+            swipeOnElement(
+                direction = request.requireDirection(),
+                text = request.optionalString("text"),
+                textContains = request.optionalString("textContains"),
+                resourceId = request.optionalString("resourceId"),
+                className = request.optionalString("className"),
+                contentDescription = request.optionalString("contentDescription"),
+                speed = request.optionalString("speed") ?: "normal"
             )
         }
     }
@@ -413,10 +497,7 @@ class AndroidAutomationToolRegistrar(
                 screen is now displayed before proceeding with further actions.
             """.trimIndent()
         ) {
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-            automationClient.pressBack()
+            pressBack()
         }
     }
 
@@ -444,10 +525,7 @@ class AndroidAutomationToolRegistrar(
                 home screen, then use 'launch_app_android' to start a different app.
             """.trimIndent()
         ) {
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-            automationClient.pressHome()
+            pressHome()
         }
     }
 
@@ -463,11 +541,7 @@ class AndroidAutomationToolRegistrar(
             """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("text"))
         ) { request ->
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-            val text = request.requireString("text")
-            automationClient.inputText(text)
+            inputText(request.requireString("text"))
         }
     }
 
@@ -489,10 +563,7 @@ class AndroidAutomationToolRegistrar(
                 - Verify SDK version for feature compatibility
             """.trimIndent()
         ) {
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-            automationClient.getDeviceInfo()
+            getDeviceInfo()
         }
     }
 
@@ -531,13 +602,7 @@ class AndroidAutomationToolRegistrar(
             """.trimIndent(),
             timeoutMs = 30000
         ) { request ->
-            if (!automationClient.isServerRunning()) {
-                return@tool "Automation server is not running. Use 'start_automation_server' first."
-            }
-
-            val includeDisabled = request.optionalBoolean("includeDisabled") ?: false
-
-            automationClient.getInteractiveElements(includeDisabled)
+            getInteractiveElements(request.optionalBoolean("includeDisabled") ?: false)
         }
     }
 
@@ -563,6 +628,8 @@ class AndroidAutomationToolRegistrar(
             captureScreenshot(request.optionalString("outputPath"))
         }
     }
+
+    // ==================== Screenshot helpers ====================
 
     internal suspend fun captureScreenshot(outputPath: String?): String {
         if (!automationClient.isServerRunning()) {

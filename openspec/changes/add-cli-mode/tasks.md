@@ -9,12 +9,12 @@
 
 Goal: each tool's body becomes an `internal suspend` function taking typed parameters. MCP registration shrinks to arg extraction + delegation. The CLI calls the same functions. No MCP behavior change.
 
-- [ ] 2.1 `AndroidDeviceToolRegistrar` — extract body of each tool (`available_device_android`, `list_apps_android`, `info_app_android`, `launch_app_android`) into `internal suspend fun` methods on the registrar. Update MCP registrations to delegate. Keep arg extraction in the MCP `scope.tool { ... }` block
-- [ ] 2.2 `IOSDeviceToolRegistrar` — same treatment for `ios_available_device`, `ios_list_apps`, `ios_info_app`, `ios_launch_app`
-- [ ] 2.3 `AndroidAutomationToolRegistrar` — extract bodies of every `registerXxx` tool into `internal suspend fun` methods. The existing `captureScreenshot`, `resolveScreenshotPath`, `writeScreenshot` helpers already follow this pattern; generalise across all 15 Android automation tools
-- [ ] 2.4 `IOSAutomationToolRegistrar` — same treatment for every iOS automation tool
-- [ ] 2.5 Verify `./gradlew :app:test` stays green — no MCP behavior change expected, refactor is mechanical
-- [ ] 2.6 Add targeted tests (or expand existing ones) that exercise the extracted functions directly without going through `ToolScope`, to lock in their call shape as a stable public-within-the-module surface
+- [x] 2.1 `AndroidDeviceToolRegistrar` — extract body of each tool (`available_device_android`, `list_apps_android`, `info_app_android`, `launch_app_android`) into `internal suspend fun` methods on the registrar. Update MCP registrations to delegate. Keep arg extraction in the MCP `scope.tool { ... }` block
+- [x] 2.2 `IOSDeviceToolRegistrar` — same treatment for `ios_available_device`, `ios_list_apps`, `ios_info_app`, `ios_launch_app`
+- [x] 2.3 `AndroidAutomationToolRegistrar` — extract bodies of every `registerXxx` tool into `internal suspend fun` methods. The existing `captureScreenshot`, `resolveScreenshotPath`, `writeScreenshot` helpers already follow this pattern; generalise across all 15 Android automation tools
+- [x] 2.4 `IOSAutomationToolRegistrar` — same treatment for every iOS automation tool
+- [x] 2.5 Verify `./gradlew :app:test` stays green — no MCP behavior change expected, refactor is mechanical
+- [x] 2.6 Add targeted tests (or expand existing ones) that exercise the extracted functions directly without going through `ToolScope`, to lock in their call shape as a stable public-within-the-module surface
 
 ## 3. CLI root dispatcher & exit-code infrastructure
 

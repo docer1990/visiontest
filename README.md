@@ -214,6 +214,7 @@ With no arguments, `visiontest` starts the MCP stdio server.
 - [ ] Notification/status bar interaction
 - [ ] Permission dialog automation
 - [ ] Video recording of automation sessions
+- [ ] Separate CLI-only artifact (smaller download, no MCP dependencies)
 
 ## Contributing
 

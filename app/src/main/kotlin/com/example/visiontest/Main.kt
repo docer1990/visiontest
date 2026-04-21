@@ -1,6 +1,7 @@
 package com.example.visiontest
 
 import com.example.visiontest.android.Android
+import com.example.visiontest.cli.VisionTestCli
 import com.example.visiontest.ios.IOSManager
 import com.example.visiontest.config.AppConfig
 import io.ktor.utils.io.streams.asInput
@@ -13,7 +14,19 @@ import kotlinx.io.buffered
 import org.slf4j.LoggerFactory
 
 
-fun main()  {
+fun main(args: Array<String>) {
+    when (route(args)) {
+        Route.McpServer -> runMcpServer()
+        Route.Cli -> VisionTestCli().main(args)
+    }
+}
+
+internal enum class Route { McpServer, Cli }
+
+internal fun route(args: Array<String>): Route =
+    if (args.isEmpty() || args[0] == "serve") Route.McpServer else Route.Cli
+
+private fun runMcpServer() {
 
     val config = AppConfig.createDefault()
 

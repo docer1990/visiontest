@@ -66,7 +66,9 @@ dependencies {
     // Gson for JSON serialization
     implementation("com.google.code.gson:gson:2.10.1")
 
-
+    // Clikt — CLI argument parsing for the `visiontest <subcommand>` surface.
+    // Used only when the JAR is invoked with CLI args; MCP stdio path does not touch clikt.
+    implementation("com.github.ajalt.clikt:clikt:4.4.0")
 
     // This dependency is used by the application.
     implementation(libs.guava)

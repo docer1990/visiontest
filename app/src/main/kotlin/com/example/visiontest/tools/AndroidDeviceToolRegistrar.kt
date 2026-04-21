@@ -25,13 +25,18 @@ class AndroidDeviceToolRegistrar(
             name = "available_device_android",
             description = "Returns detailed information about the first available Android device, including model, Android version, SDK version, and device state. Automatically selects the first active device connected via ADB."
         ) {
-            val result = android.getFirstAvailableDevice()
-            val deviceProps = android.executeShell("getprop", result.id)
-            val modelName = ToolHelpers.extractProperty(deviceProps, PROP_MODEL)
-            val androidVersion = ToolHelpers.extractProperty(deviceProps, PROP_ANDROID_VERSION)
-            val sdkVersion = ToolHelpers.extractProperty(deviceProps, PROP_SDK_VERSION)
+            availableDevice()
+        }
+    }
 
-            """
+    internal suspend fun availableDevice(): String {
+        val result = android.getFirstAvailableDevice()
+        val deviceProps = android.executeShell("getprop", result.id)
+        val modelName = ToolHelpers.extractProperty(deviceProps, PROP_MODEL)
+        val androidVersion = ToolHelpers.extractProperty(deviceProps, PROP_ANDROID_VERSION)
+        val sdkVersion = ToolHelpers.extractProperty(deviceProps, PROP_SDK_VERSION)
+
+        return """
             |Device found:
             |Serial: ${result.id}
             |Model: $modelName
@@ -39,7 +44,6 @@ class AndroidDeviceToolRegistrar(
             |SDK Version: $sdkVersion
             |State: ${result.state}
             """.trimMargin()
-        }
     }
 
     private fun registerListApps(scope: ToolScope) {
@@ -47,12 +51,16 @@ class AndroidDeviceToolRegistrar(
             name = "list_apps_android",
             description = "Returns a complete list of all applications installed on the Android device. Returns package names (e.g., com.example.app) for all installed apps."
         ) {
-            val result = android.listApps()
-            if (result.isEmpty()) {
-                "No apps found on the device"
-            } else {
-                "Found these apps: ${result.joinToString(", ")}"
-            }
+            listApps()
+        }
+    }
+
+    internal suspend fun listApps(): String {
+        val result = android.listApps()
+        return if (result.isEmpty()) {
+            "No apps found on the device"
+        } else {
+            "Found these apps: ${result.joinToString(", ")}"
         }
     }
 
@@ -63,9 +71,13 @@ class AndroidDeviceToolRegistrar(
             inputSchema = Tool.Input(required = listOf("packageName"))
         ) { request ->
             val packageName = request.requireString("packageName")
-            val rawResult = android.getAppInfo(packageName)
-            ToolHelpers.formatAppInfo(rawResult, packageName)
+            infoApp(packageName)
         }
+    }
+
+    internal suspend fun infoApp(packageName: String): String {
+        val rawResult = android.getAppInfo(packageName)
+        return ToolHelpers.formatAppInfo(rawResult, packageName)
     }
 
     private fun registerLaunchApp(scope: ToolScope) {
@@ -75,12 +87,16 @@ class AndroidDeviceToolRegistrar(
             inputSchema = Tool.Input(required = listOf("packageName"))
         ) { request ->
             val packageName = request.requireString("packageName")
-            val result = android.launchApp(packageName)
-            if (result) {
-                "Successfully launched the app: $packageName"
-            } else {
-                "Failed to launch the app: $packageName"
-            }
+            launchApp(packageName)
+        }
+    }
+
+    internal suspend fun launchApp(packageName: String): String {
+        val result = android.launchApp(packageName)
+        return if (result) {
+            "Successfully launched the app: $packageName"
+        } else {
+            "Failed to launch the app: $packageName"
         }
     }
 }

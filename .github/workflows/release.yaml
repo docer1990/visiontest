@@ -266,3 +266,4 @@ jobs:
             release-staging/ios-automation-server.tar.gz.sha256
             install.sh
             run-visiontest.sh
+            AGENT_INSTRUCTIONS.md

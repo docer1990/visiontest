@@ -135,6 +135,37 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 
 > **Flutter apps:** Text labels use `content-desc` (contentDescription) instead of `text`. If `find_element` by `text` fails, retry with `contentDescription`.
 
+## CLI Usage
+
+The same operations available as MCP tools can be invoked directly from the command line. Every command requires `--platform android` or `--platform ios` (alias `-p`). With no arguments, `visiontest` starts the MCP stdio server as before.
+
+| Command | Platforms | Required args | Optional flags |
+|---------|-----------|---------------|----------------|
+| `install_automation_server` | android | — | — |
+| `start_automation_server` | android, ios | — | — |
+| `automation_server_status` | android, ios | — | — |
+| `get_interactive_elements` | android, ios | — | `--include-disabled` |
+| `get_ui_hierarchy` | android, ios | — | — |
+| `get_device_info` | android, ios | — | — |
+| `screenshot` | android, ios | — | `--output PATH` |
+| `tap_by_coordinates` | android, ios | `x` `y` (ints) | — |
+| `input_text` | android, ios | `text` (string) | — |
+| `swipe_direction` | android, ios | `direction` (up\|down\|left\|right) | `--distance`, `--speed` |
+| `press_back` | android | — | — |
+| `press_home` | android, ios | — | — |
+| `launch_app` | android, ios | `id` (string) | — |
+
+### CLI Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | Generic failure |
+| 2 | Usage error (missing/invalid args) |
+| 3 | Automation server not reachable |
+| 4 | Device/simulator not found |
+| 5 | Platform not supported for this command |
+
 ## Key Patterns
 
 - All device operations use suspend functions with coroutine-based async

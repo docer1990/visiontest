@@ -53,3 +53,10 @@ class NoSimulatorAvailableException(message: String) : Exception(message)
  * Thrown when a specified app cannot be found on the iOS device/simulator.
  */
 class AppNotFoundException(message: String) : Exception(message)
+
+/**
+ * Thrown when a command requires the automation server but it is not running.
+ * Used by both Android and iOS registrars so the CLI path can map to exit code 3
+ * and the MCP path can surface the message via [ErrorHandler].
+ */
+class ServerNotRunningException(message: String) : Exception(message)

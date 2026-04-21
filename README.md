@@ -156,6 +156,33 @@ Your AI coding tool discovers all available tools automatically via MCP. Just as
 
 **iOS Automation:** `ios_start_automation_server`, `ios_automation_server_status`, `ios_get_ui_hierarchy`, `ios_get_interactive_elements`, `ios_find_element`, `ios_tap_by_coordinates`, `ios_swipe`, `ios_swipe_direction`, `ios_get_device_info`, `ios_input_text`, `ios_press_home`, `ios_stop_automation_server`
 
+## CLI Usage
+
+The same operations are also available as direct CLI commands — no MCP client needed:
+
+```bash
+visiontest automation_server_status -p android
+visiontest get_interactive_elements -p ios
+visiontest tap_by_coordinates -p android 100 200
+visiontest screenshot -p ios --output ./screenshot.png
+visiontest swipe_direction -p android up --distance long --speed fast
+```
+
+Every command requires `--platform android` or `--platform ios` (alias `-p`). Run `visiontest --help` for the full command list, or `visiontest <command> --help` for per-command usage.
+
+With no arguments, `visiontest` starts the MCP stdio server.
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | Generic failure |
+| 2 | Usage error (missing/invalid args) |
+| 3 | Automation server not reachable |
+| 4 | Device/simulator not found |
+| 5 | Platform not supported for this command |
+
 ## Configuration
 
 ### Environment Variables
@@ -175,7 +202,8 @@ Your AI coding tool discovers all available tools automatically via MCP. Just as
 ## Future Plans
 
 - [x] Text input/typing support
-- [ ] Screenshot capture via UIAutomator / XCUITest
+- [x] Screenshot capture via UIAutomator / XCUITest
+- [x] CLI mode (direct command-line usage without MCP)
 - [ ] Long press operations
 - [ ] Wait/sync operations for E2E testing
 - [ ] Multi-device coordination
@@ -186,6 +214,7 @@ Your AI coding tool discovers all available tools automatically via MCP. Just as
 - [ ] Notification/status bar interaction
 - [ ] Permission dialog automation
 - [ ] Video recording of automation sessions
+- [ ] Separate CLI-only artifact (smaller download, no MCP dependencies)
 
 ## Contributing
 

@@ -2,6 +2,7 @@ package com.example.visiontest.cli.commands
 
 import com.example.visiontest.cli.ComponentHolder
 import com.example.visiontest.cli.platformOption
+import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
@@ -21,6 +22,7 @@ class SwipeDirectionCommand(private val components: ComponentHolder) :
         .choice("slow", "normal", "fast").default("normal")
 
     override fun run() = runCliCommand {
+        requireServerRunning { components.isServerRunning(platform) }
         when (platform) {
             "android" -> components.androidAutomationRegistrar.swipeByDirection(direction, distance, speed)
             "ios" -> components.iosAutomationRegistrar.swipeByDirection(direction, distance, speed)

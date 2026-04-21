@@ -2,9 +2,9 @@ package com.example.visiontest.cli.commands
 
 import com.example.visiontest.cli.ComponentHolder
 import com.example.visiontest.cli.platformOption
+import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 
@@ -15,6 +15,7 @@ class GetInteractiveElementsCommand(private val components: ComponentHolder) :
     private val includeDisabled by option("--include-disabled", help = "Include disabled elements").flag()
 
     override fun run() = runCliCommand {
+        requireServerRunning { components.isServerRunning(platform) }
         when (platform) {
             "android" -> components.androidAutomationRegistrar.getInteractiveElements(includeDisabled)
             "ios" -> components.iosAutomationRegistrar.getInteractiveElements(includeDisabled)

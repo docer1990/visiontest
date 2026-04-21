@@ -54,6 +54,13 @@ class ComponentHolder private constructor(val config: AppConfig) {
         })
     }
 
+    /** Returns `true` if the automation server for the given platform is reachable. */
+    suspend fun isServerRunning(platform: String): Boolean = when (platform) {
+        "android" -> automationClient.isServerRunning()
+        "ios" -> iosAutomationClient.isServerRunning()
+        else -> false
+    }
+
     companion object {
         /**
          * Creates a [ComponentHolder] using [AppConfig.createDefault].

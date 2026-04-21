@@ -58,10 +58,10 @@ Each subcommand lives in its own file under `cli/commands/`. Every command parse
 
 ## 5. Exit-code mapping
 
-- [ ] 5.1 Teach extracted functions (or a thin shim in each CLI command) to throw `CliExit(ServerNotReachable, "...")` when `automationClient.isServerRunning()` returns false, replacing the MCP-side "Use 'start_automation_server' first" short-circuit. On the MCP side the string return is preserved (the extracted function can return the same string for MCP while the CLI command maps `ServerNotReachable` to exit 3 — prefer a single path: the extracted function throws `CliExit`, and the MCP registration catches it and converts back to the string form for compatibility)
-- [ ] 5.2 Map `Android.getFirstAvailableDevice()` / `IOSManager.getFirstAvailableDevice()` failures to `CliExit(DeviceNotFound, "...")`
-- [ ] 5.3 Map clikt `UsageError` / `MissingArgument` / `BadParameterValue` to exit 2 via clikt's built-in mechanism (`CliktError.statusCode`)
-- [ ] 5.4 Any uncaught exception in `runCliCommand` → exit 1 with the exception message on stderr
+- [x] 5.1 Teach extracted functions (or a thin shim in each CLI command) to throw `CliExit(ServerNotReachable, "...")` when `automationClient.isServerRunning()` returns false, replacing the MCP-side "Use 'start_automation_server' first" short-circuit. On the MCP side the string return is preserved (the extracted function can return the same string for MCP while the CLI command maps `ServerNotReachable` to exit 3 — prefer a single path: the extracted function throws `CliExit`, and the MCP registration catches it and converts back to the string form for compatibility)
+- [x] 5.2 Map `Android.getFirstAvailableDevice()` / `IOSManager.getFirstAvailableDevice()` failures to `CliExit(DeviceNotFound, "...")`
+- [x] 5.3 Map clikt `UsageError` / `MissingArgument` / `BadParameterValue` to exit 2 via clikt's built-in mechanism (`CliktError.statusCode`)
+- [x] 5.4 Any uncaught exception in `runCliCommand` → exit 1 with the exception message on stderr
 
 ## 6. Tests
 

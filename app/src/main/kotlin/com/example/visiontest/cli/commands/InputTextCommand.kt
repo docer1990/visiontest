@@ -2,6 +2,7 @@ package com.example.visiontest.cli.commands
 
 import com.example.visiontest.cli.ComponentHolder
 import com.example.visiontest.cli.platformOption
+import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
@@ -13,6 +14,7 @@ class InputTextCommand(private val components: ComponentHolder) :
     private val text by argument(help = "Text to type")
 
     override fun run() = runCliCommand {
+        requireServerRunning { components.isServerRunning(platform) }
         when (platform) {
             "android" -> components.androidAutomationRegistrar.inputText(text)
             "ios" -> components.iosAutomationRegistrar.inputText(text)

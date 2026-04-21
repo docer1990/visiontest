@@ -91,6 +91,13 @@ tasks.named<Test>("test") {
     useJUnitPlatform()
 }
 
+// Copy AGENT_INSTRUCTIONS.md from repo root into JAR resources so InitCommand can read it at runtime.
+tasks.named<ProcessResources>("processResources") {
+    from(rootProject.file("AGENT_INSTRUCTIONS.md")) {
+        rename { "agent-instructions.md" }
+    }
+}
+
 // Configurazione per il jar ombra (con tutte le dipendenze)
 tasks {
     shadowJar {

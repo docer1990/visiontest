@@ -172,6 +172,16 @@ Every command requires `--platform android` or `--platform ios` (alias `-p`). Ru
 
 With no arguments, `visiontest` starts the MCP stdio server.
 
+### Agent Setup
+
+To set up AI agent skill files in your project (so agents discover VisionTest CLI instructions automatically):
+
+```bash
+visiontest init --agent claude,opencode,codex
+```
+
+This writes a `SKILL.md` file to each agent's project-level directory. Run it once per project.
+
 ### Exit Codes
 
 | Code | Meaning |

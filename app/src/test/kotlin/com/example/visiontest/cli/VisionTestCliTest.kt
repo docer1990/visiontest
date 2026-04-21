@@ -129,16 +129,17 @@ class VisionTestCliTest {
     // --- Subcommand routing ---
 
     @Test
-    fun `root command lists all 13 subcommands`() {
+    fun `root command lists all 14 subcommands`() {
         // We can't use the real VisionTestCli (ComponentHolder is lazy but still needs ADB),
         // so we just verify the count expectation as a documentation test.
         val expectedCommands = listOf(
             "install_automation_server", "start_automation_server", "automation_server_status",
             "get_interactive_elements", "get_ui_hierarchy", "get_device_info", "screenshot",
             "tap_by_coordinates", "input_text", "swipe_direction",
-            "press_back", "press_home", "launch_app"
+            "press_back", "press_home", "launch_app",
+            "init"
         )
-        assertEquals(13, expectedCommands.size)
+        assertEquals(14, expectedCommands.size)
     }
 
     // --- SwipeDirection choice validation ---

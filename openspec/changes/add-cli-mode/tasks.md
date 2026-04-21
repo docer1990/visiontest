@@ -72,14 +72,14 @@ Each subcommand lives in its own file under `cli/commands/`. Every command parse
 
 ## 7. Reference skill
 
-- [ ] 7.1 Create `.claude/skills/visiontest-mobile/SKILL.md` with: one-paragraph overview; the standard loop (`start_automation_server` → `screenshot` → `get_interactive_elements` → `tap_by_coordinates` → repeat); the `--platform` flag convention; the exit-code contract (with "what to do on each code"); the Flutter `contentDescription` gotcha copied from `CLAUDE.md`; a short example session
-- [ ] 7.2 If Claude Code skill metadata requires a frontmatter block, include it (name, description, when-to-use). Keep the body under 200 lines
+- [x] 7.1 Create `.claude/skills/visiontest-mobile/SKILL.md` with: one-paragraph overview; the standard loop (`start_automation_server` → `screenshot` → `get_interactive_elements` → `tap_by_coordinates` → repeat); the `--platform` flag convention; the exit-code contract (with "what to do on each code"); the Flutter `contentDescription` gotcha copied from `CLAUDE.md`; a short example session
+- [x] 7.2 If Claude Code skill metadata requires a frontmatter block, include it (name, description, when-to-use). Keep the body under 200 lines
 
 ## 8. Documentation
 
-- [ ] 8.1 Add a "CLI Usage" section to `CLAUDE.md` listing all 13 commands with one-line descriptions, the `--platform` rule, and the exit-code table. Place it after the existing "MCP Tools" section
-- [ ] 8.2 Add a short entry to `LEARNING.md` titled "Dual facade: MCP tools + CLI" explaining the handler-extraction refactor, why both facades share one implementation, and the decision to defer `--json` / daemon mode
-- [ ] 8.3 Update `docs/installation.md` (if present) to mention the CLI usage alongside the MCP configuration, including that `visiontest` with no args keeps doing what it does today
+- [x] 8.1 Add a "CLI Usage" section to `CLAUDE.md` listing all 13 commands with one-line descriptions, the `--platform` rule, and the exit-code table. Place it after the existing "MCP Tools" section
+- [x] 8.2 Add a short entry to `LEARNING.md` titled "Dual facade: MCP tools + CLI" explaining the handler-extraction refactor, why both facades share one implementation, and the decision to defer `--json` / daemon mode
+- [x] 8.3 Update `docs/installation.md` (if present) to mention the CLI usage alongside the MCP configuration, including that `visiontest` with no args keeps doing what it does today
 
 ## 9. Verification
 

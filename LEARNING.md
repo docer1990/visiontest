@@ -645,3 +645,19 @@ iOS elements expose different properties than Android. The bridge maps them to a
 - [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
 - [Template Method Pattern](https://refactoring.guru/design-patterns/template-method)
 - [OWASP Mobile Security Guide](https://owasp.org/www-project-mobile-app-security/)
+
+## Dual Facade: MCP Tools + CLI
+
+### Handler Extraction Refactor
+
+Each MCP tool's handler body was extracted into an `internal suspend fun` on its registrar class. The MCP `scope.tool { }` block now handles only arg extraction from `CallToolRequest` and delegates to the extracted function. The CLI subcommands call the same functions directly with typed parameters.
+
+This means both facades — MCP and CLI — share one implementation. Bug fixes and behavior changes apply to both paths automatically.
+
+### Why Not Interfaces?
+
+The extracted functions live on the concrete registrar classes rather than behind interfaces. This keeps the refactor minimal (no new types) and the functions are `internal` to the module, so they're only accessible within `app/`. If a third facade is needed later, introducing interfaces would be straightforward.
+
+### Deferred: `--json` Output and Daemon Mode
+
+The MVP CLI outputs plain text (the same strings the MCP tools return). Structured `--json` output was deferred because the MCP tools already return prose strings — adding JSON would require changing the return types of every extracted function. Daemon mode (keeping the process alive across multiple commands) was deferred to avoid the complexity of long-lived state management in the CLI path.

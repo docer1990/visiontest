@@ -38,3 +38,15 @@ Used for development and Claude Desktop config. JAR resolution order:
 - Android SDK — only needed for building the automation-server module from source
 
 > **Quick start:** Users who just need the MCP server can run `curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash` — only Java 17+ is required.
+
+## CLI Usage
+
+After installation, `visiontest` with no arguments starts the MCP stdio server (unchanged behavior). To use the CLI, pass a subcommand:
+
+```bash
+visiontest screenshot --platform android
+visiontest get_interactive_elements --platform ios
+visiontest tap_by_coordinates --platform android 540 1200
+```
+
+Every command requires `--platform android` or `--platform ios`. Run `visiontest --help` for the full command list. See `CLAUDE.md` for the complete CLI reference.

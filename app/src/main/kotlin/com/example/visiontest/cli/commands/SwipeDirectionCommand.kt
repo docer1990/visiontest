@@ -1,6 +1,7 @@
 package com.example.visiontest.cli.commands
 
 import com.example.visiontest.cli.ComponentHolder
+import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
@@ -10,7 +11,7 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 
-class SwipeDirectionCommand(private val components: ComponentHolder) :
+class SwipeDirectionCommand(private val components: Lazy<ComponentHolder>) :
     CliktCommand(name = "swipe_direction", help = "Swipe in a direction") {
 
     private val platform by platformOption()
@@ -22,11 +23,10 @@ class SwipeDirectionCommand(private val components: ComponentHolder) :
         .choice("slow", "normal", "fast").default("normal")
 
     override fun run() = runCliCommand {
-        requireServerRunning { components.isServerRunning(platform) }
+        requireServerRunning { components.value.isServerRunning(platform) }
         when (platform) {
-            "android" -> components.androidAutomationRegistrar.swipeByDirection(direction, distance, speed)
-            "ios" -> components.iosAutomationRegistrar.swipeByDirection(direction, distance, speed)
-            else -> error("Unexpected platform: $platform")
+            Platform.Android -> components.value.androidAutomationRegistrar.swipeByDirection(direction, distance, speed)
+            Platform.Ios -> components.value.iosAutomationRegistrar.swipeByDirection(direction, distance, speed)
         }
     }
 }

@@ -30,6 +30,8 @@ private fun runCli(args: Array<String>) {
     try {
         VisionTestCli().parse(args)
     } catch (e: CliExit) {
+        // Safety net: all CliExit exceptions should be caught by runCliCommand inside
+        // each subcommand's run(). This catch handles any that escape during arg parsing.
         System.err.println(e.message)
         kotlin.system.exitProcess(e.code.value)
     } catch (e: UsageError) {

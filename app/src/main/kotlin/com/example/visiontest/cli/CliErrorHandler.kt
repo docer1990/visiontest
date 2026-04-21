@@ -54,7 +54,15 @@ internal fun executeCliCommand(block: suspend () -> String): CliResult {
 /**
  * Checks that the automation server is reachable, throwing [CliExit] with
  * [ExitCode.ServerNotReachable] if not. CLI commands that require a running
- * server should call this before delegating to the extracted function.
+ * server should call this before delegating to the extracted registrar function.
+ *
+ * Note: the extracted registrar functions also check `isServerRunning()` internally
+ * (for MCP tool compatibility, where they return a user-friendly error string instead
+ * of throwing). This means the CLI path performs two health checks — one here for the
+ * proper exit code, and one in the registrar for the error message. The duplicate
+ * localhost HTTP call is negligible (<5ms) and avoids a more invasive refactor that
+ * would either break MCP error messages or require a `skipCheck` parameter on every
+ * extracted function.
  */
 suspend fun requireServerRunning(isRunning: suspend () -> Boolean) {
     if (!isRunning()) {

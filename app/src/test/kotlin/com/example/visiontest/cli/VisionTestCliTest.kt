@@ -3,11 +3,7 @@ package com.example.visiontest.cli
 import com.github.ajalt.clikt.core.MissingArgument
 import com.github.ajalt.clikt.core.BadParameterValue
 import com.github.ajalt.clikt.core.MissingOption
-import com.github.ajalt.clikt.core.NoSuchSubcommand
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.NoOpCliktCommand
-import com.github.ajalt.clikt.core.UsageError
-import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.types.choice
 import com.github.ajalt.clikt.parameters.types.int
@@ -33,10 +29,7 @@ class VisionTestCliTest {
     private class TestAndroidOnlyCommand(name: String) : CliktCommand(name = name) {
         val platform by androidOnlyPlatformOption()
         var ran = false
-        override fun run() {
-            requireAndroid(platform)
-            ran = true
-        }
+        override fun run() { ran = true }
     }
 
     private class TestTapCommand : CliktCommand(name = "tap_by_coordinates") {
@@ -53,7 +46,7 @@ class VisionTestCliTest {
     fun `cross-platform command accepts android`() {
         val cmd = TestPlatformCommand("test")
         cmd.parse(listOf("--platform", "android"))
-        assertEquals("android", cmd.platform)
+        assertEquals(Platform.Android, cmd.platform)
         assertTrue(cmd.ran)
     }
 
@@ -61,14 +54,14 @@ class VisionTestCliTest {
     fun `cross-platform command accepts ios`() {
         val cmd = TestPlatformCommand("test")
         cmd.parse(listOf("--platform", "ios"))
-        assertEquals("ios", cmd.platform)
+        assertEquals(Platform.Ios, cmd.platform)
     }
 
     @Test
     fun `cross-platform command accepts short flag`() {
         val cmd = TestPlatformCommand("test")
         cmd.parse(listOf("-p", "android"))
-        assertEquals("android", cmd.platform)
+        assertEquals(Platform.Android, cmd.platform)
     }
 
     @Test
@@ -97,12 +90,11 @@ class VisionTestCliTest {
     }
 
     @Test
-    fun `android-only command rejects ios with PlatformNotSupported`() {
+    fun `android-only command rejects ios with BadParameterValue`() {
         val cmd = TestAndroidOnlyCommand("test")
-        val ex = assertFailsWith<CliExit> {
+        assertFailsWith<BadParameterValue> {
             cmd.parse(listOf("--platform", "ios"))
         }
-        assertEquals(ExitCode.PlatformNotSupported, ex.code)
     }
 
     // --- Positional args ---
@@ -135,9 +127,8 @@ class VisionTestCliTest {
 
     @Test
     fun `root command lists all 13 subcommands`() {
-        // We can't use the real VisionTestCli (it creates ComponentHolder which initializes ADB),
+        // We can't use the real VisionTestCli (ComponentHolder is lazy but still needs ADB),
         // so we just verify the count expectation as a documentation test.
-        // The real routing is tested via integration tests in Phase 6.3.
         val expectedCommands = listOf(
             "install_automation_server", "start_automation_server", "automation_server_status",
             "get_interactive_elements", "get_ui_hierarchy", "get_device_info", "screenshot",

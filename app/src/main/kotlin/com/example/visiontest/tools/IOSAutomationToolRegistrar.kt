@@ -133,6 +133,9 @@ class IOSAutomationToolRegistrar(
 
     // ==================== Extracted business logic ====================
 
+    private suspend fun requireServer(): String? =
+        if (!iosAutomationClient.isServerRunning()) "iOS automation server is not running. Use 'ios_start_automation_server' first." else null
+
     internal suspend fun startAutomationServer(): String {
         val port = IOSAutomationConfig.DEFAULT_PORT
 
@@ -201,37 +204,27 @@ class IOSAutomationToolRegistrar(
     }
 
     internal suspend fun getUiHierarchy(bundleId: String? = null): String {
-        if (!iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return iosAutomationClient.getUiHierarchy(bundleId)
     }
 
     internal suspend fun getInteractiveElements(includeDisabled: Boolean = false, bundleId: String? = null): String {
-        if (!iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return iosAutomationClient.getInteractiveElements(includeDisabled, bundleId)
     }
 
     internal suspend fun tapByCoordinates(x: Int, y: Int): String {
-        if (!iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return iosAutomationClient.tapByCoordinates(x, y)
     }
 
     internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String {
-        if (!iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return iosAutomationClient.swipe(startX, startY, endX, endY, steps)
     }
 
     internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String {
-        if (!iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return iosAutomationClient.swipeByDirection(direction, distance, speed)
     }
 
@@ -243,9 +236,7 @@ class IOSAutomationToolRegistrar(
         label: String?,
         bundleId: String?
     ): String {
-        if (!iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
-        }
+        requireServer()?.let { return it }
 
         if (text == null && textContains == null && identifier == null &&
             elementType == null && label == null) {
@@ -263,23 +254,17 @@ class IOSAutomationToolRegistrar(
     }
 
     internal suspend fun getDeviceInfo(): String {
-        if (!iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return iosAutomationClient.getDeviceInfo()
     }
 
     internal suspend fun pressHome(): String {
-        if (!iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return iosAutomationClient.pressHome()
     }
 
     internal suspend fun inputText(text: String, bundleId: String? = null): String {
-        if (!iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return iosAutomationClient.inputText(text, bundleId)
     }
 
@@ -563,9 +548,7 @@ class IOSAutomationToolRegistrar(
     // ==================== Screenshot helpers ====================
 
     internal suspend fun captureScreenshot(outputPath: String?): String {
-        if (!iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is not running. Use 'ios_start_automation_server' first."
-        }
+        requireServer()?.let { return it }
 
         val response = iosAutomationClient.screenshot()
         val root = try {

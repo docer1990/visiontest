@@ -51,8 +51,15 @@ VisionTest has three components:
 visiontest/
 ├── app/                              # MCP Server (Kotlin/JVM)
 │   └── src/main/kotlin/com/example/visiontest/
-│       ├── Main.kt                   # Entry point
+│       ├── Main.kt                   # Entry point (MCP server or CLI dispatch)
 │       ├── ToolFactory.kt            # Thin coordinator wiring registrars
+│       ├── cli/
+│       │   ├── VisionTestCli.kt      # Root Clikt command with 13 subcommands
+│       │   ├── CliErrorHandler.kt    # Exit-code mapping + runCliCommand
+│       │   ├── CliExit.kt            # CliExit exception + ExitCode enum
+│       │   ├── PlatformOption.kt     # Platform enum + --platform option helpers
+│       │   ├── ComponentHolder.kt    # Lazy DI graph for CLI commands
+│       │   └── commands/             # 13 Clikt subcommand files
 │       ├── tools/
 │       │   ├── ToolDsl.kt            # ToolScope DSL + CallToolRequest helpers
 │       │   ├── ToolRegistrar.kt      # Interface for modular registration
@@ -259,6 +266,13 @@ All Gradle tests are pure JVM unit tests (no device or emulator required). iOS t
 | `app/` | `AppConfigTest.kt` | Default configuration values |
 | `app/` | `ToolFactoryHelpersTest.kt` | `ToolHelpers.extractProperty`, `extractPattern`, `formatAppInfo` |
 | `app/` | `ToolFactoryPathTest.kt` | `ToolDiscovery.findProjectRoot`, `findAutomationServerApk`, `resolveMainApkPath`, `findXctestrun`; `IOSAutomationToolRegistrar.buildXcodebuildCommand` |
+| `app/` | `MainDispatchTest.kt` | CLI vs MCP server routing based on args |
+| `app/` | `CliErrorHandlerTest.kt` | Exit-code mapping for all exception types |
+| `app/` | `VisionTestCliTest.kt` | Clikt argument parsing, platform options, validation |
+| `app/` | `CliCommandIntegrationTest.kt` | End-to-end CLI command delegation with MockWebServer |
+| `app/` | `AndroidAutomationToolRegistrarTest.kt` | Extracted handler functions with mocked HTTP |
+| `app/` | `AndroidDeviceToolRegistrarTest.kt` | Device tool functions with faked DeviceConfig |
+| `app/` | `IOSDeviceToolRegistrarTest.kt` | iOS device tool functions with faked DeviceConfig |
 | `automation-server/` | `JsonRpcModelsTest.kt` | JSON-RPC error factory methods, request/response defaults |
 | `automation-server/` | `UiAutomatorModelsTest.kt` | Data classes, default values, enum entries |
 | `automation-server/` | `ServerConfigPortTest.kt` | Port validation boundaries |
@@ -315,7 +329,9 @@ curl -X POST http://localhost:9009/jsonrpc -H 'Content-Type: application/json' \
 ### Adding New MCP Tools
 
 1. Add the tool to the appropriate registrar in `tools/` using the `ToolScope` DSL
-2. The tool is automatically registered via `ToolFactory.registerAllTools()`
+2. Extract the handler body into an `internal suspend fun` on the registrar (for CLI reuse)
+3. The MCP tool is automatically registered via `ToolFactory.registerAllTools()`
+4. Optionally, add a CLI subcommand in `cli/commands/` and register it in `VisionTestCli.kt`
 
 ## Error Codes
 

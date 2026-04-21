@@ -44,6 +44,9 @@ class AndroidAutomationToolRegistrar(
 
     // ==================== Extracted business logic ====================
 
+    private suspend fun requireServer(): String? =
+        if (!automationClient.isServerRunning()) "Automation server is not running. Use 'start_automation_server' first." else null
+
     internal suspend fun installAutomationServer(): String {
         val device = android.getFirstAvailableDevice()
 
@@ -115,9 +118,7 @@ class AndroidAutomationToolRegistrar(
     }
 
     internal suspend fun getUiHierarchy(): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return automationClient.getUiHierarchy()
     }
 
@@ -128,9 +129,7 @@ class AndroidAutomationToolRegistrar(
         className: String?,
         contentDescription: String?
     ): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
 
         if (text == null && textContains == null && resourceId == null &&
             className == null && contentDescription == null) {
@@ -147,23 +146,17 @@ class AndroidAutomationToolRegistrar(
     }
 
     internal suspend fun tapByCoordinates(x: Int, y: Int): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return automationClient.tapByCoordinates(x, y)
     }
 
     internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return automationClient.swipe(startX, startY, endX, endY, steps)
     }
 
     internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return automationClient.swipeByDirection(direction, distance, speed)
     }
 
@@ -176,9 +169,7 @@ class AndroidAutomationToolRegistrar(
         contentDescription: String?,
         speed: String = "normal"
     ): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
 
         if (text == null && textContains == null && resourceId == null &&
             className == null && contentDescription == null) {
@@ -197,37 +188,27 @@ class AndroidAutomationToolRegistrar(
     }
 
     internal suspend fun pressBack(): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return automationClient.pressBack()
     }
 
     internal suspend fun pressHome(): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return automationClient.pressHome()
     }
 
     internal suspend fun inputText(text: String): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return automationClient.inputText(text)
     }
 
     internal suspend fun getDeviceInfo(): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return automationClient.getDeviceInfo()
     }
 
     internal suspend fun getInteractiveElements(includeDisabled: Boolean = false): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
         return automationClient.getInteractiveElements(includeDisabled)
     }
 
@@ -632,9 +613,7 @@ class AndroidAutomationToolRegistrar(
     // ==================== Screenshot helpers ====================
 
     internal suspend fun captureScreenshot(outputPath: String?): String {
-        if (!automationClient.isServerRunning()) {
-            return "Automation server is not running. Use 'start_automation_server' first."
-        }
+        requireServer()?.let { return it }
 
         val response = automationClient.screenshot()
         val root = try {

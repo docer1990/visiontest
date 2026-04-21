@@ -12,6 +12,7 @@ import com.example.visiontest.tools.AndroidAutomationToolRegistrar
 import com.example.visiontest.tools.AndroidDeviceToolRegistrar
 import com.example.visiontest.tools.IOSAutomationToolRegistrar
 import com.example.visiontest.tools.IOSDeviceToolRegistrar
+import com.github.ajalt.clikt.core.BadParameterValue
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.slf4j.LoggerFactory
@@ -79,7 +80,7 @@ class CliCommandIntegrationTest {
     @Test
     fun `automation_server_status android when running`() {
         androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
-        val cmd = AutomationServerStatusCommand(components)
+        val cmd = AutomationServerStatusCommand(lazyOf(components))
         val result = executeCliCommand {
             cmd.parse(listOf("--platform", "android"))
             // The command calls runCliCommand internally which calls exitProcess;
@@ -100,7 +101,7 @@ class CliCommandIntegrationTest {
             """{"jsonrpc":"2.0","id":1,"result":"Tapped at (100, 200)"}"""
         ))
         val result = executeCliCommand {
-            requireServerRunning { components.isServerRunning("android") }
+            requireServerRunning { components.isServerRunning(Platform.Android) }
             components.androidAutomationRegistrar.tapByCoordinates(100, 200)
         }
         assertEquals(0, result.exitCode)
@@ -115,7 +116,7 @@ class CliCommandIntegrationTest {
         // MockWebServer won't respond to health check → connection refused handled
         androidMock.shutdown() // force connection refused
         val result = executeCliCommand {
-            requireServerRunning { components.isServerRunning("android") }
+            requireServerRunning { components.isServerRunning(Platform.Android) }
             components.androidAutomationRegistrar.getUiHierarchy()
         }
         assertEquals(3, result.exitCode)
@@ -126,11 +127,10 @@ class CliCommandIntegrationTest {
 
     @Test
     fun `press_back rejects ios platform`() {
-        val cmd = PressBackCommand(components)
-        val ex = assertFailsWith<CliExit> {
+        val cmd = PressBackCommand(lazyOf(components))
+        assertFailsWith<BadParameterValue> {
             cmd.parse(listOf("--platform", "ios"))
         }
-        assertEquals(ExitCode.PlatformNotSupported, ex.code)
     }
 
     // --- launch_app delegates to device registrar ---
@@ -154,7 +154,7 @@ class CliCommandIntegrationTest {
             """{"jsonrpc":"2.0","id":1,"result":"Swiped up"}"""
         ))
         val result = executeCliCommand {
-            requireServerRunning { components.isServerRunning("android") }
+            requireServerRunning { components.isServerRunning(Platform.Android) }
             components.androidAutomationRegistrar.swipeByDirection("up", "medium", "normal")
         }
         assertEquals(0, result.exitCode)
@@ -169,7 +169,7 @@ class CliCommandIntegrationTest {
             """{"jsonrpc":"2.0","id":1,"result":"Text entered"}"""
         ))
         val result = executeCliCommand {
-            requireServerRunning { components.isServerRunning("android") }
+            requireServerRunning { components.isServerRunning(Platform.Android) }
             components.androidAutomationRegistrar.inputText("hello world")
         }
         assertEquals(0, result.exitCode)

@@ -1,12 +1,13 @@
 package com.example.visiontest.cli.commands
 
 import com.example.visiontest.cli.ComponentHolder
+import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.runCliCommand
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 
-class LaunchAppCommand(private val components: ComponentHolder) :
+class LaunchAppCommand(private val components: Lazy<ComponentHolder>) :
     CliktCommand(name = "launch_app", help = "Launch an app by package/bundle ID") {
 
     private val platform by platformOption()
@@ -14,9 +15,8 @@ class LaunchAppCommand(private val components: ComponentHolder) :
 
     override fun run() = runCliCommand {
         when (platform) {
-            "android" -> components.androidDeviceRegistrar.launchApp(id)
-            "ios" -> components.iosDeviceRegistrar.launchApp(id)
-            else -> error("Unexpected platform: $platform")
+            Platform.Android -> components.value.androidDeviceRegistrar.launchApp(id)
+            Platform.Ios -> components.value.iosDeviceRegistrar.launchApp(id)
         }
     }
 }

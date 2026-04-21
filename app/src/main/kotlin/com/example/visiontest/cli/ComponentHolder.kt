@@ -33,10 +33,9 @@ class ComponentHolder internal constructor(
 ) {
 
     /** Returns `true` if the automation server for the given platform is reachable. */
-    suspend fun isServerRunning(platform: String): Boolean = when (platform) {
-        "android" -> automationClient.isServerRunning()
-        "ios" -> iosAutomationClient.isServerRunning()
-        else -> false
+    suspend fun isServerRunning(platform: Platform): Boolean = when (platform) {
+        Platform.Android -> automationClient.isServerRunning()
+        Platform.Ios -> iosAutomationClient.isServerRunning()
     }
 
     companion object {

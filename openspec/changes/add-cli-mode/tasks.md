@@ -18,11 +18,11 @@ Goal: each tool's body becomes an `internal suspend` function taking typed param
 
 ## 3. CLI root dispatcher & exit-code infrastructure
 
-- [ ] 3.1 In `cli/VisionTestCli.kt`, define the root `VisionTestCli` as a clikt `NoOpCliktCommand` with `subcommands(...)` for all 13 MVP commands (stubs OK at this stage)
-- [ ] 3.2 Create `cli/CliExit.kt` with a `CliExit(code: Int, message: String) : Exception` type and a sealed enum of the six exit codes (`Success=0`, `GenericFailure=1`, `UsageError=2`, `ServerNotReachable=3`, `DeviceNotFound=4`, `PlatformNotSupported=5`). Document each code's meaning in a KDoc block
-- [ ] 3.3 Create `cli/CliErrorHandler.kt` with a `runCliCommand(block: suspend () -> String)` helper that: calls `block()`, prints the result to stdout, exits `0` on success; catches `CliExit` → prints to stderr + `exitProcess(code)`; catches `IllegalArgumentException` / clikt usage errors → stderr + `exitProcess(2)`; catches other exceptions → stderr + `exitProcess(1)`
-- [ ] 3.4 Create `cli/PlatformOption.kt` with a reusable clikt option definition: `--platform` / `-p`, required, `choice("android", "ios")`. Android-only commands override the `choice` to just `"android"` and print `"This command is Android-only"` → exit 5 if the user tries `ios`
-- [ ] 3.5 Create `cli/ComponentHolder.kt` (or equivalent) — a minimal object graph the CLI can instantiate per invocation to get `Android`, `IOSManager`, `AutomationClient`, `IOSAutomationClient`, and the four registrars without duplicating `Main.kt`'s wiring. Ensure it respects `AppConfig.createDefault()` the same way the MCP path does, and registers the same shutdown hook behavior (close `android` and `ios` on JVM exit)
+- [x] 3.1 In `cli/VisionTestCli.kt`, define the root `VisionTestCli` as a clikt `NoOpCliktCommand` with `subcommands(...)` for all 13 MVP commands (stubs OK at this stage)
+- [x] 3.2 Create `cli/CliExit.kt` with a `CliExit(code: Int, message: String) : Exception` type and a sealed enum of the six exit codes (`Success=0`, `GenericFailure=1`, `UsageError=2`, `ServerNotReachable=3`, `DeviceNotFound=4`, `PlatformNotSupported=5`). Document each code's meaning in a KDoc block
+- [x] 3.3 Create `cli/CliErrorHandler.kt` with a `runCliCommand(block: suspend () -> String)` helper that: calls `block()`, prints the result to stdout, exits `0` on success; catches `CliExit` → prints to stderr + `exitProcess(code)`; catches `IllegalArgumentException` / clikt usage errors → stderr + `exitProcess(2)`; catches other exceptions → stderr + `exitProcess(1)`
+- [x] 3.4 Create `cli/PlatformOption.kt` with a reusable clikt option definition: `--platform` / `-p`, required, `choice("android", "ios")`. Android-only commands override the `choice` to just `"android"` and print `"This command is Android-only"` → exit 5 if the user tries `ios`
+- [x] 3.5 Create `cli/ComponentHolder.kt` (or equivalent) — a minimal object graph the CLI can instantiate per invocation to get `Android`, `IOSManager`, `AutomationClient`, `IOSAutomationClient`, and the four registrars without duplicating `Main.kt`'s wiring. Ensure it respects `AppConfig.createDefault()` the same way the MCP path does, and registers the same shutdown hook behavior (close `android` and `ios` on JVM exit)
 
 ## 4. CLI subcommands (one task per command)
 

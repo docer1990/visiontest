@@ -129,17 +129,21 @@ class VisionTestCliTest {
     // --- Subcommand routing ---
 
     @Test
-    fun `root command lists all 14 subcommands`() {
-        // We can't use the real VisionTestCli (ComponentHolder is lazy but still needs ADB),
-        // so we just verify the count expectation as a documentation test.
-        val expectedCommands = listOf(
+    fun `root command registers exactly the expected subcommands`() {
+        // Constructing VisionTestCli is safe: ComponentHolder is created lazily and each
+        // subcommand only captures that lazy, so no ADB/device init happens here. This
+        // introspects the real registration, so it fails if a command is added, removed,
+        // or renamed — unlike asserting a hard-coded list's size.
+        val registered = VisionTestCli().registeredSubcommands().map { it.commandName }.toSet()
+
+        val expected = setOf(
             "install_automation_server", "start_automation_server", "automation_server_status",
             "get_interactive_elements", "get_ui_hierarchy", "get_device_info", "screenshot",
             "tap_by_coordinates", "input_text", "swipe_direction",
             "press_back", "press_home", "launch_app",
-            "init"
+            "init",
         )
-        assertEquals(14, expectedCommands.size)
+        assertEquals(expected, registered)
     }
 
     // --- SwipeDirection choice validation ---

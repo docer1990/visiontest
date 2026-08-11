@@ -336,7 +336,7 @@ VISIONTEST_DIR=~/.local/share/visiontest-test \
 rm -rf ~/.local/share/visiontest-test
 ```
 
-This skips downloading the JAR, APKs, and iOS bundle from GitHub Releases — it copies your local build instead. Agent instructions are still installed from `AGENT_INSTRUCTIONS.md` in the repo root. Add `--skip-agent-setup` to skip that too.
+This skips downloading the JAR, APKs, and iOS bundle from GitHub Releases — it copies your local build instead. Agent setup is no longer performed by `install.sh`; use `visiontest init --agent <agents>` to install agent instructions when needed.
 
 ## Extending VisionTest
 

@@ -12,10 +12,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # === MCP Server (app module) ===
 ./gradlew run                           # Run the MCP server
-./gradlew test                          # Run all tests (app + automation-server)
-./gradlew :app:test                     # Run only MCP server unit tests
+./gradlew test                          # Run all unit tests (app + automation-server)
+./gradlew :app:test                     # Run only MCP server unit tests (fast iteration loop)
+./gradlew :app:e2eTest                  # E2E tests against the assembled fat JAR (builds shadowJar first)
 ./gradlew :automation-server:test       # Run only automation server unit tests
 ./gradlew test --tests "ErrorHandlerTest"  # Run a specific test class
+./gradlew build                         # Full gate: tests + e2e + koverVerify + detekt + lint (run before opening a PR)
 ./gradlew shadowJar                     # Build fat JAR -> app/build/libs/visiontest.jar
 
 # === Installation & Release ===
@@ -190,7 +192,39 @@ The same operations available as MCP tools can be invoked directly from the comm
 
 - Android automation server port: **9008** (range: 1024-65535), requires ADB port forwarding
 - iOS automation server port: **9009** (range: 1024-65535), no port forwarding needed
-- All Gradle tests are pure JVM (no device/emulator needed). See `.claude/unit-testing-strategy.md` for the testing roadmap.
+- All Gradle unit tests are pure JVM (no device/emulator needed). See "Testing & CI" below.
+
+## Testing & CI
+
+### Test suites and where they run
+
+| Suite | Task / entry point | What it covers | Runs in |
+|-------|--------------------|----------------|---------|
+| MCP server + CLI unit tests | `:app:test` | Tool DSL, error handling, HTTP clients (MockWebServer), CLI parsing/exit codes, path discovery | Every PR, push to main, release |
+| App E2E (tag `e2e`) | `:app:e2eTest` | Spawns `java -jar visiontest.jar` for real: `init` command, and the **MCP stdio contract** (`McpStdioE2ETest` — handshake + exact `tools/list` set) | Every PR, push to main, release |
+| Automation server unit tests | `:automation-server:test` | JSON-RPC models, XML escaping, element filtering (Robolectric) — pure JVM | Every PR, push to main, release |
+| Android server runtime smoke | `.github/workflows/android-emulator-smoke.yaml` | The real chain: CLI → adb → APK install → instrumentation → JSON-RPC round-trips on an emulator | Nightly + manual dispatch |
+| iOS unit tests | `IOSAutomationServerTests` (xcodebuild) | Codable models, XML/bounds helpers | Every PR, push to main, release |
+| iOS server runtime smoke | "Smoke test the automation server" step in the macOS CI job | Boots the XCUITest JSON-RPC server on a simulator, checks `/health` + `device.getInfo` + `ui.tapByCoordinates` | Every PR, push to main, release |
+| Android on-device server test | `AutomationServerTest` (androidTest) | Hosts the JSON-RPC server; **blocks forever by design** — never run it via `connectedAndroidTest` | Emulator smoke workflow / manually |
+
+### Quality gates (all enforced in CI)
+
+- **Coverage floor (Kover)** — `:app:koverVerify` fails the build if line coverage drops below the floor set in `app/build.gradle.kts` (baseline 44.7% measured 2026-08-11, floor 42%). Raise the floor as coverage grows; **never lower it to make a build pass** — write the missing tests instead.
+- **detekt** — `:app:detekt` / `:automation-server:detekt`. Existing findings are frozen in each module's `detekt-baseline.xml`; only new findings fail. Fix new findings rather than regenerating the baseline; regenerate (`detektBaseline`) only when a finding is consciously accepted.
+- **Android lint** — `:automation-server:lint`.
+- **MCP tool contract** — `McpStdioE2ETest.EXPECTED_TOOLS` lists every tool the server must expose. Adding, renaming, or removing an MCP tool requires updating that list (and the tables in this file) deliberately.
+
+### Two-speed development loop
+
+- **Iterating:** `./gradlew :app:test` (or the module you're touching) — fast, pure JVM.
+- **Before opening a PR:** `./gradlew build` — runs everything CI runs on the JVM side (`check` includes `e2eTest`, `koverVerify`, `detekt`, `lint`).
+
+### CI workflows
+
+- `pull-request-tests.yaml` — on every PR to main/develop **and every push to main** (catches semantic merge conflicts). Superseded runs are cancelled on PRs only, never on main, so main history stays bisectable.
+- `release.yaml` — on `v*` tags; runs the same gates as the PR workflow, then builds and publishes the release artifacts.
+- `android-emulator-smoke.yaml` — nightly + `workflow_dispatch`; the only place the Android automation server's runtime behavior is exercised. Check it after touching `automation-server/` runtime code or the Android CLI/adb chain.
 
 ## Further Reading
 

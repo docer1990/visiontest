@@ -12,6 +12,9 @@ import org.slf4j.LoggerFactory
 
 class IOSSimulator(
     private val processExecutor: ProcessExecutor = ProcessExecutor(),
+    // Separate executor for `simctl bootstatus`: a cold simulator boot takes far
+    // longer than the default 5s command timeout.
+    private val bootWaitExecutor: ProcessExecutor = ProcessExecutor(timeoutMillis = BOOT_WAIT_TIMEOUT_MILLIS),
     private val logger: Logger = LoggerFactory.getLogger(IOSSimulator::class.java)
 ) : DeviceConfig {
 
@@ -20,11 +23,8 @@ class IOSSimulator(
         private const val STATE_BOOTED = "Booted"
         private const val STATE_SHUTDOWN = "Shutdown"
 
-        // Shell metacharacters that could be used for command injection
-        private val DANGEROUS_SHELL_CHARS = Regex("[;|&$()<>`\\\\\"'\\n\\r]")
-
-        // Maximum allowed command length to prevent abuse
-        private const val MAX_COMMAND_LENGTH = 1000
+        // Maximum time to wait for a simulator to finish booting (simctl bootstatus)
+        internal const val BOOT_WAIT_TIMEOUT_MILLIS = 120_000L
     }
 
     override suspend fun listDevices(): List<MobileDevice> {
@@ -100,24 +100,19 @@ class IOSSimulator(
         return true
     }
 
+    /**
+     * Arbitrary shell execution is intentionally not supported on iOS.
+     *
+     * The previous implementation spawned `sh -c <command>` inside the simulator with a
+     * metacharacter blacklist, which still allowed arbitrary binaries to run on the host
+     * with the user's privileges (e.g. `rm -rf <path>` contains no metacharacters).
+     * No MCP tool or CLI command needs this capability on iOS, so it is disabled rather
+     * than hardened.
+     */
     override suspend fun executeShell(command: String, deviceId: String?): String {
-        // Security: Validate command to prevent injection attacks
-        if (!isValidShellCommand(command)) {
-            throw IllegalArgumentException(
-                "Invalid shell command: contains dangerous characters or exceeds maximum length"
-            )
-        }
-
-        val device = getDevice(deviceId)
-        ensureDeviceBooted(device)
-
-        val result = processExecutor.execute(SIMCTL, "simctl", "spawn", device.id, "sh", "-c", command)
-
-        if (result.exitCode != 0) {
-            throw IOSSimulatorException("Command failed: ${result.errorOutput}")
-        }
-
-        return result.output
+        throw UnsupportedOperationException(
+            "Shell execution is not supported on iOS simulators for security reasons"
+        )
     }
 
     /**
@@ -133,32 +128,6 @@ class IOSSimulator(
             listDevices().find { device -> device.id == deviceId }
                 ?: throw NoSimulatorAvailableException("Device with ID $deviceId not found")
         } ?: getFirstAvailableDevice()
-    }
-
-    /**
-     * Validates that a shell command is safe to execute.
-     * Prevents command injection by blocking dangerous metacharacters.
-     *
-     * @param command The command to validate
-     * @return true if the command is safe, false otherwise
-     */
-    internal fun isValidShellCommand(command: String): Boolean {
-        if (command.isBlank()) {
-            logger.warn("Empty shell command rejected")
-            return false
-        }
-
-        if (command.length > MAX_COMMAND_LENGTH) {
-            logger.warn("Shell command exceeds maximum length: {} > {}", command.length, MAX_COMMAND_LENGTH)
-            return false
-        }
-
-        if (DANGEROUS_SHELL_CHARS.containsMatchIn(command)) {
-            logger.warn("Shell command contains dangerous characters: {}", command)
-            return false
-        }
-
-        return true
     }
 
     /**
@@ -190,6 +159,19 @@ class IOSSimulator(
             val result = processExecutor.execute(SIMCTL, "simctl", "boot", device.id)
             if (result.exitCode != 0) {
                 throw IOSSimulatorException("Failed to boot simulator: ${result.errorOutput}")
+            }
+
+            // `simctl boot` returns before the simulator is usable; block until boot
+            // completes (-b) so the next simctl command doesn't fail intermittently.
+            val bootStatus = try {
+                bootWaitExecutor.execute(SIMCTL, "simctl", "bootstatus", device.id, "-b")
+            } catch (e: CommandTimeoutException) {
+                throw IOSSimulatorException(
+                    "Simulator did not finish booting within ${BOOT_WAIT_TIMEOUT_MILLIS / 1000}s", e
+                )
+            }
+            if (bootStatus.exitCode != 0) {
+                throw IOSSimulatorException("Failed waiting for simulator boot: ${bootStatus.errorOutput}")
             }
         }
     }
@@ -228,6 +210,11 @@ class IOSSimulator(
         val devicesMap = jsonElement.jsonObject["devices"]?.jsonObject ?: return emptyList()
 
         for ((runtime, deviceArray) in devicesMap) {
+            // simctl also lists watchOS/tvOS/visionOS runtimes; only iOS simulators
+            // are usable by this server (runtime keys look like
+            // "com.apple.CoreSimulator.SimRuntime.iOS-17-2").
+            if (!runtime.contains(".iOS-")) continue
+
             val osVersion = runtime.substringAfterLast("iOS-").replace("-", ".")
 
             deviceArray.jsonArray.forEach { deviceJson ->

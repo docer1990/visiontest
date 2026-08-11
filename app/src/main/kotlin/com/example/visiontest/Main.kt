@@ -87,7 +87,7 @@ private fun runMcpServer() {
 
     val server = createServer(config)
 
-    val toolFactory = ToolFactory(android, ios, logger)
+    val toolFactory = ToolFactory(android, ios, logger, toolTimeoutMillis = config.toolTimeoutMillis)
     toolFactory.registerAllTools(server)
 
     // Connect using stdio transport

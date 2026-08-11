@@ -30,15 +30,16 @@ class AutomationClient(
      */
     suspend fun sendRequest(method: String, params: Map<String, Any>? = null, id: Int = 1): String {
         return withContext(Dispatchers.IO) {
-            val paramsJson = if (params != null) {
-                params.entries.joinToString(",", "{", "}") { (k, v) ->
-                    "\"$k\":${valueToJson(v)}"
-                }
-            } else {
-                "{}"
-            }
-
-            val requestBody = """{"jsonrpc":"2.0","method":"$method","params":$paramsJson,"id":$id}"""
+            // Serialize the whole envelope with Gson (same as IOSAutomationClient) so
+            // method names, keys, and values are always correctly escaped.
+            val requestBody = gson.toJson(
+                mapOf(
+                    "jsonrpc" to "2.0",
+                    "method" to method,
+                    "params" to (params ?: emptyMap<String, Any>()),
+                    "id" to id
+                )
+            )
 
             val url = URL("http://$host:$port/jsonrpc")
             val connection = url.openConnection() as HttpURLConnection
@@ -249,6 +250,4 @@ class AutomationClient(
 
         return sendRequest("ui.findElement", params.ifEmpty { null })
     }
-
-    private fun valueToJson(value: Any): String = gson.toJson(value)
 }

@@ -50,8 +50,12 @@ class JsonRpcServer {
     }
 
     func start() throws {
+        // Bind to loopback only: the simulator shares the Mac's network stack, so
+        // binding all interfaces would expose unauthenticated UI automation to the
+        // Mac's local network. The MCP server always connects via localhost.
+        server.listenAddressIPv4 = "127.0.0.1"
         try server.start(port, forceIPv4: true)
-        NSLog("JsonRpcServer: Started on port \(port)")
+        NSLog("JsonRpcServer: Started on 127.0.0.1:\(port)")
     }
 
     func stop() {

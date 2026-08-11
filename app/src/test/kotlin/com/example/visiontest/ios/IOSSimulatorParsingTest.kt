@@ -121,6 +121,45 @@ class IOSSimulatorParsingTest {
         assertTrue(result.isEmpty())
     }
 
+    @Test
+    fun `parseDeviceList ignores non-iOS runtimes`() {
+        val json = """
+        {
+          "devices": {
+            "com.apple.CoreSimulator.SimRuntime.watchOS-11-0": [
+              {
+                "udid": "WATCH-ID",
+                "name": "Apple Watch Series 10",
+                "state": "Shutdown",
+                "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.Apple-Watch-Series-10"
+              }
+            ],
+            "com.apple.CoreSimulator.SimRuntime.tvOS-18-0": [
+              {
+                "udid": "TV-ID",
+                "name": "Apple TV",
+                "state": "Shutdown",
+                "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.Apple-TV-4K"
+              }
+            ],
+            "com.apple.CoreSimulator.SimRuntime.iOS-17-2": [
+              {
+                "udid": "IPHONE-ID",
+                "name": "iPhone 15",
+                "state": "Booted",
+                "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-15"
+              }
+            ]
+          }
+        }
+        """.trimIndent()
+
+        val result = simulator.parseDeviceList(json)
+        assertEquals(1, result.size)
+        assertEquals("IPHONE-ID", result[0].id)
+        assertEquals("17.2", result[0].osVersion)
+    }
+
     // --- parseAppListFromPlist ---
 
     @Test
@@ -202,49 +241,4 @@ class IOSSimulatorParsingTest {
         assertFalse(simulator.isValidBundleId("com.example.app."))
     }
 
-    // --- isValidShellCommand ---
-
-    @Test
-    fun `isValidShellCommand accepts valid commands`() {
-        assertTrue(simulator.isValidShellCommand("ls -la"))
-        assertTrue(simulator.isValidShellCommand("echo hello"))
-        assertTrue(simulator.isValidShellCommand("cat /tmp/file.txt"))
-    }
-
-    @Test
-    fun `isValidShellCommand rejects blank`() {
-        assertFalse(simulator.isValidShellCommand(""))
-        assertFalse(simulator.isValidShellCommand("   "))
-    }
-
-    @Test
-    fun `isValidShellCommand rejects exceeding max length`() {
-        val longCommand = "a".repeat(1001)
-        assertFalse(simulator.isValidShellCommand(longCommand))
-    }
-
-    @Test
-    fun `isValidShellCommand rejects semicolon`() {
-        assertFalse(simulator.isValidShellCommand("ls; rm -rf /"))
-    }
-
-    @Test
-    fun `isValidShellCommand rejects pipe`() {
-        assertFalse(simulator.isValidShellCommand("ls | grep foo"))
-    }
-
-    @Test
-    fun `isValidShellCommand rejects dollar sign`() {
-        assertFalse(simulator.isValidShellCommand("echo \$HOME"))
-    }
-
-    @Test
-    fun `isValidShellCommand rejects backtick`() {
-        assertFalse(simulator.isValidShellCommand("echo `whoami`"))
-    }
-
-    @Test
-    fun `isValidShellCommand rejects newline`() {
-        assertFalse(simulator.isValidShellCommand("ls\nrm -rf /"))
-    }
 }

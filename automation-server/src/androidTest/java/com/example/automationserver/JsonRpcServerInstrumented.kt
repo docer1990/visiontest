@@ -53,7 +53,10 @@ class JsonRpcServerInstrumented(
 
         Log.i(TAG, "Starting JSON-RPC server on port $port")
 
-        server = embeddedServer(Netty, port = port) {
+        // Bind to loopback only: the host reaches this server through `adb forward`,
+        // which connects via the device's own loopback interface. Binding 0.0.0.0
+        // would expose unauthenticated UI automation to the device's Wi-Fi network.
+        server = embeddedServer(Netty, port = port, host = "127.0.0.1") {
             install(ContentNegotiation) {
                 gson {
                     setPrettyPrinting()

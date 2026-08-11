@@ -15,7 +15,11 @@ import kotlin.test.assertTrue
 class IOSSimulatorTest {
 
     private val mockExecutor = mockk<ProcessExecutor>()
-    private val simulator = IOSSimulator(processExecutor = mockExecutor)
+    private val mockBootWaitExecutor = mockk<ProcessExecutor>()
+    private val simulator = IOSSimulator(
+        processExecutor = mockExecutor,
+        bootWaitExecutor = mockBootWaitExecutor,
+    )
 
     // Helper to build a simctl JSON with one booted device
     private val bootedDeviceJson = """
@@ -234,33 +238,8 @@ class IOSSimulatorTest {
     // --- executeShell ---
 
     @Test
-    fun `executeShell rejects dangerous commands`() = runTest {
-        assertFailsWith<IllegalArgumentException> {
-            simulator.executeShell("ls; rm -rf /", null)
-        }
-    }
-
-    @Test
-    fun `executeShell returns output on success`() = runTest {
-        coEvery { mockExecutor.execute("xcrun", "simctl", "list", "devices", "available", "--json") } returns
-            commandResult(output = bootedDeviceJson)
-
-        coEvery { mockExecutor.execute("xcrun", "simctl", "spawn", "BOOTED-ID", "sh", "-c", "ls -la") } returns
-            commandResult(output = "file1.txt\nfile2.txt")
-
-        val output = simulator.executeShell("ls -la", null)
-        assertEquals("file1.txt\nfile2.txt", output)
-    }
-
-    @Test
-    fun `executeShell throws on non-zero exit`() = runTest {
-        coEvery { mockExecutor.execute("xcrun", "simctl", "list", "devices", "available", "--json") } returns
-            commandResult(output = bootedDeviceJson)
-
-        coEvery { mockExecutor.execute("xcrun", "simctl", "spawn", "BOOTED-ID", "sh", "-c", "ls -la") } returns
-            commandResult(exitCode = 1, errorOutput = "command failed")
-
-        assertFailsWith<IOSSimulatorException> {
+    fun `executeShell is not supported on iOS`() = runTest {
+        assertFailsWith<UnsupportedOperationException> {
             simulator.executeShell("ls -la", null)
         }
     }
@@ -268,12 +247,16 @@ class IOSSimulatorTest {
     // --- ensureDeviceBooted (indirectly via operations on shutdown device) ---
 
     @Test
-    fun `operations on shutdown device trigger boot`() = runTest {
+    fun `operations on shutdown device trigger boot and wait for bootstatus`() = runTest {
         coEvery { mockExecutor.execute("xcrun", "simctl", "list", "devices", "available", "--json") } returns
             commandResult(output = shutdownDeviceJson)
 
         // Boot call
         coEvery { mockExecutor.execute("xcrun", "simctl", "boot", "SHUTDOWN-ID") } returns
+            commandResult()
+
+        // Boot wait call
+        coEvery { mockBootWaitExecutor.execute("xcrun", "simctl", "bootstatus", "SHUTDOWN-ID", "-b") } returns
             commandResult()
 
         // Launch call
@@ -282,6 +265,40 @@ class IOSSimulatorTest {
 
         val result = simulator.launchApp("com.example.app", null, null)
         assertTrue(result)
+
+        coVerify(exactly = 1) { mockBootWaitExecutor.execute("xcrun", "simctl", "bootstatus", "SHUTDOWN-ID", "-b") }
+    }
+
+    @Test
+    fun `operations on shutdown device throw if bootstatus fails`() = runTest {
+        coEvery { mockExecutor.execute("xcrun", "simctl", "list", "devices", "available", "--json") } returns
+            commandResult(output = shutdownDeviceJson)
+
+        coEvery { mockExecutor.execute("xcrun", "simctl", "boot", "SHUTDOWN-ID") } returns
+            commandResult()
+
+        coEvery { mockBootWaitExecutor.execute("xcrun", "simctl", "bootstatus", "SHUTDOWN-ID", "-b") } returns
+            commandResult(exitCode = 1, errorOutput = "boot never completed")
+
+        assertFailsWith<IOSSimulatorException> {
+            simulator.launchApp("com.example.app", null, null)
+        }
+    }
+
+    @Test
+    fun `operations on shutdown device throw if bootstatus times out`() = runTest {
+        coEvery { mockExecutor.execute("xcrun", "simctl", "list", "devices", "available", "--json") } returns
+            commandResult(output = shutdownDeviceJson)
+
+        coEvery { mockExecutor.execute("xcrun", "simctl", "boot", "SHUTDOWN-ID") } returns
+            commandResult()
+
+        coEvery { mockBootWaitExecutor.execute("xcrun", "simctl", "bootstatus", "SHUTDOWN-ID", "-b") } throws
+            CommandTimeoutException("Command timed out")
+
+        assertFailsWith<IOSSimulatorException> {
+            simulator.launchApp("com.example.app", null, null)
+        }
     }
 
     @Test

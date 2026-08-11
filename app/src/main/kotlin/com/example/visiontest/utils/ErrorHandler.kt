@@ -5,6 +5,7 @@ import com.example.visiontest.android.*
 import com.example.visiontest.config.AppConfig
 import com.example.visiontest.config.LogLevel
 import io.modelcontextprotocol.kotlin.sdk.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import org.slf4j.Logger
 import java.util.concurrent.TimeoutException
@@ -112,6 +113,10 @@ object ErrorHandler {
         for (attempt in 1..maxAttempts) {
             try {
                 return operation()
+            } catch (e: CancellationException) {
+                // Never retry a cancelled coroutine (e.g. a tool timeout from withTimeout):
+                // swallowing it would break structured cancellation.
+                throw e
             } catch (e: Exception) {
                 lastException = e
 

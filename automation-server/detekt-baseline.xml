@@ -1,0 +1,75 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$node.isClickable || node.isCheckable || node.isScrollable || node.isLongClickable</ID>
+    <ID>CyclomaticComplexMethod:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$internal fun getIncludedElementBounds( node: AccessibilityNodeInfo, displayRect: Rect, includeDisabled: Boolean ): Rect?</ID>
+    <ID>CyclomaticComplexMethod:XmlUtils.kt$@Suppress("ComplexCondition") internal fun stripInvalidXMLChars(cs: CharSequence): String</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$val (startX, startY, endX, endY) = when (direction) { SwipeDirection.UP -&gt; { // Swipe UP: finger moves from bottom to top (scrolls content down) val offsetY = (height * distancePercent / 2).toInt() listOf(centerX, centerY + offsetY, centerX, centerY - offsetY) } SwipeDirection.DOWN -&gt; { // Swipe DOWN: finger moves from top to bottom (scrolls content up) val offsetY = (height * distancePercent / 2).toInt() listOf(centerX, centerY - offsetY, centerX, centerY + offsetY) } SwipeDirection.LEFT -&gt; { // Swipe LEFT: finger moves from right to left val offsetX = (width * distancePercent / 2).toInt() listOf(centerX + offsetX, centerY, centerX - offsetX, centerY) } SwipeDirection.RIGHT -&gt; { // Swipe RIGHT: finger moves from left to right val offsetX = (width * distancePercent / 2).toInt() listOf(centerX - offsetX, centerY, centerX + offsetX, centerY) } }</ID>
+    <ID>DestructuringDeclarationWithTooManyEntries:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$val (startX, startY, endX, endY) = when (direction) { SwipeDirection.UP -&gt; { listOf(centerX, centerY + verticalOffset, centerX, centerY - verticalOffset) } SwipeDirection.DOWN -&gt; { listOf(centerX, centerY - verticalOffset, centerX, centerY + verticalOffset) } SwipeDirection.LEFT -&gt; { listOf(centerX + horizontalOffset, centerY, centerX - horizontalOffset, centerY) } SwipeDirection.RIGHT -&gt; { listOf(centerX - horizontalOffset, centerY, centerX + horizontalOffset, centerY) } }</ID>
+    <ID>LongParameterList:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$( direction: SwipeDirection, text: String? = null, textContains: String? = null, resourceId: String? = null, className: String? = null, contentDescription: String? = null, speed: SwipeSpeed = SwipeSpeed.NORMAL )</ID>
+    <ID>LongParameterList:BaseUiAutomatorBridgeFilterTest.kt$BaseUiAutomatorBridgeFilterTest$( className: String = "android.view.View", text: String? = null, contentDescription: String? = null, resourceId: String? = null, isVisibleToUser: Boolean = true, isEnabled: Boolean = true, isClickable: Boolean = false, isCheckable: Boolean = false, isScrollable: Boolean = false, isLongClickable: Boolean = false, bounds: Rect = Rect(100, 100, 200, 200) )</ID>
+    <ID>MagicNumber:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$0.20</ID>
+    <ID>MagicNumber:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$0.35</ID>
+    <ID>MagicNumber:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$0.40</ID>
+    <ID>MagicNumber:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$0.60</ID>
+    <ID>MagicNumber:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$100</ID>
+    <ID>MagicNumber:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$1000</ID>
+    <ID>MagicNumber:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge.Companion$20</ID>
+    <ID>MagicNumber:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge.Companion$5</ID>
+    <ID>MagicNumber:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge.Companion$50</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x10FFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x10FFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x1FFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x1FFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x2FFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x2FFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x3FFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x3FFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x4FFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x4FFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x5FFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x5FFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x6FFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x6FFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x7F</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x7FFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x7FFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x8</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x84</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x86</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x8FFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x8FFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x9F</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x9FFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0x9FFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xAFFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xAFFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xB</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xBFFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xBFFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xC</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xCFFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xCFFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xD800</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xDFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xDFFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xDFFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xEFFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xEFFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xFDD0</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xFDEF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xFFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xFFFF</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xFFFFE</ID>
+    <ID>MagicNumber:XmlUtils.kt$0xFFFFF</ID>
+    <ID>MaxLineLength:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$Log.d(TAG, "Performing swipe $direction (distance=$distance, speed=$speed) from ($startX, $startY) to ($endX, $endY) in $steps steps")</ID>
+    <ID>MaxLineLength:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$Log.d(TAG, "Performing swipe $direction on element within bounds $bounds from ($startX, $startY) to ($endX, $endY)")</ID>
+    <ID>ReturnCount:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$fun screenshot(): ScreenshotResult</ID>
+    <ID>ReturnCount:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$fun swipeOnElement( direction: SwipeDirection, text: String? = null, textContains: String? = null, resourceId: String? = null, className: String? = null, contentDescription: String? = null, speed: SwipeSpeed = SwipeSpeed.NORMAL ): OperationResult</ID>
+    <ID>ReturnCount:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$internal fun getIncludedElementBounds( node: AccessibilityNodeInfo, displayRect: Rect, includeDisabled: Boolean ): Rect?</ID>
+    <ID>TooGenericExceptionCaught:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge$e: Exception</ID>
+    <ID>TooManyFunctions:BaseUiAutomatorBridge.kt$BaseUiAutomatorBridge</ID>
+  </CurrentIssues>
+</SmellBaseline>

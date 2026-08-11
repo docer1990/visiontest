@@ -28,8 +28,8 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Run MCP tests (incl. e2e against the fat JAR)
-        run: ./gradlew :app:test :app:e2eTest --no-daemon
+      - name: Run MCP tests (incl. e2e against the fat JAR), coverage gate, detekt
+        run: ./gradlew :app:test :app:e2eTest :app:koverVerify :app:detekt --no-daemon
 
   automation-server-tests:
     name: Automation Server Tests
@@ -56,8 +56,8 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Run Automation Server tests and lint
-        run: ./gradlew :automation-server:test :automation-server:lint --no-daemon
+      - name: Run Automation Server tests, lint, detekt
+        run: ./gradlew :automation-server:test :automation-server:lint :automation-server:detekt --no-daemon
 
   ios-automation-tests:
     name: iOS Automation Server Tests
@@ -97,6 +97,54 @@ jobs:
             -scheme IOSAutomationServer \
             -destination 'platform=iOS Simulator,name=iPhone 17' \
             -only-testing:IOSAutomationServerTests
+
+      # Same smoke check as the PR workflow: the JSON-RPC server only runs
+      # inside a UI test, so boot it for real before releasing.
+      - name: Smoke test the automation server (health + JSON-RPC)
+        run: |
+          set -euo pipefail
+          xcodebuild test-without-building \
+            -project ios-automation-server/IOSAutomationServer.xcodeproj \
+            -scheme IOSAutomationServer \
+            -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -only-testing:IOSAutomationServerUITests/AutomationServerUITest/testRunAutomationServer \
+            > server-xcodebuild.log 2>&1 &
+          SERVER_PID=$!
+
+          echo "Waiting for /health on :9009..."
+          for i in $(seq 1 120); do
+            if curl -sf http://localhost:9009/health > /dev/null; then
+              echo "Server healthy after ~$((i*2))s"
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo "xcodebuild exited before the server came up"
+              tail -150 server-xcodebuild.log
+              exit 1
+            fi
+            if [ "$i" = 120 ]; then
+              echo "Server did not become healthy within 240s"
+              tail -150 server-xcodebuild.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+          echo "device.getInfo:"
+          INFO=$(curl -sf -X POST http://localhost:9009/jsonrpc \
+            -H 'Content-Type: application/json' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"device.getInfo","params":{}}')
+          echo "$INFO"
+          echo "$INFO" | grep -q '"result"'
+
+          echo "ui.tapByCoordinates:"
+          TAP=$(curl -sf -X POST http://localhost:9009/jsonrpc \
+            -H 'Content-Type: application/json' \
+            -d '{"jsonrpc":"2.0","id":2,"method":"ui.tapByCoordinates","params":{"x":100,"y":200}}')
+          echo "$TAP"
+          echo "$TAP" | grep -q '"result"'
+
+          kill "$SERVER_PID" 2>/dev/null || true
 
   ios-release-build:
     name: iOS Release Build

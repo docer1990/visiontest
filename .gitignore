@@ -105,6 +105,11 @@ mcp-config.local.json
 coverage/
 
 # ===================================
+# Screenshots (default output dir for screenshot commands)
+# ===================================
+screenshots/
+
+# ===================================
 # Empty Directory
 # ===================================
 android-server/

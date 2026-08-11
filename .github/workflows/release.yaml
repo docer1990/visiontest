@@ -110,6 +110,9 @@ jobs:
             -only-testing:IOSAutomationServerUITests/AutomationServerUITest/testRunAutomationServer \
             > server-xcodebuild.log 2>&1 &
           SERVER_PID=$!
+          # Always reap the background xcodebuild, even when a check below
+          # fails early — a leaked runner keeps the simulator and port busy.
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
 
           echo "Waiting for /health on :9009..."
           for i in $(seq 1 120); do
@@ -143,8 +146,6 @@ jobs:
             -d '{"jsonrpc":"2.0","id":2,"method":"ui.tapByCoordinates","params":{"x":100,"y":200}}')
           echo "$TAP"
           echo "$TAP" | grep -q '"result"'
-
-          kill "$SERVER_PID" 2>/dev/null || true
 
   ios-release-build:
     name: iOS Release Build

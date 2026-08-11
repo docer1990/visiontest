@@ -19,6 +19,7 @@ import com.malinskiy.adam.request.shell.v2.ShellCommandRequest
 import com.malinskiy.adam.request.shell.v2.ShellCommandResult
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -128,7 +129,13 @@ class Android(
         adbStartMutex.withLock {
             if (adbStarted) return
             try {
-                StartAdbInteractor().execute()
+                // Starting the adb server spawns a process and blocks on it — keep
+                // that off the caller's dispatcher.
+                withContext(Dispatchers.IO) {
+                    StartAdbInteractor().execute()
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.error("Error while starting ADB: ${e.message}")
                 throw AdbInitializationException("Unable to start ADB", e)

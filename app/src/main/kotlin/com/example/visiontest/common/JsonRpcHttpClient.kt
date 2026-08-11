@@ -51,16 +51,18 @@ abstract class JsonRpcHttpClient(
                 connection.doOutput = true
 
                 connection.outputStream.use { os ->
-                    os.write(requestBody.toByteArray())
+                    os.write(requestBody.toByteArray(Charsets.UTF_8))
                 }
 
                 val responseCode = connection.responseCode
                 if (responseCode != HttpURLConnection.HTTP_OK) {
-                    val errorStream = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
+                    val errorStream = connection.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: "Unknown error"
                     throw CommandExecutionException("HTTP error: $responseCode - $errorStream", responseCode)
                 }
 
-                connection.inputStream.bufferedReader().readText()
+                // Close the stream (not just disconnect) so the underlying connection
+                // can be returned to the keep-alive pool for reuse.
+                connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
             } finally {
                 connection.disconnect()
             }
@@ -72,18 +74,20 @@ abstract class JsonRpcHttpClient(
      */
     suspend fun isServerRunning(): Boolean {
         return withContext(Dispatchers.IO) {
+            val connection = try {
+                URL("http://$host:$port/health").openConnection() as HttpURLConnection
+            } catch (e: Exception) {
+                return@withContext false
+            }
             try {
-                val url = URL("http://$host:$port/health")
-                val connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = HEALTH_TIMEOUT_MS
                 connection.readTimeout = HEALTH_TIMEOUT_MS
                 connection.requestMethod = "GET"
-
-                val responseCode = connection.responseCode
-                connection.disconnect()
-                responseCode == HttpURLConnection.HTTP_OK
+                connection.responseCode == HttpURLConnection.HTTP_OK
             } catch (e: Exception) {
                 false
+            } finally {
+                connection.disconnect()
             }
         }
     }

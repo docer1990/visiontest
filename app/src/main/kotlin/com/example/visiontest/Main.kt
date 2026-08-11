@@ -8,6 +8,7 @@ import com.example.visiontest.ios.IOSManager
 import com.example.visiontest.config.AppConfig
 import com.github.ajalt.clikt.core.CliktError
 import com.github.ajalt.clikt.core.PrintHelpMessage
+import com.github.ajalt.clikt.core.PrintMessage
 import com.github.ajalt.clikt.core.UsageError
 import io.ktor.utils.io.streams.asInput
 import io.modelcontextprotocol.kotlin.sdk.*
@@ -50,6 +51,10 @@ private fun runCli(args: Array<String>) {
             println(cmd.getFormattedHelp())
         }
         kotlin.system.exitProcess(if (e.error) 1 else 0)
+    } catch (e: PrintMessage) {
+        // Informational output such as --version: print to stdout, exit per the message.
+        e.message?.let { println(it) }
+        kotlin.system.exitProcess(e.statusCode)
     } catch (e: CliktError) {
         System.err.println(e.message.orEmpty())
         kotlin.system.exitProcess(ExitCode.GenericFailure.value)

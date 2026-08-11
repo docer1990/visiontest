@@ -41,6 +41,10 @@ object ErrorHandler {
     private const val DEFAULT_MAX_ATTEMPTS = 3
     private const val DEFAULT_INITIAL_DELAY_MS = 500L
 
+    // Log level comes from the environment, which cannot change during the process
+    // lifetime — read it once instead of on every handled error.
+    private val config by lazy { AppConfig.createDefault() }
+
     /**
      * Handles tool errors and produces a standardized result with error codes.
      * Logging behavior varies based on the configured log level:
@@ -69,8 +73,6 @@ object ErrorHandler {
 
             else -> Pair(ERROR_UNKNOWN, "Error: ${e.message ?: e.javaClass.simpleName}")
         }
-
-        val config = AppConfig.createDefault()
 
         // Log based on configured level
         when (config.logLevel) {

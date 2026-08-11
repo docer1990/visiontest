@@ -33,7 +33,7 @@ enum class LogLevel {
 data class AppConfig(
     // Server configuration
     val serverName: String = "vision-test",
-    val serverVersion: String = "0.1.1",
+    val serverVersion: String = VersionInfo.version,
 
     // ADB Configuration
     val adbTimeoutMillis: Long = 5000L,
@@ -59,14 +59,6 @@ data class AppConfig(
             }
 
             return AppConfig(logLevel = logLevel)
-        }
-
-        /**
-         * Loads configuration from a properties file (to be implemented if needed).
-         */
-        fun loadFromProperties(path: String): AppConfig {
-            // Future implementation: load from file
-            return createDefault()
         }
     }
 }

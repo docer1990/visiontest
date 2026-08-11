@@ -1,8 +1,10 @@
 package com.example.visiontest.cli
 
 import com.example.visiontest.cli.commands.*
+import com.example.visiontest.config.VersionInfo
 import com.github.ajalt.clikt.core.NoOpCliktCommand
 import com.github.ajalt.clikt.core.subcommands
+import com.github.ajalt.clikt.parameters.options.versionOption
 
 /**
  * Root command for the `visiontest` CLI. Dispatches to per-operation subcommands.
@@ -17,6 +19,7 @@ class VisionTestCli : NoOpCliktCommand(name = "visiontest") {
     private val components by lazy { ComponentHolder.createDefault() }
 
     init {
+        versionOption(VersionInfo.version)
         subcommands(
             // Setup
             InstallAutomationServerCommand(lazy { components }),

@@ -1,12 +1,7 @@
 package com.example.visiontest.ios
 
-import com.example.visiontest.CommandExecutionException
+import com.example.visiontest.common.JsonRpcHttpClient
 import com.example.visiontest.config.IOSAutomationConfig
-import com.google.gson.Gson
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
 
 /**
  * Client for communicating with the iOS Automation Server running on an iOS simulator.
@@ -14,78 +9,16 @@ import java.net.URL
  * Unlike Android, iOS simulators share the Mac's network stack, so no port forwarding
  * is needed — the XCUITest HTTP server is directly accessible at localhost.
  *
+ * Transport (JSON-RPC over HTTP, health check) lives in [JsonRpcHttpClient];
+ * this class only exposes the iOS automation methods.
+ *
  * @param host The host to connect to (default: localhost)
  * @param port The port number (default: [IOSAutomationConfig.DEFAULT_PORT])
  */
 class IOSAutomationClient(
-    private val host: String = IOSAutomationConfig.DEFAULT_HOST,
-    private val port: Int = IOSAutomationConfig.DEFAULT_PORT
-) {
-    companion object {
-        private const val TIMEOUT_MS = 30000
-        private val gson = Gson()
-    }
-
-    /**
-     * Sends a JSON-RPC request to the iOS automation server.
-     */
-    suspend fun sendRequest(method: String, params: Map<String, Any>? = null, id: Int = 1): String {
-        return withContext(Dispatchers.IO) {
-            val requestMap = mutableMapOf<String, Any>(
-                "jsonrpc" to "2.0",
-                "method" to method,
-                "params" to (params ?: emptyMap<String, Any>()),
-                "id" to id
-            )
-            val requestBody = gson.toJson(requestMap)
-
-            val url = URL("http://$host:$port/jsonrpc")
-            val connection = url.openConnection() as HttpURLConnection
-
-            try {
-                connection.requestMethod = "POST"
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.connectTimeout = TIMEOUT_MS
-                connection.readTimeout = TIMEOUT_MS
-                connection.doOutput = true
-
-                connection.outputStream.use { os ->
-                    os.write(requestBody.toByteArray())
-                }
-
-                val responseCode = connection.responseCode
-                if (responseCode != HttpURLConnection.HTTP_OK) {
-                    val errorStream = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
-                    throw CommandExecutionException("HTTP error: $responseCode - $errorStream", responseCode)
-                }
-
-                connection.inputStream.bufferedReader().readText()
-            } finally {
-                connection.disconnect()
-            }
-        }
-    }
-
-    /**
-     * Checks if the iOS automation server is running.
-     */
-    suspend fun isServerRunning(): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                val url = URL("http://$host:$port/health")
-                val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 5000
-                connection.readTimeout = 5000
-                connection.requestMethod = "GET"
-
-                val responseCode = connection.responseCode
-                connection.disconnect()
-                responseCode == HttpURLConnection.HTTP_OK
-            } catch (e: Exception) {
-                false
-            }
-        }
-    }
+    host: String = IOSAutomationConfig.DEFAULT_HOST,
+    port: Int = IOSAutomationConfig.DEFAULT_PORT
+) : JsonRpcHttpClient(host, port) {
 
     /**
      * Gets the UI hierarchy from the iOS simulator.
@@ -215,5 +148,4 @@ class IOSAutomationClient(
 
         return sendRequest("ui.findElement", params.ifEmpty { null })
     }
-
 }

@@ -19,11 +19,8 @@ import com.malinskiy.adam.request.shell.v2.ShellCommandRequest
 import com.malinskiy.adam.request.shell.v2.ShellCommandResult
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -118,25 +115,38 @@ class Android(
     }
 
     private val adb = AndroidDebugBridgeClientFactory().build()
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    init {
-        runBlocking {
+    // ADB is started lazily on first use rather than in the constructor: constructing
+    // this class must stay cheap (and not require adb at all) so that iOS-only CLI
+    // commands and MCP server startup work on machines without the Android toolchain.
+    private val adbStartMutex = Mutex()
+
+    @Volatile
+    private var adbStarted = false
+
+    private suspend fun ensureAdbStarted() {
+        if (adbStarted) return
+        adbStartMutex.withLock {
+            if (adbStarted) return
             try {
-                StartAdbInteractor().execute()
+                // Starting the adb server spawns a process and blocks on it — keep
+                // that off the caller's dispatcher.
+                withContext(Dispatchers.IO) {
+                    StartAdbInteractor().execute()
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.error("Error while starting ADB: ${e.message}")
                 throw AdbInitializationException("Unable to start ADB", e)
             }
+            adbStarted = true
         }
     }
 
     override fun close() {
-        try {
-            scope.cancel()
-        } catch (e: Exception) {
-            logger.error("Error while closing ADB: ${e.message}")
-        }
+        // Nothing to release: the adam client opens a socket per request and the
+        // ADB server is a system-wide daemon we should not stop on exit.
     }
 
     private val deviceListCacheLock = Mutex()
@@ -144,6 +154,7 @@ class Android(
     private var lastDeviceListFetch: Long = 0
 
     private suspend fun fetchDevices(): List<MobileDevice> {
+        ensureAdbStarted()
         return deviceListCacheLock.withLock {
             val currentTime = System.currentTimeMillis()
 

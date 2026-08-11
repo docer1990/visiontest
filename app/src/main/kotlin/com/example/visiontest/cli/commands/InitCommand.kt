@@ -1,8 +1,9 @@
 package com.example.visiontest.cli.commands
 
+import com.example.visiontest.cli.CliExit
+import com.example.visiontest.cli.ExitCode
+import com.example.visiontest.cli.runCliCommand
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.CliktError
-import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.split
@@ -51,28 +52,45 @@ class InitCommand(
         .split(",")
         .required()
 
-    override fun run() {
-        // Validate agent names
-        val invalid = agents.filter { it.isBlank() || it !in AGENT_PATHS }
-        if (invalid.isNotEmpty()) {
-            throw UsageError(
-                "Unknown agent(s): ${invalid.joinToString()}. Valid agents: ${AGENT_PATHS.keys.joinToString()}"
+    override fun run() = runCliCommand { writeSkillFiles(agents) }
+
+    /**
+     * Validates [requestedAgents], writes a SKILL.md per agent under [workingDir], and
+     * returns the combined CLI output. Throws [CliExit] with the proper exit code on bad
+     * input. Exposed (internal) so tests can exercise it via `executeCliCommand` without
+     * tripping the `exitProcess` in [runCliCommand].
+     */
+    internal fun writeSkillFiles(requestedAgents: List<String>): String {
+        val requested = requestedAgents.map { it.trim() }
+
+        val hasBlank = requested.any { it.isBlank() }
+        val unknown = requested.filter { it.isNotBlank() && it !in AGENT_PATHS }
+        if (hasBlank || unknown.isNotEmpty()) {
+            val problems = buildList {
+                if (hasBlank) add("blank agent name in --agent list")
+                if (unknown.isNotEmpty()) add("Unknown agent(s): ${unknown.joinToString()}")
+            }
+            throw CliExit(
+                ExitCode.UsageError,
+                "${problems.joinToString("; ")}. Valid agents: ${AGENT_PATHS.keys.joinToString()}",
             )
         }
 
         val instructions = resourceLoader(RESOURCE_PATH)
-            ?: throw CliktError("Internal error: embedded resource '$RESOURCE_PATH' not found in JAR")
-
+            ?: throw CliExit(
+                ExitCode.GenericFailure,
+                "Internal error: embedded resource '$RESOURCE_PATH' not found in JAR",
+            )
         val content = YAML_FRONTMATTER + instructions
 
-        for (agent in agents) {
-            val relativePath = AGENT_PATHS.getValue(agent)
-            val target = workingDir.resolve(relativePath)
-            target.parent.createDirectories()
-            target.writeText(content)
-            echo("  wrote $target")
+        return buildString {
+            for (agent in requested) {
+                val target = workingDir.resolve(AGENT_PATHS.getValue(agent))
+                target.parent.createDirectories()
+                target.writeText(content)
+                appendLine("  wrote $target")
+            }
+            append("Initialized ${requested.size} agent skill file(s).")
         }
-
-        echo("Initialized ${agents.size} agent skill file(s).")
     }
 }

@@ -2,7 +2,6 @@ package com.example.visiontest.cli
 
 import com.example.visiontest.cli.commands.InitCommand
 import com.github.ajalt.clikt.core.MissingOption
-import com.github.ajalt.clikt.core.UsageError
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import kotlin.io.path.readText
@@ -13,6 +12,11 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.test.assertContains
 
+/**
+ * Unit tests exercise [InitCommand.writeSkillFiles] directly (and error paths through
+ * [executeCliCommand]) rather than `cmd.parse(...)`, because `run()` now routes through
+ * `runCliCommand`, which calls `exitProcess` and would terminate the test JVM.
+ */
 class InitCommandTest {
 
     @TempDir
@@ -37,8 +41,7 @@ class InitCommandTest {
 
     @Test
     fun `single agent writes SKILL file to correct path`() {
-        val cmd = createCommand()
-        cmd.parse(listOf("--agent", "claude"))
+        createCommand().writeSkillFiles(listOf("claude"))
 
         val file = tmp.resolve(".claude/skills/visiontest/SKILL.md")
         assertTrue(file.exists(), "SKILL.md should be created")
@@ -53,37 +56,44 @@ class InitCommandTest {
 
     @Test
     fun `comma-separated agents writes all files`() {
-        val cmd = createCommand()
-        cmd.parse(listOf("--agent", "claude,opencode,codex"))
+        createCommand().writeSkillFiles(listOf("claude", "opencode", "codex"))
 
         for ((agent, path) in InitCommand.AGENT_PATHS) {
             assertTrue(tmp.resolve(path).exists(), "SKILL.md should exist for $agent")
         }
     }
 
+    // --- whitespace around agent names is trimmed ---
+
+    @Test
+    fun `agent names are trimmed`() {
+        createCommand().writeSkillFiles(listOf(" claude ", "opencode "))
+
+        assertTrue(tmp.resolve(".claude/skills/visiontest/SKILL.md").exists())
+        assertTrue(tmp.resolve(".opencode/skills/visiontest/SKILL.md").exists())
+    }
+
     // --- invalid agent name ---
 
     @Test
-    fun `invalid agent name produces UsageError`() {
-        val cmd = createCommand()
-        val ex = assertFailsWith<UsageError> {
-            cmd.parse(listOf("--agent", "gemini"))
-        }
-        assertContains(ex.message ?: "", "Unknown agent")
+    fun `invalid agent name is a usage error with exit code 2`() {
+        val result = executeCliCommand { createCommand().writeSkillFiles(listOf("gemini")) }
+
+        assertEquals(2, result.exitCode)
+        assertContains(result.stderr ?: "", "Unknown agent")
     }
 
     // --- blank agent name in comma list ---
 
     @Test
-    fun `blank agent name in comma list produces UsageError`() {
-        val cmd = createCommand()
-        val ex = assertFailsWith<UsageError> {
-            cmd.parse(listOf("--agent", ",claude"))
-        }
-        assertContains(ex.message ?: "", "Unknown agent")
+    fun `blank agent name is a usage error with a clear message`() {
+        val result = executeCliCommand { createCommand().writeSkillFiles(listOf("", "claude")) }
+
+        assertEquals(2, result.exitCode)
+        assertContains(result.stderr ?: "", "blank agent name")
     }
 
-    // --- missing --agent ---
+    // --- missing --agent (Clikt parse-time, before run/exitProcess) ---
 
     @Test
     fun `missing agent flag produces MissingOption`() {
@@ -97,12 +107,10 @@ class InitCommandTest {
 
     @Test
     fun `running init twice produces same content`() {
-        val cmd1 = createCommand()
-        cmd1.parse(listOf("--agent", "claude"))
+        createCommand().writeSkillFiles(listOf("claude"))
         val first = tmp.resolve(".claude/skills/visiontest/SKILL.md").readText()
 
-        val cmd2 = createCommand()
-        cmd2.parse(listOf("--agent", "claude"))
+        createCommand().writeSkillFiles(listOf("claude"))
         val second = tmp.resolve(".claude/skills/visiontest/SKILL.md").readText()
 
         assertEquals(first, second)

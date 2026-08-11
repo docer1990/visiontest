@@ -87,8 +87,41 @@ application {
 }
 
 tasks.named<Test>("test") {
-    // Use JUnit Platform for unit tests.
-    useJUnitPlatform()
+    // Use JUnit Platform for unit tests. Exclude the "e2e" tag: those tests spawn
+    // the assembled fat JAR as a subprocess and run via the dedicated `e2eTest` task.
+    useJUnitPlatform {
+        excludeTags("e2e")
+    }
+}
+
+// End-to-end tests: build the shadow JAR, then run the "e2e"-tagged tests against
+// the real `java -jar visiontest.jar ...` chain. Kept out of `test` so the pure-JVM
+// unit suite stays fast and does not depend on assembling the fat JAR.
+tasks.register<Test>("e2eTest") {
+    description = "Runs end-to-end tests against the assembled shadow JAR."
+    group = "verification"
+    dependsOn(tasks.named("shadowJar"))
+    shouldRunAfter(tasks.named("test"))
+
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+
+    useJUnitPlatform {
+        includeTags("e2e")
+    }
+    systemProperty(
+        "visiontest.jar",
+        layout.buildDirectory.file("libs/visiontest.jar").get().asFile.absolutePath,
+    )
+}
+
+// Run e2e tests as part of `check` (and therefore `build` and CI). shadowJar is
+// already in the `build` graph, so the only added cost is the subprocess runs —
+// this is the gate that catches packaging regressions (e.g. the embedded
+// instructions resource being dropped from the fat JAR). The fast `test` task is
+// unaffected since it does not depend on `check`.
+tasks.named("check") {
+    dependsOn("e2eTest")
 }
 
 // Copy AGENT_INSTRUCTIONS.md from repo root into JAR resources so InitCommand can read it at runtime.

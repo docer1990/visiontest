@@ -29,6 +29,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 class Android(
@@ -48,11 +49,14 @@ class Android(
         )
 
         // Shell metacharacters that could be used for command injection
-        // Same pattern as IOSSimulator for consistency
         private val DANGEROUS_SHELL_CHARS = Regex("[;|&$()<>`\\\\\"'\\n\\r]")
 
         // Allowlist of permitted ADB subcommands
         private val ALLOWED_ADB_COMMANDS = setOf("install", "forward", "shell")
+
+        // Generous upper bound for host-side adb subprocesses (install of a large APK
+        // can take tens of seconds); prevents a hung adb from blocking an IO thread forever.
+        private const val ADB_COMMAND_TIMEOUT_MILLIS = 60_000L
 
         /**
          * Validates Android package name according to official naming rules:
@@ -152,14 +156,30 @@ class Android(
             val devices = withTimeout(timeoutMillis) {
                 adb.execute(ListDevicesRequest())
             }
-            val activeDevices = devices.filter { it.state == DeviceState.DEVICE }
+            val activeDevices = devices
+                .filter { it.state == DeviceState.DEVICE }
+                .map { it.toMobileDevice() }
 
             // Update the cache
-            deviceListCache = activeDevices.map { it.toMobileDevice() }
+            deviceListCache = activeDevices
             lastDeviceListFetch = currentTime
 
-            activeDevices.map { it.toMobileDevice() }
+            activeDevices
         }
+    }
+
+    /**
+     * Resolves the target device: the one matching [deviceSerial] when provided,
+     * otherwise the first available device.
+     *
+     * @throws NoDeviceAvailableException if [deviceSerial] is provided but no connected
+     *         device matches it — never falls back to a different device than requested.
+     */
+    private suspend fun resolveDevice(deviceSerial: String?): MobileDevice {
+        return deviceSerial?.let { serial ->
+            fetchDevices().find { it.id == serial }
+                ?: throw NoDeviceAvailableException("Android device with serial '$serial' not found")
+        } ?: getFirstAvailableDevice()
     }
 
     override suspend fun getFirstAvailableDevice(): MobileDevice {
@@ -177,9 +197,7 @@ class Android(
         command: String,
         deviceSerial: String? = null
     ): String {
-        val device = deviceSerial?.let { serial ->
-            fetchDevices().find { it.id == serial }
-        } ?: getFirstAvailableDevice()
+        val device = resolveDevice(deviceSerial)
 
         logger.debug("Executing command: '$command' on device: ${device.id}")
 
@@ -233,9 +251,7 @@ class Android(
             "shell" -> validateShellArgs(subArgs)
         }
 
-        val device = deviceSerial?.let { serial ->
-            fetchDevices().find { it.id == serial }
-        } ?: getFirstAvailableDevice()
+        val device = resolveDevice(deviceSerial)
 
         // Build command with validated arguments - ProcessBuilder handles escaping
         val command = mutableListOf("adb", "-s", device.id)
@@ -248,15 +264,32 @@ class Android(
                 .redirectErrorStream(true)
                 .start()
 
-            val output = process.inputStream.bufferedReader().readText()
-            val exitCode = process.waitFor()
+            // Drain output on a daemon thread so waitFor(timeout) is never blocked
+            // behind a full pipe buffer, and the timeout can actually fire.
+            val output = StringBuilder()
+            val readerThread = Thread {
+                process.inputStream.bufferedReader().useLines { lines ->
+                    lines.forEach { output.append(it).append('\n') }
+                }
+            }.apply { isDaemon = true; start() }
 
+            val completed = process.waitFor(ADB_COMMAND_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
+            if (!completed) {
+                process.destroyForcibly()
+                readerThread.join(1000)
+                throw TimeoutException(
+                    "ADB command timed out after ${ADB_COMMAND_TIMEOUT_MILLIS / 1000}s: ${args.joinToString(" ")}"
+                )
+            }
+            readerThread.join(5000)
+
+            val exitCode = process.exitValue()
             if (exitCode != 0) {
                 logger.warn("ADB command failed with exit code $exitCode: $output")
                 throw CommandExecutionException("ADB command failed: ${args.joinToString(" ")}", exitCode)
             }
 
-            output.trim()
+            output.toString().trim()
         }
     }
 

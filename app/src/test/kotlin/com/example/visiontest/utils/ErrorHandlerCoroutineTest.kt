@@ -1,8 +1,11 @@
 package com.example.visiontest.utils
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -109,5 +112,23 @@ class ErrorHandlerCoroutineTest {
 
         // Delays: 200 + 400 + 800 = 1400ms total
         assertEquals(1400L, currentTime)
+    }
+
+    @Test
+    fun `retryOperation does not retry after cancellation`() = runTest {
+        var attempts = 0
+
+        assertFailsWith<TimeoutCancellationException> {
+            withTimeout(100) {
+                ErrorHandler.retryOperation(maxAttempts = 3, initialDelayMs = 500) {
+                    attempts++
+                    delay(1000) // outlives the withTimeout deadline
+                    "never reached"
+                }
+            }
+        }
+
+        // The cancellation must propagate immediately instead of being retried
+        assertEquals(1, attempts)
     }
 }

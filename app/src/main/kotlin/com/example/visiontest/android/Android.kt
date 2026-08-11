@@ -265,17 +265,24 @@ class Android(
                 .start()
 
             // Drain output on a daemon thread so waitFor(timeout) is never blocked
-            // behind a full pipe buffer, and the timeout can actually fire.
+            // behind a full pipe buffer, and the timeout can actually fire. Appends are
+            // synchronized because the reader can outlive the timed join below (e.g. a
+            // forked adb server inheriting the pipe keeps the stream open after exit),
+            // and we must not read the StringBuilder while it is still being written.
             val output = StringBuilder()
             val readerThread = Thread {
                 process.inputStream.bufferedReader().useLines { lines ->
-                    lines.forEach { output.append(it).append('\n') }
+                    lines.forEach { line ->
+                        synchronized(output) { output.append(line).append('\n') }
+                    }
                 }
             }.apply { isDaemon = true; start() }
 
             val completed = process.waitFor(ADB_COMMAND_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
             if (!completed) {
                 process.destroyForcibly()
+                // Reap the killed process so it doesn't linger as a zombie on Unix
+                process.waitFor(5, TimeUnit.SECONDS)
                 readerThread.join(1000)
                 throw TimeoutException(
                     "ADB command timed out after ${ADB_COMMAND_TIMEOUT_MILLIS / 1000}s: ${args.joinToString(" ")}"
@@ -284,12 +291,13 @@ class Android(
             readerThread.join(5000)
 
             val exitCode = process.exitValue()
+            val outputText = synchronized(output) { output.toString() }
             if (exitCode != 0) {
-                logger.warn("ADB command failed with exit code $exitCode: $output")
+                logger.warn("ADB command failed with exit code $exitCode: $outputText")
                 throw CommandExecutionException("ADB command failed: ${args.joinToString(" ")}", exitCode)
             }
 
-            output.toString().trim()
+            outputText.trim()
         }
     }
 

@@ -28,8 +28,8 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Run MCP tests
-        run: ./gradlew :app:test --no-daemon
+      - name: Run MCP tests (incl. e2e against the fat JAR)
+        run: ./gradlew :app:test :app:e2eTest --no-daemon
 
   automation-server-tests:
     name: Automation Server Tests
@@ -56,8 +56,8 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Run Automation Server tests
-        run: ./gradlew :automation-server:test --no-daemon
+      - name: Run Automation Server tests and lint
+        run: ./gradlew :automation-server:test :automation-server:lint --no-daemon
 
   ios-automation-tests:
     name: iOS Automation Server Tests

@@ -1,12 +1,16 @@
-name: Run Test Suites on Pull Request
+name: Run Test Suites
 
 on:
   pull_request:
     branches: [ main, develop ]
+  push:
+    branches: [ main ]
 
+# Cancel superseded runs on PRs, but never on main: every commit on main
+# should get its own completed run so history stays bisectable.
 concurrency:
-  group: pr-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   mcp-server-tests:
@@ -55,8 +59,8 @@ jobs:
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
-      - name: Run Automation Server tests
-        run: ./gradlew :automation-server:test --no-daemon
+      - name: Run Automation Server tests and lint
+        run: ./gradlew :automation-server:test :automation-server:lint --no-daemon
 
 
   ios-automation-tests:

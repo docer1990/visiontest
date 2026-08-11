@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   mcp-server-tests:
-    name: MCP Server Tests
+    name: MCP Server & CLI Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -28,8 +28,8 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Run MCP tests
-        run: ./gradlew :app:test --no-daemon
+      - name: Run app tests (MCP server + CLI, incl. e2e)
+        run: ./gradlew :app:test :app:e2eTest --no-daemon
 
   automation-server-tests:
     name: Automation Server Tests (:automation-server)

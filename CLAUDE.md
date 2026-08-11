@@ -154,6 +154,7 @@ The same operations available as MCP tools can be invoked directly from the comm
 | `press_back` | android | — | — |
 | `press_home` | android, ios | — | — |
 | `launch_app` | android, ios | `id` (string) | — |
+| `init` | (none) | — | `--agent` (required, comma-separated: `claude,opencode,codex`) |
 
 ### CLI Exit Codes
 

@@ -36,6 +36,8 @@ class VisionTestCli : NoOpCliktCommand(name = "visiontest") {
             PressHomeCommand(lazy { components }),
             // Apps
             LaunchAppCommand(lazy { components }),
+            // Project setup
+            InitCommand(),
         )
     }
 }

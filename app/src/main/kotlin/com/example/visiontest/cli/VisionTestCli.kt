@@ -24,12 +24,14 @@ class VisionTestCli : NoOpCliktCommand(name = "visiontest") {
             // Setup
             InstallAutomationServerCommand(lazy { components }),
             StartAutomationServerCommand(lazy { components }),
+            StopAutomationServerCommand(lazy { components }),
             AutomationServerStatusCommand(lazy { components }),
             // Inspection
             GetInteractiveElementsCommand(lazy { components }),
             GetUiHierarchyCommand(lazy { components }),
             GetDeviceInfoCommand(lazy { components }),
             ScreenshotCommand(lazy { components }),
+            WaitForElementCommand(lazy { components }),
             // Interaction
             TapByCoordinatesCommand(lazy { components }),
             InputTextCommand(lazy { components }),

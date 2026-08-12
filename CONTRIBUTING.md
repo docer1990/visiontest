@@ -194,10 +194,13 @@ curl -X POST http://localhost:9009/jsonrpc \
 |------|-------------|
 | `install_automation_server` | Install both APKs on device |
 | `start_automation_server` | Start JSON-RPC server via instrumentation |
+| `stop_automation_server` | Force-stop server processes and remove port forwarding (idempotent) |
 | `automation_server_status` | Check if server is running |
 | `get_ui_hierarchy` | Get XML of all visible UI elements |
 | `get_interactive_elements` | Get filtered list of interactive elements |
 | `find_element` | Find element by text, resourceId, className, etc. |
+| `wait_for_element` | Poll until an element appears (optional `timeoutMs`, max 30s) |
+| `wait_until_gone` | Poll until an element disappears (spinners, dialogs) |
 | `android_tap_by_coordinates` | Tap at screen coordinates |
 | `android_swipe` | Swipe by coordinates |
 | `android_swipe_direction` | Swipe by direction with distance and speed |
@@ -216,6 +219,8 @@ curl -X POST http://localhost:9009/jsonrpc \
 | `ios_get_ui_hierarchy` | Get XML of all visible UI elements |
 | `ios_get_interactive_elements` | Get filtered list of interactive elements |
 | `ios_find_element` | Find element by text, identifier, etc. |
+| `ios_wait_for_element` | Poll until an element appears (optional `timeoutMs`, max 30s) |
+| `ios_wait_until_gone` | Poll until an element disappears (spinners, sheets) |
 | `ios_tap_by_coordinates` | Tap at screen coordinates |
 | `ios_swipe` | Swipe by coordinates |
 | `ios_swipe_direction` | Swipe by direction with distance and speed |

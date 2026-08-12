@@ -96,9 +96,12 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 |------|-------------|
 | `install_automation_server` | Install both main and test APKs on device |
 | `start_automation_server` | Start server via instrumentation, set up port forwarding |
+| `stop_automation_server` | Force-stop the server processes and remove port forwarding (idempotent) |
 | `automation_server_status` | Check if automation server is running |
 | `get_ui_hierarchy` | Get XML of all UI elements on current screen |
 | `find_element` | Find element by text, resourceId, className, etc. |
+| `wait_for_element` | Poll until an element appears (same selectors as `find_element`, optional `timeoutMs`, max 30s) |
+| `wait_until_gone` | Poll until an element disappears (spinners, dialogs); server failures are errors, never "gone" |
 | `android_tap_by_coordinates` | Tap at screen coordinates (x, y) |
 | `android_swipe` | Swipe by coordinates (startX, startY) to (endX, endY) |
 | `android_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
@@ -117,6 +120,8 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `ios_automation_server_status` | Check if iOS automation server is running |
 | `ios_get_ui_hierarchy` | Get XML of all UI elements on current screen |
 | `ios_find_element` | Find element by text, identifier, elementType, etc. |
+| `ios_wait_for_element` | Poll until an element appears (same selectors as `ios_find_element`, optional `timeoutMs`, max 30s) |
+| `ios_wait_until_gone` | Poll until an element disappears (spinners, sheets); server failures are errors, never "gone" |
 | `ios_tap_by_coordinates` | Tap at screen coordinates (x, y) |
 | `ios_swipe` | Swipe by coordinates |
 | `ios_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
@@ -145,8 +150,10 @@ The same operations available as MCP tools can be invoked directly from the comm
 |---------|-----------|---------------|----------------|
 | `install_automation_server` | android | — | — |
 | `start_automation_server` | android, ios | — | — |
+| `stop_automation_server` | android, ios | — | — |
 | `automation_server_status` | android, ios | — | — |
 | `get_interactive_elements` | android, ios | — | `--include-disabled` |
+| `wait_for_element` | android, ios | at least one selector option | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--timeout MS`, `--gone` |
 | `get_ui_hierarchy` | android, ios | — | — |
 | `get_device_info` | android, ios | — | — |
 | `screenshot` | android, ios | — | `--output PATH` |
@@ -174,7 +181,8 @@ The same operations available as MCP tools can be invoked directly from the comm
 - All device operations use suspend functions with coroutine-based async
 - Retry logic with exponential backoff in `ErrorHandler.retryOperation()`
 - Custom exception hierarchy in `Exceptions.kt` with platform-specific error codes
-- Tool timeout wrapper: `ToolScope` DSL with `withTimeout` (default: 10s, 30s for UI hierarchy, 200s for iOS server startup)
+- Tool timeout wrapper: `ToolScope` DSL with `withTimeout` (default: 10s, 30s for UI hierarchy, 35s for wait tools, 200s for iOS server startup)
+- Wait tools (`wait_for_element` / `wait_until_gone`) poll `findElement` client-side every 500ms; caller timeout capped at 30s so the wait's own deadline always fires before the DSL timeout
 - Centralized constants in `AutomationConfig.kt` / `IOSAutomationConfig.kt` — no magic numbers
 
 ## Configuration

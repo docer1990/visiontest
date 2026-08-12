@@ -1,6 +1,14 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+
+    // Static analysis; findings frozen in detekt-baseline.xml, new ones fail the build.
+    id("io.gitlab.arturbosch.detekt")
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    baseline = file("detekt-baseline.xml")
 }
 
 android {

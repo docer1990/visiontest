@@ -6,6 +6,14 @@ plugins {
 
     // Fat JAR with all dependencies -> app/build/libs/visiontest.jar
     id("com.gradleup.shadow") version "8.3.8"
+
+    // Line-coverage measurement + ratchet (koverVerify runs as part of `check`).
+    id("org.jetbrains.kotlinx.kover") version "0.9.1"
+
+    // Static analysis. Existing findings are frozen in detekt-baseline.xml;
+    // only new findings fail the build. Regenerate with :app:detektBaseline
+    // only when a finding is consciously accepted, not to silence new ones.
+    id("io.gitlab.arturbosch.detekt")
 }
 
 // Single source of truth for the release version: stamped into the JAR manifest
@@ -111,6 +119,29 @@ tasks.register<Test>("e2eTest") {
 // unaffected since it does not depend on `check`.
 tasks.named("check") {
     dependsOn("e2eTest")
+}
+
+// Coverage ratchet: fail the build if line coverage drops below the floor.
+// The floor sits just under the measured baseline (44.7% on 2026-08-11) so noise
+// from small refactors doesn't trip it. Raise it as coverage grows — never lower
+// it to make a build pass; write the missing tests instead.
+kover {
+    reports {
+        verify {
+            rule("line coverage floor") {
+                minBound(42)
+            }
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn("koverVerify")
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    baseline = file("detekt-baseline.xml")
 }
 
 // Copy AGENT_INSTRUCTIONS.md from repo root into JAR resources so InitCommand can read it at runtime.

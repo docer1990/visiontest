@@ -1,0 +1,144 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$text == null &amp;&amp; textContains == null &amp;&amp; resourceId == null &amp;&amp; className == null &amp;&amp; contentDescription == null</ID>
+    <ID>ComplexCondition:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$text == null &amp;&amp; textContains == null &amp;&amp; identifier == null &amp;&amp; elementType == null &amp;&amp; label == null</ID>
+    <ID>ComplexCondition:ScreenshotSaver.kt$ScreenshotSaver$serverError != null &amp;&amp; !serverError.isJsonNull &amp;&amp; serverError.isJsonPrimitive &amp;&amp; serverError.asJsonPrimitive.isString</ID>
+    <ID>CyclomaticComplexMethod:ErrorHandler.kt$ErrorHandler$fun handleToolError(e: Exception, logger: Logger, context: String): CallToolResult</ID>
+    <ID>CyclomaticComplexMethod:ScreenshotSaver.kt$ScreenshotSaver$suspend fun capture(outputPath: String?, fetchResponse: suspend () -&gt; String): String</ID>
+    <ID>LongMethod:ScreenshotSaver.kt$ScreenshotSaver$suspend fun capture(outputPath: String?, fetchResponse: suspend () -&gt; String): String</ID>
+    <ID>LongParameterList:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$( direction: String, text: String?, textContains: String?, resourceId: String?, className: String?, contentDescription: String?, speed: String = "normal" )</ID>
+    <ID>LongParameterList:AutomationClient.kt$AutomationClient$( direction: String, text: String? = null, textContains: String? = null, resourceId: String? = null, className: String? = null, contentDescription: String? = null, speed: String = "normal" )</ID>
+    <ID>LongParameterList:ComponentHolder.kt$ComponentHolder$( val android: Android, val ios: IOSManager, val automationClient: AutomationClient, val iosAutomationClient: IOSAutomationClient, val androidDeviceRegistrar: AndroidDeviceToolRegistrar, val androidAutomationRegistrar: AndroidAutomationToolRegistrar, val iosDeviceRegistrar: IOSDeviceToolRegistrar, val iosAutomationRegistrar: IOSAutomationToolRegistrar, )</ID>
+    <ID>LongParameterList:IOSAutomationClient.kt$IOSAutomationClient$( text: String? = null, textContains: String? = null, identifier: String? = null, elementType: String? = null, label: String? = null, bundleId: String? = null )</ID>
+    <ID>LongParameterList:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$( text: String?, textContains: String?, identifier: String?, elementType: String?, label: String?, bundleId: String? )</ID>
+    <ID>LoopWithTooManyJumpStatements:McpStdioE2ETest.kt$McpStdioE2ETest$while</ID>
+    <ID>MagicNumber:Android.kt$Android$1000</ID>
+    <ID>MagicNumber:Android.kt$Android$5</ID>
+    <ID>MagicNumber:Android.kt$Android$5000</ID>
+    <ID>MagicNumber:Android.kt$Android.Companion$1024</ID>
+    <ID>MagicNumber:Android.kt$Android.Companion$65535</ID>
+    <ID>MagicNumber:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$10</ID>
+    <ID>MagicNumber:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$500</ID>
+    <ID>MagicNumber:CliExit.kt$ExitCode.DeviceNotFound$4</ID>
+    <ID>MagicNumber:CliExit.kt$ExitCode.PlatformNotSupported$5</ID>
+    <ID>MagicNumber:CliExit.kt$ExitCode.ServerNotReachable$3</ID>
+    <ID>MagicNumber:ErrorHandler.kt$ErrorHandler$3</ID>
+    <ID>MagicNumber:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$2000</ID>
+    <ID>MagicNumber:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$30</ID>
+    <ID>MagicNumber:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$60</ID>
+    <ID>MagicNumber:IOSSimulator.kt$IOSSimulator$1000</ID>
+    <ID>MagicNumber:ProcessExecutor.kt$ProcessExecutor$1000</ID>
+    <ID>MagicNumber:ProcessExecutor.kt$ProcessExecutor$5000</ID>
+    <ID>MagicNumber:ToolDiscovery.kt$ToolDiscovery$10</ID>
+    <ID>MagicNumber:ToolHelpers.kt$ToolHelpers$10</ID>
+    <ID>MatchingDeclarationName:CliErrorHandler.kt$CliResult</ID>
+    <ID>MatchingDeclarationName:PlatformOption.kt$Platform</ID>
+    <ID>MatchingDeclarationName:ToolDsl.kt$ToolScope</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$?:</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$description = "Checks if the automation server is running on the connected Android device. Returns server status and connection information."</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$description = "Installs the automation server APKs on the connected Android device. Run this once before using start_automation_server."</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$description = "Starts the automation server on the connected Android device. The APKs must be installed first using install_automation_server. Sets up port forwarding and starts the instrumentation server."</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$if (!automationClient.isServerRunning()) throw ServerNotRunningException("Automation server is not running. Use 'start_automation_server' first.")</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$internal suspend</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$return "Automation server APKs installed successfully on device ${device.id}. Use 'start_automation_server' to start the server."</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$return "Automation server may not have started properly. Check device logs with: adb logcat | grep AutomationServer"</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$return "Automation server started successfully on device ${device.id}. Server is listening on localhost:$port"</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$return "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$return "Main APK not found at the expected path derived from test APK: $apkPath. Ensure the main automation-server APK is built/installed (e.g., via :automation-server:assembleDebug), or re-run install.sh or set VISION_TEST_APK_PATH."</ID>
+    <ID>MaxLineLength:AndroidAutomationToolRegistrarTest.kt$AndroidAutomationToolRegistrarTest$registrar.findElement(text = "hello", textContains = null, resourceId = null, className = null, contentDescription = null)</ID>
+    <ID>MaxLineLength:AndroidDeviceToolRegistrar.kt$AndroidDeviceToolRegistrar$description = "Launches an Android application on the connected device. Requires 'packageName' parameter (e.g., com.example.app). Uses monkey command to launch the app's main activity."</ID>
+    <ID>MaxLineLength:AndroidDeviceToolRegistrar.kt$AndroidDeviceToolRegistrar$description = "Returns a complete list of all applications installed on the Android device. Returns package names (e.g., com.example.app) for all installed apps."</ID>
+    <ID>MaxLineLength:AndroidDeviceToolRegistrar.kt$AndroidDeviceToolRegistrar$description = "Returns detailed information about a specific Android application. Requires 'packageName' parameter (e.g., com.example.app). Returns version info, SDK requirements, installation dates, and permissions."</ID>
+    <ID>MaxLineLength:AndroidDeviceToolRegistrar.kt$AndroidDeviceToolRegistrar$description = "Returns detailed information about the first available Android device, including model, Android version, SDK version, and device state. Automatically selects the first active device connected via ADB."</ID>
+    <ID>MaxLineLength:AndroidDeviceToolRegistrarTest.kt$AndroidDeviceToolRegistrarTest.&lt;no name provided&gt;$var shellOutput: String = "[ro.product.model]: [Pixel 6]\n[ro.build.version.release]: [13]\n[ro.build.version.sdk]: [33]"</ID>
+    <ID>MaxLineLength:AndroidScreenshotToolTest.kt$AndroidScreenshotToolTest$assertTrue(message.contains("Screenshot failed on the Android automation server: capture failed"), "Got: $message")</ID>
+    <ID>MaxLineLength:ErrorHandler.kt$ErrorHandler$is CommandExecutionException -&gt; Pair(ERROR_COMMAND_FAILED, "Command execution failed (code: ${e.exitCode}): ${e.message}")</ID>
+    <ID>MaxLineLength:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$description = "Checks if the iOS automation server is running on the simulator. Returns server status and connection information."</ID>
+    <ID>MaxLineLength:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$if</ID>
+    <ID>MaxLineLength:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$if (!iosAutomationClient.isServerRunning()) throw ServerNotRunningException("iOS automation server is not running. Use 'ios_start_automation_server' first.")</ID>
+    <ID>MaxLineLength:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$internal suspend</ID>
+    <ID>MaxLineLength:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$logger.warn("Pre-built bundle failed (exit code ${primaryResult.earlyExitCode}), falling back to source build")</ID>
+    <ID>MaxLineLength:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$return "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"</ID>
+    <ID>MaxLineLength:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$return ServerPollResult("iOS automation server did not respond after ${maxAttempts * 2}s. xcodebuild may still be building. Check with 'ios_automation_server_status' or run xcodebuild manually to see output.")</ID>
+    <ID>MaxLineLength:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$return ServerPollResult("iOS automation server started successfully ($label). Server is listening on localhost:$port")</ID>
+    <ID>MaxLineLength:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$val testId = "${IOSAutomationConfig.UI_TEST_TARGET}/${IOSAutomationConfig.TEST_CLASS}/${IOSAutomationConfig.TEST_METHOD}"</ID>
+    <ID>MaxLineLength:IOSDeviceToolRegistrar.kt$IOSDeviceToolRegistrar$description = "Launches an iOS application on the device or simulator. Requires 'bundleId' parameter (e.g., com.apple.mobilesafari). Device must be booted before launching apps."</ID>
+    <ID>MaxLineLength:IOSDeviceToolRegistrar.kt$IOSDeviceToolRegistrar$description = "Returns a complete list of all applications installed on the iOS device or simulator. Returns bundle IDs (e.g., com.apple.mobilesafari) for all installed apps. Device must be booted."</ID>
+    <ID>MaxLineLength:IOSDeviceToolRegistrar.kt$IOSDeviceToolRegistrar$description = "Returns detailed information about a specific iOS application. Requires 'bundleId' parameter (e.g., com.apple.mobilesafari). Returns bundle ID and app container path. Device must be booted."</ID>
+    <ID>MaxLineLength:IOSDeviceToolRegistrar.kt$IOSDeviceToolRegistrar$description = "Returns detailed information about the first available iOS device or simulator. Includes device ID, name, type, state (Booted/Shutdown), iOS version, and model. Prioritizes booted simulators over shutdown ones."</ID>
+    <ID>MaxLineLength:JsonRpcHttpClient.kt$JsonRpcHttpClient$val errorStream = connection.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: "Unknown error"</ID>
+    <ID>MaxLineLength:McpStdioE2ETest.kt$McpStdioE2ETest$"""{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"e2e-smoke","version":"0.0.0"}}}"""</ID>
+    <ID>MaxLineLength:ScreenshotSaver.kt$ScreenshotSaver$"outdated $platformLabel automation server $artifactLabel — rebuild from source or update the installed $artifactLabel."</ID>
+    <ID>MaxLineLength:ScreenshotSaver.kt$ScreenshotSaver$return</ID>
+    <ID>MaxLineLength:ScreenshotSaver.kt$ScreenshotSaver$return@withContext "Screenshot failed: $platformLabel automation server returned invalid base64 PNG data (${e.message})."</ID>
+    <ID>MaxLineLength:ScreenshotSaver.kt$ScreenshotSaver$return@withContext "Screenshot failed: unable to create parent directory ${parentDir.absolutePath} (${e.message})."</ID>
+    <ID>MaxLineLength:ScreenshotSaver.kt$ScreenshotSaver$return@withContext "Screenshot failed: unable to create temp file in ${parentDir.absolutePath} (${e.message})."</ID>
+    <ID>MaxLineLength:ScreenshotSaver.kt$ScreenshotSaver$val</ID>
+    <ID>MaxLineLength:ToolDiscovery.kt$ToolDiscovery$logger.warn("${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} path is not a valid .xcodeproj directory: $envPath")</ID>
+    <ID>MaxLineLength:ToolDiscovery.kt$ToolDiscovery$val apkRelativePath = "automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk"</ID>
+    <ID>MaxLineLength:ToolDsl.kt$throw IllegalArgumentException("Invalid direction '$direction'. Must be one of: ${VALID_DIRECTIONS.joinToString()}")</ID>
+    <ID>NewLineAtEndOfFile:DeviceConfig.kt$com.example.visiontest.common.DeviceConfig.kt</ID>
+    <ID>NewLineAtEndOfFile:DeviceType.kt$com.example.visiontest.common.DeviceType.kt</ID>
+    <ID>NewLineAtEndOfFile:ErrorHandler.kt$com.example.visiontest.utils.ErrorHandler.kt</ID>
+    <ID>NewLineAtEndOfFile:Exceptions.kt$com.example.visiontest.Exceptions.kt</ID>
+    <ID>NewLineAtEndOfFile:IOSManager.kt$com.example.visiontest.ios.IOSManager.kt</ID>
+    <ID>NewLineAtEndOfFile:IOSSimulator.kt$com.example.visiontest.ios.IOSSimulator.kt</ID>
+    <ID>NewLineAtEndOfFile:MobileDevice.kt$com.example.visiontest.common.MobileDevice.kt</ID>
+    <ID>ReturnCount:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$internal suspend fun installAutomationServer(): String</ID>
+    <ID>ReturnCount:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar$internal suspend fun startAutomationServer(): String</ID>
+    <ID>ReturnCount:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$internal suspend fun startAutomationServer(): String</ID>
+    <ID>ReturnCount:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar$private suspend fun startAndPollServer( command: List&lt;String&gt;, maxAttempts: Int, port: Int, label: String ): ServerPollResult</ID>
+    <ID>ReturnCount:ScreenshotSaver.kt$ScreenshotSaver$suspend fun capture(outputPath: String?, fetchResponse: suspend () -&gt; String): String</ID>
+    <ID>ReturnCount:ToolDiscovery.kt$ToolDiscovery$fun findXcodeProject(): String?</ID>
+    <ID>ReturnCount:ToolDiscovery.kt$ToolDiscovery$internal fun findAutomationServerApk( envApkPath: String?, searchRoots: List&lt;File&gt;, installDir: File? = null ): String?</ID>
+    <ID>ReturnCount:ToolDiscovery.kt$ToolDiscovery$internal fun findCodeSourceRoot(): File?</ID>
+    <ID>ReturnCount:ToolDiscovery.kt$ToolDiscovery$internal fun findProjectRoot(startFrom: File): File?</ID>
+    <ID>ReturnCount:ToolDiscovery.kt$ToolDiscovery$internal fun findXctestrun(installDir: File): String?</ID>
+    <ID>ReturnCount:ToolDiscovery.kt$ToolDiscovery$internal fun resolveMainApkPath(testApkPath: String): String?</ID>
+    <ID>SwallowedException:JsonRpcHttpClient.kt$JsonRpcHttpClient$e: Exception</ID>
+    <ID>SwallowedException:ToolDsl.kt$ToolScope$e: TimeoutCancellationException</ID>
+    <ID>ThrowsCount:IOSSimulator.kt$IOSSimulator$private suspend fun ensureDeviceBooted(device: MobileDevice)</ID>
+    <ID>TooGenericExceptionCaught:Android.kt$Android$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:CliErrorHandler.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ErrorHandler.kt$ErrorHandler$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:JsonRpcHttpClient.kt$JsonRpcHttpClient$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ScreenshotSaver.kt$ScreenshotSaver$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ToolDiscovery.kt$ToolDiscovery$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ToolDsl.kt$ToolScope$e: Exception</ID>
+    <ID>TooGenericExceptionThrown:CliErrorHandlerTest.kt$CliErrorHandlerTest$throw RuntimeException("something broke")</ID>
+    <ID>TooGenericExceptionThrown:ErrorHandlerCoroutineTest.kt$ErrorHandlerCoroutineTest$throw RuntimeException("fail #$attempts")</ID>
+    <ID>TooGenericExceptionThrown:ErrorHandlerCoroutineTest.kt$ErrorHandlerCoroutineTest$throw RuntimeException("fail")</ID>
+    <ID>TooGenericExceptionThrown:ErrorHandlerTest.kt$ErrorHandlerTest$throw RuntimeException("fail #$attempts")</ID>
+    <ID>TooGenericExceptionThrown:ErrorHandlerTest.kt$ErrorHandlerTest$throw RuntimeException("fail")</ID>
+    <ID>TooManyFunctions:Android.kt$Android : DeviceConfigAutoCloseable</ID>
+    <ID>TooManyFunctions:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar : ToolRegistrar</ID>
+    <ID>TooManyFunctions:AutomationClient.kt$AutomationClient : JsonRpcHttpClient</ID>
+    <ID>TooManyFunctions:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar : ToolRegistrar</ID>
+    <ID>TooManyFunctions:IOSSimulator.kt$IOSSimulator : DeviceConfig</ID>
+    <ID>TooManyFunctions:ToolDiscovery.kt$ToolDiscovery</ID>
+    <ID>UseRequire:Android.kt$Android$throw IllegalArgumentException("Invalid activity name: $activityName")</ID>
+    <ID>UseRequire:Android.kt$Android$throw IllegalArgumentException("Invalid package name: $packageName")</ID>
+    <ID>UseRequire:IOSSimulator.kt$IOSSimulator$throw IllegalArgumentException("Invalid bundle ID format: $packageName")</ID>
+    <ID>UseRequire:ToolDsl.kt$throw IllegalArgumentException("Invalid direction '$direction'. Must be one of: ${VALID_DIRECTIONS.joinToString()}")</ID>
+    <ID>WildcardImport:AndroidAutomationToolRegistrarTest.kt$import kotlin.test.*</ID>
+    <ID>WildcardImport:AndroidDeviceToolRegistrarTest.kt$import kotlin.test.*</ID>
+    <ID>WildcardImport:AndroidScreenshotToolTest.kt$import kotlin.test.*</ID>
+    <ID>WildcardImport:AutomationClientTest.kt$import kotlin.test.*</ID>
+    <ID>WildcardImport:CliCommandIntegrationTest.kt$import com.example.visiontest.cli.commands.*</ID>
+    <ID>WildcardImport:CliCommandIntegrationTest.kt$import kotlin.test.*</ID>
+    <ID>WildcardImport:ErrorHandler.kt$import com.example.visiontest.*</ID>
+    <ID>WildcardImport:ErrorHandler.kt$import com.example.visiontest.android.*</ID>
+    <ID>WildcardImport:ErrorHandler.kt$import io.modelcontextprotocol.kotlin.sdk.*</ID>
+    <ID>WildcardImport:ErrorHandlerTest.kt$import com.example.visiontest.*</ID>
+    <ID>WildcardImport:IOSAutomationClientTest.kt$import kotlin.test.*</ID>
+    <ID>WildcardImport:IOSDeviceToolRegistrarTest.kt$import kotlin.test.*</ID>
+    <ID>WildcardImport:IOSScreenshotToolTest.kt$import kotlin.test.*</ID>
+    <ID>WildcardImport:IOSSimulator.kt$import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:Main.kt$import io.modelcontextprotocol.kotlin.sdk.*</ID>
+    <ID>WildcardImport:Main.kt$import io.modelcontextprotocol.kotlin.sdk.server.*</ID>
+    <ID>WildcardImport:ToolFactory.kt$import com.example.visiontest.tools.*</ID>
+    <ID>WildcardImport:VisionTestCli.kt$import com.example.visiontest.cli.commands.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

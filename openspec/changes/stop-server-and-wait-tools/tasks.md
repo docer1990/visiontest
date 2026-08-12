@@ -35,4 +35,4 @@
 
 ## 7. Wrap-up
 
-- [ ] 7.1 Reference GitHub issues #37/#38 in the PR description and check acceptance criteria against the spec scenarios
+- [x] 7.1 PR #44 opened against main, closing #37 and #38; acceptance criteria checked against the spec scenarios

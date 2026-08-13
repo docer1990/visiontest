@@ -19,12 +19,20 @@ data class IOSElementSelectors(
         text != null || textContains != null || identifier != null ||
             elementType != null || label != null
 
-    /** Human-readable summary used in wait/timeout messages. */
+    /**
+     * Human-readable summary used in wait/timeout messages.
+     *
+     * Uses the tool-facing parameter names (`resourceId`, `className`,
+     * `contentDescription`), not this class's internal XCUITest-flavored ones, so a
+     * message names the parameters the caller actually passed. `bundleId` is included
+     * because waiting against Springboard instead of the app is a common iOS mistake.
+     */
     fun describe(): String = describeSelectors(
         "text" to text,
         "textContains" to textContains,
-        "identifier" to identifier,
-        "elementType" to elementType,
-        "label" to label,
+        "resourceId" to identifier,
+        "className" to elementType,
+        "contentDescription" to label,
+        "bundleId" to bundleId,
     )
 }

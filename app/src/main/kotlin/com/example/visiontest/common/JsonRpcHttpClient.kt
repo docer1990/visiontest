@@ -135,7 +135,18 @@ abstract class JsonRpcHttpClient(
         }
         val result = body.get("result")?.takeIf { it.isJsonObject }?.asJsonObject
             ?: throw CommandExecutionException("findElement response has no result object: $response")
-        return result.get("found")?.takeIf { it.isJsonPrimitive }?.asBoolean == true
+        return readFoundFlag(result, response)
+    }
+
+    /**
+     * A missing or non-boolean `found` is a protocol violation, not "element absent":
+     * defaulting it to false would let [pollForElement] report a malformed response
+     * as the element having disappeared.
+     */
+    private fun readFoundFlag(result: JsonObject, response: String): Boolean {
+        val found = result.get("found")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
+            ?: throw CommandExecutionException("findElement response has no boolean 'found' field: $response")
+        return found.asBoolean
     }
 
     private fun parseJsonObject(response: String): JsonObject {

@@ -163,4 +163,24 @@ class AutomationClientWaitTest {
         }
         assertTrue(ex.message!!.isNotBlank())
     }
+
+    @Test
+    fun `gone wait fails when result has no found field instead of reporting gone`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"jsonrpc":"2.0","result":{"text":"Loading"},"id":1}"""))
+
+        val ex = assertFailsWith<CommandExecutionException> {
+            poll(expectGone = true, timeoutMs = 5000)
+        }
+        assertTrue(ex.message!!.contains("'found'"))
+    }
+
+    @Test
+    fun `gone wait fails when found is not a boolean`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"jsonrpc":"2.0","result":{"found":"yes"},"id":1}"""))
+
+        val ex = assertFailsWith<CommandExecutionException> {
+            poll(expectGone = true, timeoutMs = 5000)
+        }
+        assertTrue(ex.message!!.contains("'found'"))
+    }
 }

@@ -30,6 +30,10 @@ The system SHALL provide `wait_until_gone` (Android) and `ios_wait_until_gone` (
 - **WHEN** the automation server stops responding during a `wait_until_gone` poll
 - **THEN** the tool fails with a server-unreachable error rather than reporting the element gone
 
+#### Scenario: Malformed response is not "gone"
+- **WHEN** a poll returns a result object whose `found` field is missing or not a boolean
+- **THEN** the tool fails with a protocol error rather than treating the element as absent
+
 ### Requirement: Waits require a running automation server
 Wait tools SHALL fail fast with the platform's standard server-not-running error when invoked without a running automation server.
 

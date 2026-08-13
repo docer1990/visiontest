@@ -7,6 +7,7 @@ import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import java.util.concurrent.TimeoutException
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -85,6 +86,22 @@ class IOSWaitToolRegistrarTest {
             registrar.waitForElement(IOSElementSelectors(text = "Login"))
         }
         assertTrue(ex.message!!.contains("not running"))
+    }
+
+    @Test
+    fun `timeout message uses tool-facing selector names`() = runBlocking {
+        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        mockServer.enqueue(MockResponse().setBody("""{"jsonrpc":"2.0","result":{"found":false},"id":1}"""))
+
+        val selectors = IOSElementSelectors(identifier = "loginBtn", bundleId = "com.example.app")
+        val ex = assertFailsWith<TimeoutException> {
+            registrar.waitForElement(selectors, timeoutMs = 400)
+        }
+        // Callers pass resourceId/className/contentDescription, so the message must not
+        // echo back the internal identifier/elementType/label names.
+        assertTrue(ex.message!!.contains("resourceId='loginBtn'"), "got: ${ex.message}")
+        assertTrue(ex.message!!.contains("bundleId='com.example.app'"))
+        assertFalse(ex.message!!.contains("identifier='"))
     }
 
     @Test

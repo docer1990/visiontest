@@ -51,4 +51,31 @@ object AutomationConfig {
      * Test class and method for starting the automation server.
      */
     const val AUTOMATION_SERVER_TEST_CLASS = "com.example.automationserver.AutomationServerTest#runAutomationServer"
+
+    /**
+     * Interval between findElement polls in wait_for_element / wait_until_gone.
+     */
+    const val WAIT_POLL_INTERVAL_MS = 500L
+
+    /**
+     * Overall wait budget when the caller does not provide timeoutMs.
+     */
+    const val WAIT_DEFAULT_TIMEOUT_MS = 10_000L
+
+    /**
+     * Upper bound for a caller-provided wait timeout.
+     */
+    const val WAIT_MAX_TIMEOUT_MS = 30_000L
+
+    /**
+     * Tool DSL timeout for wait tools. Must exceed [WAIT_MAX_TIMEOUT_MS] so the
+     * wait's own deadline fires first and produces the structured timeout message.
+     */
+    const val WAIT_TOOL_TIMEOUT_MS = 35_000L
+
+    /**
+     * Health-check polls (spaced [WAIT_POLL_INTERVAL_MS] apart) used by
+     * stop_automation_server to confirm the server actually went down.
+     */
+    const val STOP_VERIFY_ATTEMPTS = 6
 }

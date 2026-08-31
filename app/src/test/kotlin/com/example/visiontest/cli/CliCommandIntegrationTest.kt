@@ -8,8 +8,10 @@ import com.example.visiontest.common.MobileDevice
 import com.example.visiontest.discovery.ToolDiscovery
 import com.example.visiontest.ios.IOSAutomationClient
 import com.example.visiontest.ios.IOSManager
+import com.example.visiontest.android.AndroidElementSelectors
 import com.example.visiontest.tools.AndroidAutomationToolRegistrar
 import com.example.visiontest.tools.AndroidDeviceToolRegistrar
+import com.example.visiontest.tools.AndroidStopToolRegistrar
 import com.example.visiontest.tools.IOSAutomationToolRegistrar
 import com.example.visiontest.tools.IOSDeviceToolRegistrar
 import okhttp3.mockwebserver.MockResponse
@@ -26,6 +28,7 @@ class CliCommandIntegrationTest {
     private lateinit var androidMock: MockWebServer
     private lateinit var iosMock: MockWebServer
     private lateinit var components: ComponentHolder
+    private lateinit var androidStopRegistrar: AndroidStopToolRegistrar
 
     private val fakeDevice = MobileDevice(
         id = "emulator-5554", name = "Pixel_6", type = DeviceType.ANDROID, state = "device"
@@ -66,6 +69,9 @@ class CliCommandIntegrationTest {
             iosDeviceRegistrar = IOSDeviceToolRegistrar(fakeDeviceConfig),
             iosAutomationRegistrar = IOSAutomationToolRegistrar(fakeDeviceConfig, iosClient, discovery, logger),
         )
+        // Built against the fake device config so stop tests never touch real adb;
+        // ComponentHolder's derived androidStopRegistrar would use the real Android above.
+        androidStopRegistrar = AndroidStopToolRegistrar(fakeDeviceConfig, androidClient) { "" }
     }
 
     @AfterTest
@@ -157,6 +163,106 @@ class CliCommandIntegrationTest {
             components.androidAutomationRegistrar.swipeByDirection("up", "medium", "normal")
         }
         assertEquals(0, result.exitCode)
+    }
+
+    // --- stop_automation_server ---
+
+    @Test
+    fun `stop_automation_server android exits 0 when running`() {
+        // wasRunning health check → running; shutdown verification → down
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        androidMock.enqueue(MockResponse().setResponseCode(500))
+        val result = executeCliCommand {
+            androidStopRegistrar.stopAutomationServer()
+        }
+        assertEquals(0, result.exitCode)
+        assertTrue(result.stdout!!.contains("stopped successfully"))
+    }
+
+    @Test
+    fun `stop_automation_server android exits 0 when not running`() {
+        androidMock.enqueue(MockResponse().setResponseCode(500))
+        val result = executeCliCommand {
+            androidStopRegistrar.stopAutomationServer()
+        }
+        assertEquals(0, result.exitCode)
+        assertTrue(result.stdout!!.contains("was not running"))
+    }
+
+    @Test
+    fun `stop_automation_server ios exits 0 when not running`() {
+        val result = executeCliCommand {
+            components.iosAutomationRegistrar.stopAutomationServer()
+        }
+        assertEquals(0, result.exitCode)
+        assertTrue(result.stdout!!.contains("not running"))
+    }
+
+    // --- wait_for_element ---
+
+    @Test
+    fun `wait_for_element exits 0 when element found`() {
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody(
+            """{"jsonrpc":"2.0","id":1,"result":{"found":true,"text":"Login"}}"""
+        ))
+        val result = executeCliCommand {
+            requireServerRunning { components.isServerRunning(Platform.Android) }
+            components.androidWaitRegistrar.waitForElement(AndroidElementSelectors(text = "Login"), 5000)
+        }
+        assertEquals(0, result.exitCode)
+        assertTrue(result.stdout!!.contains("found"))
+    }
+
+    @Test
+    fun `wait_for_element exits 1 on timeout`() {
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody(
+            """{"jsonrpc":"2.0","id":1,"result":{"found":false}}"""
+        ))
+        val result = executeCliCommand {
+            requireServerRunning { components.isServerRunning(Platform.Android) }
+            components.androidWaitRegistrar.waitForElement(AndroidElementSelectors(text = "Login"), 400)
+        }
+        assertEquals(1, result.exitCode)
+        assertTrue(result.stderr!!.contains("text='Login'"))
+    }
+
+    @Test
+    fun `wait_for_element exits 2 when no selector given`() {
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        val result = executeCliCommand {
+            requireServerRunning { components.isServerRunning(Platform.Android) }
+            components.androidWaitRegistrar.waitForElement(AndroidElementSelectors())
+        }
+        assertEquals(2, result.exitCode)
+        assertTrue(result.stderr!!.contains("At least one selector required"))
+    }
+
+    @Test
+    fun `wait_for_element exits 2 when timeout above cap`() {
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        androidMock.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        val result = executeCliCommand {
+            requireServerRunning { components.isServerRunning(Platform.Android) }
+            components.androidWaitRegistrar.waitForElement(AndroidElementSelectors(text = "Login"), 31_000)
+        }
+        assertEquals(2, result.exitCode)
+        assertTrue(result.stderr!!.contains("30000"))
+    }
+
+    @Test
+    fun `wait_for_element exits 3 when server not running`() {
+        androidMock.enqueue(MockResponse().setResponseCode(500))
+        val result = executeCliCommand {
+            requireServerRunning { components.isServerRunning(Platform.Android) }
+            components.androidWaitRegistrar.waitForElement(AndroidElementSelectors(text = "Login"))
+        }
+        assertEquals(3, result.exitCode)
+        assertTrue(result.stderr!!.contains("not running"))
     }
 
     // --- input_text ---

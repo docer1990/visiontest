@@ -137,8 +137,10 @@ class VisionTestCliTest {
         val registered = VisionTestCli().registeredSubcommands().map { it.commandName }.toSet()
 
         val expected = setOf(
-            "install_automation_server", "start_automation_server", "automation_server_status",
+            "install_automation_server", "start_automation_server", "stop_automation_server",
+            "automation_server_status",
             "get_interactive_elements", "get_ui_hierarchy", "get_device_info", "screenshot",
+            "wait_for_element",
             "tap_by_coordinates", "input_text", "swipe_direction",
             "press_back", "press_home", "launch_app",
             "init",

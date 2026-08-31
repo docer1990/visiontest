@@ -61,6 +61,11 @@ class AndroidValidationTest {
     }
 
     @Test
+    fun `validateForwardArgs accepts list`() {
+        Android.validateForwardArgs(listOf("--list"))
+    }
+
+    @Test
     fun `validateForwardArgs rejects port below 1024`() {
         assertFailsWith<IllegalArgumentException> {
             Android.validateForwardArgs(listOf("tcp:80", "tcp:80"))

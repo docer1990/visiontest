@@ -8,8 +8,11 @@ import com.example.visiontest.ios.IOSAutomationClient
 import com.example.visiontest.ios.IOSManager
 import com.example.visiontest.tools.AndroidAutomationToolRegistrar
 import com.example.visiontest.tools.AndroidDeviceToolRegistrar
+import com.example.visiontest.tools.AndroidStopToolRegistrar
+import com.example.visiontest.tools.AndroidWaitToolRegistrar
 import com.example.visiontest.tools.IOSAutomationToolRegistrar
 import com.example.visiontest.tools.IOSDeviceToolRegistrar
+import com.example.visiontest.tools.IOSWaitToolRegistrar
 import org.slf4j.LoggerFactory
 
 /**
@@ -31,6 +34,11 @@ class ComponentHolder internal constructor(
     val iosDeviceRegistrar: IOSDeviceToolRegistrar,
     val iosAutomationRegistrar: IOSAutomationToolRegistrar,
 ) {
+    // Derived from the clients above rather than injected: these registrars have no
+    // other dependencies, and keeping them out of the constructor preserves its shape.
+    val androidStopRegistrar = AndroidStopToolRegistrar(android, automationClient)
+    val androidWaitRegistrar = AndroidWaitToolRegistrar(automationClient)
+    val iosWaitRegistrar = IOSWaitToolRegistrar(iosAutomationClient)
 
     /** Returns `true` if the automation server for the given platform is reachable. */
     suspend fun isServerRunning(platform: Platform): Boolean = when (platform) {

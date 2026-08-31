@@ -66,4 +66,25 @@ object IOSAutomationConfig {
      * Subdirectory name for the pre-built iOS test bundle within the install directory.
      */
     const val XCTESTRUN_BUNDLE_DIR = "ios-automation-server"
+
+    /**
+     * Interval between findElement polls in ios_wait_for_element / ios_wait_until_gone.
+     */
+    const val WAIT_POLL_INTERVAL_MS = 500L
+
+    /**
+     * Overall wait budget when the caller does not provide timeoutMs.
+     */
+    const val WAIT_DEFAULT_TIMEOUT_MS = 10_000L
+
+    /**
+     * Upper bound for a caller-provided wait timeout.
+     */
+    const val WAIT_MAX_TIMEOUT_MS = 30_000L
+
+    /**
+     * Tool DSL timeout for wait tools. Must exceed [WAIT_MAX_TIMEOUT_MS] so the
+     * wait's own deadline fires first and produces the structured timeout message.
+     */
+    const val WAIT_TOOL_TIMEOUT_MS = 35_000L
 }

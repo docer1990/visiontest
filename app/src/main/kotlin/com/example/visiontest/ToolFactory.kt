@@ -22,8 +22,11 @@ class ToolFactory(
     private val registrars: List<ToolRegistrar> = listOf(
         AndroidDeviceToolRegistrar(android),
         AndroidAutomationToolRegistrar(android, automationClient, discovery),
+        AndroidStopToolRegistrar(android, automationClient),
+        AndroidWaitToolRegistrar(automationClient),
         IOSDeviceToolRegistrar(ios),
-        IOSAutomationToolRegistrar(ios, iosAutomationClient, discovery, logger)
+        IOSAutomationToolRegistrar(ios, iosAutomationClient, discovery, logger),
+        IOSWaitToolRegistrar(iosAutomationClient)
     )
 
     fun registerAllTools(server: Server) {

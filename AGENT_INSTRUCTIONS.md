@@ -19,6 +19,7 @@ VisionTest provides a CLI for automating Android devices and iOS simulators. Eve
 |---------|-----------|-------------|
 | `install_automation_server` | android | Install automation APKs on device |
 | `start_automation_server` | android, ios | Start the automation server |
+| `stop_automation_server` | android, ios | Stop the automation server (idempotent, exit 0 if already stopped) |
 | `automation_server_status` | android, ios | Check if server is running |
 
 ### Inspection
@@ -28,6 +29,7 @@ VisionTest provides a CLI for automating Android devices and iOS simulators. Eve
 | `get_ui_hierarchy` | android, ios | Full UI tree as XML |
 | `get_device_info` | android, ios | Display size, rotation, SDK/iOS version |
 | `screenshot [--output PATH]` | android, ios | Save PNG (default: `./screenshots/`) |
+| `wait_for_element [selectors] [--timeout MS] [--gone]` | android, ios | Poll until an element appears (or disappears with `--gone`). Selectors: `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS). Timeout max 30000ms. Exit 1 on timeout |
 
 ### Interaction
 | Command | Platforms | Description |
@@ -75,8 +77,10 @@ visiontest start_automation_server -p android
 visiontest screenshot -p android
 visiontest get_interactive_elements -p android
 visiontest tap_by_coordinates -p android 540 1200
+visiontest wait_for_element -p android --text "Welcome" --timeout 5000
 visiontest input_text -p android "hello"
 visiontest screenshot -p android --output ./after.png
+visiontest stop_automation_server -p android
 
 # iOS workflow
 visiontest start_automation_server -p ios

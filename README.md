@@ -152,9 +152,9 @@ Your AI coding tool discovers all available tools automatically via MCP. Just as
 
 **Device Management:** `available_device_android`, `list_apps_android`, `info_app_android`, `launch_app_android`, `ios_available_device`, `ios_list_apps`, `ios_info_app`, `ios_launch_app`
 
-**Android Automation:** `install_automation_server`, `start_automation_server`, `automation_server_status`, `get_ui_hierarchy`, `get_interactive_elements`, `find_element`, `android_tap_by_coordinates`, `android_swipe`, `android_swipe_direction`, `android_swipe_on_element`, `android_get_device_info`, `android_input_text`, `android_press_back`, `android_press_home`
+**Android Automation:** `install_automation_server`, `start_automation_server`, `stop_automation_server`, `automation_server_status`, `get_ui_hierarchy`, `get_interactive_elements`, `find_element`, `wait_for_element`, `wait_until_gone`, `android_tap_by_coordinates`, `android_swipe`, `android_swipe_direction`, `android_swipe_on_element`, `android_get_device_info`, `android_input_text`, `android_press_back`, `android_press_home`
 
-**iOS Automation:** `ios_start_automation_server`, `ios_automation_server_status`, `ios_get_ui_hierarchy`, `ios_get_interactive_elements`, `ios_find_element`, `ios_tap_by_coordinates`, `ios_swipe`, `ios_swipe_direction`, `ios_get_device_info`, `ios_input_text`, `ios_press_home`, `ios_stop_automation_server`
+**iOS Automation:** `ios_start_automation_server`, `ios_automation_server_status`, `ios_get_ui_hierarchy`, `ios_get_interactive_elements`, `ios_find_element`, `ios_wait_for_element`, `ios_wait_until_gone`, `ios_tap_by_coordinates`, `ios_swipe`, `ios_swipe_direction`, `ios_get_device_info`, `ios_input_text`, `ios_press_home`, `ios_stop_automation_server`
 
 ## CLI Usage
 
@@ -164,8 +164,10 @@ The same operations are also available as direct CLI commands — no MCP client 
 visiontest automation_server_status -p android
 visiontest get_interactive_elements -p ios
 visiontest tap_by_coordinates -p android 100 200
+visiontest wait_for_element -p android --text "Login" --timeout 5000
 visiontest screenshot -p ios --output ./screenshot.png
 visiontest swipe_direction -p android up --distance long --speed fast
+visiontest stop_automation_server -p android
 ```
 
 Every command requires `--platform android` or `--platform ios` (alias `-p`). Run `visiontest --help` for the full command list, or `visiontest <command> --help` for per-command usage.

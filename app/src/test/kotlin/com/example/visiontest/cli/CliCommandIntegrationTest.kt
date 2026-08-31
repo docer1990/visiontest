@@ -71,7 +71,7 @@ class CliCommandIntegrationTest {
         )
         // Built against the fake device config so stop tests never touch real adb;
         // ComponentHolder's derived androidStopRegistrar would use the real Android above.
-        androidStopRegistrar = AndroidStopToolRegistrar(fakeDeviceConfig, androidClient)
+        androidStopRegistrar = AndroidStopToolRegistrar(fakeDeviceConfig, androidClient) { "" }
     }
 
     @AfterTest

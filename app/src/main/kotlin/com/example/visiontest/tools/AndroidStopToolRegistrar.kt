@@ -5,8 +5,8 @@ import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.config.AutomationConfig
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
-import java.util.concurrent.TimeoutException
 
 /**
  * Registers `stop_automation_server` (Android): force-stops the instrumentation and
@@ -58,12 +58,13 @@ class AndroidStopToolRegistrar(
         }
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun listForwardsOrThrowRemoval(removalError: CommandExecutionException): String =
         try {
             executeAdb(listOf("forward", "--list"))
-        } catch (verificationError: CommandExecutionException) {
-            throw removalError.withSuppressed(verificationError)
-        } catch (verificationError: TimeoutException) {
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (verificationError: Exception) {
             throw removalError.withSuppressed(verificationError)
         }
 
@@ -102,7 +103,9 @@ class AndroidStopToolRegistrar(
 }
 
 private suspend fun executeAndroidAdb(android: DeviceConfig, args: List<String>): String {
-    val androidDevice = android as? Android ?: return ""
+    val androidDevice = requireNotNull(android as? Android) {
+        "ADB port-forward cleanup requires an Android device configuration"
+    }
     return when (args.size) {
         FORWARD_LIST_ARGUMENT_COUNT -> androidDevice.executeAdb(args[0], args[1])
         FORWARD_REMOVE_ARGUMENT_COUNT -> androidDevice.executeAdb(args[0], args[1], args[2])

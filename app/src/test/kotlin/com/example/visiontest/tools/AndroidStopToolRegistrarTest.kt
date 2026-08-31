@@ -163,7 +163,7 @@ class AndroidStopToolRegistrarTest {
     fun `stopAutomationServer propagates removal failure when verification fails`() = runBlocking {
         val recording = RecordingDeviceConfig()
         val removalError = CommandExecutionException("remove failed", 1)
-        val verificationError = CommandExecutionException("list failed", 1)
+        val verificationError = IllegalStateException("list failed")
         val adb = RecordingAdbExecutor().apply {
             enqueue(Result.failure(removalError))
             enqueue(Result.failure(verificationError))
@@ -182,6 +182,18 @@ class AndroidStopToolRegistrarTest {
             ),
             adb.commands,
         )
+    }
+
+    @Test
+    fun `stopAutomationServer rejects non-Android config without explicit adb executor`() = runBlocking {
+        val recording = RecordingDeviceConfig()
+        val client = AutomationClient(host = mockServer.hostName, port = mockServer.port)
+        val registrar = AndroidStopToolRegistrar(recording, client)
+        mockServer.enqueue(MockResponse().setResponseCode(500))
+
+        val thrown = assertFailsWith<IllegalArgumentException> { registrar.stopAutomationServer() }
+
+        assertTrue(thrown.message!!.contains("Android device configuration"))
     }
 
     @Test

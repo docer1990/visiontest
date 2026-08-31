@@ -5,8 +5,8 @@ import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.config.AutomationConfig
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import java.util.concurrent.TimeoutException
 
 /**
  * Registers `stop_automation_server` (Android): force-stops the instrumentation and
@@ -18,7 +18,7 @@ class AndroidStopToolRegistrar(
     private val android: DeviceConfig,
     private val automationClient: AutomationClient,
     private val executeAdb: suspend (List<String>) -> String = { args ->
-        (android as? Android)?.executeAdb(*args.toTypedArray()).orEmpty()
+        executeAndroidAdb(android, args)
     },
 ) : ToolRegistrar {
 
@@ -48,14 +48,7 @@ class AndroidStopToolRegistrar(
         try {
             executeAdb(listOf("forward", "--remove", endpoint))
         } catch (removalError: CommandExecutionException) {
-            val forwards = try {
-                executeAdb(listOf("forward", "--list"))
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (verificationError: Exception) {
-                removalError.addSuppressed(verificationError)
-                throw removalError
-            }
+            val forwards = listForwardsOrThrowRemoval(removalError)
             if (forwards.lineSequence().any { line ->
                     line.split(Regex("\\s+")).getOrNull(1) == endpoint
                 }
@@ -64,6 +57,15 @@ class AndroidStopToolRegistrar(
             }
         }
     }
+
+    private suspend fun listForwardsOrThrowRemoval(removalError: CommandExecutionException): String =
+        try {
+            executeAdb(listOf("forward", "--list"))
+        } catch (verificationError: CommandExecutionException) {
+            throw removalError.withSuppressed(verificationError)
+        } catch (verificationError: TimeoutException) {
+            throw removalError.withSuppressed(verificationError)
+        }
 
     private suspend fun confirmServerStopped(): String {
         repeat(AutomationConfig.STOP_VERIFY_ATTEMPTS) {
@@ -98,3 +100,18 @@ class AndroidStopToolRegistrar(
         }
     }
 }
+
+private suspend fun executeAndroidAdb(android: DeviceConfig, args: List<String>): String {
+    val androidDevice = android as? Android ?: return ""
+    return when (args.size) {
+        FORWARD_LIST_ARGUMENT_COUNT -> androidDevice.executeAdb(args[0], args[1])
+        FORWARD_REMOVE_ARGUMENT_COUNT -> androidDevice.executeAdb(args[0], args[1], args[2])
+        else -> error("Unsupported ADB argument count: ${args.size}")
+    }
+}
+
+private fun CommandExecutionException.withSuppressed(cause: Exception): CommandExecutionException =
+    apply { addSuppressed(cause) }
+
+private const val FORWARD_LIST_ARGUMENT_COUNT = 2
+private const val FORWARD_REMOVE_ARGUMENT_COUNT = 3

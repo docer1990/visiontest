@@ -84,17 +84,22 @@ class Android(
         internal fun validateForwardArgs(args: List<String>) {
             val tcpPattern = Regex("^tcp:\\d{1,5}$")
 
-            if (args.firstOrNull() == "--remove") {
-                require(args.size == 2) { "forward --remove requires one tcp:port argument" }
-                require(args[1].matches(tcpPattern)) { "Invalid port format: ${args[1]}" }
-            } else {
-                require(args.size == 2) { "forward command requires two tcp:port arguments" }
-                require(args.all { it.matches(tcpPattern) }) { "Invalid port format in forward command" }
-                // Validate port range (non-privileged ports only)
-                args.forEach { arg ->
-                    val port = arg.removePrefix("tcp:").toIntOrNull()
-                    require(port != null && port in 1024..65535) {
-                        "Port must be between 1024 and 65535"
+            when (args.firstOrNull()) {
+                "--list" -> require(args.size == 1) {
+                    "forward --list accepts no additional arguments"
+                }
+                "--remove" -> {
+                    require(args.size == 2) { "forward --remove requires one tcp:port argument" }
+                    require(args[1].matches(tcpPattern)) { "Invalid port format: ${args[1]}" }
+                }
+                else -> {
+                    require(args.size == 2) { "forward command requires two tcp:port arguments" }
+                    require(args.all { it.matches(tcpPattern) }) { "Invalid port format in forward command" }
+                    args.forEach { arg ->
+                        val port = arg.removePrefix("tcp:").toIntOrNull()
+                        require(port != null && port in 1024..65535) {
+                            "Port must be between 1024 and 65535"
+                        }
                     }
                 }
             }

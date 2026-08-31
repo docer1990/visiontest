@@ -5,6 +5,7 @@ import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.config.AutomationConfig
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
 /**
@@ -15,7 +16,10 @@ import kotlinx.coroutines.delay
  */
 class AndroidStopToolRegistrar(
     private val android: DeviceConfig,
-    private val automationClient: AutomationClient
+    private val automationClient: AutomationClient,
+    private val executeAdb: suspend (List<String>) -> String = { args ->
+        (android as? Android)?.executeAdb(*args.toTypedArray()).orEmpty()
+    },
 ) : ToolRegistrar {
 
     override fun registerTools(scope: ToolScope) {
@@ -40,11 +44,24 @@ class AndroidStopToolRegistrar(
     }
 
     private suspend fun removePortForward() {
-        val androidDevice = android as? Android ?: return
+        val endpoint = "tcp:${AutomationConfig.DEFAULT_PORT}"
         try {
-            androidDevice.executeAdb("forward", "--remove", "tcp:${AutomationConfig.DEFAULT_PORT}")
-        } catch (ignored: CommandExecutionException) {
-            // No forward was set up — stop stays idempotent.
+            executeAdb(listOf("forward", "--remove", endpoint))
+        } catch (removalError: CommandExecutionException) {
+            val forwards = try {
+                executeAdb(listOf("forward", "--list"))
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (verificationError: Exception) {
+                removalError.addSuppressed(verificationError)
+                throw removalError
+            }
+            if (forwards.lineSequence().any { line ->
+                    line.split(Regex("\\s+")).getOrNull(1) == endpoint
+                }
+            ) {
+                throw removalError
+            }
         }
     }
 

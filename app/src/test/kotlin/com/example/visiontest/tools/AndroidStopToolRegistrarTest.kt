@@ -13,6 +13,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
@@ -43,6 +44,20 @@ class AndroidStopToolRegistrarTest {
         }
     }
 
+    private class RecordingAdbExecutor {
+        val commands = mutableListOf<List<String>>()
+        private val results = ArrayDeque<Result<String>>()
+
+        fun enqueue(result: Result<String>) {
+            results.addLast(result)
+        }
+
+        suspend fun execute(args: List<String>): String {
+            commands += args
+            return results.removeFirstOrNull()?.getOrThrow().orEmpty()
+        }
+    }
+
     @BeforeTest
     fun setUp() {
         mockServer = MockWebServer()
@@ -54,15 +69,19 @@ class AndroidStopToolRegistrarTest {
         mockServer.shutdown()
     }
 
-    private fun registrarWith(deviceConfig: DeviceConfig): AndroidStopToolRegistrar {
+    private fun registrarWith(
+        deviceConfig: DeviceConfig,
+        executeAdb: suspend (List<String>) -> String = { "" },
+    ): AndroidStopToolRegistrar {
         val client = AutomationClient(host = mockServer.hostName, port = mockServer.port)
-        return AndroidStopToolRegistrar(deviceConfig, client)
+        return AndroidStopToolRegistrar(deviceConfig, client, executeAdb)
     }
 
     @Test
     fun `stopAutomationServer force-stops packages and reports success`() = runBlocking {
         val recording = RecordingDeviceConfig()
-        val registrar = registrarWith(recording)
+        val adb = RecordingAdbExecutor()
+        val registrar = registrarWith(recording, adb::execute)
         // wasRunning health check → running; shutdown verification → down
         mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         mockServer.enqueue(MockResponse().setResponseCode(500))
@@ -77,6 +96,10 @@ class AndroidStopToolRegistrarTest {
             ),
             recording.shellCommands,
         )
+        assertEquals(
+            listOf(listOf("forward", "--remove", "tcp:9008")),
+            adb.commands,
+        )
     }
 
     @Test
@@ -89,6 +112,76 @@ class AndroidStopToolRegistrarTest {
 
         assertTrue(result.contains("was not running"))
         assertEquals(2, recording.shellCommands.size)
+    }
+
+    @Test
+    fun `stopAutomationServer tolerates failed removal when forward is absent`() = runBlocking {
+        val recording = RecordingDeviceConfig()
+        val adb = RecordingAdbExecutor().apply {
+            enqueue(Result.failure(CommandExecutionException("listener not found", 1)))
+            enqueue(Result.success("emulator-5554 tcp:9010 tcp:9010\n"))
+        }
+        val registrar = registrarWith(recording, adb::execute)
+        mockServer.enqueue(MockResponse().setResponseCode(500))
+
+        val result = registrar.stopAutomationServer()
+
+        assertTrue(result.contains("was not running"))
+        assertEquals(
+            listOf(
+                listOf("forward", "--remove", "tcp:9008"),
+                listOf("forward", "--list"),
+            ),
+            adb.commands,
+        )
+    }
+
+    @Test
+    fun `stopAutomationServer propagates removal failure when forward remains`() = runBlocking {
+        val recording = RecordingDeviceConfig()
+        val removalError = CommandExecutionException("remove failed", 1)
+        val adb = RecordingAdbExecutor().apply {
+            enqueue(Result.failure(removalError))
+            enqueue(Result.success("emulator-5554 tcp:9008 tcp:9008\n"))
+        }
+        val registrar = registrarWith(recording, adb::execute)
+        mockServer.enqueue(MockResponse().setResponseCode(500))
+
+        val thrown = assertFailsWith<CommandExecutionException> { registrar.stopAutomationServer() }
+
+        assertSame(removalError, thrown)
+        assertEquals(
+            listOf(
+                listOf("forward", "--remove", "tcp:9008"),
+                listOf("forward", "--list"),
+            ),
+            adb.commands,
+        )
+    }
+
+    @Test
+    fun `stopAutomationServer propagates removal failure when verification fails`() = runBlocking {
+        val recording = RecordingDeviceConfig()
+        val removalError = CommandExecutionException("remove failed", 1)
+        val verificationError = CommandExecutionException("list failed", 1)
+        val adb = RecordingAdbExecutor().apply {
+            enqueue(Result.failure(removalError))
+            enqueue(Result.failure(verificationError))
+        }
+        val registrar = registrarWith(recording, adb::execute)
+        mockServer.enqueue(MockResponse().setResponseCode(500))
+
+        val thrown = assertFailsWith<CommandExecutionException> { registrar.stopAutomationServer() }
+
+        assertSame(removalError, thrown)
+        assertEquals(listOf(verificationError), thrown.suppressed.toList())
+        assertEquals(
+            listOf(
+                listOf("forward", "--remove", "tcp:9008"),
+                listOf("forward", "--list"),
+            ),
+            adb.commands,
+        )
     }
 
     @Test

@@ -160,7 +160,7 @@ Detailed behavior is defined in the Agentico specifications for the [CLI](docs/a
 
 ## CLI Usage
 
-The same operations are also available as direct CLI commands — no MCP client needed:
+A focused subset of these operations is also available as direct CLI commands — no MCP client needed:
 
 ```bash
 visiontest automation_server_status -p android

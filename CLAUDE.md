@@ -144,7 +144,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 
 ## CLI Usage
 
-The same operations available as MCP tools can be invoked directly from the command line. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. With no arguments, `visiontest` starts the MCP stdio server as before. `visiontest --version` prints the installed version (stamped into the JAR manifest at build time from `app/build.gradle.kts`).
+A focused subset of the MCP operations can be invoked directly from the command line. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. With no arguments, `visiontest` starts the MCP stdio server as before. `visiontest --version` prints the installed version (stamped into the JAR manifest at build time from `app/build.gradle.kts`).
 
 | Command | Platforms | Required args | Optional flags |
 |---------|-----------|---------------|----------------|

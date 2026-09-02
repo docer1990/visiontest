@@ -1,6 +1,6 @@
 # VisionTest Mobile Automation
 
-VisionTest provides a CLI for automating Android devices and iOS simulators. Every command requires `--platform android` or `--platform ios` (alias `-p`). The CLI reuses the same backend as the MCP server tools.
+VisionTest provides a CLI for automating Android devices and iOS simulators. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. The CLI reuses the same backend as the MCP server tools.
 
 ## Standard Automation Loop
 
@@ -49,9 +49,14 @@ VisionTest provides a CLI for automating Android devices and iOS simulators. Eve
 |---------|-----------|-------------|
 | `launch_app <id>` | android, ios | Launch by package name or bundle ID |
 
+### Project Setup
+| Command | Platforms | Description |
+|---------|-----------|-------------|
+| `init --agent <claude,opencode,codex>` | none | Install or refresh project-local VisionTest skill files for the selected agents |
+
 ## The `--platform` Flag
 
-Every command requires `--platform` (or `-p`). There is no default and no auto-detection. Android-only commands (`install_automation_server`, `press_back`) reject `--platform ios`.
+Device-operation commands require `--platform` (or `-p`). There is no default and no auto-detection. The `init` command and root `--help` and `--version` options do not accept or require a platform. Android-only commands (`install_automation_server`, `press_back`) reject `--platform ios`.
 
 ## Exit Codes
 

@@ -152,9 +152,11 @@ Your AI coding tool discovers all available tools automatically via MCP. Just as
 
 **Device Management:** `available_device_android`, `list_apps_android`, `info_app_android`, `launch_app_android`, `ios_available_device`, `ios_list_apps`, `ios_info_app`, `ios_launch_app`
 
-**Android Automation:** `install_automation_server`, `start_automation_server`, `stop_automation_server`, `automation_server_status`, `get_ui_hierarchy`, `get_interactive_elements`, `find_element`, `wait_for_element`, `wait_until_gone`, `android_tap_by_coordinates`, `android_swipe`, `android_swipe_direction`, `android_swipe_on_element`, `android_get_device_info`, `android_input_text`, `android_press_back`, `android_press_home`
+**Android Automation:** `install_automation_server`, `start_automation_server`, `stop_automation_server`, `automation_server_status`, `get_ui_hierarchy`, `get_interactive_elements`, `find_element`, `wait_for_element`, `wait_until_gone`, `android_tap_by_coordinates`, `android_swipe`, `android_swipe_direction`, `android_swipe_on_element`, `android_get_device_info`, `android_input_text`, `android_press_back`, `android_press_home`, `android_screenshot`
 
-**iOS Automation:** `ios_start_automation_server`, `ios_automation_server_status`, `ios_get_ui_hierarchy`, `ios_get_interactive_elements`, `ios_find_element`, `ios_wait_for_element`, `ios_wait_until_gone`, `ios_tap_by_coordinates`, `ios_swipe`, `ios_swipe_direction`, `ios_get_device_info`, `ios_input_text`, `ios_press_home`, `ios_stop_automation_server`
+**iOS Automation:** `ios_start_automation_server`, `ios_automation_server_status`, `ios_get_ui_hierarchy`, `ios_get_interactive_elements`, `ios_find_element`, `ios_wait_for_element`, `ios_wait_until_gone`, `ios_tap_by_coordinates`, `ios_swipe`, `ios_swipe_direction`, `ios_get_device_info`, `ios_input_text`, `ios_press_home`, `ios_screenshot`, `ios_stop_automation_server`
+
+Detailed behavior is defined in the Agentico specifications for the [CLI](docs/agentico/specs/cli.md), [screenshots](docs/agentico/specs/screenshots.md), [element waits](docs/agentico/specs/element-waits.md), [server lifecycle](docs/agentico/specs/server-lifecycle.md), and [agent initialization](docs/agentico/specs/agent-init.md).
 
 ## CLI Usage
 
@@ -170,7 +172,7 @@ visiontest swipe_direction -p android up --distance long --speed fast
 visiontest stop_automation_server -p android
 ```
 
-Every command requires `--platform android` or `--platform ios` (alias `-p`). Run `visiontest --help` for the full command list, or `visiontest <command> --help` for per-command usage.
+Device-operation commands require `--platform android` or `--platform ios` (alias `-p`). The `init` command and root `--help` and `--version` options do not. Run `visiontest --help` for the full command list, or `visiontest <command> --help` for per-command usage.
 
 With no arguments, `visiontest` starts the MCP stdio server.
 
@@ -217,7 +219,6 @@ This writes a `SKILL.md` file to each agent's project-level directory. Run it on
 - [x] Screenshot capture via UIAutomator / XCUITest
 - [x] CLI mode (direct command-line usage without MCP)
 - [ ] Long press operations
-- [ ] Wait/sync operations for E2E testing
 - [ ] Multi-device coordination
 - [ ] Generic app install/uninstall
 - [ ] Clipboard operations (read/write)

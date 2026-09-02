@@ -56,7 +56,7 @@ Proposal files, completed task lists, duplicate archived specifications, empty O
 
 The implementation must also:
 
-- update `README.md`, `CLAUDE.md`, `AGENT_INSTRUCTIONS.md`, `CONTRIBUTING.md`, and `docs/installation.md` to match current CLI and tool behavior;
+- update `README.md`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, and `docs/installation.md` to match current CLI and tool behavior;
 - replace the obsolete local release guide with `docs/release.md` and link it from contributor documentation;
 - make simulator examples resilient to installed Xcode versions or align them explicitly with CI;
 - remove personal absolute paths from local testing guidance;

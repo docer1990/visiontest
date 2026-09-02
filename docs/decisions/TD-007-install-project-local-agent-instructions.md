@@ -16,7 +16,7 @@ Binary installation and AI-agent configuration have different lifecycles. Global
 
 ## Decision
 
-`visiontest init --agent` writes embedded VisionTest instructions into the selected project-local agent directories for Claude Code, OpenCode, and Codex. The JAR embeds one instruction source, each target receives the same `SKILL.md` content, and binary installation remains separate.
+`visiontest init --agent` writes embedded VisionTest instructions into the selected project-local agent directories for Claude Code, OpenCode, and Codex. The repository-root `AGENTS.md` is both the Codex repository instruction file and the single source embedded in the JAR; each target receives the same `SKILL.md` content, and binary installation remains separate.
 
 ## Rationale
 

@@ -62,7 +62,7 @@ class InitCommandE2ETest {
 
         val content = file.readText()
         assertContains(content, "name: visiontest", message = "frontmatter should be present")
-        // Distinctive text from the *body* of AGENT_INSTRUCTIONS.md — proves the
+        // Distinctive text from the *body* of AGENTS.md — proves the
         // embedded resource (not just the hardcoded frontmatter) is inside the JAR.
         assertContains(
             content,

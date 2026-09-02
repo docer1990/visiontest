@@ -144,9 +144,9 @@ detekt {
     baseline = file("detekt-baseline.xml")
 }
 
-// Copy AGENT_INSTRUCTIONS.md from repo root into JAR resources so InitCommand can read it at runtime.
+// Copy AGENTS.md from repo root into JAR resources so InitCommand can read it at runtime.
 tasks.named<ProcessResources>("processResources") {
-    from(rootProject.file("AGENT_INSTRUCTIONS.md")) {
+    from(rootProject.file("AGENTS.md")) {
         rename { "agent-instructions.md" }
     }
 }

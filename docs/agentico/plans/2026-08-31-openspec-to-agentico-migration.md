@@ -194,7 +194,7 @@ git commit -m "docs: migrate current behavior specifications to Agentico"
 
 - Modify: `README.md`
 - Modify: `CLAUDE.md`
-- Modify: `AGENT_INSTRUCTIONS.md`
+- Modify: `AGENTS.md`
 - Test: `app/src/test/kotlin/com/example/visiontest/McpStdioE2ETest.kt`
 - Test: `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt`
 
@@ -233,7 +233,7 @@ Add links to Technical Decisions and Agentico specifications under Further Readi
 Keep the MCP catalog aligned with EXPECTED_TOOLS.
 ```
 
-- [ ] **Step 4: Update AGENT_INSTRUCTIONS.md**
+- [ ] **Step 4: Update AGENTS.md**
 
 Make these exact semantic changes:
 
@@ -248,8 +248,8 @@ Ensure the command list includes wait, stop, screenshot, and init behavior accur
 Run:
 
 ```bash
-rg -n 'Wait/sync operations|Every command requires|v0\.1\.0|exactly four|13 subcommands' README.md CLAUDE.md AGENT_INSTRUCTIONS.md
-rg -n 'android_screenshot|ios_screenshot|wait_for_element|stop_automation_server' README.md CLAUDE.md AGENT_INSTRUCTIONS.md
+rg -n 'Wait/sync operations|Every command requires|v0\.1\.0|exactly four|13 subcommands' README.md CLAUDE.md AGENTS.md
+rg -n 'android_screenshot|ios_screenshot|wait_for_element|stop_automation_server' README.md CLAUDE.md AGENTS.md
 git diff --check
 ```
 
@@ -258,7 +258,7 @@ Expected: the stale-claim search has no matches; the capability search finds eac
 - [ ] **Step 6: Commit user and agent documentation**
 
 ```bash
-git add README.md CLAUDE.md AGENT_INSTRUCTIONS.md
+git add README.md CLAUDE.md AGENTS.md
 git commit -m "docs: synchronize user and agent command references"
 ```
 
@@ -480,7 +480,7 @@ Run:
 
 ```bash
 git diff --check main..HEAD
-rg -n 'TBD|TODO|implement later|fill in details|exactly four|13 subcommands' docs README.md CLAUDE.md AGENT_INSTRUCTIONS.md CONTRIBUTING.md
+rg -n 'TBD|TODO|implement later|fill in details|exactly four|13 subcommands' docs README.md CLAUDE.md AGENTS.md CONTRIBUTING.md
 ```
 
 Expected: `git diff --check` exits 0; the content search has no matches except legitimate roadmap items outside migrated contracts.

@@ -5,8 +5,7 @@
 - JDK 17 or newer
 - macOS or Linux on `arm64`/`aarch64` or `x86_64`/`amd64`
 - Android Platform Tools (`adb`) for Android device automation
-- Xcode Command Line Tools for iOS simulator automation on macOS
-- The full Xcode IDE when building the iOS server from source, including on Intel Macs
+- The full Xcode IDE plus a compatible iOS Simulator runtime for all iOS automation on macOS; Xcode Command Line Tools alone are insufficient, including when using the prebuilt bundle
 - The Android SDK only when building the Android automation server from source
 
 The prebuilt iOS bundle is available only on macOS arm64 and must be compatible with the installed Xcode major version. Linux and macOS x86_64 installations still receive the JAR and Android APKs; the installer skips the iOS bundle and directs Intel Mac users to a source build.
@@ -24,8 +23,8 @@ curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/inst
 3. Reads and validates the latest GitHub release tag.
 4. Downloads and verifies `visiontest.jar` using `visiontest.jar.sha256`.
 5. Downloads and verifies `automation-server.apk` and `automation-server-test.apk` using their matching `.sha256` files.
-6. On macOS arm64, downloads and verifies `ios-automation-server.tar.gz`, validates its entries, and extracts it atomically.
-7. Creates the executable wrapper at `~/.local/bin/visiontest` and reports if that directory is missing from `PATH`.
+6. On macOS arm64, downloads and verifies `ios-automation-server.tar.gz`, validates its entries, extracts it to a staging directory, and replaces the previous bundle using a backup-and-restore sequence.
+7. Creates the executable wrapper at `~/.local/bin/visiontest`. If that directory is missing from `PATH`, the installer appends a PATH entry to each existing `~/.bashrc` and `~/.zshrc`; on macOS it also creates `~/.zshrc` when that file does not exist.
 
 The default data directory is `~/.local/share/visiontest/`. Set `VISIONTEST_DIR` to choose another directory under `$HOME`; blank values use the default, and symlinked or out-of-home destinations are rejected.
 
@@ -47,7 +46,7 @@ Here `$VISIONTEST_DIR` means the resolved configured directory or its default, `
 
 For local installer testing, `bash install.sh --local-jar app/build/libs/visiontest.jar` installs only the supplied JAR and records `local-dev`; it intentionally skips the APKs and iOS bundle.
 
-The installer uses a restrictive umask, verifies every downloaded binary with SHA-256, limits the install directory to `$HOME`, and validates archive entries before replacing an existing iOS bundle.
+The installer uses a restrictive umask, verifies every downloaded binary with SHA-256, limits the install directory to `$HOME`, and validates archive entries before replacing an existing iOS bundle. Bundle replacement is staged: the current directory is moved to a process-specific backup, the staged directory is moved into place, and the backup is restored if that second move fails. This is not transactional across a process or machine crash: an interruption after the old directory is backed up but before the new directory is installed or the restore runs can leave the final bundle path absent, while an interruption after installation but before cleanup can leave a stale backup.
 
 ## Release assets
 

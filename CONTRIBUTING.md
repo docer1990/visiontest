@@ -253,8 +253,11 @@ curl -X POST http://localhost:9009/jsonrpc \
 # Run only Android automation server tests
 ./gradlew :automation-server:test
 
-# Run a specific test class
-./gradlew test --tests "ErrorHandlerTest"
+# Run a specific app test class (use the task that owns the test)
+./gradlew :app:test --tests "ErrorHandlerTest"
+
+# Run packaged-JAR end-to-end tests (builds and launches the fat JAR)
+./gradlew :app:e2eTest
 
 # Run iOS automation server unit tests
 xcodebuild test \
@@ -264,7 +267,7 @@ xcodebuild test \
   -only-testing:IOSAutomationServerTests
 ```
 
-All Gradle tests are pure JVM unit tests (no device or emulator required). iOS tests run on the simulator but don't need a running automation server.
+The Gradle `test` tasks run pure JVM unit tests (no device or emulator required). The separate `:app:e2eTest` task assembles the fat JAR and launches it in subprocesses to verify packaged-JAR behavior; it also requires no device or emulator. iOS tests run on the simulator but don't need a separately running automation server.
 
 ### Test Coverage
 
@@ -353,18 +356,39 @@ You can test `install.sh` locally without publishing a release using `--local-ja
 # Build the fat JAR first
 ./gradlew shadowJar
 
-# Run the installer against a temporary directory
-VISIONTEST_DIR=~/.local/share/visiontest-test \
-  bash install.sh --local-jar app/build/libs/visiontest.jar
+# Create and validate an isolated HOME; keep these commands in one shell
+INSTALL_TEST_BASE="${TMPDIR:-/tmp}"
+INSTALL_TEST_BASE="${INSTALL_TEST_BASE%/}"
+INSTALL_TEST_ROOT=$(mktemp -d "$INSTALL_TEST_BASE/visiontest-installer-test.XXXXXX") || exit 1
+case "$INSTALL_TEST_ROOT" in
+  "$INSTALL_TEST_BASE"/visiontest-installer-test.??????) ;;
+  *) printf 'Refusing unsafe temporary path: %s\n' "$INSTALL_TEST_ROOT" >&2; exit 1 ;;
+esac
+cleanup_installer_test() {
+  case "${INSTALL_TEST_ROOT:-}" in
+    "$INSTALL_TEST_BASE"/visiontest-installer-test.??????) rm -rf -- "$INSTALL_TEST_ROOT" ;;
+    *) printf 'Refusing unsafe cleanup path: %s\n' "${INSTALL_TEST_ROOT:-}" >&2; return 1 ;;
+  esac
+}
+trap cleanup_installer_test EXIT
+
+INSTALL_TEST_HOME="$INSTALL_TEST_ROOT/home"
+INSTALL_TEST_BIN="$INSTALL_TEST_HOME/.local/bin"
+INSTALL_TEST_DATA="$INSTALL_TEST_HOME/.local/share/visiontest"
+mkdir -p "$INSTALL_TEST_HOME"
+
+# Run the installer without touching your real wrapper or shell profiles
+HOME="$INSTALL_TEST_HOME" \
+  VISIONTEST_DIR="$INSTALL_TEST_DATA" \
+  PATH="$INSTALL_TEST_BIN:$PATH" \
+  bash install.sh --local-jar "$PWD/app/build/libs/visiontest.jar"
 
 # Verify it works
-~/.local/bin/visiontest --help
-
-# Clean up
-rm -rf ~/.local/share/visiontest-test
+HOME="$INSTALL_TEST_HOME" PATH="$INSTALL_TEST_BIN:$PATH" \
+  "$INSTALL_TEST_BIN/visiontest" --help
 ```
 
-This skips downloading the JAR, APKs, and iOS bundle from GitHub Releases — it copies your local build instead. Agent setup is no longer performed by `install.sh`; use `visiontest init --agent <agents>` to install agent instructions when needed.
+The `EXIT` trap removes only the validated temporary root. Local-JAR mode skips downloading the JAR, APKs, and iOS bundle from GitHub Releases — it copies your local build instead. Agent setup is no longer performed by `install.sh`; use `visiontest init --agent <agents>` to install agent instructions when needed.
 
 ## Extending VisionTest
 

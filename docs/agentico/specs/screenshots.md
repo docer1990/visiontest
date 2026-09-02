@@ -46,7 +46,7 @@ The MCP server MUST expose `android_screenshot` and `ios_screenshot`. Each tool 
 
 ### Requirement: Output paths are resolved on the host
 
-A nonblank `outputPath` or CLI `--output` value MUST be resolved as an absolute host path, with relative values interpreted against the process current working directory. An absent MCP `outputPath`, an omitted CLI `--output`, or an empty or whitespace-only string MUST select `screenshots/android_screenshot_<yyyyMMdd_HHmmss>.png` for Android or `screenshots/ios_screenshot_<yyyyMMdd_HHmmss>.png` for iOS, also resolved against the current working directory. Callers MUST NOT rely on explicit MCP JSON `null` as omission: the current MCP argument helper reads it as the literal path string `null`.
+A nonblank `outputPath` or CLI `--output` value MUST be resolved as an absolute host path, with relative values interpreted against the process current working directory. An absent MCP `outputPath`, an omitted CLI `--output`, or an empty or whitespace-only string MUST select `screenshots/android_screenshot_<yyyyMMdd_HHmmss>.png` for Android or `screenshots/ios_screenshot_<yyyyMMdd_HHmmss>.png` for iOS, also resolved against the current working directory.
 
 #### Scenario: Explicit output path
 
@@ -60,11 +60,7 @@ A nonblank `outputPath` or CLI `--output` value MUST be resolved as an absolute 
 - **When** either platform resolves the destination
 - **Then** it SHALL use that platform's timestamped filename under the current working directory's `screenshots` directory
 
-#### Scenario: Explicit MCP JSON null
-
-- **Given** an MCP caller includes `outputPath` with JSON `null`
-- **When** the current argument helper and screenshot saver resolve it
-- **Then** they SHALL treat `null` as the literal relative filename and resolve it to `<current-working-directory>/null`
+**Current limitation:** An explicit MCP JSON `null` is not equivalent to an absent argument. The current MCP argument helper converts it to the literal string `null`, which the saver resolves as `<current-working-directory>/null`. This is diagnostic documentation of current behavior, not a supported output-path contract.
 
 ### Requirement: Host persistence replaces files without partial final output
 
@@ -84,7 +80,7 @@ The saver MUST create missing parent directories, decode the base64 before creat
 
 ### Requirement: Invalid server responses do not create screenshots
 
-Malformed JSON, malformed JSON-RPC result or error shapes, `success: false`, missing or empty `pngBase64`, invalid base64, and file-system failures MUST produce descriptive `Screenshot failed` text and MUST NOT leave a new completed screenshot. JSON-RPC error code `-32601` MUST identify an outdated Android APK or iOS bundle and advise rebuilding or updating it.
+Malformed JSON, malformed JSON-RPC result or error shapes, `success: false`, missing or empty `pngBase64`, invalid base64, and handled file-system `IOException` paths MUST produce descriptive `Screenshot failed` text and MUST NOT leave a new completed screenshot. JSON-RPC error code `-32601` MUST identify an outdated Android APK or iOS bundle and advise rebuilding or updating it. An unexpected non-I/O exception after temporary-file creation MUST trigger best-effort temporary-file deletion and then propagate through the normal MCP or CLI error path.
 
 #### Scenario: Invalid base64
 
@@ -98,6 +94,12 @@ Malformed JSON, malformed JSON-RPC result or error shapes, `success: false`, mis
 - **When** the host processes the response
 - **Then** it SHALL return platform-specific outdated-artifact guidance and SHALL NOT write the destination
 
+#### Scenario: Unexpected persistence exception
+
+- **Given** an unexpected non-I/O exception occurs after the sibling temporary file is created
+- **When** the saver handles the write attempt
+- **Then** it SHALL attempt to delete the temporary file and SHALL rethrow the exception instead of converting it to screenshot failure text
+
 #### Scenario: Failure text reaches the CLI
 
 - **Given** screenshot processing returns failure text rather than throwing an exception
@@ -107,5 +109,5 @@ Malformed JSON, malformed JSON-RPC result or error shapes, `success: false`, mis
 ## Verification
 
 - Production JSON-RPC and capture: `automation-server/src/androidTest/java/com/example/automationserver/JsonRpcServerInstrumented.kt`, `automation-server/src/main/java/com/example/automationserver/uiautomator/BaseUiAutomatorBridge.kt`, `automation-server/src/main/java/com/example/automationserver/uiautomator/UiAutomatorModels.kt`, `ios-automation-server/IOSAutomationServerUITests/Server/JsonRpcServer.swift`, `ios-automation-server/IOSAutomationServerUITests/Bridge/XCUITestBridge.swift`, `ios-automation-server/IOSAutomationServerUITests/Models/AutomationModels.swift`
-- Production clients and persistence: `app/src/main/kotlin/com/example/visiontest/android/AutomationClient.kt`, `app/src/main/kotlin/com/example/visiontest/ios/IOSAutomationClient.kt`, `app/src/main/kotlin/com/example/visiontest/tools/ScreenshotSaver.kt`, `app/src/main/kotlin/com/example/visiontest/tools/AndroidAutomationToolRegistrar.kt`, `app/src/main/kotlin/com/example/visiontest/tools/IOSAutomationToolRegistrar.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/ScreenshotCommand.kt`
+- Production clients and persistence: `app/src/main/kotlin/com/example/visiontest/android/AutomationClient.kt`, `app/src/main/kotlin/com/example/visiontest/ios/IOSAutomationClient.kt`, `app/src/main/kotlin/com/example/visiontest/tools/ToolDsl.kt`, `app/src/main/kotlin/com/example/visiontest/tools/ScreenshotSaver.kt`, `app/src/main/kotlin/com/example/visiontest/tools/AndroidAutomationToolRegistrar.kt`, `app/src/main/kotlin/com/example/visiontest/tools/IOSAutomationToolRegistrar.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/ScreenshotCommand.kt`
 - Executable tests: `app/src/test/kotlin/com/example/visiontest/tools/AndroidScreenshotToolTest.kt`, `app/src/test/kotlin/com/example/visiontest/tools/IOSScreenshotToolTest.kt`, `app/src/test/kotlin/com/example/visiontest/McpStdioE2ETest.kt`, `automation-server/src/test/java/com/example/automationserver/uiautomator/UiAutomatorModelsTest.kt`, `ios-automation-server/IOSAutomationServerTests/AutomationModelsTests.swift`

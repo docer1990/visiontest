@@ -24,7 +24,7 @@ Android stop MUST health-check whether the server was running, issue `am force-s
 
 ### Requirement: Android forward cleanup verifies ambiguous removal failures
 
-If forward removal throws a command-execution failure, the registrar MUST run `adb forward --list`. It MAY tolerate the original failure only when no listed line has `tcp:9008` as its local endpoint. If that endpoint remains, or listing forwards also fails, the original removal failure MUST propagate.
+If forward removal throws a command-execution failure, the registrar MUST run `adb forward --list`. It MUST tolerate the original failure when no listed line has `tcp:9008` as its local endpoint. If that endpoint remains, or listing forwards also fails, the original removal failure MUST propagate.
 
 #### Scenario: Removal reports missing listener
 

@@ -8,7 +8,7 @@ iOS bundle distribution packages a portable, prebuilt XCUITest server for fast s
 
 ### Requirement: The release workflow builds and publishes a portable simulator bundle
 
-For a `v*` tag, the macOS release-build job MUST run `xcodebuild build-for-testing` for the iOS Automation Server scheme with a fixed derived-data path, archive the produced `.xctestrun`, `Debug-iphonesimulator/IOSAutomationServer.app`, and `Debug-iphonesimulator/IOSAutomationServerUITests-Runner.app`, and publish `ios-automation-server.tar.gz` with `ios-automation-server.tar.gz.sha256` through the final GitHub Release.
+For a `v*` tag, the macOS release-build job MUST run on the arm64 `macos-26` runner and MUST execute `xcodebuild build-for-testing` for the iOS Automation Server scheme with a fixed derived-data path. It MUST archive the produced `.xctestrun`, `Debug-iphonesimulator/IOSAutomationServer.app`, and `Debug-iphonesimulator/IOSAutomationServerUITests-Runner.app`, and publish `ios-automation-server.tar.gz` with `ios-automation-server.tar.gz.sha256` through the final GitHub Release.
 
 #### Scenario: Archive is transferred between jobs
 

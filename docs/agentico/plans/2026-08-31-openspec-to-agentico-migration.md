@@ -174,7 +174,7 @@ ios-bundle-distribution.md: arm64 macOS build and installation, archive contents
 Run:
 
 ```bash
-rg -n 'exactly four|13 subcommands|iPhone 16|TBD|TODO' docs/agentico/specs
+rg -n 'exactly four|13 subcommands|iPhone 16|TBD|TODO' docs/agentico/specs/{screenshots,cli,agent-init,server-lifecycle,element-waits,artifact-discovery,android-artifact-distribution,ios-bundle-distribution}.md
 rg -n '^### Requirement:|^#### Scenario:' docs/agentico/specs/{screenshots,cli,agent-init,server-lifecycle,element-waits,artifact-discovery,android-artifact-distribution,ios-bundle-distribution}.md
 git diff --check
 ```

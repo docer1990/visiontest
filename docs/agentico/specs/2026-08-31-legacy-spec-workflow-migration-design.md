@@ -1,21 +1,21 @@
-# OpenSpec to Agentico documentation migration
+# Legacy spec workflow to Agentico documentation migration
 
 ## Goal
 
-Replace OpenSpec with Agentico as VisionTest's sole spec-driven workflow while preserving current behavioral contracts, architectural rationale, and useful operational guidance. At completion, the repository must contain no OpenSpec or OPSX references.
+Replace the legacy spec workflow with Agentico as VisionTest's sole spec-driven workflow while preserving current behavioral contracts, architectural rationale, and useful operational guidance. At completion, the repository must contain no references to the retired product name or command prefix.
 
-## Current state
+## Pre-migration state
 
-The audit covered 88 source Markdown files and excluded three generated reports under build directories. OpenSpec is isolated to documentation and agent configuration: no application, test, build, installer, or launcher code depends on it.
+The audit covered 88 source Markdown files and excluded three generated reports under build directories. The legacy spec workflow was isolated to documentation and agent configuration: no application, test, build, installer, or launcher code depended on it.
 
-The documentation is not fully synchronized with the implementation. The most important discrepancies are:
+The audit found these important discrepancies between documentation and implementation:
 
-- screenshot tools and `ui.screenshot` are missing from public tool and JSON-RPC catalogs;
-- wait operations are implemented but still listed as future work;
-- several guides incorrectly state that every CLI command requires `--platform`, despite the `init`, help, and version exceptions;
-- the contributor architecture lists 13 CLI commands and four registrars instead of the current 16 commands and seven registrars;
-- the local release guide predates Android APK and iOS bundle assets;
-- the canonical OpenSpec tool-registration specification requires exactly four registrars and is obsolete.
+- screenshot tools and `ui.screenshot` were missing from public tool and JSON-RPC catalogs;
+- wait operations were implemented but still listed as future work;
+- several guides incorrectly stated that every CLI command required `--platform`, despite the `init`, help, and version exceptions;
+- the contributor architecture listed 13 CLI commands and four registrars instead of the current 16 commands and seven registrars;
+- the local release guide predated Android APK and iOS bundle assets;
+- the canonical tool-registration specification in the legacy spec workflow imposed an obsolete fixed registrar count.
 
 ## Documentation model
 
@@ -29,11 +29,11 @@ Each retained fact will have one destination based on its purpose:
 
 Catalogs such as MCP tools, CLI commands, and JSON-RPC methods must have one canonical detailed representation. Other documents should link to it or provide a deliberately shorter overview.
 
-## OpenSpec content migration
+## Legacy spec workflow content migration
 
-The migration will consolidate validated content as follows:
+The migration consolidated validated content as follows:
 
-| OpenSpec subject | Destination | Treatment |
+| Legacy workflow subject | Destination | Treatment |
 |---|---|---|
 | Android and iOS screenshots | `docs/agentico/specs/screenshots.md` | Merge platform contracts; retain path, error, base64, and atomic-write semantics that match code |
 | CLI mode | `docs/agentico/specs/cli.md` | Describe the current 16-command interface, platform rules, output channels, and exit codes |
@@ -50,36 +50,36 @@ The migration will consolidate validated content as follows:
 | Client-side element polling | `docs/decisions/TD-006-*.md` | Preserve failure semantics and timeout rationale |
 | Project-local agent instructions | `docs/decisions/TD-007-*.md` | Preserve embedded-resource and project-local configuration choice |
 
-Proposal files, completed task lists, duplicate archived specifications, empty OpenSpec configuration, and superseded requirements will not be migrated.
+Proposal files, completed task lists, duplicate archived specifications, empty legacy workflow configuration, and superseded requirements were not migrated.
 
 ## Existing documentation updates
 
-The implementation must also:
+The implementation also:
 
-- update `README.md`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, and `docs/installation.md` to match current CLI and tool behavior;
-- replace the obsolete local release guide with `docs/release.md` and link it from contributor documentation;
-- make simulator examples resilient to installed Xcode versions or align them explicitly with CI;
-- remove personal absolute paths from local testing guidance;
-- label `kotlin-mcp-server.instruction.md` as patterns and examples rather than the project's literal dependency configuration;
-- resolve completed Agentico plans so unchecked boxes do not imply pending work.
+- updated `README.md`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, and `docs/installation.md` to match current CLI and tool behavior;
+- replaced the obsolete local release guide with `docs/release.md` and linked it from contributor documentation;
+- made simulator examples resilient to installed Xcode versions or aligned them explicitly with CI;
+- removed personal absolute paths from local testing guidance;
+- labeled `kotlin-mcp-server.instruction.md` as patterns and examples rather than the project's literal dependency configuration;
+- resolved completed Agentico plans so unchecked boxes do not imply pending work.
 
 ## Removal scope
 
-After the retained content exists and has been reviewed, remove:
+After the retained content was reviewed, the migration removed:
 
-- `openspec/` in full;
-- `.github/prompts/opsx-*.prompt.md`;
-- `.github/skills/openspec-*/`;
-- ignored local `.claude/commands/opsx/` and `.claude/skills/openspec-*/` content;
-- OpenSpec command permissions in `.claude/settings.local.json`.
+- the tracked legacy workflow tree in full;
+- the tracked prompt definitions for its retired command prefix;
+- the tracked agent skills dedicated to that workflow;
+- the corresponding ignored local command and skill content;
+- command permissions dedicated to the retired workflow in `.claude/settings.local.json`.
 
-Deletion of ignored local files is intentional and part of the approved scope. No application code or runtime configuration is removed.
+Deletion of ignored local files was intentional and part of the approved scope. No application behavior or runtime configuration was removed.
 
 ## Verification
 
 The migration is complete only when:
 
-1. a case-insensitive repository search, including hidden and ignored files but excluding `.git` and generated build output, finds no `openspec`, `open spec`, or `opsx` reference;
+1. a case-insensitive repository search, including hidden and ignored files but excluding `.git` and generated build output, finds no retired product-name or command-prefix reference;
 2. every migrated specification is checked against current code and tests rather than copied from task completion markers;
 3. documented MCP tools match the E2E contract and registrar names;
 4. documented CLI commands match `VisionTestCli` and its platform requirements;

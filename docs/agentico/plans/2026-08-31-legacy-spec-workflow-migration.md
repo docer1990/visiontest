@@ -1,10 +1,10 @@
-# OpenSpec to Agentico Migration Implementation Plan
+# Legacy spec workflow to Agentico Migration Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use agentico:subagent-driven-development (recommended) or agentico:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace OpenSpec with Agentico while preserving verified behavioral contracts, architectural rationale, and current operational documentation.
+**Goal:** Replace legacy spec workflow with Agentico while preserving verified behavioral contracts, architectural rationale, and current operational documentation.
 
-**Architecture:** Documentation is separated by purpose: current contracts live in `docs/agentico/specs/`, consequential rationale lives in `docs/decisions/`, active work lives in `docs/agentico/plans/`, and user or operator procedures live in focused guides. OpenSpec is removed only after each retained fact has a validated destination.
+**Architecture:** Documentation is separated by purpose: current contracts live in `docs/agentico/specs/`, consequential rationale lives in `docs/decisions/`, active work lives in `docs/agentico/plans/`, and user or operator procedures live in focused guides. The legacy spec workflow was removed only after each retained fact had a validated destination.
 
 **Tech Stack:** Markdown, Git, ripgrep, Gradle, Kotlin/JVM, GitHub Actions
 
@@ -23,15 +23,15 @@
 - Create: `docs/decisions/TD-005-persist-screenshots-on-the-host.md`
 - Create: `docs/decisions/TD-006-poll-for-elements-in-the-client.md`
 - Create: `docs/decisions/TD-007-install-project-local-agent-instructions.md`
-- Reference: `openspec/changes/archive/2026-03-24-refactor-toolfactory/design.md`
-- Reference: `openspec/changes/add-cli-mode/design.md`
-- Reference: `openspec/changes/archive/2026-03-20-ios-prebuilt-bundle/design.md`
-- Reference: `openspec/changes/add-android-screenshot/design.md`
-- Reference: `openspec/changes/archive/2026-04-16-add-ios-screenshot/design.md`
-- Reference: `openspec/changes/stop-server-and-wait-tools/design.md`
-- Reference: `openspec/changes/add-init-command/design.md`
+- Historical source: legacy workflow design for tool registration and discovery
+- Historical source: legacy workflow design for CLI mode
+- Historical source: legacy workflow design for iOS pre-built bundles
+- Historical source: legacy workflow design for Android screenshots
+- Historical source: legacy workflow design for iOS screenshots
+- Historical source: legacy workflow design for server stop and element waits
+- Historical source: legacy workflow design for project-local agent initialization
 
-- [ ] **Step 1: Verify the next Technical Decision identifiers**
+- [x] **Step 1: Verify the next Technical Decision identifiers**
 
 Run:
 
@@ -41,7 +41,7 @@ find docs/decisions -maxdepth 1 -name 'TD-*.md' -print | sort
 
 Expected: only `TD-001-adopt-agentico-for-spec-driven-work.md`; allocate TD-002 through TD-007 in the order listed above.
 
-- [ ] **Step 2: Write the decision index**
+- [x] **Step 2: Write the decision index**
 
 Create `docs/decisions/README.md` with:
 
@@ -52,16 +52,16 @@ Technical Decisions record consequential project choices, their rationale, and a
 
 | ID | Status | Decision |
 |---|---|---|
-| [TD-001](TD-001-adopt-agentico-for-spec-driven-work.md) | Accepted | Adopt Agentico for spec-driven work |
-| [TD-002](TD-002-modular-tool-registration-and-discovery.md) | Accepted | Modular tool registration and discovery |
-| [TD-003](TD-003-share-handlers-between-mcp-and-cli.md) | Accepted | Share handlers between MCP and CLI |
-| [TD-004](TD-004-prefer-prebuilt-ios-bundle-with-source-fallback.md) | Accepted | Prefer pre-built iOS bundle with source fallback |
-| [TD-005](TD-005-persist-screenshots-on-the-host.md) | Accepted | Persist screenshots on the host |
-| [TD-006](TD-006-poll-for-elements-in-the-client.md) | Accepted | Poll for elements in the client |
-| [TD-007](TD-007-install-project-local-agent-instructions.md) | Accepted | Install project-local agent instructions |
+| [TD-001](../../decisions/TD-001-adopt-agentico-for-spec-driven-work.md) | Accepted | Adopt Agentico for spec-driven work |
+| [TD-002](../../decisions/TD-002-modular-tool-registration-and-discovery.md) | Accepted | Modular tool registration and discovery |
+| [TD-003](../../decisions/TD-003-share-handlers-between-mcp-and-cli.md) | Accepted | Share handlers between MCP and CLI |
+| [TD-004](../../decisions/TD-004-prefer-prebuilt-ios-bundle-with-source-fallback.md) | Accepted | Prefer pre-built iOS bundle with source fallback |
+| [TD-005](../../decisions/TD-005-persist-screenshots-on-the-host.md) | Accepted | Persist screenshots on the host |
+| [TD-006](../../decisions/TD-006-poll-for-elements-in-the-client.md) | Accepted | Poll for elements in the client |
+| [TD-007](../../decisions/TD-007-install-project-local-agent-instructions.md) | Accepted | Install project-local agent instructions |
 ```
 
-- [ ] **Step 3: Write TD-002 through TD-007**
+- [x] **Step 3: Write TD-002 through TD-007**
 
 Use the exact frontmatter shape from TD-001. Each decision must contain `Context`, `Decision`, `Rationale`, `Consequences`, and `Alternatives Considered`, remain roughly 15–30 body lines, and record these choices:
 
@@ -74,23 +74,13 @@ TD-006: Kotlin JSON-RPC clients perform bounded 500 ms polling so appear/gone se
 TD-007: visiontest init writes embedded instructions to project-local agent directories; binary installation remains separate from project configuration.
 ```
 
-- [ ] **Step 4: Self-review the decisions**
+- [x] **Step 4: Self-review the decisions**
 
-Run:
+The placeholder scan returned no matches, and `git diff --check` exited 0.
 
-```bash
-rg -n 'TBD|TODO|\[[^]]*(placeholder|insert|fill)[^]]*\]' docs/decisions
-git diff --check
-```
+- [x] **Step 5: Commit the decisions**
 
-Expected: the first command has no matches and `git diff --check` exits 0.
-
-- [ ] **Step 5: Commit the decisions**
-
-```bash
-git add docs/decisions
-git commit -m "docs: preserve architectural decisions from OpenSpec"
-```
+Recorded by commit `7bf0f12`; follow-up review fixes are recorded in later task commits.
 
 ### Task 2: Migrate Current Behavioral Contracts
 
@@ -114,9 +104,9 @@ git commit -m "docs: preserve architectural decisions from OpenSpec"
 - Reference: `.github/workflows/release.yaml`
 - Reference: `install.sh`
 
-- [ ] **Step 1: Extract implementation-backed requirements**
+- [x] **Step 1: Extract implementation-backed requirements**
 
-For each destination, compare the corresponding OpenSpec scenarios with current production code and tests. Record only requirements supported by code or an executable test. Treat unchecked OpenSpec manual checks as unverified evidence, not completed requirements.
+For each destination, compare the corresponding legacy spec workflow scenarios with current production code and tests. Record only requirements supported by code or an executable test. Treat unchecked legacy spec workflow manual checks as unverified evidence, not completed requirements.
 
 Run these inventory commands before writing:
 
@@ -128,7 +118,7 @@ rg -n 'visiontest\.jar|automation-server\.apk|automation-server-test\.apk|ios-au
 
 Expected: source evidence exists for every retained command, tool, polling rule, discovery rule, and release artifact.
 
-- [ ] **Step 2: Write the eight current-state specifications**
+- [x] **Step 2: Write the eight current-state specifications**
 
 Use this structure in every file:
 
@@ -169,24 +159,13 @@ android-artifact-distribution.md: APK release assets and checksums, installer ve
 ios-bundle-distribution.md: arm64 macOS build and installation, archive contents, checksums, __TESTROOT__ portability, discovery, prebuilt-first startup, source fallback, compatibility failure.
 ```
 
-- [ ] **Step 3: Check specification consistency**
+- [x] **Step 3: Check specification consistency**
 
-Run:
+The stale-claim scan returned no matches, every new spec reported requirements and scenarios, and `git diff --check` exited 0.
 
-```bash
-rg -n 'exactly four|13 subcommands|iPhone 16|TBD|TODO' docs/agentico/specs/{screenshots,cli,agent-init,server-lifecycle,element-waits,artifact-discovery,android-artifact-distribution,ios-bundle-distribution}.md
-rg -n '^### Requirement:|^#### Scenario:' docs/agentico/specs/{screenshots,cli,agent-init,server-lifecycle,element-waits,artifact-discovery,android-artifact-distribution,ios-bundle-distribution}.md
-git diff --check
-```
+- [x] **Step 4: Commit the migrated specifications**
 
-Expected: the first command has no matches; every new spec reports requirements and scenarios; `git diff --check` exits 0.
-
-- [ ] **Step 4: Commit the migrated specifications**
-
-```bash
-git add docs/agentico/specs
-git commit -m "docs: migrate current behavior specifications to Agentico"
-```
+Recorded by commit `7349e04`; contract corrections from review are recorded by `893edf4` and `4b6bd5b`.
 
 ### Task 3: Synchronize User and Agent Documentation
 
@@ -198,7 +177,7 @@ git commit -m "docs: migrate current behavior specifications to Agentico"
 - Test: `app/src/test/kotlin/com/example/visiontest/McpStdioE2ETest.kt`
 - Test: `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt`
 
-- [ ] **Step 1: Establish the canonical catalogs from executable contracts**
+- [x] **Step 1: Establish the canonical catalogs from executable contracts**
 
 Run:
 
@@ -209,7 +188,7 @@ sed -n '/subcommands(/,/)/p' app/src/main/kotlin/com/example/visiontest/cli/Visi
 
 Expected: the MCP set contains both screenshot tools and all stop/wait tools; the CLI registers 16 subcommands including `init`.
 
-- [ ] **Step 2: Update README.md**
+- [x] **Step 2: Update README.md**
 
 Make these exact semantic changes:
 
@@ -221,7 +200,7 @@ State that device-operation commands require --platform; init, --help, and --ver
 Link detailed behavioral contracts to docs/agentico/specs/ instead of repeating low-level rules.
 ```
 
-- [ ] **Step 3: Update CLAUDE.md**
+- [x] **Step 3: Update CLAUDE.md**
 
 Make these exact semantic changes:
 
@@ -233,34 +212,23 @@ Add links to Technical Decisions and Agentico specifications under Further Readi
 Keep the MCP catalog aligned with EXPECTED_TOOLS.
 ```
 
-- [ ] **Step 4: Update AGENTS.md**
+- [x] **Step 4: Update AGENTS.md**
 
 Make these exact semantic changes:
 
 ```text
 State the --platform exception for init/help/version.
-Keep the embedded skill concise and operational; link neither repository-local docs nor OpenSpec because installed copies may run outside this checkout.
+Keep the embedded skill concise and operational; link neither repository-local docs nor legacy spec workflow because installed copies may run outside this checkout.
 Ensure the command list includes wait, stop, screenshot, and init behavior accurately.
 ```
 
-- [ ] **Step 5: Verify catalogs and stale claims**
+- [x] **Step 5: Verify catalogs and stale claims**
 
-Run:
+The stale-claim search returned no matches, the capability search found each current operation, and `git diff --check` exited 0.
 
-```bash
-rg -n 'Wait/sync operations|Every command requires|v0\.1\.0|exactly four|13 subcommands' README.md CLAUDE.md AGENTS.md
-rg -n 'android_screenshot|ios_screenshot|wait_for_element|stop_automation_server' README.md CLAUDE.md AGENTS.md
-git diff --check
-```
+- [x] **Step 6: Commit user and agent documentation**
 
-Expected: the stale-claim search has no matches; the capability search finds each current operation; `git diff --check` exits 0.
-
-- [ ] **Step 6: Commit user and agent documentation**
-
-```bash
-git add README.md CLAUDE.md AGENTS.md
-git commit -m "docs: synchronize user and agent command references"
-```
+Recorded by commits `2bdb85f`, `1d7f022`, and `90666b6`, including the standard instruction filename and CLI subset corrections.
 
 ### Task 4: Synchronize Contributor, Installation, Release, and Testing Guides
 
@@ -278,17 +246,17 @@ git commit -m "docs: synchronize user and agent command references"
 - Reference: `.github/workflows/release.yaml`
 - Reference: `.github/workflows/android-emulator-smoke.yaml`
 
-- [ ] **Step 1: Update contributor architecture and tests**
+- [x] **Step 1: Update contributor architecture and tests**
 
 Update `CONTRIBUTING.md` to show 16 CLI subcommands and all seven registrars, include `ui.screenshot` and both screenshot MCP tools, list the current test files, and link `docs/release.md`, `docs/agentico/specs/`, and `docs/decisions/`.
 
 Update `.github/copilot-instructions.md` from two main modules to three components: Kotlin MCP/CLI, Android automation server, and iOS automation server.
 
-- [ ] **Step 2: Update installation documentation**
+- [x] **Step 2: Update installation documentation**
 
 In `docs/installation.md`, state that only device-operation commands require `--platform`; keep `init` separate. Cross-check all downloaded assets, checksums, supported platforms, and install paths against `install.sh`.
 
-- [ ] **Step 3: Create the canonical release guide**
+- [x] **Step 3: Create the canonical release guide**
 
 Create `docs/release.md` with these sections and commands:
 
@@ -330,33 +298,21 @@ gh release view vX.Y.Z
 Document how to diagnose a failed workflow; do not recommend deleting a published release or tag without an explicit rollback decision.
 ````
 
-- [ ] **Step 4: Clean local-only guidance**
+- [x] **Step 4: Clean local-only guidance**
 
 Delete the obsolete `.claude/how-to-release.md` in favor of `docs/release.md`. Replace absolute `/Users/domenicocervo/Git/visiontest` paths in `.claude/how-to-test.md` with commands relative to the repository root. Delete `.claude/release-apk-plan.md` because its work is implemented and documented canonically.
 
-- [ ] **Step 5: Clarify the Kotlin MCP guide**
+- [x] **Step 5: Clarify the Kotlin MCP guide**
 
 Add a note near the top of `kotlin-mcp-server.instruction.md` stating that dependency versions and snippets are patterns, while `build.gradle.kts` files are the source of truth for this repository's actual configuration.
 
-- [ ] **Step 6: Verify guide claims**
+- [x] **Step 6: Verify guide claims**
 
-Run:
+The stale and machine-specific claim scan returned no matches, every distributed artifact appeared in the release and installation evidence, and `git diff --check` exited 0.
 
-```bash
-rg -n '/Users/domenicocervo|13 subcommands|four registrars|two main modules|v0\.1\.0|only prerequisite.*Java' CONTRIBUTING.md docs .claude .github kotlin-mcp-server.instruction.md
-rg -n 'automation-server\.apk|automation-server-test\.apk|ios-automation-server\.tar\.gz' docs/release.md docs/installation.md .github/workflows/release.yaml install.sh
-git diff --check
-```
+- [x] **Step 7: Commit maintained guides**
 
-Expected: stale and machine-specific claims have no matches; every distributed artifact appears in release and installation evidence; `git diff --check` exits 0.
-
-- [ ] **Step 7: Commit maintained guides**
-
-```bash
-git add CONTRIBUTING.md docs/installation.md docs/release.md kotlin-mcp-server.instruction.md .github/copilot-instructions.md
-git add -u .claude
-git commit -m "docs: refresh contributor and release guidance"
-```
+Recorded by commits `568b332` and `8b39ce4`, including command and installer-safety corrections from review.
 
 ### Task 5: Retire Completed Agentico Working Documents
 
@@ -367,7 +323,7 @@ git commit -m "docs: refresh contributor and release guidance"
 - Reference: `docs/agentico/specs/server-lifecycle.md`
 - Reference: `docs/decisions/TD-002-modular-tool-registration-and-discovery.md`
 
-- [ ] **Step 1: Confirm current documents preserve the durable content**
+- [x] **Step 1: Confirm current documents preserve the durable content**
 
 Run:
 
@@ -377,11 +333,11 @@ rg -n 'forward|cleanup|idempotent|stop' docs/agentico/specs/server-lifecycle.md 
 
 Expected: server lifecycle covers removal and verification of Android port forwards, and the decisions explain the registrar boundary where relevant.
 
-- [ ] **Step 2: Remove completed working documents**
+- [x] **Step 2: Remove completed working documents**
 
 Delete the completed plan and its narrow design document. Their implementation history remains in Git and their current contract now lives in `server-lifecycle.md`.
 
-- [ ] **Step 3: Verify no active plan claims completed work is pending**
+- [x] **Step 3: Verify no active plan claims completed work is pending**
 
 Run:
 
@@ -391,68 +347,39 @@ find docs/agentico/plans -maxdepth 1 -type f -name '*.md' -print
 
 Expected: only this migration plan remains while migration is active.
 
-- [ ] **Step 4: Commit the retirement**
+- [x] **Step 4: Commit the retirement**
 
-```bash
-git add -u docs/agentico
-git commit -m "docs: retire completed Agentico cleanup plan"
-```
+Recorded by commit `fa173fc`.
 
-### Task 6: Remove OpenSpec and OPSX Integrations
+### Task 6: Remove legacy spec workflow integrations
 
 **Files:**
 
-- Delete: `openspec/`
-- Delete: `.github/prompts/opsx-apply.prompt.md`
-- Delete: `.github/prompts/opsx-archive.prompt.md`
-- Delete: `.github/prompts/opsx-explore.prompt.md`
-- Delete: `.github/prompts/opsx-propose.prompt.md`
-- Delete: `.github/skills/openspec-apply-change/`
-- Delete: `.github/skills/openspec-archive-change/`
-- Delete: `.github/skills/openspec-explore/`
-- Delete: `.github/skills/openspec-propose/`
-- Delete locally: `.claude/commands/opsx/`
-- Delete locally: `.claude/skills/openspec-apply-change/`
-- Delete locally: `.claude/skills/openspec-archive-change/`
-- Delete locally: `.claude/skills/openspec-explore/`
-- Delete locally: `.claude/skills/openspec-propose/`
+- Delete: tracked legacy workflow documents and configuration
+- Delete: tracked prompt definitions for the retired command prefix
+- Delete: tracked agent skills dedicated to the legacy workflow
+- Delete locally: ignored command definitions and agent skills dedicated to the legacy workflow
 - Modify locally: `.claude/settings.local.json`
 
-- [ ] **Step 1: Capture the exact removal inventory**
+- [x] **Step 1: Capture the exact removal inventory**
 
-Run:
+The tracked-file and repository-content inventories were captured before deletion. Results were confined to the approved legacy workflow files plus the three temporary migration records.
 
-```bash
-git ls-files 'openspec/**' '.github/prompts/opsx-*' '.github/skills/openspec-*/**'
-rg -l -i -uuu 'openspec|open spec|opsx' --glob '!.git/**' --glob '!**/build/**' .
-```
+- [x] **Step 2: Remove tracked legacy spec workflow files**
 
-Expected: results are confined to the approved legacy workflow files plus the three temporary migration records.
+Delete the tracked paths in the captured inventory. Do not remove Agentico specifications, decisions, general agent instructions, or application files.
 
-- [ ] **Step 2: Remove tracked OpenSpec files**
+- [x] **Step 3: Remove ignored local legacy spec workflow files**
 
-Delete the tracked paths listed in this task. Do not remove Agentico specifications, decisions, general agent instructions, or application files.
+Delete only the ignored local command and skill paths in the captured inventory. From `.claude/settings.local.json`, remove only permission entries dedicated to the legacy workflow; preserve every unrelated local permission.
 
-- [ ] **Step 3: Remove ignored local OpenSpec files**
+- [x] **Step 4: Verify the remaining references are intentional migration history**
 
-Delete only the exact `.claude/commands/opsx/` and `.claude/skills/openspec-*` paths listed above. From `.claude/settings.local.json`, remove only permission entries whose command begins with `openspec`; preserve every unrelated local permission.
+The post-removal scan found retired product-name and command-prefix references only in TD-001, the approved migration design, and this active migration plan. No operational prompt, skill, config, or capability spec remained; Task 7 removed those final references.
 
-- [ ] **Step 4: Verify the remaining references are intentional migration history**
+- [x] **Step 5: Commit tracked removals**
 
-Run:
-
-```bash
-rg -n -i -uuu 'openspec|open spec|opsx' --glob '!.git/**' --glob '!**/build/**' .
-```
-
-Expected: matches occur only in TD-001, the approved migration design, and this active migration plan. No operational prompt, skill, config, or capability spec remains. Task 7 removes these final textual and filename references.
-
-- [ ] **Step 5: Commit tracked removals**
-
-```bash
-git add -u openspec .github
-git commit -m "chore: remove OpenSpec workflow artifacts"
-```
+Recorded by commit `1c08aa0`.
 
 The ignored `.claude` cleanup is local-only and will not appear in the commit.
 
@@ -461,41 +388,41 @@ The ignored `.claude` cleanup is local-only and will not appear in the commit.
 **Files:**
 
 - Modify if necessary: documentation files changed by Tasks 1–6
-- Rename: `docs/agentico/specs/2026-08-31-openspec-to-agentico-migration-design.md` to `docs/agentico/specs/2026-08-31-legacy-spec-workflow-migration-design.md`
-- Rename: `docs/agentico/plans/2026-08-31-openspec-to-agentico-migration.md` to `docs/agentico/plans/2026-08-31-legacy-spec-workflow-migration.md`
+- Rename the migration design to `docs/agentico/specs/2026-08-31-legacy-spec-workflow-migration-design.md`
+- Rename the active plan to `docs/agentico/plans/2026-08-31-legacy-spec-workflow-migration.md`
 - Modify: `docs/decisions/TD-001-adopt-agentico-for-spec-driven-work.md`
 - Test: all source Markdown links
 - Test: `app/src/test/kotlin/com/example/visiontest/McpStdioE2ETest.kt`
 - Test: `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt`
 
-- [ ] **Step 1: Check Markdown links**
+- [x] **Step 1: Check Markdown links**
 
 Run a repository-relative Markdown link checker over all source `.md` files, excluding `.git`, generated build output, and ignored third-party/cache content.
 
 Expected: zero missing local targets and zero invalid anchors for links changed by this migration.
 
-- [ ] **Step 2: Check formatting and placeholders**
+Execution record: a read-only Ruby checker parsed inline and reference links, resolved repository-relative targets, and validated GitHub-style Markdown anchors. It checked 46 Markdown files, 45 local links, and 8 anchor links with 0 errors. Seven broken TD links in this plan's decision-index example were corrected to resolve through `../../decisions/`.
 
-Run:
+- [x] **Step 2: Check formatting and placeholders**
+
+Run `git diff --check main..HEAD` and scan maintained documentation for placeholders, deferred-work markers, and obsolete fixed-count claims.
+
+Expected: the formatting check exits 0 and the content scan has no matches except legitimate roadmap items outside migrated contracts.
+
+Execution record: both `git diff --check` and the maintained-document stale-fact scan completed with no findings.
+
+- [x] **Step 3: Verify MCP and CLI executable contracts**
+
+The combined `:app:test` selection succeeded but executed only `VisionTestCliTest` because `McpStdioE2ETest` is E2E-tagged. The executable contracts were therefore verified with the correct task split:
 
 ```bash
-git diff --check main..HEAD
-rg -n 'TBD|TODO|implement later|fill in details|exactly four|13 subcommands' docs README.md CLAUDE.md AGENTS.md CONTRIBUTING.md
+./gradlew :app:e2eTest --tests 'com.example.visiontest.McpStdioE2ETest'
+./gradlew :app:test --tests 'com.example.visiontest.cli.VisionTestCliTest'
 ```
 
-Expected: `git diff --check` exits 0; the content search has no matches except legitimate roadmap items outside migrated contracts.
+Execution record: both commands reported `BUILD SUCCESSFUL`; the E2E class ran 2 tests and the CLI class ran 13 tests, with 0 failures, errors, or skips.
 
-- [ ] **Step 3: Verify MCP and CLI executable contracts**
-
-Run:
-
-```bash
-./gradlew :app:test --tests 'com.example.visiontest.McpStdioE2ETest' --tests 'com.example.visiontest.cli.VisionTestCliTest'
-```
-
-Expected: `BUILD SUCCESSFUL` with both test classes passing.
-
-- [ ] **Step 4: Run the full project gate**
+- [x] **Step 4: Run the full project gate**
 
 Run:
 
@@ -505,20 +432,19 @@ Run:
 
 Expected: `BUILD SUCCESSFUL`; tests, E2E tests, Kover verification, detekt, and Android lint pass.
 
-- [ ] **Step 5: Remove final legacy product-name references**
+Execution record: `./gradlew build` reported `BUILD SUCCESSFUL` with 132 actionable tasks, including unit tests, E2E tests, Kover verification, detekt, and Android lint.
 
-Rename the migration design and this plan to the `legacy-spec-workflow` filenames listed above. Rewrite TD-001, the migration design, and the plan so they refer to the removed system as the “legacy spec workflow”; preserve the reason for adopting Agentico without retaining the removed product name or OPSX command prefix.
+- [x] **Step 5: Remove final legacy product-name references**
 
-Run:
+Rename the migration design and this plan to the `legacy-spec-workflow` filenames listed above. Rewrite TD-001, the migration design, and the plan so they refer to the removed system as the “legacy spec workflow”; preserve the reason for adopting Agentico without retaining the retired product name or command prefix.
 
-```bash
-find . -path './.git' -prune -o -path '*/build' -prune -o -iname '*openspec*' -print
-rg -n -i -uuu 'openspec|open spec|opsx' --glob '!.git/**' --glob '!**/build/**' .
-```
+Run repository-wide filename and case-insensitive content scans for the retired product name and command prefix, excluding `.git` and generated build output.
 
 Expected: both commands produce no output.
 
-- [ ] **Step 6: Verify repository scope**
+Execution record: both scans produced no output. Empty directories left after tracked-file removal were verified to contain no files and removed before the final scan.
+
+- [x] **Step 6: Verify repository scope**
 
 Run:
 
@@ -529,13 +455,16 @@ git diff --stat main..HEAD
 
 Expected: the working tree contains only the final plan update before its commit; the diff contains documentation and approved workflow-file removals only.
 
-- [ ] **Step 7: Mark this plan complete**
+Execution record: the branch diff contains the planned documentation and workflow removals plus `app/build.gradle.kts` and `InitCommandE2ETest.kt`, which keep the embedded agent instructions wired to the renamed `AGENTS.md` file. No generated build output is tracked.
+
+- [x] **Step 7: Mark this plan complete**
 
 Change every completed checkbox in this plan from `[ ]` to `[x]`. Keep the migration plan as the execution record until branch integration; after integration, Git history preserves it and the project may archive or remove it according to the documentation model.
 
-- [ ] **Step 8: Commit verification records**
+- [x] **Step 8: Commit verification records**
 
 ```bash
-git add docs/agentico/plans/2026-08-31-legacy-spec-workflow-migration.md docs/agentico/specs/2026-08-31-legacy-spec-workflow-migration-design.md docs/decisions/TD-001-adopt-agentico-for-spec-driven-work.md
-git commit -m "docs: record completed Agentico migration"
+git add -A docs/agentico/plans docs/agentico/specs
+git add docs/decisions/TD-001-adopt-agentico-for-spec-driven-work.md
+git commit -m "docs: complete Agentico documentation migration"
 ```

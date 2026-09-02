@@ -12,11 +12,11 @@ tags: [documentation, workflow, agentico]
 
 ## Context
 
-VisionTest currently stores product requirements, designs, task lists, and archived changes in OpenSpec. The repository also contains OpenSpec-specific prompts and skills for multiple agents. Agentico is now the active development workflow, and keeping both systems creates duplicate sources of truth and allows completed task lists and capability specifications to drift from the code.
+VisionTest previously stored product requirements, designs, task lists, and archived changes in a legacy spec workflow. The repository also contained prompts and skills dedicated to that workflow. Agentico is now the active development workflow, and keeping both systems would create duplicate sources of truth while allowing completed task lists and capability specifications to drift from the code.
 
 ## Decision
 
-VisionTest will use Agentico specifications and plans for future work, Technical Decisions for durable rationale, and focused user or operational guides for current usage. OpenSpec artifacts and integrations will be removed after their still-valid content has been consolidated into those destinations.
+VisionTest uses Agentico specifications and plans for future work, Technical Decisions for durable rationale, and focused user or operational guides for current usage. Artifacts and integrations from the legacy spec workflow were removed after their still-valid content was consolidated into those destinations.
 
 ## Rationale
 
@@ -26,12 +26,12 @@ A selective migration preserves current behavioral contracts and architectural r
 
 - **Positive:** One development workflow and a smaller, current documentation set.
 - **Positive:** Durable decisions remain searchable without duplicating implementation details.
-- **Negative:** The migration requires validating OpenSpec claims against the implementation rather than copying files mechanically.
-- **Negative:** Historical proposal and task narratives will be available through Git history instead of the working tree.
+- **Negative:** The migration required validating legacy spec workflow claims against the implementation rather than copying files mechanically.
+- **Negative:** Historical proposal and task narratives remain available through Git history instead of the working tree.
 
 ## Alternatives Considered
 
-### Literal OpenSpec migration
+### Literal legacy spec workflow migration
 
 Rejected because it would retain duplication, completed checklists, and requirements already contradicted by the code.
 

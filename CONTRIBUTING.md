@@ -41,7 +41,7 @@ The `run-visiontest.sh` launcher handles `JAVA_HOME`, `ANDROID_HOME`, and APK pa
 
 VisionTest has three components:
 
-1. **MCP Server** (`app/`) — Kotlin/JVM server that exposes mobile automation tools via Model Context Protocol (stdio transport)
+1. **MCP Server and CLI** (`app/`) — Kotlin/JVM application that exposes mobile automation through Model Context Protocol (stdio transport) and 16 CLI subcommands
 2. **Android Automation Server** (`automation-server/`) — Native Android app with UIAutomator API access via JSON-RPC, using the instrumentation pattern (like Maestro/Appium)
 3. **iOS Automation Server** (`ios-automation-server/`) — Native iOS app with XCUITest access via JSON-RPC
 
@@ -54,20 +54,23 @@ visiontest/
 │       ├── Main.kt                   # Entry point (MCP server or CLI dispatch)
 │       ├── ToolFactory.kt            # Thin coordinator wiring registrars
 │       ├── cli/
-│       │   ├── VisionTestCli.kt      # Root Clikt command with 13 subcommands
+│       │   ├── VisionTestCli.kt      # Root Clikt command with 16 subcommands
 │       │   ├── CliErrorHandler.kt    # Exit-code mapping + runCliCommand
 │       │   ├── CliExit.kt            # CliExit exception + ExitCode enum
 │       │   ├── PlatformOption.kt     # Platform enum + --platform option helpers
 │       │   ├── ComponentHolder.kt    # Lazy DI graph for CLI commands
-│       │   └── commands/             # 13 Clikt subcommand files
+│       │   └── commands/             # 16 Clikt subcommand files
 │       ├── tools/
 │       │   ├── ToolDsl.kt            # ToolScope DSL + CallToolRequest helpers
 │       │   ├── ToolRegistrar.kt      # Interface for modular registration
 │       │   ├── ToolHelpers.kt        # Pure utility functions
 │       │   ├── AndroidDeviceToolRegistrar.kt
 │       │   ├── AndroidAutomationToolRegistrar.kt
+│       │   ├── AndroidStopToolRegistrar.kt
+│       │   ├── AndroidWaitToolRegistrar.kt
 │       │   ├── IOSDeviceToolRegistrar.kt
-│       │   └── IOSAutomationToolRegistrar.kt
+│       │   ├── IOSAutomationToolRegistrar.kt
+│       │   └── IOSWaitToolRegistrar.kt
 │       ├── discovery/
 │       │   └── ToolDiscovery.kt      # APK, Xcode project, xctestrun discovery
 │       ├── android/
@@ -113,6 +116,10 @@ visiontest/
 └── build.gradle.kts                  # Root build config
 ```
 
+`VisionTestCli` registers these 16 subcommands: `install_automation_server`, `start_automation_server`, `stop_automation_server`, `automation_server_status`, `get_interactive_elements`, `get_ui_hierarchy`, `get_device_info`, `screenshot`, `wait_for_element`, `tap_by_coordinates`, `input_text`, `swipe_direction`, `press_back`, `press_home`, `launch_app`, and `init`.
+
+`ToolFactory` composes the seven registrars shown above: `AndroidDeviceToolRegistrar`, `AndroidAutomationToolRegistrar`, `AndroidStopToolRegistrar`, `AndroidWaitToolRegistrar`, `IOSDeviceToolRegistrar`, `IOSAutomationToolRegistrar`, and `IOSWaitToolRegistrar`.
+
 ### Why Instrumentation?
 
 The Android automation server uses the instrumentation framework instead of a regular service:
@@ -154,6 +161,7 @@ Both automation servers expose a JSON-RPC 2.0 API. Most users interact through t
 | `ui.swipeOnElement` | `direction`, selector, `speed` | Yes | No |
 | `ui.findElement` | `text`, `resourceId`, etc. | Yes | Yes |
 | `ui.getInteractiveElements` | `includeDisabled` | Yes | Yes |
+| `ui.screenshot` | - | Yes | Yes |
 | `device.getInfo` | - | Yes | Yes |
 | `ui.inputText` | `text` | Yes | Yes |
 | `device.pressBack` | - | Yes | No |
@@ -209,6 +217,7 @@ curl -X POST http://localhost:9009/jsonrpc \
 | `android_input_text` | Type text into the currently focused element |
 | `android_press_back` | Press the back button |
 | `android_press_home` | Press the home button |
+| `android_screenshot` | Capture a PNG and save it on the host |
 
 ### UI Automation (iOS)
 
@@ -228,6 +237,7 @@ curl -X POST http://localhost:9009/jsonrpc \
 | `ios_input_text` | Type text into the currently focused element |
 | `ios_press_home` | Press home button |
 | `ios_stop_automation_server` | Stop the running XCUITest server |
+| `ios_screenshot` | Capture a PNG and save it on the host |
 
 ## Testing
 
@@ -260,31 +270,44 @@ All Gradle tests are pure JVM unit tests (no device or emulator required). iOS t
 
 | Module | Test File | Coverage Area |
 |--------|-----------|---------------|
-| `app/` | `ErrorHandlerTest.kt` | Exception-to-error-code mappings, retry with exponential backoff |
-| `app/` | `ErrorHandlerCoroutineTest.kt` | Exponential backoff delays with `TestCoroutineScheduler` |
-| `app/` | `IOSSimulatorParsingTest.kt` | Device list parsing, plist parsing, bundle ID & shell command validation |
-| `app/` | `IOSSimulatorTest.kt` | Simulator operations with mocked ProcessExecutor |
-| `app/` | `ProcessExecutorTest.kt` | Exit codes, stdout capture, timeout handling |
-| `app/` | `IOSAutomationClientTest.kt` | JSON-RPC requests, `isServerRunning`, Gson serialization |
-| `app/` | `AndroidValidationTest.kt` | Package name validation, ADB argument validation |
-| `app/` | `AutomationClientTest.kt` | `sendRequest` POST/params/errors, `isServerRunning` health check |
-| `app/` | `AppConfigTest.kt` | Default configuration values |
-| `app/` | `ToolFactoryHelpersTest.kt` | `ToolHelpers.extractProperty`, `extractPattern`, `formatAppInfo` |
-| `app/` | `ToolFactoryPathTest.kt` | `ToolDiscovery.findProjectRoot`, `findAutomationServerApk`, `resolveMainApkPath`, `findXctestrun`; `IOSAutomationToolRegistrar.buildXcodebuildCommand` |
-| `app/` | `MainDispatchTest.kt` | CLI vs MCP server routing based on args |
-| `app/` | `CliErrorHandlerTest.kt` | Exit-code mapping for all exception types |
-| `app/` | `VisionTestCliTest.kt` | Clikt argument parsing, platform options, validation |
-| `app/` | `CliCommandIntegrationTest.kt` | End-to-end CLI command delegation with MockWebServer |
-| `app/` | `AndroidAutomationToolRegistrarTest.kt` | Extracted handler functions with mocked HTTP |
-| `app/` | `AndroidDeviceToolRegistrarTest.kt` | Device tool functions with faked DeviceConfig |
-| `app/` | `IOSDeviceToolRegistrarTest.kt` | iOS device tool functions with faked DeviceConfig |
-| `automation-server/` | `JsonRpcModelsTest.kt` | JSON-RPC error factory methods, request/response defaults |
-| `automation-server/` | `UiAutomatorModelsTest.kt` | Data classes, default values, enum entries |
-| `automation-server/` | `ServerConfigPortTest.kt` | Port validation boundaries |
-| `automation-server/` | `XmlUtilsTest.kt` | XML character stripping |
-| `ios-automation-server/` | `JsonRpcModelsTests.swift` | JSON-RPC request parsing, error factory methods, error codes |
-| `ios-automation-server/` | `AutomationModelsTests.swift` | Result model `toDictionary()` conversions, enum raw values |
-| `ios-automation-server/` | `HelpersTests.swift` | `escapeXML`, `boundsString`, `intParam` type coercion |
+| `app/` | `MainDispatchTest.kt` | CLI versus MCP server routing |
+| `app/` | `McpStdioE2ETest.kt` | Packaged JAR handshake and exact MCP tool contract |
+| `app/` | `ToolFactoryHelpersTest.kt` | Tool output parsing and formatting helpers |
+| `app/` | `ToolFactoryPathTest.kt` | Project, APK, iOS bundle, and source-project discovery |
+| `app/android` | `AndroidValidationTest.kt` | Package-name and ADB argument validation |
+| `app/android` | `AutomationClientTest.kt` | Android JSON-RPC requests and health checks |
+| `app/android` | `AutomationClientWaitTest.kt` | Android element polling, timeouts, and malformed responses |
+| `app/cli` | `CliCommandIntegrationTest.kt` | CLI delegation, waits, screenshots, stop behavior, and exit codes |
+| `app/cli` | `CliErrorHandlerTest.kt` | CLI exception-to-exit-code mapping |
+| `app/cli` | `InitCommandE2ETest.kt` | Packaged JAR agent-instruction installation |
+| `app/cli` | `InitCommandTest.kt` | Agent selection, paths, validation, and idempotent writes |
+| `app/cli` | `VisionTestCliTest.kt` | Subcommand contract and platform argument parsing |
+| `app/config` | `AppConfigTest.kt` | Default application configuration |
+| `app/ios` | `IOSAutomationClientTest.kt` | iOS JSON-RPC requests and health checks |
+| `app/ios` | `IOSSimulatorParsingTest.kt` | Simulator JSON, plist, bundle ID, and shell validation |
+| `app/ios` | `IOSSimulatorTest.kt` | Simulator operations with a mocked process executor |
+| `app/ios` | `ProcessExecutorTest.kt` | Process output, errors, and timeouts |
+| `app/tools` | `AndroidAutomationToolRegistrarTest.kt` | Android automation handlers and validation |
+| `app/tools` | `AndroidDeviceToolRegistrarTest.kt` | Android device tool handlers |
+| `app/tools` | `AndroidScreenshotToolTest.kt` | Android screenshot paths, persistence, and error handling |
+| `app/tools` | `AndroidStopToolRegistrarTest.kt` | Idempotent stop and port-forward cleanup |
+| `app/tools` | `AndroidWaitToolRegistrarTest.kt` | Android wait-tool selectors and timeout bounds |
+| `app/tools` | `IOSDeviceToolRegistrarTest.kt` | iOS device tool handlers |
+| `app/tools` | `IOSScreenshotToolTest.kt` | iOS screenshot paths, persistence, and error handling |
+| `app/tools` | `IOSWaitToolRegistrarTest.kt` | iOS wait-tool selectors and timeout bounds |
+| `app/tools` | `ToolDslTest.kt` | Tool registration DSL argument extraction |
+| `app/utils` | `ErrorHandlerCoroutineTest.kt` | Retry timing and cancellation |
+| `app/utils` | `ErrorHandlerTest.kt` | MCP error mapping and retry outcomes |
+| `automation-server/config` | `ServerConfigPortTest.kt` | Port validation boundaries |
+| `automation-server/jsonrpc` | `JsonRpcModelsTest.kt` | JSON-RPC error factories and model defaults |
+| `automation-server/uiautomator` | `BaseUiAutomatorBridgeFilterTest.kt` | Interactive-element visibility and filtering |
+| `automation-server/uiautomator` | `UiAutomatorModelsTest.kt` | Automation result models and defaults |
+| `automation-server/uiautomator` | `XmlUtilsTest.kt` | Invalid XML character replacement |
+| `automation-server/androidTest` | `AutomationServerTest.kt` | Long-running instrumentation JSON-RPC server entry point |
+| `ios-automation-server/` | `AutomationModelsTests.swift` | Result dictionaries and enum values |
+| `ios-automation-server/` | `HelpersTests.swift` | XML, bounds, and parameter helpers |
+| `ios-automation-server/` | `JsonRpcModelsTests.swift` | JSON-RPC parsing, error factories, and codes |
+| `ios-automation-server/` | `AutomationServerUITest.swift` | Long-running XCUITest JSON-RPC server entry point |
 
 ## Manual Testing
 
@@ -373,3 +396,7 @@ This skips downloading the JAR, APKs, and iOS bundle from GitHub Releases — it
 
 - [CLAUDE.md](CLAUDE.md) — AI assistant context with full build commands and patterns
 - [LEARNING.md](LEARNING.md) — Architecture decision records and design rationale
+- [Installation guide](docs/installation.md) — supported hosts, installed assets, and CLI setup
+- [Release guide](docs/release.md) — local verification, publishing, and release recovery
+- [Behavior specifications](docs/agentico/specs/) — current externally observable contracts
+- [Technical decisions](docs/decisions/) — durable architectural choices and rationale

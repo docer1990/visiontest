@@ -57,9 +57,10 @@ When performing a code review, check for:
 
 ## Project Context
 
-VisionTest is an MCP (Model Context Protocol) server for mobile automation with two main modules:
-- **MCP Server** (`app/`): Kotlin/JVM server exposing mobile automation tools
-- **Automation Server** (`automation-server/`): Android app providing UIAutomator access via JSON-RPC using instrumentation pattern
+VisionTest provides mobile automation through three components:
+- **MCP server and CLI** (`app/`): Kotlin/JVM application exposing the same automation backend through MCP tools and CLI commands
+- **Android automation server** (`automation-server/`): Android app providing UIAutomator access via JSON-RPC using the instrumentation pattern
+- **iOS automation server** (`ios-automation-server/`): Xcode project providing XCUITest access via JSON-RPC
 
 ## Code Review Focus Areas
 

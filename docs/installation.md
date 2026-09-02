@@ -1,52 +1,98 @@
-# Installation & Distribution
-
-## One-Command Installer (`install.sh`)
-
-Users install with `curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash`. The script:
-1. Detects OS (macOS/Linux) and arch (arm64/x86_64)
-2. Validates Java 17+ with platform-specific install suggestions
-3. Fetches latest release tag from GitHub API, validates format (`v[0-9][0-9A-Za-z._-]*`) and rejects dangerous characters
-4. Downloads `visiontest.jar` + SHA-256 checksum, verifies integrity
-5. Downloads Android APKs (`automation-server.apk`, `automation-server-test.apk`) + checksums, verifies integrity
-6. On macOS arm64: downloads `ios-automation-server.tar.gz` + checksum, extracts pre-built iOS XCUITest bundle to `ios-automation-server/` subdirectory (skipped on Linux and macOS x86_64)
-7. Installs JAR, APKs, and iOS bundle to `~/.local/share/visiontest/` (customizable via `VISIONTEST_DIR` env var, must be under `$HOME`)
-8. Creates wrapper script at `~/.local/bin/visiontest`, ensures PATH
-9. Prints instructions to run `visiontest init --agent <agents>` for project-level agent setup
-
-**Security hardening:** `umask 077`, explicit `chmod` on all files/dirs, tag validation, checksum verification, install path restricted to `$HOME`.
-
-## Release Workflow (`.github/workflows/release.yaml`)
-
-Triggered by git tags matching `v*`. The workflow runs the test suite, builds the fat JAR via `shadowJar`, Android APKs, and the pre-built iOS XCUITest bundle (on a macOS runner), generates SHA-256 checksums, and creates a GitHub Release with the following assets: `visiontest.jar`, `visiontest.jar.sha256`, `automation-server.apk`, `automation-server.apk.sha256`, `automation-server-test.apk`, `automation-server-test.apk.sha256`, `ios-automation-server.tar.gz`, `ios-automation-server.tar.gz.sha256`, `install.sh`, `run-visiontest.sh`.
-
-All GitHub Actions in both workflows are pinned to commit SHAs for supply-chain security. When updating or adding actions, always use SHA-pinned references instead of floating version tags.
-
-## Launcher Script (`run-visiontest.sh`)
-
-Used for development and Claude Desktop config. JAR resolution order:
-
-1. Repo build: `app/build/libs/visiontest.jar` (sets up `ANDROID_HOME`, APK path, `cd` to project root)
-2. Installed JAR: `~/.local/share/visiontest/visiontest.jar` (skips Android SDK setup)
-3. Error with build/install instructions
+# Installation and Distribution
 
 ## Prerequisites
 
-- JDK 17+
-- macOS or Linux (arm64 or x86_64)
-- Android Platform Tools (ADB) in PATH — for Android automation
-- Xcode Command Line Tools — for iOS simulator support (macOS only). Pre-built iOS bundle requires the same Xcode major version used in CI (see release notes). For source builds or Intel Macs, the full Xcode IDE is needed.
-- Android SDK — only needed for building the automation-server module from source
+- JDK 17 or newer
+- macOS or Linux on `arm64`/`aarch64` or `x86_64`/`amd64`
+- Android Platform Tools (`adb`) for Android device automation
+- Xcode Command Line Tools for iOS simulator automation on macOS
+- The full Xcode IDE when building the iOS server from source, including on Intel Macs
+- The Android SDK only when building the Android automation server from source
 
-> **Quick start:** Users who just need the MCP server can run `curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash` — only Java 17+ is required.
+The prebuilt iOS bundle is available only on macOS arm64 and must be compatible with the installed Xcode major version. Linux and macOS x86_64 installations still receive the JAR and Android APKs; the installer skips the iOS bundle and directs Intel Mac users to a source build.
 
-## CLI Usage
+## One-command installer
 
-After installation, `visiontest` with no arguments starts the MCP stdio server (unchanged behavior). To use the CLI, pass a subcommand:
+```bash
+curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
+```
+
+`install.sh` performs these steps:
+
+1. Detects macOS or Linux and normalizes the supported CPU architecture.
+2. Requires Java 17 or newer.
+3. Reads and validates the latest GitHub release tag.
+4. Downloads and verifies `visiontest.jar` using `visiontest.jar.sha256`.
+5. Downloads and verifies `automation-server.apk` and `automation-server-test.apk` using their matching `.sha256` files.
+6. On macOS arm64, downloads and verifies `ios-automation-server.tar.gz`, validates its entries, and extracts it atomically.
+7. Creates the executable wrapper at `~/.local/bin/visiontest` and reports if that directory is missing from `PATH`.
+
+The default data directory is `~/.local/share/visiontest/`. Set `VISIONTEST_DIR` to choose another directory under `$HOME`; blank values use the default, and symlinked or out-of-home destinations are rejected.
+
+After a normal network installation, the relevant paths are:
+
+| Installed item | Path |
+|---|---|
+| MCP/CLI JAR | `$VISIONTEST_DIR/visiontest.jar` |
+| JAR checksum | `$VISIONTEST_DIR/visiontest.jar.sha256` |
+| Android app APK | `$VISIONTEST_DIR/automation-server.apk` |
+| Android app checksum | `$VISIONTEST_DIR/automation-server.apk.sha256` |
+| Android instrumentation APK | `$VISIONTEST_DIR/automation-server-test.apk` |
+| Android instrumentation checksum | `$VISIONTEST_DIR/automation-server-test.apk.sha256` |
+| Installed release version | `$VISIONTEST_DIR/version.txt` |
+| Extracted iOS bundle, macOS arm64 only | `$VISIONTEST_DIR/ios-automation-server/` |
+| CLI wrapper | `~/.local/bin/visiontest` |
+
+Here `$VISIONTEST_DIR` means the resolved configured directory or its default, `~/.local/share/visiontest`. The downloaded iOS archive and checksum are removed after successful extraction.
+
+For local installer testing, `bash install.sh --local-jar app/build/libs/visiontest.jar` installs only the supplied JAR and records `local-dev`; it intentionally skips the APKs and iOS bundle.
+
+The installer uses a restrictive umask, verifies every downloaded binary with SHA-256, limits the install directory to `$HOME`, and validates archive entries before replacing an existing iOS bundle.
+
+## Release assets
+
+The release workflow publishes:
+
+- `visiontest.jar` and `visiontest.jar.sha256`
+- `automation-server.apk` and `automation-server.apk.sha256`
+- `automation-server-test.apk` and `automation-server-test.apk.sha256`
+- `ios-automation-server.tar.gz` and `ios-automation-server.tar.gz.sha256`
+- `install.sh`
+- `run-visiontest.sh`
+
+See the [release process](release.md) for publishing and verification instructions.
+
+## Launcher script
+
+`run-visiontest.sh` is intended for development and desktop MCP configuration. It resolves the JAR in this order:
+
+1. `app/build/libs/visiontest.jar` in a source checkout, with Android SDK and APK path setup.
+2. `~/.local/share/visiontest/visiontest.jar` from the default installation.
+3. An error with build and installation instructions.
+
+The installed `visiontest` wrapper honors the configured install directory recorded when `install.sh` creates it, with the default JAR as a fallback.
+
+## CLI usage
+
+Running `visiontest` without arguments starts the MCP stdio server. Root help and version are available without selecting a device platform:
+
+```bash
+visiontest --help
+visiontest --version
+```
+
+Only device-operation subcommands require `--platform android` or `--platform ios` (short form `-p`):
 
 ```bash
 visiontest screenshot --platform android
-visiontest get_interactive_elements --platform ios
+visiontest get_interactive_elements -p ios
 visiontest tap_by_coordinates --platform android 540 1200
 ```
 
-Every command requires `--platform android` or `--platform ios`. Run `visiontest --help` for the full command list. See `CLAUDE.md` for the complete CLI reference.
+Project setup is separate and does not accept `--platform`:
+
+```bash
+visiontest init --agent claude,opencode,codex
+```
+
+Run `visiontest --help` for the complete command list and see [AGENTS.md](../AGENTS.md) for the standard automation loop.

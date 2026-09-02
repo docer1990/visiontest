@@ -46,7 +46,7 @@ The MCP server MUST expose `android_screenshot` and `ios_screenshot`. Each tool 
 
 ### Requirement: Output paths are resolved on the host
 
-A nonblank `outputPath` or CLI `--output` value MUST be resolved as an absolute host path, with relative values interpreted against the process current working directory. A null, omitted, empty, or whitespace-only value MUST select `screenshots/android_screenshot_<yyyyMMdd_HHmmss>.png` for Android or `screenshots/ios_screenshot_<yyyyMMdd_HHmmss>.png` for iOS, also resolved against the current working directory.
+A nonblank `outputPath` or CLI `--output` value MUST be resolved as an absolute host path, with relative values interpreted against the process current working directory. An absent MCP `outputPath`, an omitted CLI `--output`, or an empty or whitespace-only string MUST select `screenshots/android_screenshot_<yyyyMMdd_HHmmss>.png` for Android or `screenshots/ios_screenshot_<yyyyMMdd_HHmmss>.png` for iOS, also resolved against the current working directory. Callers MUST NOT rely on explicit MCP JSON `null` as omission: the current MCP argument helper reads it as the literal path string `null`.
 
 #### Scenario: Explicit output path
 
@@ -54,11 +54,17 @@ A nonblank `outputPath` or CLI `--output` value MUST be resolved as an absolute 
 - **When** capture succeeds
 - **Then** the PNG SHALL be saved at that resolved absolute path and the returned success text SHALL contain the absolute path
 
-#### Scenario: Omitted or blank output path
+#### Scenario: Absent or blank output path
 
-- **Given** the caller omits the path or supplies only whitespace
+- **Given** the MCP argument is absent, the CLI option is omitted, or the caller supplies an empty or whitespace-only string
 - **When** either platform resolves the destination
 - **Then** it SHALL use that platform's timestamped filename under the current working directory's `screenshots` directory
+
+#### Scenario: Explicit MCP JSON null
+
+- **Given** an MCP caller includes `outputPath` with JSON `null`
+- **When** the current argument helper and screenshot saver resolve it
+- **Then** they SHALL treat `null` as the literal relative filename and resolve it to `<current-working-directory>/null`
 
 ### Requirement: Host persistence replaces files without partial final output
 

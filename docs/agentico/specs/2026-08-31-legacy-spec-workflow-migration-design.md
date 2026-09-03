@@ -19,7 +19,7 @@ The audit found these important discrepancies between documentation and implemen
 
 ## Documentation model
 
-Each retained fact will have one destination based on its purpose:
+Each retained fact has one destination based on its purpose:
 
 - `docs/agentico/specs/` describes current, externally observable or operationally significant behavior;
 - `docs/agentico/plans/` contains only active implementation plans;

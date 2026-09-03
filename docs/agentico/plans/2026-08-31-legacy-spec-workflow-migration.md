@@ -52,13 +52,13 @@ Technical Decisions record consequential project choices, their rationale, and a
 
 | ID | Status | Decision |
 |---|---|---|
-| [TD-001](../../decisions/TD-001-adopt-agentico-for-spec-driven-work.md) | Accepted | Adopt Agentico for spec-driven work |
-| [TD-002](../../decisions/TD-002-modular-tool-registration-and-discovery.md) | Accepted | Modular tool registration and discovery |
-| [TD-003](../../decisions/TD-003-share-handlers-between-mcp-and-cli.md) | Accepted | Share handlers between MCP and CLI |
-| [TD-004](../../decisions/TD-004-prefer-prebuilt-ios-bundle-with-source-fallback.md) | Accepted | Prefer pre-built iOS bundle with source fallback |
-| [TD-005](../../decisions/TD-005-persist-screenshots-on-the-host.md) | Accepted | Persist screenshots on the host |
-| [TD-006](../../decisions/TD-006-poll-for-elements-in-the-client.md) | Accepted | Poll for elements in the client |
-| [TD-007](../../decisions/TD-007-install-project-local-agent-instructions.md) | Accepted | Install project-local agent instructions |
+| [TD-001](TD-001-adopt-agentico-for-spec-driven-work.md) | Accepted | Adopt Agentico for spec-driven work |
+| [TD-002](TD-002-modular-tool-registration-and-discovery.md) | Accepted | Modular tool registration and discovery |
+| [TD-003](TD-003-share-handlers-between-mcp-and-cli.md) | Accepted | Share handlers between MCP and CLI |
+| [TD-004](TD-004-prefer-prebuilt-ios-bundle-with-source-fallback.md) | Accepted | Prefer pre-built iOS bundle with source fallback |
+| [TD-005](TD-005-persist-screenshots-on-the-host.md) | Accepted | Persist screenshots on the host |
+| [TD-006](TD-006-poll-for-elements-in-the-client.md) | Accepted | Poll for elements in the client |
+| [TD-007](TD-007-install-project-local-agent-instructions.md) | Accepted | Install project-local agent instructions |
 ```
 
 - [x] **Step 3: Write TD-002 through TD-007**
@@ -401,7 +401,7 @@ Run a repository-relative Markdown link checker over all source `.md` files, exc
 
 Expected: zero missing local targets and zero invalid anchors for links changed by this migration.
 
-Execution record: a read-only Ruby checker parsed inline and reference links, resolved repository-relative targets, and validated GitHub-style Markdown anchors. It checked 46 Markdown files, 45 local links, and 8 anchor links with 0 errors. Seven broken TD links in this plan's decision-index example were corrected to resolve through `../../decisions/`.
+Execution record: a read-only Ruby checker ignored fenced code blocks, parsed inline and reference links, resolved repository-relative targets, and validated GitHub-style Markdown anchors. It checked 46 Markdown files, 38 local links, and 8 anchor links with 0 errors. The seven TD links inside the fenced `docs/decisions/README.md` template remain direct filenames because they are relative to that template's destination.
 
 - [x] **Step 2: Check formatting and placeholders**
 
@@ -442,7 +442,7 @@ Run repository-wide filename and case-insensitive content scans for the retired 
 
 Expected: both commands produce no output.
 
-Execution record: both scans produced no output. Empty directories left after tracked-file removal were verified to contain no files and removed before the final scan.
+Execution record: both scans produced no output. Only empty directories whose names belonged to the legacy workflow were removed. The generic `.claude/commands`, `.github/prompts`, and `.github/skills` parent directories remain and were verified empty.
 
 - [x] **Step 6: Verify repository scope**
 

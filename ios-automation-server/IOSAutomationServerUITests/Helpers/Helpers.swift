@@ -89,27 +89,38 @@ struct ElementSwipeRequest {
         }
         self.direction = direction
         self.speed = speed
-        text = params?["text"] as? String
-        textContains = params?["textContains"] as? String
-        identifier = params?["resourceId"] as? String
-        elementType = params?["className"] as? String
-        label = params?["contentDescription"] as? String
-        bundleId = params?["bundleId"] as? String
+        text = try validatedString(params, "text")
+        textContains = try validatedString(params, "textContains")
+        identifier = try validatedString(params, "resourceId")
+        elementType = try validatedString(params, "className")
+        label = try validatedString(params, "contentDescription")
+        bundleId = try validatedString(params, "bundleId")
         guard [text, textContains, identifier, elementType, label].contains(where: { $0 != nil }) else {
             throw InvalidParamsException("At least one selector required: text, textContains, resourceId, className, or contentDescription")
         }
     }
 }
 
+private func validatedString(_ params: [String: Any]?, _ key: String) throws -> String? {
+    guard let rawValue = params?[key] else { return nil }
+    guard let value = rawValue as? String,
+          !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        throw InvalidParamsException("'\(key)' must be a nonblank string")
+    }
+    return value
+}
+
 /// Rejects missing/unusable element frames before dispatching any gesture.
 func performElementSwipe(
-    frame: CGRect?, direction: SwipeDirection, speed: SwipeSpeed,
+    frame: CGRect?, visibleFrame: CGRect? = nil,
+    direction: SwipeDirection, speed: SwipeSpeed,
     gesture: (CGPoint, CGPoint, TimeInterval) -> OperationResult
 ) -> OperationResult {
     guard let frame = frame else {
         return OperationResult(success: false, error: "Element not found")
     }
-    guard let points = elementSwipeEndpoints(frame: frame, direction: direction) else {
+    let gestureFrame = visibleFrame.map { frame.intersection($0) } ?? frame
+    guard let points = elementSwipeEndpoints(frame: gestureFrame, direction: direction) else {
         return OperationResult(success: false, error: "Element has no usable bounds")
     }
     return gesture(points.start, points.end, speed.duration)

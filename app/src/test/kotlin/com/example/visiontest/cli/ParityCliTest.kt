@@ -72,11 +72,21 @@ class ParityCliTest {
         val iosClient = IOSAutomationClient(iosServer.hostName, iosServer.port)
         val logger = LoggerFactory.getLogger(javaClass)
         val discovery = ToolDiscovery(logger)
+        val iosBackend = object : DeviceConfig by backend {
+            override suspend fun getFirstAvailableDevice(): MobileDevice {
+                deviceCalls++
+                if (deviceFailure) throw NoDeviceAvailableException("No simulator")
+                return MobileDevice(
+                    "simulator-1", "iPhone 17", DeviceType.IOS_SIMULATOR, "Booted", "26.5", "iPhone 17"
+                )
+            }
+        }
         components = lazy {
             ComponentHolder(
                 mockk<Android>(), mockk<IOSManager>(), androidClient, iosClient,
                 AndroidDeviceToolRegistrar(backend), AndroidAutomationToolRegistrar(backend, androidClient, discovery),
-                IOSDeviceToolRegistrar(backend), IOSAutomationToolRegistrar(backend, iosClient, discovery, logger)
+                IOSDeviceToolRegistrar(iosBackend),
+                IOSAutomationToolRegistrar(iosBackend, iosClient, discovery, logger)
             )
         }
     }
@@ -142,8 +152,11 @@ class ParityCliTest {
         val cases = listOf(
             ::FindElementCommand to arrayOf("-p", "android"),
             ::FindElementCommand to arrayOf("-p", "ios", "--bundle-id", "app.id"),
+            ::FindElementCommand to arrayOf("-p", "android", "--text", "   "),
             ::FindElementCommand to arrayOf("-p", "android", "--text", "a", "--bundle-id", "app.id"),
+            ::FindElementCommand to arrayOf("-p", "ios", "--text", "a", "--bundle-id", " "),
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "up"),
+            ::SwipeOnElementCommand to arrayOf("-p", "ios", "up", "--text", ""),
             ::SwipeOnElementCommand to arrayOf("-p", "android", "left", "--text", "a", "--bundle-id", "app.id"),
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "diagonal", "--text", "a"),
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "up", "--text", "a", "--speed", "warp"),
@@ -289,16 +302,21 @@ class ParityCliTest {
             val result = invoke(::AvailableDeviceCommand, "-p", platform, "--json")
             assertEquals(0, result.exitCode)
             val json = JsonParser.parseString(result.stdout).asJsonObject
-            assertEquals("device-1", json["id"].asString)
-            assertEquals("Phone", json["name"].asString)
-            assertEquals("device", json["state"].asString)
             if (platform == "android") {
+                assertEquals("device-1", json["id"].asString)
+                assertEquals("Phone", json["name"].asString)
+                assertEquals("ANDROID", json["type"].asString)
+                assertEquals("device", json["state"].asString)
                 assertEquals("Pixel", json["modelName"].asString)
                 assertEquals("15", json["osVersion"].asString)
                 assertEquals("35", json["sdkVersion"].asString)
             } else {
-                assertTrue(json["osVersion"].isJsonNull)
-                assertTrue(json["modelName"].isJsonNull)
+                assertEquals("simulator-1", json["id"].asString)
+                assertEquals("iPhone 17", json["name"].asString)
+                assertEquals("IOS_SIMULATOR", json["type"].asString)
+                assertEquals("Booted", json["state"].asString)
+                assertEquals("26.5", json["osVersion"].asString)
+                assertEquals("iPhone 17", json["modelName"].asString)
             }
         }
     }

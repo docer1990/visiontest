@@ -13,8 +13,11 @@ internal class ElementSelectorOptions : OptionGroup("Element selectors") {
 
     fun validate(platform: Platform) {
         require(platform == Platform.Ios || bundleId == null) { "--bundle-id is only supported on iOS" }
-        require(listOf(text, textContains, resourceId, className, contentDescription).any { it != null }) {
+        require(bundleId?.isNotBlank() != false) { "--bundle-id must not be blank" }
+        val values = listOf(text, textContains, resourceId, className, contentDescription)
+        require(values.any { !it.isNullOrBlank() }) {
             "At least one element selector is required"
         }
+        require(values.filterNotNull().all { it.isNotBlank() }) { "Element selectors must not be blank" }
     }
 }

@@ -214,7 +214,13 @@ class XCUITestBridge {
         let element = lookupElement(text: request.text, textContains: request.textContains,
                                     identifier: request.identifier, elementType: request.elementType,
                                     label: request.label, bundleId: request.bundleId)
-        return performElementSwipe(frame: element?.frame, direction: request.direction, speed: request.speed) { start, end, duration in
+        let screenFrame = CGRect(origin: .zero, size: getScreenSize())
+        return performElementSwipe(
+            frame: element?.frame,
+            visibleFrame: screenFrame,
+            direction: request.direction,
+            speed: request.speed
+        ) { start, end, duration in
             self.swipe(start: start, end: end, duration: duration)
         }
     }

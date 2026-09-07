@@ -40,6 +40,27 @@ final class HelpersTests: XCTestCase {
         XCTAssertEqual(request.bundleId, "com.example")
     }
 
+    func testElementSwipeRequestRejectsInvalidAndBlankStringParameters() {
+        let names = [
+            "text", "textContains", "resourceId", "className",
+            "contentDescription", "bundleId"
+        ]
+        for name in names {
+            var wrongType: [String: Any] = ["direction": "up", "text": "valid"]
+            wrongType[name] = 42
+            XCTAssertThrowsError(
+                try ElementSwipeRequest(params: wrongType),
+                "Expected non-string \(name) to fail"
+            )
+            var blank: [String: Any] = ["direction": "up", "text": "valid"]
+            blank[name] = "   "
+            XCTAssertThrowsError(
+                try ElementSwipeRequest(params: blank),
+                "Expected blank \(name) to fail"
+            )
+        }
+    }
+
     func testElementSwipeDoesNotGestureForMissingOrInvalidFrame() {
         for frame: CGRect? in [nil, .zero, CGRect(x: CGFloat.nan, y: 0, width: 20, height: 20)] {
             var gestures = 0
@@ -51,6 +72,39 @@ final class HelpersTests: XCTestCase {
             XCTAssertNotNil(result.error)
             XCTAssertEqual(gestures, 0)
         }
+    }
+
+    func testElementSwipeClipsGestureToVisibleScreen() {
+        var capturedStart: CGPoint?
+        var capturedEnd: CGPoint?
+        let result = performElementSwipe(
+            frame: CGRect(x: -100, y: 20, width: 200, height: 100),
+            visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 200),
+            direction: .left,
+            speed: .normal
+        ) { start, end, _ in
+            capturedStart = start
+            capturedEnd = end
+            return OperationResult(success: true, error: nil)
+        }
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(capturedStart, CGPoint(x: 85, y: 70))
+        XCTAssertEqual(capturedEnd, CGPoint(x: 15, y: 70))
+    }
+
+    func testElementSwipeRejectsFullyOffscreenElement() {
+        var gestures = 0
+        let result = performElementSwipe(
+            frame: CGRect(x: -200, y: 20, width: 100, height: 100),
+            visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 200),
+            direction: .left,
+            speed: .normal
+        ) { _, _, _ in
+            gestures += 1
+            return OperationResult(success: true, error: nil)
+        }
+        XCTAssertFalse(result.success)
+        XCTAssertEqual(gestures, 0)
     }
 
     func testElementSwipeUsesExistingSpeedDurations() {

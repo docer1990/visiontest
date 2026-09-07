@@ -77,6 +77,7 @@ class McpStdioE2ETest {
             "ios_tap_by_coordinates",
             "ios_swipe",
             "ios_swipe_direction",
+            "ios_swipe_on_element",
             "ios_get_interactive_elements",
             "ios_get_device_info",
             "ios_input_text",

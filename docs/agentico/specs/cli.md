@@ -30,7 +30,7 @@ The JAR MUST start the MCP stdio server when invoked with no arguments or when i
 
 ### Requirement: The CLI exposes the current command set
 
-The CLI SHALL register these 16 subcommands and argument contracts:
+The CLI SHALL register these 22 subcommands and argument contracts:
 
 | Subcommand | Platform contract | Operation-specific inputs |
 |---|---|---|
@@ -38,17 +38,23 @@ The CLI SHALL register these 16 subcommands and argument contracts:
 | `start_automation_server` | Android or iOS | None |
 | `stop_automation_server` | Android or iOS | None |
 | `automation_server_status` | Android or iOS | None |
-| `get_interactive_elements` | Android or iOS | Optional `--include-disabled` |
+| `get_interactive_elements` | Android or iOS | Optional `--include-disabled`, `--json` |
 | `get_ui_hierarchy` | Android or iOS | None |
-| `get_device_info` | Android or iOS | None |
+| `get_device_info` | Android or iOS | Optional `--json` |
+| `find_element` | Android or iOS | At least one selector; optional `--bundle-id` on iOS and `--json` |
+| `available_device` | Android or iOS | Optional `--json` |
 | `screenshot` | Android or iOS | Optional `--output PATH` |
 | `wait_for_element` | Android or iOS | One or more selector options; optional iOS app scope `--bundle-id`, plus `--timeout MS` and `--gone` |
 | `tap_by_coordinates` | Android or iOS | Required integer `x` and `y` arguments |
 | `input_text` | Android or iOS | Required `text` argument |
 | `swipe_direction` | Android or iOS | Required `up`, `down`, `left`, or `right`; optional `--distance` and `--speed` choices |
+| `swipe` | Android or iOS | Integer `startX`, `startY`, `endX`, `endY`; optional positive `--steps` (default 20) |
+| `swipe_on_element` | Android or iOS | Direction and at least one selector; optional `--speed` and iOS `--bundle-id` |
 | `press_back` | Android only | None |
 | `press_home` | Android or iOS | None |
 | `launch_app` | Android or iOS | Required package or bundle `id` argument |
+| `list_apps` | Android or iOS | Optional `--json` |
+| `info_app` | Android or iOS | Required app `id`; optional `--json` |
 | `init` | No device platform | Required comma-separated `--agent` option |
 
 #### Scenario: CLI help enumerates subcommands
@@ -117,10 +123,45 @@ Each device CLI command MUST delegate to the same registrar's internal suspend o
 - **When** it dispatches by platform
 - **Then** it SHALL invoke the platform wait registrar's appearance or disappearance handler corresponding to `wait_for_element`/`wait_until_gone` on Android or `ios_wait_for_element`/`ios_wait_until_gone` on iOS
 
+### Requirement: New selector commands validate before contacting the backend
+
+`find_element` and `swipe_on_element` MUST require at least one of `--text`,
+`--text-contains`, `--resource-id`, `--class-name`, `--content-description`.
+iOS maps these to text, partial text, identifier, element type, and label.
+`--bundle-id` MUST scope only iOS and MUST NOT satisfy the selector requirement.
+Android use of this flag MUST exit 2. Invalid direction/speed and nonpositive
+coordinate swipe steps MUST exit 2 before backend access.
+
+### Requirement: Inspection offers machine-readable output
+
+`get_interactive_elements`, `get_device_info`, `find_element`, `list_apps`,
+`info_app`, and `available_device` MUST accept `--json`. Stdout MUST contain
+exactly one JSON object followed by a newline, conforming to
+[the documented schemas](../../cli-json.md). UI JSON-RPC framing and transport
+IDs MUST be omitted. Default text output MUST remain compatible.
+
+Operation-level failures returned normally MUST retain exit 0; scripts MUST
+inspect result fields. Thrown failures MUST retain their mapped exit code and
+stderr channel. Malformed JSON or invalid response structure MUST exit 1 without
+emitting a partial JSON value.
+
+#### Scenario: An element is absent
+
+- **Given** the automation server returns an element result with `found: false`
+- **When** `find_element --json` handles it
+- **Then** stdout SHALL contain that result object and exit code SHALL be 0
+
+#### Scenario: Installed app list is empty
+
+- **Given** the backend returns no installed apps
+- **When** `list_apps --json` handles it
+- **Then** stdout SHALL be `{"apps":[]}` and exit code SHALL be 0
+
 ## Verification
 
 - Production routing and command registration: `app/src/main/kotlin/com/example/visiontest/Main.kt`, `app/src/main/kotlin/com/example/visiontest/cli/VisionTestCli.kt`, `app/src/main/kotlin/com/example/visiontest/cli/PlatformOption.kt`
 - Production result and dependency wiring: `app/src/main/kotlin/com/example/visiontest/cli/CliErrorHandler.kt`, `app/src/main/kotlin/com/example/visiontest/cli/CliExit.kt`, `app/src/main/kotlin/com/example/visiontest/cli/ComponentHolder.kt`
 - Production command adapters: `app/src/main/kotlin/com/example/visiontest/cli/commands/InstallAutomationServerCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/StartAutomationServerCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/StopAutomationServerCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/AutomationServerStatusCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/GetInteractiveElementsCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/GetUiHierarchyCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/GetDeviceInfoCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/ScreenshotCommand.kt`
 - Production command adapters continued: `app/src/main/kotlin/com/example/visiontest/cli/commands/WaitForElementCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/TapByCoordinatesCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/InputTextCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/SwipeDirectionCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/PressBackCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/PressHomeCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/LaunchAppCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/InitCommand.kt`
+- P3 adapters and JSON output: `app/src/main/kotlin/com/example/visiontest/cli/commands/FindElementCommand.kt`, `SwipeCommand.kt`, `SwipeOnElementCommand.kt`, `ListAppsCommand.kt`, `InfoAppCommand.kt`, `AvailableDeviceCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/InspectionOutput.kt`
 - Executable tests: `app/src/test/kotlin/com/example/visiontest/MainDispatchTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/CliErrorHandlerTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/CliCommandIntegrationTest.kt`, `app/src/test/kotlin/com/example/visiontest/McpStdioE2ETest.kt`

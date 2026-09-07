@@ -125,6 +125,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `ios_tap_by_coordinates` | Tap at screen coordinates (x, y) |
 | `ios_swipe` | Swipe by coordinates |
 | `ios_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
+| `ios_swipe_on_element` | Swipe inside a selected element; optional app scope `bundleId` and speed |
 | `ios_get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
 | `ios_get_device_info` | Get display size, rotation, and iOS version |
 | `ios_input_text` | Type text into the currently focused element |
@@ -144,7 +145,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 
 ## CLI Usage
 
-A focused subset of the MCP operations can be invoked directly from the command line. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. With no arguments, `visiontest` starts the MCP stdio server as before. `visiontest --version` prints the installed version (stamped into the JAR manifest at build time from `app/build.gradle.kts`).
+MCP device and UI operations can be invoked directly from the command line; the wait disappearance operation uses `wait_for_element --gone`. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. With no arguments, `visiontest` starts the MCP stdio server as before. `visiontest --version` prints the installed version (stamped into the JAR manifest at build time from `app/build.gradle.kts`).
 
 | Command | Platforms | Required args | Optional flags |
 |---------|-----------|---------------|----------------|
@@ -152,18 +153,33 @@ A focused subset of the MCP operations can be invoked directly from the command 
 | `start_automation_server` | android, ios | — | — |
 | `stop_automation_server` | android, ios | — | — |
 | `automation_server_status` | android, ios | — | — |
-| `get_interactive_elements` | android, ios | — | `--include-disabled` |
+| `get_interactive_elements` | android, ios | — | `--include-disabled`, `--json` |
 | `wait_for_element` | android, ios | at least one selector option | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--timeout MS`, `--gone` |
 | `get_ui_hierarchy` | android, ios | — | — |
-| `get_device_info` | android, ios | — | — |
+| `get_device_info` | android, ios | — | `--json` |
+| `find_element` | android, ios | at least one selector | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--json` |
+| `available_device` | android, ios | — | `--json` |
 | `screenshot` | android, ios | — | `--output PATH` |
 | `tap_by_coordinates` | android, ios | `x` `y` (ints) | — |
 | `input_text` | android, ios | `text` (string) | — |
 | `swipe_direction` | android, ios | `direction` (up\|down\|left\|right) | `--distance`, `--speed` |
+| `swipe` | android, ios | `startX` `startY` `endX` `endY` (ints) | `--steps` (positive, default 20) |
+| `swipe_on_element` | android, ios | `direction` and at least one selector | same selectors as `find_element`, `--speed` |
 | `press_back` | android | — | — |
 | `press_home` | android, ios | — | — |
 | `launch_app` | android, ios | `id` (string) | — |
+| `list_apps` | android, ios | — | `--json` |
+| `info_app` | android, ios | `id` (string) | `--json` |
 | `init` | (none) | — | `--agent` (required, comma-separated: `claude,opencode,codex`) |
+
+`find_element` and `swipe_on_element` reject `--bundle-id` on Android and require
+an element selector even when an iOS bundle is provided. Selector names follow
+`wait_for_element` mappings. iOS element swipe requires an updated automation
+bundle with `ui.swipeOnElement`.
+
+Inspection `--json` emits structured objects; see [JSON schemas and examples](docs/cli-json.md).
+Default text and mapped exit codes remain stable. Scripts must inspect `found`,
+`success`, or `error` for operation-level outcomes that return normally.
 
 ### CLI Exit Codes
 

@@ -25,9 +25,11 @@ VisionTest provides a CLI for automating Android devices and iOS simulators. Dev
 ### Inspection
 | Command | Platforms | Description |
 |---------|-----------|-------------|
-| `get_interactive_elements [--include-disabled]` | android, ios | List tappable elements with coordinates |
+| `get_interactive_elements [--include-disabled] [--json]` | android, ios | List tappable elements with coordinates |
+| `find_element [selectors] [--json]` | android, ios | Find an element using the selectors described below |
+| `available_device [--json]` | android, ios | Describe the first available device or simulator |
 | `get_ui_hierarchy` | android, ios | Full UI tree as XML |
-| `get_device_info` | android, ios | Display size, rotation, SDK/iOS version |
+| `get_device_info [--json]` | android, ios | Display size, rotation, SDK/iOS version |
 | `screenshot [--output PATH]` | android, ios | Save PNG (default: `./screenshots/`) |
 | `wait_for_element [selectors] [--timeout MS] [--gone]` | android, ios | Poll until an element appears (or disappears with `--gone`). Selectors: `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS). Timeout max 30000ms. Exit 1 on timeout |
 
@@ -37,6 +39,8 @@ VisionTest provides a CLI for automating Android devices and iOS simulators. Dev
 | `tap_by_coordinates <x> <y>` | android, ios | Tap at screen coordinates |
 | `input_text <text>` | android, ios | Type into focused element |
 | `swipe_direction <up\|down\|left\|right> [--distance short\|medium\|long] [--speed slow\|normal\|fast]` | android, ios | Swipe gesture |
+| `swipe <startX> <startY> <endX> <endY> [--steps N]` | android, ios | Swipe between integer coordinates; positive steps, default 20 |
+| `swipe_on_element <up\|down\|left\|right> [selectors] [--speed slow\|normal\|fast]` | android, ios | Swipe inside the matched element; default speed normal |
 
 ### Navigation
 | Command | Platforms | Description |
@@ -48,6 +52,8 @@ VisionTest provides a CLI for automating Android devices and iOS simulators. Dev
 | Command | Platforms | Description |
 |---------|-----------|-------------|
 | `launch_app <id>` | android, ios | Launch by package name or bundle ID |
+| `list_apps [--json]` | android, ios | List installed package names or bundle IDs |
+| `info_app <id> [--json]` | android, ios | Get app information by package name or bundle ID |
 
 ### Project Setup
 | Command | Platforms | Description |
@@ -57,6 +63,25 @@ VisionTest provides a CLI for automating Android devices and iOS simulators. Dev
 ## The `--platform` Flag
 
 Device-operation commands require `--platform` (or `-p`). There is no default and no auto-detection. The `init` command and root `--help` and `--version` options do not accept or require a platform. Android-only commands (`install_automation_server`, `press_back`) reject `--platform ios`.
+
+## Selectors and JSON
+
+`find_element` and `swipe_on_element` require at least one of `--text`,
+`--text-contains`, `--resource-id`, `--class-name`, or `--content-description`.
+On iOS these map to text, partial text, accessibility identifier, element type,
+and accessibility label. `--bundle-id` optionally scopes the iOS app; it is not
+an element selector and is rejected on Android for these two commands.
+
+`--json` is available on `get_interactive_elements`, `get_device_info`,
+`find_element`, `list_apps`, `info_app`, and `available_device`. It emits one JSON
+object on stdout. UI results omit JSON-RPC framing; app lists use
+`{"apps":["com.example.app"]}`. Default output remains unchanged. Check `found`
+or `success` in UI results: operation failures can still exit 0. Thrown failures
+use stderr and the exit codes below. JSON schemas: `docs/cli-json.md` in the
+VisionTest repository.
+
+The iOS element swipe requires an automation bundle containing
+`ui.swipeOnElement`; update or rebuild an older installed bundle.
 
 ## Exit Codes
 

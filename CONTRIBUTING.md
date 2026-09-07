@@ -327,7 +327,7 @@ adb forward tcp:9008 tcp:9008
 curl http://localhost:9008/health
 
 # Stop the server
-adb shell am force-stop com.example.automationserver
+visiontest stop_automation_server -p android
 ```
 
 ### iOS

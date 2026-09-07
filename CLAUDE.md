@@ -16,14 +16,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew :app:test                     # Run only MCP server unit tests (fast iteration loop)
 ./gradlew :app:e2eTest                  # E2E tests against the assembled fat JAR (builds shadowJar first)
 ./gradlew :automation-server:test       # Run only automation server unit tests
-./gradlew test --tests "ErrorHandlerTest"  # Run a specific test class
+./gradlew :app:test --tests "ErrorHandlerTest"  # Run a specific app test class
 ./gradlew build                         # Full gate: tests + e2e + koverVerify + detekt + lint (run before opening a PR)
 ./gradlew shadowJar                     # Build fat JAR -> app/build/libs/visiontest.jar
 
 # === Installation & Release ===
 bash install.sh                         # Install locally (or curl -fsSL <url> | bash)
 # Release: push a tag to trigger the GitHub Actions release workflow
-# git tag vX.Y.Z && git push --tags    # Builds JAR, runs tests, creates GitHub Release
+# git tag vX.Y.Z && git push origin vX.Y.Z  # Builds JAR, runs tests, creates GitHub Release
 
 # === Automation Server Android App ===
 ./gradlew :automation-server:assembleDebug                # Build debug APK

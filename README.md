@@ -15,7 +15,7 @@ An MCP server that lets AI agents interact with Android devices and iOS simulato
 - **JDK 17 or higher**
 - **macOS or Linux** (arm64 or x86_64)
 - **Android Platform Tools** (for Android automation): [Download](https://developer.android.com/tools/releases/platform-tools)
-- **Xcode Command Line Tools** (for iOS simulator automation, macOS only)
+- **Full Xcode IDE with a compatible iOS Simulator runtime** (for iOS simulator automation, macOS only)
 
 ## Installation
 
@@ -27,14 +27,14 @@ curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/inst
 
 This will:
 - Check that Java 17+ is installed
-- Download the latest release JAR, Android APKs, and iOS test bundle
+- Download the latest release JAR and Android APKs; on macOS arm64, also download the iOS test bundle
 - Create a `visiontest` command in `~/.local/bin/`
 - Verify all downloads via SHA-256 checksums
 
 You can customize the install directory:
 
 ```bash
-VISIONTEST_DIR="$HOME/my-tools/visiontest" curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | VISIONTEST_DIR="$HOME/my-tools/visiontest" bash
 ```
 
 To update, re-run the same command.

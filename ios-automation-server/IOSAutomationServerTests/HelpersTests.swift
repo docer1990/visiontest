@@ -46,13 +46,14 @@ final class HelpersTests: XCTestCase {
             "contentDescription", "bundleId"
         ]
         for name in names {
-            var wrongType: [String: Any] = ["direction": "up", "text": "valid"]
+            let validSelector = name == "text" ? "textContains" : "text"
+            var wrongType: [String: Any] = ["direction": "up", validSelector: "valid"]
             wrongType[name] = 42
             XCTAssertThrowsError(
                 try ElementSwipeRequest(params: wrongType),
                 "Expected non-string \(name) to fail"
             )
-            var blank: [String: Any] = ["direction": "up", "text": "valid"]
+            var blank: [String: Any] = ["direction": "up", validSelector: "valid"]
             blank[name] = "   "
             XCTAssertThrowsError(
                 try ElementSwipeRequest(params: blank),

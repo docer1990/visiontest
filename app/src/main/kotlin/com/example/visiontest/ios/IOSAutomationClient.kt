@@ -94,27 +94,6 @@ class IOSAutomationClient(
         )
     }
 
-    /** Swipes within the bounds of an element in the selected app. */
-    suspend fun swipeOnElement(
-        direction: String,
-        text: String? = null,
-        textContains: String? = null,
-        identifier: String? = null,
-        elementType: String? = null,
-        label: String? = null,
-        bundleId: String? = null,
-        speed: String = "normal"
-    ): String {
-        val params = mutableMapOf<String, Any>("direction" to direction, "speed" to speed)
-        text?.let { params["text"] = it }
-        textContains?.let { params["textContains"] = it }
-        identifier?.let { params["resourceId"] = it }
-        elementType?.let { params["className"] = it }
-        label?.let { params["contentDescription"] = it }
-        bundleId?.let { params["bundleId"] = it }
-        return sendRequest("ui.swipeOnElement", params)
-    }
-
     /**
      * Types text into the currently focused element.
      *
@@ -169,4 +148,20 @@ class IOSAutomationClient(
 
         return sendRequest("ui.findElement", params.ifEmpty { null })
     }
+}
+
+/** Swipes within the bounds of an element in the selected app. */
+suspend fun IOSAutomationClient.swipeOnElement(
+    direction: String,
+    selectors: IOSElementSelectors,
+    speed: String = "normal"
+): String {
+    val params = mutableMapOf<String, Any>("direction" to direction, "speed" to speed)
+    selectors.text?.let { params["text"] = it }
+    selectors.textContains?.let { params["textContains"] = it }
+    selectors.identifier?.let { params["resourceId"] = it }
+    selectors.elementType?.let { params["className"] = it }
+    selectors.label?.let { params["contentDescription"] = it }
+    selectors.bundleId?.let { params["bundleId"] = it }
+    return sendRequest("ui.swipeOnElement", params)
 }

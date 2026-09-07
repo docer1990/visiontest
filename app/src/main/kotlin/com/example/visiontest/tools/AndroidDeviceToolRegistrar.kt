@@ -2,6 +2,10 @@ package com.example.visiontest.tools
 
 import com.example.visiontest.common.DeviceConfig
 import io.modelcontextprotocol.kotlin.sdk.Tool
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.put
 
 class AndroidDeviceToolRegistrar(
     private val android: DeviceConfig
@@ -29,12 +33,21 @@ class AndroidDeviceToolRegistrar(
         }
     }
 
-    internal suspend fun availableDevice(): String {
+    internal suspend fun availableDevice(json: Boolean = false): String {
         val result = android.getFirstAvailableDevice()
         val deviceProps = android.executeShell("getprop", result.id)
         val modelName = ToolHelpers.extractProperty(deviceProps, PROP_MODEL)
         val androidVersion = ToolHelpers.extractProperty(deviceProps, PROP_ANDROID_VERSION)
         val sdkVersion = ToolHelpers.extractProperty(deviceProps, PROP_SDK_VERSION)
+        if (json) return buildJsonObject {
+            put("id", result.id)
+            put("name", result.name)
+            put("type", result.type.name)
+            put("state", result.state)
+            put("modelName", modelName.takeUnless { it == "Unknown" })
+            put("osVersion", androidVersion.takeUnless { it == "Unknown" })
+            put("sdkVersion", sdkVersion.takeUnless { it == "Unknown" })
+        }.toString()
 
         return """
             |Device found:
@@ -55,8 +68,11 @@ class AndroidDeviceToolRegistrar(
         }
     }
 
-    internal suspend fun listApps(): String {
+    internal suspend fun listApps(json: Boolean = false): String {
         val result = android.listApps()
+        if (json) return buildJsonObject {
+            put("apps", buildJsonArray { result.forEach { add(it) } })
+        }.toString()
         return if (result.isEmpty()) {
             "No apps found on the device"
         } else {
@@ -75,8 +91,12 @@ class AndroidDeviceToolRegistrar(
         }
     }
 
-    internal suspend fun infoApp(packageName: String): String {
+    internal suspend fun infoApp(packageName: String, json: Boolean = false): String {
         val rawResult = android.getAppInfo(packageName)
+        if (json) return buildJsonObject {
+            put("id", packageName)
+            put("rawInfo", rawResult)
+        }.toString()
         return ToolHelpers.formatAppInfo(rawResult, packageName)
     }
 

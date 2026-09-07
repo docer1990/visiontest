@@ -1,0 +1,20 @@
+package com.example.visiontest.cli
+
+import com.github.ajalt.clikt.parameters.groups.OptionGroup
+import com.github.ajalt.clikt.parameters.options.option
+
+internal class ElementSelectorOptions : OptionGroup("Element selectors") {
+    val text by option("--text", help = "Exact text match")
+    val textContains by option("--text-contains", help = "Partial text match")
+    val resourceId by option("--resource-id", help = "Resource ID (Android) / accessibility identifier (iOS)")
+    val className by option("--class-name", help = "Class name (Android) / element type (iOS)")
+    val contentDescription by option("--content-description", help = "Content description (Android) / label (iOS)")
+    val bundleId by option("--bundle-id", help = "App bundle ID (iOS only)")
+
+    fun validate(platform: Platform) {
+        require(platform == Platform.Ios || bundleId == null) { "--bundle-id is only supported on iOS" }
+        require(listOf(text, textContains, resourceId, className, contentDescription).any { it != null }) {
+            "At least one element selector is required"
+        }
+    }
+}

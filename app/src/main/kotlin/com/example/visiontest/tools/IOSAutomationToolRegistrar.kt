@@ -5,6 +5,8 @@ import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.config.IOSAutomationConfig
 import com.example.visiontest.discovery.ToolDiscovery
 import com.example.visiontest.ios.IOSAutomationClient
+import com.example.visiontest.ios.IOSElementSelectors
+import com.example.visiontest.ios.swipeOnElement
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -231,12 +233,7 @@ class IOSAutomationToolRegistrar(
 
     internal suspend fun swipeOnElement(
         direction: String,
-        text: String? = null,
-        textContains: String? = null,
-        identifier: String? = null,
-        elementType: String? = null,
-        label: String? = null,
-        bundleId: String? = null,
+        selectors: IOSElementSelectors,
         speed: String = "normal"
     ): String {
         require(direction.lowercase() in listOf("up", "down", "left", "right")) {
@@ -245,11 +242,11 @@ class IOSAutomationToolRegistrar(
         require(speed.lowercase() in listOf("slow", "normal", "fast")) {
             "Invalid speed '$speed'. Must be: slow, normal, fast"
         }
-        require(listOf(text, textContains, identifier, elementType, label).any { it != null }) {
+        require(selectors.hasAnySelector()) {
             "At least one selector required (text, textContains, resourceId, className, or contentDescription)"
         }
         requireServer()
-        return iosAutomationClient.swipeOnElement(direction, text, textContains, identifier, elementType, label, bundleId, speed)
+        return iosAutomationClient.swipeOnElement(direction, selectors, speed)
     }
 
     internal suspend fun findElement(
@@ -476,7 +473,11 @@ class IOSAutomationToolRegistrar(
                         putJsonArray("enum") { listOf("slow", "normal", "fast").forEach { add(it) } }
                         put("default", "normal")
                     }
-                    for (name in listOf("text", "textContains", "resourceId", "className", "contentDescription", "bundleId")) {
+                    val selectors = listOf(
+                        "text", "textContains", "resourceId", "className",
+                        "contentDescription", "bundleId"
+                    )
+                    for (name in selectors) {
                         putJsonObject(name) { put("type", "string") }
                     }
                 },
@@ -485,12 +486,14 @@ class IOSAutomationToolRegistrar(
         ) { request ->
             swipeOnElement(
                 direction = request.requireDirection(),
-                text = request.optionalString("text"),
-                textContains = request.optionalString("textContains"),
-                identifier = request.optionalString("resourceId"),
-                elementType = request.optionalString("className"),
-                label = request.optionalString("contentDescription"),
-                bundleId = request.optionalString("bundleId"),
+                selectors = IOSElementSelectors(
+                    text = request.optionalString("text"),
+                    textContains = request.optionalString("textContains"),
+                    identifier = request.optionalString("resourceId"),
+                    elementType = request.optionalString("className"),
+                    label = request.optionalString("contentDescription"),
+                    bundleId = request.optionalString("bundleId"),
+                ),
                 speed = request.optionalString("speed") ?: "normal"
             )
         }

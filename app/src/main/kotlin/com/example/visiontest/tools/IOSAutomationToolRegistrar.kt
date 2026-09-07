@@ -9,6 +9,11 @@ import io.modelcontextprotocol.kotlin.sdk.Tool
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import org.slf4j.Logger
 import java.io.File
 
@@ -30,6 +35,7 @@ class IOSAutomationToolRegistrar(
         registerTapByCoordinates(scope)
         registerSwipe(scope)
         registerSwipeDirection(scope)
+        registerSwipeOnElement(scope)
         registerFindElement(scope)
         registerGetDeviceInfo(scope)
         registerPressHome(scope)
@@ -221,6 +227,29 @@ class IOSAutomationToolRegistrar(
     internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String {
         requireServer()
         return iosAutomationClient.swipeByDirection(direction, distance, speed)
+    }
+
+    internal suspend fun swipeOnElement(
+        direction: String,
+        text: String? = null,
+        textContains: String? = null,
+        identifier: String? = null,
+        elementType: String? = null,
+        label: String? = null,
+        bundleId: String? = null,
+        speed: String = "normal"
+    ): String {
+        require(direction.lowercase() in listOf("up", "down", "left", "right")) {
+            "Invalid direction '$direction'. Must be: up, down, left, right"
+        }
+        require(speed.lowercase() in listOf("slow", "normal", "fast")) {
+            "Invalid speed '$speed'. Must be: slow, normal, fast"
+        }
+        require(listOf(text, textContains, identifier, elementType, label).any { it != null }) {
+            "At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+        }
+        requireServer()
+        return iosAutomationClient.swipeOnElement(direction, text, textContains, identifier, elementType, label, bundleId, speed)
     }
 
     internal suspend fun findElement(
@@ -424,6 +453,44 @@ class IOSAutomationToolRegistrar(
             swipeByDirection(
                 direction = request.requireDirection(),
                 distance = request.optionalString("distance") ?: "medium",
+                speed = request.optionalString("speed") ?: "normal"
+            )
+        }
+    }
+
+    private fun registerSwipeOnElement(scope: ToolScope) {
+        scope.tool(
+            name = "ios_swipe_on_element",
+            description = "Swipe within a matching iOS element. Requires at least one selector. " +
+                "bundleId scopes the app and is not a selector; defaults to Springboard. " +
+                "resourceId is the accessibility identifier, className the element type, " +
+                "and contentDescription the accessibility label. The automation server must be running.",
+            inputSchema = Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("direction") {
+                        put("type", "string")
+                        putJsonArray("enum") { listOf("up", "down", "left", "right").forEach { add(it) } }
+                    }
+                    putJsonObject("speed") {
+                        put("type", "string")
+                        putJsonArray("enum") { listOf("slow", "normal", "fast").forEach { add(it) } }
+                        put("default", "normal")
+                    }
+                    for (name in listOf("text", "textContains", "resourceId", "className", "contentDescription", "bundleId")) {
+                        putJsonObject(name) { put("type", "string") }
+                    }
+                },
+                required = listOf("direction")
+            )
+        ) { request ->
+            swipeOnElement(
+                direction = request.requireDirection(),
+                text = request.optionalString("text"),
+                textContains = request.optionalString("textContains"),
+                identifier = request.optionalString("resourceId"),
+                elementType = request.optionalString("className"),
+                label = request.optionalString("contentDescription"),
+                bundleId = request.optionalString("bundleId"),
                 speed = request.optionalString("speed") ?: "normal"
             )
         }

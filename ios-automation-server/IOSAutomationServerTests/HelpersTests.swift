@@ -3,6 +3,72 @@ import CoreGraphics
 
 final class HelpersTests: XCTestCase {
 
+    func testElementSwipeEndpointsUseSeventyPercentOfBounds() throws {
+        let frame = CGRect(x: 100, y: 200, width: 200, height: 100)
+        let expected: [(SwipeDirection, CGPoint, CGPoint)] = [
+            (.up, CGPoint(x: 200, y: 285), CGPoint(x: 200, y: 215)),
+            (.down, CGPoint(x: 200, y: 215), CGPoint(x: 200, y: 285)),
+            (.left, CGPoint(x: 270, y: 250), CGPoint(x: 130, y: 250)),
+            (.right, CGPoint(x: 130, y: 250), CGPoint(x: 270, y: 250))
+        ]
+        for (direction, start, end) in expected {
+            let points = try XCTUnwrap(elementSwipeEndpoints(frame: frame, direction: direction))
+            XCTAssertEqual(points.start, start)
+            XCTAssertEqual(points.end, end)
+        }
+    }
+
+    func testElementSwipeRejectsUnusableBounds() {
+        for frame in [CGRect.zero, CGRect(x: 0, y: 0, width: -1, height: 10),
+                      CGRect(x: CGFloat.nan, y: 0, width: 100, height: 100),
+                      CGRect(x: 0, y: 0, width: CGFloat.infinity, height: 100)] {
+            XCTAssertNil(elementSwipeEndpoints(frame: frame, direction: .up))
+        }
+    }
+
+    func testElementSwipeRequestValidatesBeforeLookup() throws {
+        for params: [String: Any] in [[:], ["direction": "diagonal", "text": "x"],
+                                    ["direction": "up", "text": "x", "speed": "warp"],
+                                    ["direction": "up", "text": "x", "speed": 42],
+                                    ["direction": "up", "bundleId": "com.example"]] {
+            XCTAssertThrowsError(try ElementSwipeRequest(params: params))
+        }
+        let request = try ElementSwipeRequest(params: ["direction": "LEFT", "resourceId": "photos", "bundleId": "com.example"])
+        XCTAssertEqual(request.direction, .left)
+        XCTAssertEqual(request.speed, .normal)
+        XCTAssertEqual(request.identifier, "photos")
+        XCTAssertEqual(request.bundleId, "com.example")
+    }
+
+    func testElementSwipeDoesNotGestureForMissingOrInvalidFrame() {
+        for frame: CGRect? in [nil, .zero, CGRect(x: CGFloat.nan, y: 0, width: 20, height: 20)] {
+            var gestures = 0
+            let result = performElementSwipe(frame: frame, direction: .up, speed: .normal) { _, _, _ in
+                gestures += 1
+                return OperationResult(success: true, error: nil)
+            }
+            XCTAssertFalse(result.success)
+            XCTAssertNotNil(result.error)
+            XCTAssertEqual(gestures, 0)
+        }
+    }
+
+    func testElementSwipeUsesExistingSpeedDurations() {
+        for (speed, duration): (SwipeSpeed, TimeInterval) in [(.slow, 2.5), (.normal, 1.0), (.fast, 0.25)] {
+            var gestures = 0
+            let result = performElementSwipe(frame: CGRect(x: 100, y: 200, width: 200, height: 100),
+                                             direction: .left, speed: speed) { start, end, actualDuration in
+                gestures += 1
+                XCTAssertEqual(start, CGPoint(x: 270, y: 250))
+                XCTAssertEqual(end, CGPoint(x: 130, y: 250))
+                XCTAssertEqual(actualDuration, duration)
+                return OperationResult(success: true, error: nil)
+            }
+            XCTAssertTrue(result.success)
+            XCTAssertEqual(gestures, 1)
+        }
+    }
+
     // MARK: - escapeXML
 
     func testEscapeXMLNilReturnsEmpty() {

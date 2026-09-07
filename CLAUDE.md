@@ -16,14 +16,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew :app:test                     # Run only MCP server unit tests (fast iteration loop)
 ./gradlew :app:e2eTest                  # E2E tests against the assembled fat JAR (builds shadowJar first)
 ./gradlew :automation-server:test       # Run only automation server unit tests
-./gradlew test --tests "ErrorHandlerTest"  # Run a specific test class
+./gradlew :app:test --tests "ErrorHandlerTest"  # Run a specific app test class
 ./gradlew build                         # Full gate: tests + e2e + koverVerify + detekt + lint (run before opening a PR)
 ./gradlew shadowJar                     # Build fat JAR -> app/build/libs/visiontest.jar
 
 # === Installation & Release ===
 bash install.sh                         # Install locally (or curl -fsSL <url> | bash)
 # Release: push a tag to trigger the GitHub Actions release workflow
-# git tag v0.1.0 && git push --tags    # Builds JAR, runs tests, creates GitHub Release
+# git tag vX.Y.Z && git push origin vX.Y.Z  # Builds JAR, runs tests, creates GitHub Release
 
 # === Automation Server Android App ===
 ./gradlew :automation-server:assembleDebug                # Build debug APK
@@ -47,20 +47,20 @@ bash install.sh                         # Install locally (or curl -fsSL <url> |
 xcodebuild build-for-testing \
   -project ios-automation-server/IOSAutomationServer.xcodeproj \
   -scheme IOSAutomationServer \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
+  -destination 'platform=iOS Simulator,name=iPhone 17'
 
 # Start the automation server (runs XCUITest with JSON-RPC server)
 xcodebuild test \
   -project ios-automation-server/IOSAutomationServer.xcodeproj \
   -scheme IOSAutomationServer \
-  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
   -only-testing:IOSAutomationServerUITests/AutomationServerUITest/testRunAutomationServer
 
 # Run iOS unit tests
 xcodebuild test \
   -project ios-automation-server/IOSAutomationServer.xcodeproj \
   -scheme IOSAutomationServer \
-  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
   -only-testing:IOSAutomationServerTests
 
 # Test the server (in another terminal)
@@ -144,7 +144,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 
 ## CLI Usage
 
-The same operations available as MCP tools can be invoked directly from the command line. Every command requires `--platform android` or `--platform ios` (alias `-p`). With no arguments, `visiontest` starts the MCP stdio server as before. `visiontest --version` prints the installed version (stamped into the JAR manifest at build time from `app/build.gradle.kts`).
+A focused subset of the MCP operations can be invoked directly from the command line. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. With no arguments, `visiontest` starts the MCP stdio server as before. `visiontest --version` prints the installed version (stamped into the JAR manifest at build time from `app/build.gradle.kts`).
 
 | Command | Platforms | Required args | Optional flags |
 |---------|-----------|---------------|----------------|
@@ -237,5 +237,7 @@ The same operations available as MCP tools can be invoked directly from the comm
 ## Further Reading
 
 - [`LEARNING.md`](LEARNING.md) — Design decisions (instrumentation, Template Method, Flutter support, security)
+- [`docs/decisions/README.md`](docs/decisions/README.md) — Technical Decision index and architectural rationale
+- [`docs/agentico/specs/`](docs/agentico/specs/) — Detailed behavioral contracts for current capabilities
 - [`docs/installation.md`](docs/installation.md) — Installer, release workflow, launcher script, prerequisites
 - [`kotlin-mcp-server.instruction.md`](kotlin-mcp-server.instruction.md) — Required Kotlin/MCP patterns

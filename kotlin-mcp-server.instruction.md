@@ -4,6 +4,8 @@ Best practices and patterns for building MCP servers in Kotlin using the officia
 
 When building or modifying MCP server code in this project, follow these patterns.
 
+> The snippets and dependency versions in this guide are illustrative patterns. The repository's actual configuration and versions in `build.gradle.kts` and module `build.gradle.kts` files are the source of truth.
+
 ## Server Setup
 
 Create an MCP server using the `Server` class:

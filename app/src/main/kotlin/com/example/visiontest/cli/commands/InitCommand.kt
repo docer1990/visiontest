@@ -37,7 +37,7 @@ class InitCommand(
         private val YAML_FRONTMATTER = """
             |---
             |name: visiontest
-            |description: VisionTest mobile automation CLI – commands, workflows, and examples for automating Android and iOS devices.
+            |description: Use when validating Android or iOS app changes end to end, reproducing UI bugs, or collecting device evidence with VisionTest.
             |---
             |
         """.trimMargin()

@@ -151,6 +151,37 @@ class XCUITestBridge {
         label: String? = nil,
         bundleId: String? = nil
     ) -> ElementResult {
+        guard text != nil || textContains != nil || identifier != nil || label != nil ||
+              elementType.flatMap({ xcuiElementType(from: $0) }) != nil else {
+            return ElementResult(found: false, text: nil, identifier: nil, elementType: nil,
+                                 label: nil, value: nil, bounds: nil, isEnabled: nil,
+                                 error: "No selector provided")
+        }
+        guard let found = lookupElement(text: text, textContains: textContains, identifier: identifier,
+                                        elementType: elementType, label: label, bundleId: bundleId) else {
+            return ElementResult(found: false, text: nil, identifier: nil, elementType: nil,
+                                 label: nil, value: nil, bounds: nil, isEnabled: nil, error: nil)
+        }
+
+        let frame = found.frame
+        return ElementResult(
+            found: true,
+            text: found.label.isEmpty ? nil : found.label,
+            identifier: found.identifier.isEmpty ? nil : found.identifier,
+            elementType: elementTypeName(found.elementType),
+            label: found.label.isEmpty ? nil : found.label,
+            value: stringValue(of: found),
+            bounds: boundsString(from: frame),
+            isEnabled: found.isEnabled,
+            error: nil
+        )
+    }
+
+    /// Shared lookup preserves findElement's selector precedence and app scope.
+    private func lookupElement(
+        text: String?, textContains: String?, identifier: String?, elementType: String?,
+        label: String?, bundleId: String?
+    ) -> XCUIElement? {
         let queryTarget = queryTarget(bundleId: bundleId)
         let element: XCUIElement?
 
@@ -173,28 +204,25 @@ class XCUITestBridge {
             let match = queryTarget.descendants(matching: .any).matching(predicate).firstMatch
             element = match.exists ? match : nil
         } else {
-            return ElementResult(found: false, text: nil, identifier: nil, elementType: nil,
-                               label: nil, value: nil, bounds: nil, isEnabled: nil,
-                               error: "No selector provided")
+            return nil
         }
 
-        guard let found = element else {
-            return ElementResult(found: false, text: nil, identifier: nil, elementType: nil,
-                               label: nil, value: nil, bounds: nil, isEnabled: nil, error: nil)
-        }
+        return element
+    }
 
-        let frame = found.frame
-        return ElementResult(
-            found: true,
-            text: found.label.isEmpty ? nil : found.label,
-            identifier: found.identifier.isEmpty ? nil : found.identifier,
-            elementType: elementTypeName(found.elementType),
-            label: found.label.isEmpty ? nil : found.label,
-            value: stringValue(of: found),
-            bounds: boundsString(from: frame),
-            isEnabled: found.isEnabled,
-            error: nil
-        )
+    func swipeOnElement(_ request: ElementSwipeRequest) -> OperationResult {
+        let element = lookupElement(text: request.text, textContains: request.textContains,
+                                    identifier: request.identifier, elementType: request.elementType,
+                                    label: request.label, bundleId: request.bundleId)
+        let screenFrame = CGRect(origin: .zero, size: getScreenSize())
+        return performElementSwipe(
+            frame: element?.frame,
+            visibleFrame: screenFrame,
+            direction: request.direction,
+            speed: request.speed
+        ) { start, end, duration in
+            self.swipe(start: start, end: end, duration: duration)
+        }
     }
 
     // MARK: - Interactive Elements
@@ -299,13 +327,17 @@ class XCUITestBridge {
     // MARK: - Swipe by Coordinates
 
     func swipe(startX: Int, startY: Int, endX: Int, endY: Int, duration: TimeInterval) -> OperationResult {
-        let startCoord = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
-            .withOffset(CGVector(dx: CGFloat(startX), dy: CGFloat(startY)))
-        let endCoord = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
-            .withOffset(CGVector(dx: CGFloat(endX), dy: CGFloat(endY)))
+        return swipe(start: CGPoint(x: startX, y: startY), end: CGPoint(x: endX, y: endY), duration: duration)
+    }
 
-        let dx = CGFloat(endX - startX)
-        let dy = CGFloat(endY - startY)
+    private func swipe(start: CGPoint, end: CGPoint, duration: TimeInterval) -> OperationResult {
+        let startCoord = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+            .withOffset(CGVector(dx: start.x, dy: start.y))
+        let endCoord = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+            .withOffset(CGVector(dx: end.x, dy: end.y))
+
+        let dx = end.x - start.x
+        let dy = end.y - start.y
         let distance = sqrt(dx * dx + dy * dy)
         let velocity = max(distance / CGFloat(duration), 10.0) // floor at 10 pts/sec
         startCoord.press(forDuration: 0.05, thenDragTo: endCoord, withVelocity: XCUIGestureVelocity(rawValue: velocity), thenHoldForDuration: 0)

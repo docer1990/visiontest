@@ -29,6 +29,19 @@ class InitCommandTest {
         resourceLoader = { fakeInstructions },
     )
 
+    private fun parseFrontmatter(content: String): Map<String, String> {
+        val sections = content.split("---\n", limit = 3)
+        assertEquals("", sections[0])
+        assertEquals(3, sections.size)
+        return sections[1].lineSequence()
+            .filter { it.isNotBlank() }
+            .associate { line ->
+                val parts = line.split(": ", limit = 2)
+                assertEquals(2, parts.size, "invalid frontmatter line: $line")
+                parts[0] to parts[1]
+            }
+    }
+
     // --- resource loads from classpath ---
 
     @Test
@@ -46,9 +59,10 @@ class InitCommandTest {
         val file = tmp.resolve(".claude/skills/visiontest/SKILL.md")
         assertTrue(file.exists(), "SKILL.md should be created")
         val content = file.readText()
-        assertTrue(content.startsWith("---\n"), "SKILL.md should start with YAML frontmatter delimiter")
-        assertContains(content, "\n---\n", message = "SKILL.md should have closing frontmatter delimiter")
-        assertContains(content, "name: visiontest")
+        val frontmatter = parseFrontmatter(content)
+        assertEquals(setOf("name", "description"), frontmatter.keys)
+        assertEquals("visiontest", frontmatter["name"])
+        assertTrue(frontmatter.getValue("description").startsWith("Use when validating"))
         assertContains(content, fakeInstructions)
     }
 

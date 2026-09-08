@@ -178,6 +178,10 @@ class JsonRpcServer {
             let inputBundleId = params?["bundleId"] as? String
             return bridge.inputText(text: text, bundleId: inputBundleId).toDictionary()
 
+        case "ui.swipeOnElement":
+            let request = try ElementSwipeRequest(params: params)
+            return bridge.swipeOnElement(request).toDictionary()
+
         // Swipe by direction
         case "ui.swipeByDirection":
             guard let dirStr = (params?["direction"] as? String)?.uppercased(),
@@ -243,13 +247,6 @@ class MethodNotFoundException: Error {
     let method: String
     init(_ method: String) {
         self.method = method
-    }
-}
-
-class InvalidParamsException: Error {
-    let message: String
-    init(_ message: String) {
-        self.message = message
     }
 }
 

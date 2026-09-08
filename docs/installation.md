@@ -94,4 +94,6 @@ Project setup is separate and does not accept `--platform`:
 visiontest init --agent claude,opencode,codex
 ```
 
-Run `visiontest --help` for the complete command list and see [AGENTS.md](../AGENTS.md) for the standard automation loop.
+Run `visiontest --help` for the complete command list and see the
+[embedded agent instructions](../app/src/main/resources/agent-instructions.md)
+for the standard automation loop.

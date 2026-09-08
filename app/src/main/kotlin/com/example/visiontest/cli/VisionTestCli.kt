@@ -32,15 +32,21 @@ class VisionTestCli : NoOpCliktCommand(name = "visiontest") {
             GetDeviceInfoCommand(lazy { components }),
             ScreenshotCommand(lazy { components }),
             WaitForElementCommand(lazy { components }),
+            FindElementCommand(lazy { components }),
+            AvailableDeviceCommand(lazy { components }),
             // Interaction
             TapByCoordinatesCommand(lazy { components }),
             InputTextCommand(lazy { components }),
             SwipeDirectionCommand(lazy { components }),
+            SwipeCommand(lazy { components }),
+            SwipeOnElementCommand(lazy { components }),
             // Navigation
             PressBackCommand(lazy { components }),
             PressHomeCommand(lazy { components }),
             // Apps
             LaunchAppCommand(lazy { components }),
+            ListAppsCommand(lazy { components }),
+            InfoAppCommand(lazy { components }),
             // Project setup
             InitCommand(),
         )

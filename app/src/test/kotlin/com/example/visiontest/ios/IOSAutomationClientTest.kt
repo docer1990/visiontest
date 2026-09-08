@@ -5,7 +5,13 @@ import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import kotlin.test.*
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class IOSAutomationClientTest {
 
@@ -25,6 +31,32 @@ class IOSAutomationClientTest {
     @AfterTest
     fun tearDown() {
         server.shutdown()
+    }
+
+    @Test
+    fun `swipeOnElement serializes all selectors with Android wire names`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        client.swipeOnElement(
+            "left",
+            IOSElementSelectors("Exact", "Partial", "carousel", "ScrollView", "Photos", "com.example"),
+            "fast"
+        )
+        val body = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.swipeOnElement", body["method"].asString)
+        val params = body.getAsJsonObject("params")
+        val expected = mapOf("direction" to "left", "text" to "Exact", "textContains" to "Partial",
+            "resourceId" to "carousel", "className" to "ScrollView", "contentDescription" to "Photos",
+            "bundleId" to "com.example", "speed" to "fast")
+        assertEquals(expected, params.entrySet().associate { it.key to it.value.asString })
+    }
+
+    @Test
+    fun `swipeOnElement defaults speed and omits absent selectors`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        client.swipeOnElement("up", IOSElementSelectors(identifier = "list"))
+        val params = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject.getAsJsonObject("params")
+        assertEquals(mapOf("direction" to "up", "resourceId" to "list", "speed" to "normal"),
+            params.entrySet().associate { it.key to it.value.asString })
     }
 
     // --- sendRequest ---

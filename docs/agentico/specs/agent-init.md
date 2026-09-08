@@ -46,7 +46,12 @@ The required `--agent` option MUST split on commas and trim surrounding whitespa
 
 ### Requirement: Instructions are embedded for offline use
 
-The build MUST package the repository's `AGENTS.md` as the classpath resource `agent-instructions.md`. Init MUST load that resource locally and prepend YAML frontmatter containing `name: visiontest` and a description; it MUST NOT fetch instructions from the network.
+The build MUST package
+`app/src/main/resources/agent-instructions.md` as a classpath resource with the
+same name. Init MUST load that resource locally and prepend YAML frontmatter
+containing `name: visiontest` and an activation-oriented description; it MUST
+NOT fetch instructions from the network. The embedded body MUST be
+self-contained and MUST NOT depend on paths in the VisionTest source repository.
 
 #### Scenario: Installed JAR initializes offline
 
@@ -82,5 +87,5 @@ The `init` command MUST NOT define or require `--platform`, instantiate device c
 
 ## Verification
 
-- Production command and resource packaging: `app/src/main/kotlin/com/example/visiontest/cli/commands/InitCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/VisionTestCli.kt`, `app/build.gradle.kts`, `AGENTS.md`
+- Production command and resource packaging: `app/src/main/kotlin/com/example/visiontest/cli/commands/InitCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/VisionTestCli.kt`, `app/src/main/resources/agent-instructions.md`
 - Executable tests: `app/src/test/kotlin/com/example/visiontest/cli/InitCommandTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/InitCommandE2ETest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt`

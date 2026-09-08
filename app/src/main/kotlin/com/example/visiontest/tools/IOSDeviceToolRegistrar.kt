@@ -2,6 +2,10 @@ package com.example.visiontest.tools
 
 import com.example.visiontest.common.DeviceConfig
 import io.modelcontextprotocol.kotlin.sdk.Tool
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.put
 
 class IOSDeviceToolRegistrar(
     private val ios: DeviceConfig
@@ -23,8 +27,16 @@ class IOSDeviceToolRegistrar(
         }
     }
 
-    internal suspend fun availableDevice(): String {
+    internal suspend fun availableDevice(json: Boolean = false): String {
         val device = ios.getFirstAvailableDevice()
+        if (json) return buildJsonObject {
+            put("id", device.id)
+            put("name", device.name)
+            put("type", device.type.name)
+            put("state", device.state)
+            put("osVersion", device.osVersion)
+            put("modelName", device.modelName)
+        }.toString()
 
         return """
             |iOS Device found:
@@ -46,8 +58,11 @@ class IOSDeviceToolRegistrar(
         }
     }
 
-    internal suspend fun listApps(): String {
+    internal suspend fun listApps(json: Boolean = false): String {
         val result = ios.listApps()
+        if (json) return buildJsonObject {
+            put("apps", buildJsonArray { result.forEach { add(it) } })
+        }.toString()
         return if (result.isEmpty()) {
             "No apps found on the iOS device"
         } else {
@@ -66,8 +81,12 @@ class IOSDeviceToolRegistrar(
         }
     }
 
-    internal suspend fun infoApp(bundleId: String): String {
+    internal suspend fun infoApp(bundleId: String, json: Boolean = false): String {
         val rawResult = ios.getAppInfo(bundleId)
+        if (json) return buildJsonObject {
+            put("id", bundleId)
+            put("rawInfo", rawResult)
+        }.toString()
         return "App Information for $bundleId:\n$rawResult"
     }
 

@@ -62,13 +62,18 @@ class InitCommandE2ETest {
 
         val content = file.readText()
         assertContains(content, "name: visiontest", message = "frontmatter should be present")
-        // Distinctive text from the *body* of AGENTS.md — proves the
-        // embedded resource (not just the hardcoded frontmatter) is inside the JAR.
+        assertContains(content, "description: Use when validating")
         assertContains(
             content,
-            "Standard Automation Loop",
+            "VisionTest Mobile App Testing",
             message = "embedded instructions body should be bundled in the fat JAR",
         )
+        val relativeLinks = Regex("""\[[^]]+]\(([^)]+)\)""")
+            .findAll(content)
+            .map { it.groupValues[1].trim() }
+            .filterNot { it.startsWith("https://") || it.startsWith("http://") || it.startsWith("#") }
+            .toList()
+        assertTrue(relativeLinks.isEmpty(), "generated skill contains relative links: $relativeLinks")
     }
 
     @Test

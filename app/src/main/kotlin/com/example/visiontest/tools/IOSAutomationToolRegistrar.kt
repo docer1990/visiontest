@@ -6,7 +6,6 @@ import com.example.visiontest.config.IOSAutomationConfig
 import com.example.visiontest.discovery.ToolDiscovery
 import com.example.visiontest.ios.IOSAutomationClient
 import com.example.visiontest.ios.IOSElementSelectors
-import com.example.visiontest.ios.swipeOnElement
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

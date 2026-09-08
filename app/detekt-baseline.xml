@@ -115,6 +115,7 @@
     <ID>TooManyFunctions:Android.kt$Android : DeviceConfigAutoCloseable</ID>
     <ID>TooManyFunctions:AndroidAutomationToolRegistrar.kt$AndroidAutomationToolRegistrar : ToolRegistrar</ID>
     <ID>TooManyFunctions:AutomationClient.kt$AutomationClient : JsonRpcHttpClient</ID>
+    <ID>TooManyFunctions:IOSAutomationClient.kt$IOSAutomationClient : JsonRpcHttpClient</ID>
     <ID>TooManyFunctions:IOSAutomationToolRegistrar.kt$IOSAutomationToolRegistrar : ToolRegistrar</ID>
     <ID>TooManyFunctions:IOSSimulator.kt$IOSSimulator : DeviceConfig</ID>
     <ID>TooManyFunctions:ToolDiscovery.kt$ToolDiscovery</ID>

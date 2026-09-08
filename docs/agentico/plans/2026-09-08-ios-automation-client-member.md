@@ -27,9 +27,9 @@
 
 - [x] Move the existing function body inside `IOSAutomationClient` without changing its signature or payload construction.
 - [x] Remove `import com.example.visiontest.ios.swipeOnElement` from the registrar.
-- [ ] Add `TooManyFunctions:IOSAutomationClient.kt$IOSAutomationClient : JsonRpcHttpClient` to the targeted Detekt baseline.
-- [ ] Run the consumer, serialization, registrar, and CLI parity tests and confirm they pass.
-- [ ] Run `./gradlew build --rerun-tasks` and `git diff --check`.
+- [x] Add `TooManyFunctions:IOSAutomationClient.kt$IOSAutomationClient : JsonRpcHttpClient` to the targeted Detekt baseline.
+- [x] Run the consumer, serialization, registrar, and CLI parity tests and confirm they pass.
+- [x] Run `./gradlew build --rerun-tasks` and `git diff --check`.
 
 ### Task 3: Publish and close the review thread
 

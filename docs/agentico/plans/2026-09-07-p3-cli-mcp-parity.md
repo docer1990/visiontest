@@ -76,9 +76,9 @@ platform specs and CLI skill templates under `app/src/main/resources/`.
   examples on both platforms, errors, and the updated iOS bundle requirement.
 - [x] Run `./gradlew build`, `git diff --check`, and applicable iOS tests. Fix
   new issues without lowering coverage floors or refreshing lint baselines.
-- [ ] Independently review the branch against `46eca43`; resolve blockers and
+- [x] Independently review the branch against `46eca43`; resolve blockers and
   rerun affected checks.
-- [ ] Record actual verification and report branch/worktree state; leave merge
+- [x] Record actual verification and report branch/worktree state; leave merge
   and publication for the user's chosen integration action.
 
 ## Verification record
@@ -86,5 +86,7 @@ platform specs and CLI skill templates under `app/src/main/resources/`.
 - Baseline: `./gradlew :app:test` passed before implementation (2026-09-07).
 - Focused Kotlin P3 tests passed after implementation.
 - MCP packaged-JAR contract and agent-init E2E tests passed.
-- `./gradlew build` passed, including unit tests, E2E, coverage, detekt and Android lint.
+- `./gradlew build --rerun-tasks` passed with all 132 tasks executed, including
+  unit tests, E2E, coverage, detekt and Android lint.
 - iOS unit tests passed on iPhone 17 / iOS 26.5: 77 tests, 0 failures.
+- Independent branch review at `eabbd99` found no Must Fix or Should Fix items.

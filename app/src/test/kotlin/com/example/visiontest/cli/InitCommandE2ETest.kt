@@ -10,7 +10,6 @@ import kotlin.io.path.readText
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -69,10 +68,12 @@ class InitCommandE2ETest {
             "VisionTest Mobile App Testing",
             message = "embedded instructions body should be bundled in the fat JAR",
         )
-        assertFalse(
-            content.contains("docs/cli-json.md"),
-            "generated skills must not contain repository-relative documentation paths",
-        )
+        val relativeLinks = Regex("""\[[^]]+]\(([^)]+)\)""")
+            .findAll(content)
+            .map { it.groupValues[1].trim() }
+            .filterNot { it.startsWith("https://") || it.startsWith("http://") || it.startsWith("#") }
+            .toList()
+        assertTrue(relativeLinks.isEmpty(), "generated skill contains relative links: $relativeLinks")
     }
 
     @Test

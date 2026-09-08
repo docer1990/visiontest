@@ -33,8 +33,8 @@ without a custom Gradle copy step.
 
 ## Consequences
 
-- **Positive:** Each document has one audience and repository-relative links
-  cannot leak into generated skills.
+- **Positive:** Each document has one audience; an E2E packaging check rejects
+  VisionTest repository-only references in the generated skill.
 - **Positive:** The packaged resource follows the standard Gradle resource path.
 - **Negative:** Public command changes may require coordinated edits to both
   repository guidance and the distributed skill.

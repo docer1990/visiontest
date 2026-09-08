@@ -72,9 +72,9 @@ action.
 - `--content-description`
 - `--bundle-id` to scope an iOS app
 
-`find_element` and `swipe_on_element` require at least one element selector;
-`--bundle-id` alone does not satisfy that requirement and is rejected on
-Android. In Flutter apps, visible labels commonly appear as
+`find_element`, `wait_for_element`, and `swipe_on_element` require at least
+one element selector. `--bundle-id` scopes iOS lookup but does not satisfy that
+requirement by itself; Android rejects it. In Flutter apps, visible labels commonly appear as
 `contentDescription`, so inspect that field when `text` is empty.
 
 ## Command reference
@@ -133,7 +133,9 @@ Start log capture before reproducing the failing action and keep timestamps
 aligned with screenshots and commands. Use the project's platform tooling, such
 as filtered `adb logcat` output on Android or the Xcode/simulator log stream on
 iOS. Narrow logs to the application or subsystem when possible. Set
-`VISION_TEST_LOG_LEVEL=DEBUG` when diagnosing the automation bridge itself.
+`VISION_TEST_LOG_LEVEL=DEBUG` to include full stack traces from Kotlin MCP tool
+error handling. Read `adb logcat` or Xcode/simulator output for native
+automation-server diagnostics.
 
 Use the evidence to separate app failures from automation failures:
 

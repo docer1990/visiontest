@@ -89,4 +89,7 @@ platform specs and the CLI skill under `app/src/main/resources/`.
 - `./gradlew build --rerun-tasks` passed with all 132 tasks executed, including
   unit tests, E2E, coverage, detekt and Android lint.
 - iOS unit tests passed on iPhone 17 / iOS 26.5: 77 tests, 0 failures.
-- Independent branch review at `eabbd99` found no Must Fix or Should Fix items.
+- Generated-skill unit, packaged-JAR E2E, and independent usage scenarios passed
+  after separating repository guidance from the embedded skill.
+- Independent reviews through `43f6388` found no remaining Must Fix or Should
+  Fix items.

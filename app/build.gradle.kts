@@ -144,13 +144,6 @@ detekt {
     baseline = file("detekt-baseline.xml")
 }
 
-// Copy AGENTS.md from repo root into JAR resources so InitCommand can read it at runtime.
-tasks.named<ProcessResources>("processResources") {
-    from(rootProject.file("AGENTS.md")) {
-        rename { "agent-instructions.md" }
-    }
-}
-
 tasks.withType<Jar> {
     manifest {
         attributes["Implementation-Title"] = "visiontest"

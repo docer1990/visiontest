@@ -1,10 +1,10 @@
 ---
 id: TD-007
 title: "Install project-local agent instructions"
-status: accepted
+status: superseded
 date: 2026-08-31
 supersedes: null
-superseded_by: null
+superseded_by: TD-009
 tags: [cli, agents, installation]
 ---
 

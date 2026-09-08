@@ -68,7 +68,7 @@ Files under `app/src/main/kotlin/com/example/visiontest/`:
 
 Files: `app/src/test/kotlin/com/example/visiontest/McpStdioE2ETest.kt`,
 `README.md`, `CLAUDE.md`, `AGENTS.md`, `docs/agentico/specs/cli.md`, relevant
-platform specs and CLI skill templates under `app/src/main/resources/`.
+platform specs and the CLI skill under `app/src/main/resources/`.
 
 - [x] Update `EXPECTED_TOOLS` for `ios_swipe_on_element`; verify with
   `./gradlew :app:e2eTest`.

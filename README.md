@@ -144,7 +144,8 @@ visiontest init --agent claude,opencode,codex
 ```
 
 This installs or refreshes VisionTest skill files so supported agents can
-discover the CLI workflow inside a project.
+discover the CLI workflow inside a project. The shared skill source is
+[agent-instructions.md](app/src/main/resources/agent-instructions.md).
 
 ## Configuration
 

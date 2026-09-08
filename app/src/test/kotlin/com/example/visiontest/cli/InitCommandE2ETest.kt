@@ -10,6 +10,7 @@ import kotlin.io.path.readText
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -62,12 +63,15 @@ class InitCommandE2ETest {
 
         val content = file.readText()
         assertContains(content, "name: visiontest", message = "frontmatter should be present")
-        // Distinctive text from the *body* of AGENTS.md — proves the
-        // embedded resource (not just the hardcoded frontmatter) is inside the JAR.
+        assertContains(content, "description: Use when validating")
         assertContains(
             content,
-            "Standard Automation Loop",
+            "VisionTest Mobile App Testing",
             message = "embedded instructions body should be bundled in the fat JAR",
+        )
+        assertFalse(
+            content.contains("docs/cli-json.md"),
+            "generated skills must not contain repository-relative documentation paths",
         )
     }
 

@@ -49,6 +49,7 @@ class InitCommandTest {
         assertTrue(content.startsWith("---\n"), "SKILL.md should start with YAML frontmatter delimiter")
         assertContains(content, "\n---\n", message = "SKILL.md should have closing frontmatter delimiter")
         assertContains(content, "name: visiontest")
+        assertContains(content, "description: Use when validating")
         assertContains(content, fakeInstructions)
     }
 

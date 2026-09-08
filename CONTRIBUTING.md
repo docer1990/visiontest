@@ -1,9 +1,11 @@
 # Contributing to VisionTest
 
 This guide is for changing VisionTest itself. For installing or using the
-product, start with [README.md](README.md). Agent-facing runtime instructions
-live in [AGENTS.md](AGENTS.md), while behavioral contracts live under
-[docs/agentico/specs/](docs/agentico/specs/).
+product, start with [README.md](README.md). Repository guidance for coding
+agents lives in [AGENTS.md](AGENTS.md); the skill distributed into client
+projects lives in
+[app/src/main/resources/agent-instructions.md](app/src/main/resources/agent-instructions.md).
+Behavioral contracts live under [docs/agentico/specs/](docs/agentico/specs/).
 
 Before changing Kotlin MCP or CLI code under `app/src/`, read
 [kotlin-mcp-server.instruction.md](kotlin-mcp-server.instruction.md). Preserve

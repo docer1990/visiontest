@@ -2,8 +2,9 @@
 
 This file is the working guide for Claude Code (claude.ai/code) when changing
 VisionTest itself. Use `README.md` for the product overview, `AGENTS.md` for
-the installed agent automation workflow, and `docs/agentico/specs/` for
-externally observable behavior.
+repository-wide coding-agent guidance,
+`app/src/main/resources/agent-instructions.md` for the distributable mobile
+testing skill, and `docs/agentico/specs/` for externally observable behavior.
 
 > **Important**: Before modifying any Kotlin MCP server code in `app/src/`, you MUST read [`kotlin-mcp-server.instruction.md`](kotlin-mcp-server.instruction.md). It contains required patterns for server setup, tool registration, transport configuration, coroutine usage, dependency injection, and error handling.
 

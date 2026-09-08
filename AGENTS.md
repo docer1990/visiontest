@@ -1,15 +1,24 @@
 # VisionTest Mobile Automation
 
-VisionTest provides a CLI for automating Android devices and iOS simulators. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. The CLI reuses the same backend as the MCP server tools.
+VisionTest gives coding agents eyes and hands on Android devices and iOS
+simulators. Use it to verify a recent implementation end to end, reproduce a
+reported bug, capture UI evidence after each action, and correlate that evidence
+with the build, application, and device logs available in the development
+environment.
+
+Device-operation commands require `--platform android` or `--platform ios`
+(alias `-p`); `init`, root `--help`, and root `--version` do not. The CLI
+reuses the same backend as the MCP server tools.
 
 ## Standard Automation Loop
 
 ```
-1. Start the server     → visiontest start_automation_server -p <platform>
-2. Take a screenshot    → visiontest screenshot -p <platform>
-3. Inspect elements     → visiontest get_interactive_elements -p <platform>
-4. Interact             → visiontest tap_by_coordinates -p <platform> <x> <y>
-5. Repeat from step 2
+1. Start the server      → visiontest start_automation_server -p <platform>
+2. Capture initial state → visiontest screenshot -p <platform>
+3. Inspect elements      → visiontest get_interactive_elements -p <platform>
+4. Reproduce the flow    → tap, swipe, input_text, and wait_for_element
+5. Capture final state   → screenshot, find_element, or get_ui_hierarchy
+6. Diagnose and repeat   → correlate UI evidence with available logs, then retest
 ```
 
 ## Commands

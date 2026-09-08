@@ -1,5 +1,15 @@
 # Contributing to VisionTest
 
+This guide is for changing VisionTest itself. For installing or using the
+product, start with [README.md](README.md). Agent-facing runtime instructions
+live in [AGENTS.md](AGENTS.md), while behavioral contracts live under
+[docs/agentico/specs/](docs/agentico/specs/).
+
+Before changing Kotlin MCP or CLI code under `app/src/`, read
+[kotlin-mcp-server.instruction.md](kotlin-mcp-server.instruction.md). Preserve
+the shared registrar operations used by MCP and CLI, and update the behavioral
+specification whenever public behavior changes.
+
 ## Build from Source
 
 ```bash
@@ -41,7 +51,7 @@ The `run-visiontest.sh` launcher handles `JAVA_HOME`, `ANDROID_HOME`, and APK pa
 
 VisionTest has three components:
 
-1. **MCP Server and CLI** (`app/`) — Kotlin/JVM application that exposes mobile automation through Model Context Protocol (stdio transport) and 16 CLI subcommands
+1. **MCP Server and CLI** (`app/`) — Kotlin/JVM application that exposes mobile automation through Model Context Protocol (stdio transport) and 22 CLI subcommands
 2. **Android Automation Server** (`automation-server/`) — Native Android app with UIAutomator API access via JSON-RPC, using the instrumentation pattern (like Maestro/Appium)
 3. **iOS Automation Server** (`ios-automation-server/`) — Native iOS app with XCUITest access via JSON-RPC
 
@@ -54,12 +64,12 @@ visiontest/
 │       ├── Main.kt                   # Entry point (MCP server or CLI dispatch)
 │       ├── ToolFactory.kt            # Thin coordinator wiring registrars
 │       ├── cli/
-│       │   ├── VisionTestCli.kt      # Root Clikt command with 16 subcommands
+│       │   ├── VisionTestCli.kt      # Root Clikt command with 22 subcommands
 │       │   ├── CliErrorHandler.kt    # Exit-code mapping + runCliCommand
 │       │   ├── CliExit.kt            # CliExit exception + ExitCode enum
 │       │   ├── PlatformOption.kt     # Platform enum + --platform option helpers
 │       │   ├── ComponentHolder.kt    # Lazy DI graph for CLI commands
-│       │   └── commands/             # 16 Clikt subcommand files
+│       │   └── commands/             # Clikt subcommand adapters
 │       ├── tools/
 │       │   ├── ToolDsl.kt            # ToolScope DSL + CallToolRequest helpers
 │       │   ├── ToolRegistrar.kt      # Interface for modular registration
@@ -116,7 +126,10 @@ visiontest/
 └── build.gradle.kts                  # Root build config
 ```
 
-`VisionTestCli` registers these 16 subcommands: `install_automation_server`, `start_automation_server`, `stop_automation_server`, `automation_server_status`, `get_interactive_elements`, `get_ui_hierarchy`, `get_device_info`, `screenshot`, `wait_for_element`, `tap_by_coordinates`, `input_text`, `swipe_direction`, `press_back`, `press_home`, `launch_app`, and `init`.
+`VisionTestCli` registers 22 subcommands. The authoritative command and argument
+contract is [docs/agentico/specs/cli.md](docs/agentico/specs/cli.md); use
+`visiontest --help` to inspect the built artifact. CLI adapters delegate to the
+same registrar operations exposed through MCP.
 
 `ToolFactory` composes the seven registrars shown above: `AndroidDeviceToolRegistrar`, `AndroidAutomationToolRegistrar`, `AndroidStopToolRegistrar`, `AndroidWaitToolRegistrar`, `IOSDeviceToolRegistrar`, `IOSAutomationToolRegistrar`, and `IOSWaitToolRegistrar`.
 
@@ -158,7 +171,7 @@ Both automation servers expose a JSON-RPC 2.0 API. Most users interact through t
 | `ui.tapByCoordinates` | `x`, `y` | Yes | Yes |
 | `ui.swipe` | `startX`, `startY`, `endX`, `endY`, `steps` | Yes | Yes |
 | `ui.swipeByDirection` | `direction`, `distance`, `speed` | Yes | Yes |
-| `ui.swipeOnElement` | `direction`, selector, `speed` | Yes | No |
+| `ui.swipeOnElement` | `direction`, selector, `speed` | Yes | Yes |
 | `ui.findElement` | `text`, `resourceId`, etc. | Yes | Yes |
 | `ui.getInteractiveElements` | `includeDisabled` | Yes | Yes |
 | `ui.screenshot` | - | Yes | Yes |
@@ -233,6 +246,7 @@ curl -X POST http://localhost:9009/jsonrpc \
 | `ios_tap_by_coordinates` | Tap at screen coordinates |
 | `ios_swipe` | Swipe by coordinates |
 | `ios_swipe_direction` | Swipe by direction with distance and speed |
+| `ios_swipe_on_element` | Swipe inside a selected element |
 | `ios_get_device_info` | Get display size, rotation, iOS version |
 | `ios_input_text` | Type text into the currently focused element |
 | `ios_press_home` | Press home button |
@@ -284,6 +298,7 @@ The Gradle `test` tasks run pure JVM unit tests (no device or emulator required)
 | `app/cli` | `CliErrorHandlerTest.kt` | CLI exception-to-exit-code mapping |
 | `app/cli` | `InitCommandE2ETest.kt` | Packaged JAR agent-instruction installation |
 | `app/cli` | `InitCommandTest.kt` | Agent selection, paths, validation, and idempotent writes |
+| `app/cli` | `ParityCliTest.kt` | Six parity commands, selectors, JSON output, and platform errors |
 | `app/cli` | `VisionTestCliTest.kt` | Subcommand contract and platform argument parsing |
 | `app/config` | `AppConfigTest.kt` | Default application configuration |
 | `app/ios` | `IOSAutomationClientTest.kt` | iOS JSON-RPC requests and health checks |
@@ -296,6 +311,7 @@ The Gradle `test` tasks run pure JVM unit tests (no device or emulator required)
 | `app/tools` | `AndroidStopToolRegistrarTest.kt` | Idempotent stop and port-forward cleanup |
 | `app/tools` | `AndroidWaitToolRegistrarTest.kt` | Android wait-tool selectors and timeout bounds |
 | `app/tools` | `IOSDeviceToolRegistrarTest.kt` | iOS device tool handlers |
+| `app/tools` | `IOSSwipeToolRegistrarTest.kt` | iOS element-swipe schema, validation, and delegation |
 | `app/tools` | `IOSScreenshotToolTest.kt` | iOS screenshot paths, persistence, and error handling |
 | `app/tools` | `IOSWaitToolRegistrarTest.kt` | iOS wait-tool selectors and timeout bounds |
 | `app/tools` | `ToolDslTest.kt` | Tool registration DSL argument extraction |
@@ -394,17 +410,24 @@ The `EXIT` trap removes only the validated temporary root. Local-JAR mode skips 
 
 ### Adding New JSON-RPC Methods
 
-1. Add method to `BaseUiAutomatorBridge.kt` (uses `getUiDevice()`, `getUiAutomation()`, `getDisplayRect()`)
-2. Register in `JsonRpcServerInstrumented.kt` `executeMethod()`
-3. Add client method to `AutomationClient.kt`
-4. Add the MCP tool to the appropriate registrar in `tools/` (e.g., `AndroidAutomationToolRegistrar.kt`)
+1. Add the native operation to Android's `BaseUiAutomatorBridge.kt` or iOS's
+   `XCUITestBridge.swift`.
+2. Register it in Android's `JsonRpcServerInstrumented.kt` or iOS's
+   `JsonRpcServer.swift`.
+3. Add the matching Kotlin client method in `AutomationClient.kt` or
+   `IOSAutomationClient.kt`.
+4. Add focused native and Kotlin wire-contract tests.
+5. Expose the operation through the appropriate registrar under `tools/`.
 
 ### Adding New MCP Tools
 
 1. Add the tool to the appropriate registrar in `tools/` using the `ToolScope` DSL
 2. Extract the handler body into an `internal suspend fun` on the registrar (for CLI reuse)
 3. The MCP tool is automatically registered via `ToolFactory.registerAllTools()`
-4. Optionally, add a CLI subcommand in `cli/commands/` and register it in `VisionTestCli.kt`
+4. Update `McpStdioE2ETest.EXPECTED_TOOLS` to preserve the packaged MCP contract
+5. Add a CLI adapter in `cli/commands/` when the capability belongs in the CLI,
+   then register it in `VisionTestCli.kt`
+6. Update the relevant behavioral specification and public documentation
 
 ## Error Codes
 

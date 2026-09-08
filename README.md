@@ -1,60 +1,51 @@
-# VisionTest - MCP Server for Mobile Automation
+# VisionTest
 
-An MCP server that lets AI agents interact with Android devices and iOS simulators — tap, swipe, type, read UI elements, and launch apps.
+VisionTest is mobile automation built for agentic software development. It gives
+any coding agent eyes and hands on Android devices and iOS simulators, so the
+agent can close its own feedback loop: test a change end to end, reproduce a
+reported bug, observe the UI after each action, and correlate that behavior with
+build, application, and device logs to find the root cause.
 
-## What It Does
+One MCP server and CLI expose UI inspection, element lookup, taps, swipes, text
+input, screenshots, and app management. This lets an agent move from
+implementation to evidence without handing the device back to a human.
 
-- **Android + iOS** automation through a single MCP server
-- **UI interaction**: tap, swipe, type text, find elements, read screen hierarchy
-- **App management**: list, inspect, and launch apps
-- **Device detection**: automatically finds connected Android devices and booted iOS simulators
-- **Zero-config iOS**: uses pre-built test bundle when installed, falls back to source build if needed
+## Requirements
 
-## Prerequisites
+- JDK 17 or newer
+- macOS or Linux, on arm64 or x86_64
+- Android Platform Tools for Android automation
+- macOS, full Xcode, and a compatible simulator runtime for iOS automation
 
-- **JDK 17 or higher**
-- **macOS or Linux** (arm64 or x86_64)
-- **Android Platform Tools** (for Android automation): [Download](https://developer.android.com/tools/releases/platform-tools)
-- **Full Xcode IDE with a compatible iOS Simulator runtime** (for iOS simulator automation, macOS only)
+## Quick start
 
-## Installation
-
-### Quick Install (Recommended)
+Install the latest release:
 
 ```bash
 curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
 ```
 
-This will:
-- Check that Java 17+ is installed
-- Download the latest release JAR and Android APKs; on macOS arm64, also download the iOS test bundle
-- Create a `visiontest` command in `~/.local/bin/`
-- Verify all downloads via SHA-256 checksums
+The installer verifies every download, installs the JAR and Android APKs, and
+adds `visiontest` under `~/.local/bin`. On macOS arm64 it also installs the
+prebuilt iOS test bundle. Re-run the command to update.
 
-You can customize the install directory:
+Connect VisionTest to an MCP client:
 
 ```bash
-curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | VISIONTEST_DIR="$HOME/my-tools/visiontest" bash
-```
-
-To update, re-run the same command.
-
-### Configure Your AI Coding Tool
-
-<details>
-<summary><b>Claude Code</b></summary>
-
-```bash
+# Claude Code
 claude mcp add visiontest java -- -jar ~/.local/share/visiontest/visiontest.jar
+
+# OpenAI Codex CLI
+codex mcp add visiontest -- java -jar ~/.local/share/visiontest/visiontest.jar
 ```
-</details>
 
 <details>
-<summary><b>Claude Desktop</b></summary>
+<summary>Configuration for Claude Desktop, Copilot CLI, and OpenCode</summary>
 
-Edit the config file:
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+JSON configuration files require an absolute JAR path; they do not expand `~`.
+
+Claude Desktop uses `~/Library/Application Support/Claude/claude_desktop_config.json`
+on macOS or `~/.config/Claude/claude_desktop_config.json` on Linux:
 
 ```json
 {
@@ -67,47 +58,9 @@ Edit the config file:
 }
 ```
 
-> **Note:** Replace `/ABSOLUTE/PATH/TO` with your home directory (e.g. `/Users/yourname` on macOS, `/home/yourname` on Linux). JSON does not expand `~`.
-</details>
-
-<details>
-<summary><b>GitHub Copilot CLI</b></summary>
-
-Add to `~/.copilot/mcp-config.json`:
-
-```json
-{
-  "mcpServers": {
-    "visiontest": {
-      "command": "java",
-      "args": ["-jar", "/ABSOLUTE/PATH/TO/.local/share/visiontest/visiontest.jar"],
-      "type": "stdio"
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>OpenAI Codex CLI</b></summary>
-
-```bash
-codex mcp add visiontest -- java -jar ~/.local/share/visiontest/visiontest.jar
-```
-
-Or add to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.visiontest]
-command = "java"
-args = ["-jar", "/ABSOLUTE/PATH/TO/.local/share/visiontest/visiontest.jar"]
-```
-</details>
-
-<details>
-<summary><b>OpenCode</b></summary>
-
-Add to `opencode.json` (project root or `~/.config/opencode/opencode.json`):
+GitHub Copilot CLI uses `~/.copilot/mcp-config.json` and the same server object
+with `"type": "stdio"`. OpenCode uses this entry in a project or user
+`opencode.json`:
 
 ```json
 {
@@ -119,132 +72,102 @@ Add to `opencode.json` (project root or `~/.config/opencode/opencode.json`):
   }
 }
 ```
+
 </details>
 
-### Build from Source
+See the [installation guide](docs/installation.md) for custom paths, artifacts,
+checksums, and the iOS source fallback.
 
-For development or contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
+## Agentic workflow
 
-## Usage
+MCP clients discover VisionTest tools automatically. A coding agent can use this
+loop after implementing a feature or while investigating a bug:
 
-Your AI coding tool discovers all available tools automatically via MCP. Just ask it to interact with a device and it will use the right tools.
-
-### Android Workflow
-
-```
-1. install_automation_server     →  Install APKs (one-time setup)
-2. start_automation_server       →  Start the JSON-RPC server
-3. get_interactive_elements      →  Get interactive elements with tap coordinates
-4. android_tap_by_coordinates    →  Tap using centerX/centerY
-5. android_input_text            →  Type text into focused field
-```
-
-### iOS Workflow
-
-```
-1. ios_start_automation_server   →  Start XCUITest server (pre-built or source build)
-2. ios_get_interactive_elements  →  Get interactive elements with tap coordinates
-3. ios_tap_by_coordinates        →  Tap using centerX/centerY
-4. ios_input_text                →  Type text into focused field
+```text
+1. Start the platform automation server
+2. Capture a screenshot and inspect interactive elements
+3. Reproduce the flow with taps, swipes, text input, and explicit waits
+4. Check the outcome through element lookup, UI hierarchy, and screenshots
+5. Correlate UI evidence with application and device logs
+6. Fix and repeat
 ```
 
-### Available Tools
+Android requires `install_automation_server` once before its first server
+start. iOS uses an XCUITest bundle and currently supports simulators. VisionTest
+handles device interaction and UI evidence; the agent can combine those results
+with logs available in its development environment.
 
-**Device Management:** `available_device_android`, `list_apps_android`, `info_app_android`, `launch_app_android`, `ios_available_device`, `ios_list_apps`, `ios_info_app`, `ios_launch_app`
+| Area | Capabilities |
+| --- | --- |
+| Server | install, start, stop, and status |
+| Inspection | hierarchy, interactive elements, element lookup, waits, device info, screenshots |
+| Interaction | tap, coordinate and directional swipes, element swipe, text input, home/back |
+| Apps and devices | discover devices, list and inspect apps, launch apps |
 
-**Android Automation:** `install_automation_server`, `start_automation_server`, `stop_automation_server`, `automation_server_status`, `get_ui_hierarchy`, `get_interactive_elements`, `find_element`, `wait_for_element`, `wait_until_gone`, `android_tap_by_coordinates`, `android_swipe`, `android_swipe_direction`, `android_swipe_on_element`, `android_get_device_info`, `android_input_text`, `android_press_back`, `android_press_home`, `android_screenshot`
+## CLI
 
-**iOS Automation:** `ios_start_automation_server`, `ios_automation_server_status`, `ios_get_ui_hierarchy`, `ios_get_interactive_elements`, `ios_find_element`, `ios_wait_for_element`, `ios_wait_until_gone`, `ios_tap_by_coordinates`, `ios_swipe`, `ios_swipe_direction`, `ios_swipe_on_element`, `ios_get_device_info`, `ios_input_text`, `ios_press_home`, `ios_screenshot`, `ios_stop_automation_server`
-
-Detailed behavior is defined in the Agentico specifications for the [CLI](docs/agentico/specs/cli.md), [screenshots](docs/agentico/specs/screenshots.md), [element waits](docs/agentico/specs/element-waits.md), [element swipe](docs/agentico/specs/element-swipe.md), [server lifecycle](docs/agentico/specs/server-lifecycle.md), and [agent initialization](docs/agentico/specs/agent-init.md).
-
-## CLI Usage
-
-Device and UI operations are also available as direct CLI commands:
+The same backend is available without an MCP client:
 
 ```bash
-visiontest automation_server_status -p android
-visiontest get_interactive_elements -p ios
-visiontest tap_by_coordinates -p android 100 200
-visiontest wait_for_element -p android --text "Login" --timeout 5000
-visiontest screenshot -p ios --output ./screenshot.png
-visiontest swipe_direction -p android up --distance long --speed fast
-visiontest find_element -p ios --resource-id login --bundle-id com.example.app --json
-visiontest swipe -p android 100 800 100 200 --steps 20
-visiontest swipe_on_element -p ios left --resource-id carousel --bundle-id com.example.app
-visiontest list_apps -p android --json
-visiontest info_app -p ios com.example.app --json
-visiontest available_device -p android --json
+visiontest start_automation_server -p android
+visiontest get_interactive_elements -p android --json
+visiontest find_element -p android --text "Login" --json
+visiontest tap_by_coordinates -p android 540 1200
+visiontest wait_for_element -p android --text "Welcome" --timeout 5000
+visiontest screenshot -p android --output ./after.png
 visiontest stop_automation_server -p android
 ```
 
-Device-operation commands require `--platform android` or `--platform ios` (alias `-p`). The `init` command and root `--help` and `--version` options do not. Run `visiontest --help` for the full command list, or `visiontest <command> --help` for per-command usage.
+Device commands require `--platform android` or `--platform ios` (`-p`).
+`init`, root `--help`, and root `--version` do not use a platform. Run
+`visiontest --help` for all 22 commands.
 
-Inspection commands support `--json` for scripts: `get_interactive_elements`,
-`get_device_info`, `find_element`, `list_apps`, `info_app`, and `available_device`.
-See [JSON schemas and examples](docs/cli-json.md). `find_element` and
-`swipe_on_element` require an element selector; `--bundle-id` scopes iOS only.
-To use iOS element swipe, update or rebuild an older automation bundle.
+Six inspection commands support `--json`: `get_interactive_elements`,
+`get_device_info`, `find_element`, `list_apps`, `info_app`, and
+`available_device`. See the [JSON schemas and examples](docs/cli-json.md).
 
-With no arguments, `visiontest` starts the MCP stdio server.
+### Exit codes
 
-### Agent Setup
+| Code | Meaning |
+| --- | --- |
+| 0 | Command completed; inspect `found` or `success` for operation outcomes |
+| 1 | Generic failure |
+| 2 | Invalid or missing arguments |
+| 3 | Automation server unreachable |
+| 4 | Device or simulator unavailable |
+| 5 | Platform unsupported by the command |
 
-To set up AI agent skill files in your project (so agents discover VisionTest CLI instructions automatically):
+### Project-local agent instructions
 
 ```bash
 visiontest init --agent claude,opencode,codex
 ```
 
-This writes a `SKILL.md` file to each agent's project-level directory. Run it once per project.
-
-### Exit Codes
-
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Generic failure |
-| 2 | Usage error (missing/invalid args) |
-| 3 | Automation server not reachable |
-| 4 | Device/simulator not found |
-| 5 | Platform not supported for this command |
+This installs or refreshes VisionTest skill files so supported agents can
+discover the CLI workflow inside a project.
 
 ## Configuration
 
-### Environment Variables
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `VISION_TEST_LOG_LEVEL` | `PRODUCTION` | `PRODUCTION`, `DEVELOPMENT`, or `DEBUG` |
+| `VISION_TEST_APK_PATH` | auto-detected | Explicit Android test APK path |
+| `VISION_TEST_IOS_PROJECT_PATH` | auto-detected | Explicit iOS `.xcodeproj` path |
+| `VISIONTEST_DIR` | `~/.local/share/visiontest` | Install directory under `$HOME` |
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VISION_TEST_LOG_LEVEL` | `PRODUCTION` | `PRODUCTION`, `DEVELOPMENT`, `DEBUG` |
-| `VISION_TEST_APK_PATH` | (auto-detected) | Explicit path to Android test APK |
-| `VISION_TEST_IOS_PROJECT_PATH` | (auto-detected) | Explicit path to iOS `.xcodeproj` |
-| `VISIONTEST_DIR` | `~/.local/share/visiontest` | Override install directory (must be under `$HOME`) |
+Android uses port 9008 with automatic ADB forwarding. iOS uses port 9009 on the
+simulator host network.
 
-### Ports
+## Reference
 
-- **Android**: 9008 (requires ADB port forwarding, set up automatically)
-- **iOS**: 9009 (no port forwarding needed — simulators share the Mac's network)
-
-## Future Plans
-
-- [x] Text input/typing support
-- [x] Screenshot capture via UIAutomator / XCUITest
-- [x] CLI mode (direct command-line usage without MCP)
-- [ ] Long press operations
-- [ ] Multi-device coordination
-- [ ] Generic app install/uninstall
-- [ ] Clipboard operations (read/write)
-- [ ] Physical iOS device support
-- [ ] WebSocket support for real-time updates
-- [ ] Notification/status bar interaction
-- [ ] Permission dialog automation
-- [ ] Video recording of automation sessions
-- [ ] Separate CLI-only artifact (smaller download, no MCP dependencies)
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for build-from-source instructions, architecture details, JSON-RPC API reference, testing guide, and how to extend VisionTest.
+- [CLI contract](docs/agentico/specs/cli.md)
+- [JSON output](docs/cli-json.md)
+- [Element waits](docs/agentico/specs/element-waits.md)
+- [Element swipe](docs/agentico/specs/element-swipe.md)
+- [Screenshots](docs/agentico/specs/screenshots.md)
+- [Contributing](CONTRIBUTING.md)
+- [Open issues](https://github.com/docer1990/visiontest/issues)
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+VisionTest is available under the [MIT License](LICENSE).

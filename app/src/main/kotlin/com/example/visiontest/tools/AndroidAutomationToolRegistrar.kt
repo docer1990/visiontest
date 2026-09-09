@@ -608,7 +608,7 @@ class AndroidAutomationToolRegistrar(
                 MUCH MORE USEFUL than 'get_ui_hierarchy' for most tasks because it:
                 - Returns only elements you can actually interact with
                 - Filters out layout containers and invisible elements
-                - Provides center coordinates ready for tapping
+                - Provides center coordinates for intentional coordinate targets
                 - Returns clean JSON instead of verbose XML
 
                 HEURISTICS USED (handles missing accessibility properties):
@@ -629,7 +629,8 @@ class AndroidAutomationToolRegistrar(
                 WORKFLOW:
                 1. Call get_interactive_elements to see what you can interact with
                 2. Find the element you want by text, contentDescription, or resourceId
-                3. Use centerX, centerY with android_tap_by_coordinates to tap it
+                3. Prefer tap_on_element with a stable selector. Use centerX, centerY with
+                   android_tap_by_coordinates only when coordinates are the intended target.
             """.trimIndent(),
             timeoutMs = 30000
         ) { request ->

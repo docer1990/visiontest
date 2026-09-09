@@ -125,12 +125,34 @@ class ElementTapToolRegistrarTest {
         val iosServer = mockk<Server>(relaxed = true)
         android.registerTools(ToolScope(androidServer, logger))
         ios.registerTools(ToolScope(iosServer, logger))
+        val androidInteractiveElementsDescription = slot<String>()
+        val iosInteractiveElementsDescription = slot<String>()
         val androidSchema = slot<Tool.Input>()
         val androidHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
         val iosSchema = slot<Tool.Input>()
         val iosHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
         verify { androidServer.addTool("tap_on_element", any(), capture(androidSchema), capture(androidHandler)) }
         verify { iosServer.addTool("ios_tap_on_element", any(), capture(iosSchema), capture(iosHandler)) }
+        verify {
+            androidServer.addTool(
+                "get_interactive_elements",
+                capture(androidInteractiveElementsDescription),
+                any(),
+                any(),
+            )
+        }
+        verify {
+            iosServer.addTool(
+                "ios_get_interactive_elements",
+                capture(iosInteractiveElementsDescription),
+                any(),
+                any(),
+            )
+        }
+        assertTrue(androidInteractiveElementsDescription.captured.contains("Prefer tap_on_element with a stable selector"))
+        assertTrue(androidInteractiveElementsDescription.captured.contains("coordinates are the intended target"))
+        assertTrue(iosInteractiveElementsDescription.captured.contains("Prefer ios_tap_on_element with a stable selector"))
+        assertTrue(iosInteractiveElementsDescription.captured.contains("coordinates are the intended target"))
         assertTrue(androidSchema.captured.required.orEmpty().isEmpty())
         assertTrue(iosSchema.captured.required.orEmpty().isEmpty())
         assertEquals("integer", androidSchema.captured.properties["timeoutMs"]!!.jsonObject["type"]!!.jsonPrimitive.content)

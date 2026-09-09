@@ -379,7 +379,7 @@ class IOSAutomationToolRegistrar(
                 The iOS automation server must be running first (use ios_start_automation_server).
 
                 Returns only elements you can interact with (buttons, text fields, switches, etc.)
-                with center coordinates ready for tapping via ios_tap_by_coordinates.
+                with center coordinates for intentional coordinate targets.
 
                 OPTIONAL PARAMETERS:
                 - includeDisabled: Set to true to include disabled elements (default: false)
@@ -390,7 +390,8 @@ class IOSAutomationToolRegistrar(
                 WORKFLOW:
                 1. Call ios_get_interactive_elements with bundleId to see what you can interact with
                 2. Find the element by text, label, or identifier
-                3. Use centerX, centerY with ios_tap_by_coordinates to tap it
+                3. Prefer ios_tap_on_element with a stable selector. Use centerX, centerY with
+                   ios_tap_by_coordinates only when coordinates are the intended target.
             """.trimIndent(),
             timeoutMs = 30000
         ) { request ->

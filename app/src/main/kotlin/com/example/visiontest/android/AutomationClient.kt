@@ -1,6 +1,7 @@
 package com.example.visiontest.android
 
 import com.example.visiontest.common.JsonRpcHttpClient
+import com.example.visiontest.common.elementTapReadTimeoutMs
 import com.example.visiontest.config.AutomationConfig
 
 /**
@@ -145,7 +146,12 @@ class AutomationClient(
         return sendRequest(
             method = "ui.tapOnElement",
             params = params,
-            readTimeoutMs = timeoutMs + AutomationConfig.TAP_TRANSPORT_GRACE_MS.toInt(),
+            id = 1,
+            readTimeoutMs = elementTapReadTimeoutMs(
+                timeoutMs = timeoutMs,
+                maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+                graceMs = AutomationConfig.ELEMENT_TAP_TRANSPORT_GRACE_MS,
+            ),
         )
     }
 

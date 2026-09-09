@@ -1,6 +1,8 @@
 package com.example.visiontest.android
 
 import com.example.visiontest.CommandExecutionException
+import com.example.visiontest.common.elementTapReadTimeoutMs
+import com.example.visiontest.config.AutomationConfig
 import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
@@ -158,6 +160,21 @@ class AutomationClientTest {
     }
 
     @Test
+    fun `sendRequest preserves three argument JVM overload`() {
+        val overload = AutomationClient::class.java.methods.singleOrNull { method ->
+            method.name == "sendRequest" &&
+                method.parameterTypes.toList() == listOf(
+                String::class.java,
+                Map::class.java,
+                Int::class.javaPrimitiveType,
+                kotlin.coroutines.Continuation::class.java,
+            )
+        }
+
+        assertTrue(overload != null)
+    }
+
+    @Test
     fun `tapOnElement serializes selectors timeout and method`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
 
@@ -191,6 +208,34 @@ class AutomationClientTest {
 
         val params = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject.getAsJsonObject("params")
         assertEquals(setOf("resourceId", "timeoutMs"), params.keySet())
+    }
+
+    @Test
+    fun `tapOnElement rejects timeout outside platform range before sending request`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        assertFailsWith<IllegalArgumentException> {
+            client.tapOnElement(AndroidElementSelectors(text = "Login"), timeoutMs = 0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            client.tapOnElement(
+                AndroidElementSelectors(text = "Login"),
+                timeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS.toInt() + 1,
+            )
+        }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `tapOnElement read timeout includes transport grace`() {
+        assertEquals(
+            40_000,
+            elementTapReadTimeoutMs(
+                timeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS.toInt(),
+                maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+                graceMs = AutomationConfig.ELEMENT_TAP_TRANSPORT_GRACE_MS,
+            ),
+        )
     }
 
     // --- isServerRunning ---

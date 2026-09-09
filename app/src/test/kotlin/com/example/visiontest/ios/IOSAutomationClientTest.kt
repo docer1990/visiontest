@@ -1,6 +1,8 @@
 package com.example.visiontest.ios
 
 import com.example.visiontest.CommandExecutionException
+import com.example.visiontest.common.elementTapReadTimeoutMs
+import com.example.visiontest.config.IOSAutomationConfig
 import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
@@ -95,6 +97,34 @@ class IOSAutomationClientTest {
 
         val params = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject.getAsJsonObject("params")
         assertEquals(setOf("resourceId", "timeoutMs"), params.keySet())
+    }
+
+    @Test
+    fun `tapOnElement rejects timeout outside platform range before sending request`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        assertFailsWith<IllegalArgumentException> {
+            client.tapOnElement(IOSElementSelectors(text = "Login"), timeoutMs = 0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            client.tapOnElement(
+                IOSElementSelectors(text = "Login"),
+                timeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS.toInt() + 1,
+            )
+        }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `tapOnElement read timeout includes transport grace`() {
+        assertEquals(
+            40_000,
+            elementTapReadTimeoutMs(
+                timeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS.toInt(),
+                maxTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+                graceMs = IOSAutomationConfig.ELEMENT_TAP_TRANSPORT_GRACE_MS,
+            ),
+        )
     }
 
     // --- sendRequest ---

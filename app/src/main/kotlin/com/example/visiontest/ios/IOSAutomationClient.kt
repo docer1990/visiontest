@@ -1,6 +1,7 @@
 package com.example.visiontest.ios
 
 import com.example.visiontest.common.JsonRpcHttpClient
+import com.example.visiontest.common.elementTapReadTimeoutMs
 import com.example.visiontest.config.IOSAutomationConfig
 
 /**
@@ -178,7 +179,12 @@ class IOSAutomationClient(
         return sendRequest(
             method = "ui.tapOnElement",
             params = params,
-            readTimeoutMs = timeoutMs + IOSAutomationConfig.TAP_TRANSPORT_GRACE_MS.toInt(),
+            id = 1,
+            readTimeoutMs = elementTapReadTimeoutMs(
+                timeoutMs = timeoutMs,
+                maxTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+                graceMs = IOSAutomationConfig.ELEMENT_TAP_TRANSPORT_GRACE_MS,
+            ),
         )
     }
 }

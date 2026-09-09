@@ -9,11 +9,7 @@ internal class ElementSelectorOptions : OptionGroup("Element selectors") {
     val resourceId by option("--resource-id", help = "Resource ID (Android) / accessibility identifier (iOS)")
     val className by option("--class-name", help = "Class name (Android) / element type (iOS)")
     val contentDescription by option("--content-description", help = "Content description (Android) / label (iOS)")
-    val bundleId by option("--bundle-id", help = "App bundle ID (iOS only)")
-
-    fun validate(platform: Platform) {
-        require(platform == Platform.Ios || bundleId == null) { "--bundle-id is only supported on iOS" }
-        require(bundleId?.isNotBlank() != false) { "--bundle-id must not be blank" }
+    fun validate() {
         val values = listOf(text, textContains, resourceId, className, contentDescription)
         require(values.any { !it.isNullOrBlank() }) {
             "At least one element selector is required"

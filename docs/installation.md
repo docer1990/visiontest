@@ -46,6 +46,15 @@ Here `$VISIONTEST_DIR` means the resolved configured directory or its default, `
 
 For local installer testing, `bash install.sh --local-jar app/build/libs/visiontest.jar` installs only the supplied JAR and records `local-dev`; it intentionally skips the APKs and iOS bundle.
 
+## Native automation-server compatibility
+
+Some UI operations add a JSON-RPC method to the native automation server. A JAR
+upgrade alone does not add that method to an Android device or an extracted iOS
+bundle. For `tap_on_element`, update the Android automation APK pair with
+`visiontest install_automation_server -p android`, and rerun the installer (or
+use a current source build) to update the iOS automation bundle. An older native
+server responds to `ui.tapOnElement` with a method-not-found operation error.
+
 The installer uses a restrictive umask, verifies every downloaded binary with SHA-256, limits the install directory to `$HOME`, and validates archive entries before replacing an existing iOS bundle. Bundle replacement is staged: the current directory is moved to a process-specific backup, the staged directory is moved into place, and the backup is restored if that second move fails. This is not transactional across a process or machine crash: an interruption after the old directory is backed up but before the new directory is installed or the restore runs can leave the final bundle path absent, while an interruption after installation but before cleanup can leave a stale backup.
 
 ## Release assets

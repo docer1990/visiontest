@@ -46,8 +46,11 @@ XCUITest bundle.
 
 1. Capture the initial screen with `screenshot`.
 2. Read `get_interactive_elements --json` and identify stable selectors and
-   current coordinates.
-3. Reproduce the user flow with taps, swipes, text input, and explicit waits.
+   current coordinates. On iOS, use `--bundle-id <bundle-id>` to scope
+   inspection to the target app.
+3. Prefer `tap_on_element` with stable selectors for taps; use coordinates only
+   when a coordinate is the intended target. Reproduce the user flow with taps,
+   swipes, text input, and explicit waits.
 4. After every navigation or layout change, inspect elements again before using
    coordinates.
 5. Wait for the defined success marker. For transient UI, wait for disappearance
@@ -63,7 +66,8 @@ action.
 
 ## Selectors
 
-`find_element`, `wait_for_element`, and `swipe_on_element` accept:
+`find_element`, `wait_for_element`, `swipe_on_element`, and `tap_on_element`
+accept:
 
 - `--text`
 - `--text-contains`
@@ -72,10 +76,11 @@ action.
 - `--content-description`
 - `--bundle-id` to scope an iOS app
 
-`find_element`, `wait_for_element`, and `swipe_on_element` require at least
-one element selector. `--bundle-id` scopes iOS lookup but does not satisfy that
-requirement by itself; Android rejects it. In Flutter apps, visible labels commonly appear as
-`contentDescription`, so inspect that field when `text` is empty.
+`find_element`, `wait_for_element`, `swipe_on_element`, and `tap_on_element`
+require at least one element selector. `--bundle-id` scopes iOS lookup and taps
+but does not satisfy that requirement by itself; Android rejects it. In Flutter
+apps, visible labels commonly appear as `contentDescription`, so inspect that
+field when `text` is empty.
 
 ## Command reference
 
@@ -88,14 +93,15 @@ Every device command below requires `-p android` or `-p ios`.
 | `stop_automation_server` | Stop automation; safe when already stopped |
 | `automation_server_status` | Check server reachability |
 | `available_device [--json]` | Describe the first available target |
-| `get_interactive_elements [--include-disabled] [--json]` | List actionable elements and center coordinates |
+| `get_interactive_elements [--include-disabled] [--bundle-id] [--json]` | List actionable elements and center coordinates; iOS app scope is optional |
 | `find_element [selectors] [--json]` | Find one element |
 | `wait_for_element [selectors] [--timeout MS] [--gone]` | Wait up to 30000 ms for appearance or disappearance |
-| `get_ui_hierarchy` | Return the full UI hierarchy as XML |
+| `get_ui_hierarchy [--bundle-id]` | Return the full UI hierarchy as XML; iOS app scope is optional |
 | `get_device_info [--json]` | Return display and OS metadata |
 | `screenshot [--output PATH]` | Save a PNG on the host |
 | `tap_by_coordinates <x> <y>` | Tap integer screen coordinates |
-| `input_text <text>` | Type into the focused element |
+| `tap_on_element [selectors] [--timeout MS]` | Directly tap a selected actionable element; iOS also accepts `--bundle-id` |
+| `input_text <text> [--bundle-id]` | Type into the focused element; iOS app scope is optional |
 | `swipe_direction <direction> [--distance VALUE] [--speed VALUE]` | Swipe across the screen |
 | `swipe <startX> <startY> <endX> <endY> [--steps N]` | Swipe between coordinates |
 | `swipe_on_element <direction> [selectors] [--speed VALUE]` | Swipe inside a matched element |
@@ -108,6 +114,13 @@ Every device command below requires `-p android` or `-p ios`.
 Directions are `up`, `down`, `left`, or `right`. Distance values are
 `short`, `medium`, or `long`; speed values are `slow`, `normal`, or
 `fast`. Coordinate swipe steps must be positive and default to 20.
+
+`tap_on_element` waits natively at 500 ms intervals for a matching actionable
+element, defaults to a 10,000 ms timeout, and accepts at most 30,000 ms. It
+does not auto-scroll. It has no `--json` mode: inspect returned text and error
+status. Update both Android automation APKs or the iOS automation bundle before
+using it with a newly installed CLI/MCP JAR, because older native servers do not
+implement `ui.tapOnElement`.
 
 ## Structured results and failures
 

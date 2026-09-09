@@ -13,3 +13,4 @@ Technical Decisions (TDs) preserve the rationale for consequential architectural
 | [TD-007](TD-007-install-project-local-agent-instructions.md) | Install project-local agent instructions | Superseded by TD-009 |
 | [TD-008](TD-008-structured-cli-output-and-native-ios-element-swipe.md) | Structured CLI output and native iOS element swipe | Accepted |
 | [TD-009](TD-009-separate-repository-guidance-from-distributed-skill.md) | Separate repository guidance from the distributed skill | Accepted |
+| [TD-010](TD-010-keep-wait-and-tap-atomic-in-native-servers.md) | Keep wait and tap atomic in native servers | Accepted |

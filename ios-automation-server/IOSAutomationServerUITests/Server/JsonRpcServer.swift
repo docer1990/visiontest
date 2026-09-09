@@ -5,6 +5,8 @@ import Swifter
 /// Mirrors JsonRpcServerInstrumented.kt from the Android automation server.
 class JsonRpcServer {
 
+    private static let mainThreadOperationTimeout: TimeInterval = 35
+
     private let port: UInt16
     private let bridge: XCUITestBridge
     private let server: HttpServer
@@ -43,7 +45,10 @@ class JsonRpcServer {
                 }
             } catch {
                 NSLog("JsonRpcServer: Main thread execution failed: \(error)")
-                response = JsonRpcResponse.error(.xcuiTestError("Main thread timeout after 30s"), id: nil)
+                response = JsonRpcResponse.error(
+                    .xcuiTestError("Main thread timeout after \(Int(Self.mainThreadOperationTimeout))s"),
+                    id: nil
+                )
             }
             return self.jsonResponse(response)
         }
@@ -120,6 +125,10 @@ class JsonRpcServer {
                 throw InvalidParamsException("Missing 'y' parameter")
             }
             return bridge.tapByCoordinates(x: x, y: y).toDictionary()
+
+        case "ui.tapOnElement":
+            let request = try ElementTapRequest(params: params)
+            return bridge.tapOnElement(request).toDictionary()
 
         // Find element
         case "ui.findElement":
@@ -210,7 +219,7 @@ class JsonRpcServer {
 
     /// Executes a block synchronously on the main thread.
     /// XCUITest APIs (XCUIDevice, XCUIElement, etc.) must be called from the main thread.
-    /// - Throws: `MainThreadTimeoutError` if the block doesn't complete within 30 seconds.
+    /// - Throws: `MainThreadTimeoutError` if the block doesn't complete within the operation timeout.
     private func runOnMainThread<T>(_ block: @escaping () -> T) throws -> T {
         if Thread.isMainThread {
             return block()
@@ -221,9 +230,9 @@ class JsonRpcServer {
             result = block()
             semaphore.signal()
         }
-        let timeout = semaphore.wait(timeout: .now() + 30)
+        let timeout = semaphore.wait(timeout: .now() + Self.mainThreadOperationTimeout)
         if timeout == .timedOut {
-            NSLog("JsonRpcServer: WARNING - runOnMainThread timed out after 30s")
+            NSLog("JsonRpcServer: WARNING - runOnMainThread timed out after \(Int(Self.mainThreadOperationTimeout))s")
             throw MainThreadTimeoutError()
         }
         return result!

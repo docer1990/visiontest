@@ -3,6 +3,185 @@ import CoreGraphics
 
 final class HelpersTests: XCTestCase {
 
+    func testElementTapRequestValidatesSelectorsBundleAndStrictTimeoutBeforeLookup() throws {
+        let invalid: [[String: Any]] = [
+            [:],
+            ["text": "   "],
+            ["text": 3],
+            ["text": "ready", "bundleId": "  "],
+            ["text": "ready", "bundleId": 3],
+            ["text": "ready", "timeoutMs": 1.5],
+            ["text": "ready", "timeoutMs": 1.0],
+            ["text": "ready", "timeoutMs": 1e3],
+            ["text": "ready", "timeoutMs": "1000"],
+            ["text": "ready", "timeoutMs": true],
+            ["text": "ready", "timeoutMs": 0],
+            ["text": "ready", "timeoutMs": 30_001]
+        ]
+        for params in invalid {
+            XCTAssertThrowsError(try ElementTapRequest(params: params))
+        }
+
+        let request = try ElementTapRequest(params: [
+            "textContains": "Ready", "bundleId": "com.example.app", "timeoutMs": 2_000
+        ])
+        XCTAssertEqual(request.textContains, "Ready")
+        XCTAssertEqual(request.bundleId, "com.example.app")
+        XCTAssertEqual(request.timeoutMs, 2_000)
+    }
+
+    func testElementTapRequestUsesTenSecondDefaultAndSelectorDescription() throws {
+        let request = try ElementTapRequest(params: ["resourceId": "continue-button"])
+        XCTAssertEqual(request.timeoutMs, 10_000)
+        XCTAssertEqual(request.selectorDescription, "resourceId='continue-button'")
+    }
+
+    func testElementTapRequestRejectsOutOfRangeJsonIntegerWithoutTrapping() throws {
+        let invalidData = Data("{\"text\":\"ready\",\"timeoutMs\":9223372036854775808}".utf8)
+        let invalidParams = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: invalidData) as? [String: Any]
+        )
+        XCTAssertThrowsError(try ElementTapRequest(params: invalidParams))
+
+        for timeout in ["-1", "0"] {
+            let data = Data("{\"text\":\"ready\",\"timeoutMs\":\(timeout)}".utf8)
+            let params = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertThrowsError(try ElementTapRequest(params: params))
+        }
+
+        for timeout in ["1", "30000"] {
+            let data = Data("{\"text\":\"ready\",\"timeoutMs\":\(timeout)}".utf8)
+            let params = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(try ElementTapRequest(params: params).timeoutMs, Int(timeout))
+        }
+    }
+
+    func testElementTapReadinessRequiresExistingEnabledAndHittableElement() {
+        XCTAssertTrue(isElementTapReady(exists: true, isEnabled: true, isHittable: true))
+        XCTAssertFalse(isElementTapReady(exists: false, isEnabled: true, isHittable: true))
+        XCTAssertFalse(isElementTapReady(exists: true, isEnabled: false, isHittable: true))
+        XCTAssertFalse(isElementTapReady(exists: true, isEnabled: true, isHittable: false))
+    }
+
+    func testElementTapImmediatelyTapsReadyElement() throws {
+        let request = try ElementTapRequest(params: ["text": "Continue"])
+        var clock: TimeInterval = 0
+        var taps = 0
+        var lookups = 0
+        let result = performElementTap(
+            request: request,
+            now: { clock },
+            wait: { clock += $0 },
+            readiness: {
+                lookups += 1
+                return .ready
+            },
+            tap: { taps += 1 }
+        )
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(lookups, 1)
+        XCTAssertEqual(taps, 1)
+    }
+
+    func testElementTapProcessesRunLoopEventsWithoutInterleavingQueuedCommands() throws {
+        let request = try ElementTapRequest(params: ["text": "Continue", "timeoutMs": 2_000])
+        let completed = expectation(description: "Both main-queue commands complete")
+        DispatchQueue.main.async {
+            var events: [String] = []
+            var ready = false
+            let timer = Timer(timeInterval: 0.05, repeats: false) { _ in
+                ready = true
+                events.append("ready")
+            }
+            RunLoop.main.add(timer, forMode: .default)
+            defer { timer.invalidate() }
+            DispatchQueue.main.async {
+                events.append("next command")
+                XCTAssertEqual(events, ["ready", "tap", "completed", "next command"])
+                completed.fulfill()
+            }
+
+            let result = performElementTap(
+                request: request,
+                now: { ProcessInfo.processInfo.systemUptime },
+                readiness: { ready ? .ready : .absent },
+                tap: { events.append("tap") }
+            )
+            XCTAssertTrue(result.success, result.error ?? "Tap failed")
+            events.append("completed")
+        }
+        wait(for: [completed], timeout: 5)
+    }
+
+    func testElementTapWaitsAtFiveHundredMillisecondCadenceUntilReady() throws {
+        let request = try ElementTapRequest(params: ["text": "Continue", "timeoutMs": 2_000])
+        var clock: TimeInterval = 0
+        var taps = 0
+        var observations: [ElementTapReadiness] = [.absent, .blocked, .ready]
+        var waits: [TimeInterval] = []
+        let result = performElementTap(
+            request: request,
+            now: { clock },
+            wait: { interval in waits.append(interval); clock += interval },
+            readiness: { observations.removeFirst() },
+            tap: { taps += 1 }
+        )
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(waits, [0.5, 0.5])
+        XCTAssertEqual(taps, 1)
+    }
+
+    func testElementTapTimeoutDistinguishesAbsentAndBlockedWithoutTapping() throws {
+        for (readiness, expected) in [(ElementTapReadiness.absent, "Element not found"),
+                                      (.blocked, "Element found but not tappable")] {
+            let request = try ElementTapRequest(params: ["text": "Continue", "timeoutMs": 1_000])
+            var clock: TimeInterval = 0
+            var taps = 0
+            let result = performElementTap(
+                request: request,
+                now: { clock },
+                wait: { clock += $0 },
+                readiness: { readiness },
+                tap: { taps += 1 }
+            )
+            XCTAssertFalse(result.success)
+            XCTAssertTrue(result.error?.contains(expected) == true)
+            XCTAssertTrue(result.error?.contains("1000ms") == true)
+            XCTAssertTrue(result.error?.contains("text='Continue'") == true)
+            XCTAssertEqual(taps, 0)
+        }
+    }
+
+    func testElementTapDoesNotTapWhenReadinessChangesAfterDeadline() throws {
+        let request = try ElementTapRequest(params: ["text": "Continue", "timeoutMs": 500])
+        var clock: TimeInterval = 0
+        var taps = 0
+        let result = performElementTap(
+            request: request,
+            now: { clock },
+            wait: { clock += $0 + 0.001 },
+            readiness: { clock <= 0.5 ? .blocked : .ready },
+            tap: { taps += 1 }
+        )
+        XCTAssertFalse(result.success)
+        XCTAssertEqual(taps, 0)
+    }
+
+    func testElementTapTapsWhenReadinessIsReadyAtDeadline() throws {
+        let request = try ElementTapRequest(params: ["text": "Continue", "timeoutMs": 500])
+        var clock: TimeInterval = 0
+        var taps = 0
+        let result = performElementTap(
+            request: request,
+            now: { clock },
+            wait: { clock += $0 },
+            readiness: { clock < 0.5 ? .blocked : .ready },
+            tap: { taps += 1 }
+        )
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(taps, 1)
+    }
+
     func testElementSwipeEndpointsUseSeventyPercentOfBounds() throws {
         let frame = CGRect(x: 100, y: 200, width: 200, height: 100)
         let expected: [(SwipeDirection, CGPoint, CGPoint)] = [

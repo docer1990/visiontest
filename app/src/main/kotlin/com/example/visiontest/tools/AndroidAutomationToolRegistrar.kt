@@ -1,6 +1,7 @@
 package com.example.visiontest.tools
 
 import com.example.visiontest.ServerNotRunningException
+import com.example.visiontest.android.AndroidElementSelectors
 import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
@@ -28,6 +29,7 @@ class AndroidAutomationToolRegistrar(
         registerSwipe(scope)
         registerSwipeDirection(scope)
         registerSwipeOnElement(scope)
+        registerTapOnElement(scope)
         registerPressBack(scope)
         registerPressHome(scope)
         registerInputText(scope)
@@ -180,6 +182,22 @@ class AndroidAutomationToolRegistrar(
             contentDescription = contentDescription,
             speed = speed
         )
+    }
+
+    internal suspend fun tapOnElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
+        val timeout = validateElementTap(
+            selectorValues = listOf(
+                "text" to selectors.text, "textContains" to selectors.textContains,
+                "resourceId" to selectors.resourceId, "className" to selectors.className,
+                "contentDescription" to selectors.contentDescription,
+            ),
+            hasSelector = selectors.hasAnySelector(),
+            timeoutMs = timeoutMs,
+            defaultTimeoutMs = AutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
+            maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+        )
+        requireServer()
+        return successfulElementTapResponse(automationClient.tapOnElement(selectors, timeout))
     }
 
     internal suspend fun pressBack(): String {
@@ -450,6 +468,28 @@ class AndroidAutomationToolRegistrar(
         }
     }
 
+    private fun registerTapOnElement(scope: ToolScope) {
+        registerElementTapTool(
+            scope = scope,
+            name = "tap_on_element",
+            description = "Waits until a matching Android element is actionable, then taps it. " +
+                "Requires a selector; timeoutMs defaults to 10000ms and has a 30000ms maximum. " +
+                "Does not auto-scroll.",
+            selectorNames = listOf("text", "textContains", "resourceId", "className", "contentDescription"),
+        ) { request ->
+            tapOnElement(
+                AndroidElementSelectors(
+                    text = request.optionalString("text"),
+                    textContains = request.optionalString("textContains"),
+                    resourceId = request.optionalString("resourceId"),
+                    className = request.optionalString("className"),
+                    contentDescription = request.optionalString("contentDescription"),
+                ),
+                request.optionalInt("timeoutMs"),
+            )
+        }
+    }
+
     private fun registerPressBack(scope: ToolScope) {
         scope.tool(
             name = "android_press_back",
@@ -512,8 +552,9 @@ class AndroidAutomationToolRegistrar(
                 Types text into the currently focused element on the Android device.
                 The automation server must be running first (use start_automation_server).
 
-                WORKFLOW: First tap on a text field using 'android_tap_by_coordinates' to focus it,
-                then call this tool to type text into it.
+                WORKFLOW: Prefer tap_on_element with a stable selector to focus a text field,
+                then call this tool to type text into it. Use android_tap_by_coordinates only when
+                coordinates are the intended target.
             """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("text"))
         ) { request ->
@@ -553,7 +594,7 @@ class AndroidAutomationToolRegistrar(
                 MUCH MORE USEFUL than 'get_ui_hierarchy' for most tasks because it:
                 - Returns only elements you can actually interact with
                 - Filters out layout containers and invisible elements
-                - Provides center coordinates ready for tapping
+                - Provides center coordinates for intentional coordinate targets
                 - Returns clean JSON instead of verbose XML
 
                 HEURISTICS USED (handles missing accessibility properties):
@@ -574,7 +615,8 @@ class AndroidAutomationToolRegistrar(
                 WORKFLOW:
                 1. Call get_interactive_elements to see what you can interact with
                 2. Find the element you want by text, contentDescription, or resourceId
-                3. Use centerX, centerY with android_tap_by_coordinates to tap it
+                3. Prefer tap_on_element with a stable selector. Use centerX, centerY with
+                   android_tap_by_coordinates only when coordinates are the intended target.
             """.trimIndent(),
             timeoutMs = 30000
         ) { request ->

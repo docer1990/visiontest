@@ -87,4 +87,13 @@ object IOSAutomationConfig {
      * wait's own deadline fires first and produces the structured timeout message.
      */
     const val WAIT_TOOL_TIMEOUT_MS = 35_000L
+
+    /** Native element-tap wait budget when timeoutMs is omitted. */
+    const val ELEMENT_TAP_DEFAULT_TIMEOUT_MS = 10_000L
+
+    /** Upper bound for native element-tap timeoutMs. */
+    const val ELEMENT_TAP_MAX_TIMEOUT_MS = 30_000L
+
+    /** Extra HTTP read budget so native tap timeout diagnostics reach the caller. */
+    const val ELEMENT_TAP_TRANSPORT_GRACE_MS = 10_000L
 }

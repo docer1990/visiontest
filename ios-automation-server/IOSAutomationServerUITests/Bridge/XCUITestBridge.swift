@@ -225,6 +225,37 @@ class XCUITestBridge {
         }
     }
 
+    func tapOnElement(_ request: ElementTapRequest) -> OperationResult {
+        var tappableElement: XCUIElement?
+        return performElementTap(
+            request: request,
+            now: { ProcessInfo.processInfo.systemUptime },
+            readiness: {
+                tappableElement = nil
+                guard let element = self.lookupElement(
+                    text: request.text,
+                    textContains: request.textContains,
+                    identifier: request.identifier,
+                    elementType: request.elementType,
+                    label: request.label,
+                    bundleId: request.bundleId
+                ) else {
+                    return .absent
+                }
+                guard isElementTapReady(
+                    exists: element.exists,
+                    isEnabled: element.isEnabled,
+                    isHittable: element.isHittable
+                ) else {
+                    return .blocked
+                }
+                tappableElement = element
+                return .ready
+            },
+            tap: { tappableElement?.tap() }
+        )
+    }
+
     // MARK: - Interactive Elements
 
     /// Collects interactive elements using snapshot API for speed.

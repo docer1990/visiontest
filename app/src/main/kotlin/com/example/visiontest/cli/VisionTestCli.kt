@@ -36,6 +36,7 @@ class VisionTestCli : NoOpCliktCommand(name = "visiontest") {
             AvailableDeviceCommand(lazy { components }),
             // Interaction
             TapByCoordinatesCommand(lazy { components }),
+            TapOnElementCommand(lazy { components }),
             InputTextCommand(lazy { components }),
             SwipeDirectionCommand(lazy { components }),
             SwipeCommand(lazy { components }),

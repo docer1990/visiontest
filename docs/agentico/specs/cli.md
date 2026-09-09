@@ -30,7 +30,7 @@ The JAR MUST start the MCP stdio server when invoked with no arguments or when i
 
 ### Requirement: The CLI exposes the current command set
 
-The CLI SHALL register these 22 subcommands and argument contracts:
+The CLI SHALL register these 23 subcommands and argument contracts:
 
 | Subcommand | Platform contract | Operation-specific inputs |
 |---|---|---|
@@ -38,15 +38,16 @@ The CLI SHALL register these 22 subcommands and argument contracts:
 | `start_automation_server` | Android or iOS | None |
 | `stop_automation_server` | Android or iOS | None |
 | `automation_server_status` | Android or iOS | None |
-| `get_interactive_elements` | Android or iOS | Optional `--include-disabled`, `--json` |
-| `get_ui_hierarchy` | Android or iOS | None |
+| `get_interactive_elements` | Android or iOS | Optional `--include-disabled`, iOS app scope `--bundle-id`, `--json` |
+| `get_ui_hierarchy` | Android or iOS | Optional iOS app scope `--bundle-id` |
 | `get_device_info` | Android or iOS | Optional `--json` |
 | `find_element` | Android or iOS | At least one selector; optional `--bundle-id` on iOS and `--json` |
 | `available_device` | Android or iOS | Optional `--json` |
 | `screenshot` | Android or iOS | Optional `--output PATH` |
 | `wait_for_element` | Android or iOS | One or more selector options; optional iOS app scope `--bundle-id`, plus `--timeout MS` and `--gone` |
 | `tap_by_coordinates` | Android or iOS | Required integer `x` and `y` arguments |
-| `input_text` | Android or iOS | Required `text` argument |
+| `tap_on_element` | Android or iOS | At least one selector; optional iOS app scope `--bundle-id` and `--timeout MS` |
+| `input_text` | Android or iOS | Required `text` argument; optional iOS app scope `--bundle-id` |
 | `swipe_direction` | Android or iOS | Required `up`, `down`, `left`, or `right`; optional `--distance` and `--speed` choices |
 | `swipe` | Android or iOS | Integer `startX`, `startY`, `endX`, `endY`; optional positive `--steps` (default 20) |
 | `swipe_on_element` | Android or iOS | Direction and at least one selector; optional `--speed` and iOS `--bundle-id` |
@@ -125,12 +126,19 @@ Each device CLI command MUST delegate to the same registrar's internal suspend o
 
 ### Requirement: New selector commands validate before contacting the backend
 
-`find_element` and `swipe_on_element` MUST require at least one of `--text`,
-`--text-contains`, `--resource-id`, `--class-name`, `--content-description`.
+`find_element`, `swipe_on_element`, and `tap_on_element` MUST require at least
+one of `--text`, `--text-contains`, `--resource-id`, `--class-name`,
+`--content-description`.
 iOS maps these to text, partial text, identifier, element type, and label.
 `--bundle-id` MUST scope only iOS and MUST NOT satisfy the selector requirement.
 Android use of this flag MUST exit 2. Invalid direction/speed and nonpositive
-coordinate swipe steps MUST exit 2 before backend access.
+coordinate swipe steps MUST exit 2 before backend access. `tap_on_element`
+timeouts MUST be from 1 through 30,000 ms inclusive before backend access.
+
+### Requirement: Element taps retain text output
+
+`tap_on_element` MUST NOT add `--json` or any new structured-output contract.
+It SHALL preserve the normal text result and mapped failure behavior.
 
 ### Requirement: Inspection offers machine-readable output
 

@@ -85,8 +85,8 @@ loop after implementing a feature or while investigating a bug:
 
 ```text
 1. Start the platform automation server
-2. Capture a screenshot and inspect interactive elements
-3. Reproduce the flow with taps, swipes, text input, and explicit waits
+2. Capture a screenshot and inspect interactive elements, scoped to the iOS app when needed
+3. Reproduce the flow with selector-based taps, swipes, text input, and explicit waits
 4. Check the outcome through element lookup, UI hierarchy, and screenshots
 5. Correlate UI evidence with application and device logs
 6. Fix and repeat
@@ -101,7 +101,7 @@ with logs available in its development environment.
 | --- | --- |
 | Server | install, start, stop, and status |
 | Inspection | hierarchy, interactive elements, element lookup, waits, device info, screenshots |
-| Interaction | tap, coordinate and directional swipes, element swipe, text input, home/back |
+| Interaction | selector-based and coordinate taps, coordinate and directional swipes, element swipe, text input, home/back |
 | Apps and devices | discover devices, list and inspect apps, launch apps |
 
 ## CLI
@@ -112,15 +112,30 @@ The same backend is available without an MCP client:
 visiontest start_automation_server -p android
 visiontest get_interactive_elements -p android --json
 visiontest find_element -p android --text "Login" --json
-visiontest tap_by_coordinates -p android 540 1200
+visiontest tap_on_element -p android --resource-id "com.example:id/login" --timeout 5000
 visiontest wait_for_element -p android --text "Welcome" --timeout 5000
 visiontest screenshot -p android --output ./after.png
 visiontest stop_automation_server -p android
 ```
 
 Device commands require `--platform android` or `--platform ios` (`-p`).
-`init`, root `--help`, and root `--version` do not use a platform. Run
-`visiontest --help` for all 22 commands.
+`init`, root `--help`, and root `--version` do not use a platform.
+On iOS, `--bundle-id` scopes inspection and element operations to an app:
+
+```bash
+visiontest get_interactive_elements -p ios --bundle-id com.example.app --json
+visiontest get_ui_hierarchy -p ios --bundle-id com.example.app
+visiontest tap_on_element -p ios --bundle-id com.example.app --text "Continue" --timeout 5000
+```
+
+`tap_on_element` prefers stable selectors over coordinates. It requires one of
+`--text`, `--text-contains`, `--resource-id`, `--class-name`, or
+`--content-description`; `--bundle-id` is iOS scope, not a selector, and is
+rejected on Android. The timeout defaults to 10 seconds and cannot exceed 30
+seconds. Update the Android automation APK pair or iOS automation bundle when
+upgrading to a VisionTest release that introduces this native operation.
+
+Run `visiontest --help` for all 23 commands.
 
 Six inspection commands support `--json`: `get_interactive_elements`,
 `get_device_info`, `find_element`, `list_apps`, `info_app`, and

@@ -1,6 +1,7 @@
 package com.example.visiontest.ios
 
 import com.example.visiontest.common.JsonRpcHttpClient
+import com.example.visiontest.common.elementTapReadTimeoutMs
 import com.example.visiontest.config.IOSAutomationConfig
 
 /**
@@ -163,5 +164,27 @@ class IOSAutomationClient(
         selectors.label?.let { params["contentDescription"] = it }
         selectors.bundleId?.let { params["bundleId"] = it }
         return sendRequest("ui.swipeOnElement", params)
+    }
+
+    /** Taps an actionable element, waiting up to [timeoutMs] in the native server. */
+    suspend fun tapOnElement(selectors: IOSElementSelectors, timeoutMs: Int): String {
+        val params = mutableMapOf<String, Any>("timeoutMs" to timeoutMs)
+        selectors.text?.let { params["text"] = it }
+        selectors.textContains?.let { params["textContains"] = it }
+        selectors.identifier?.let { params["resourceId"] = it }
+        selectors.elementType?.let { params["className"] = it }
+        selectors.label?.let { params["contentDescription"] = it }
+        selectors.bundleId?.let { params["bundleId"] = it }
+
+        return sendRequest(
+            method = "ui.tapOnElement",
+            params = params,
+            id = 1,
+            readTimeoutMs = elementTapReadTimeoutMs(
+                timeoutMs = timeoutMs,
+                maxTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+                graceMs = IOSAutomationConfig.ELEMENT_TAP_TRANSPORT_GRACE_MS,
+            ),
+        )
     }
 }

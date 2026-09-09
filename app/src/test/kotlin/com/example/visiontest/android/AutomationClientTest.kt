@@ -1,10 +1,13 @@
 package com.example.visiontest.android
 
 import com.example.visiontest.CommandExecutionException
+import com.example.visiontest.common.elementTapReadTimeoutMs
+import com.example.visiontest.config.AutomationConfig
 import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import java.net.SocketTimeoutException
 import kotlin.test.*
 
 class AutomationClientTest {
@@ -141,6 +144,98 @@ class AutomationClientTest {
         assertFailsWith<CommandExecutionException> {
             client.sendRequest("test.method")
         }
+    }
+
+    @Test
+    fun `sendRequest uses per-request read timeout`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setBodyDelay(200, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .setBody("""{"jsonrpc":"2.0","result":"ok","id":1}""")
+        )
+
+        assertFailsWith<SocketTimeoutException> {
+            client.sendRequest("test.method", readTimeoutMs = 50)
+        }
+    }
+
+    @Test
+    fun `sendRequest preserves three argument JVM overload`() {
+        val overload = AutomationClient::class.java.methods.singleOrNull { method ->
+            method.name == "sendRequest" &&
+                method.parameterTypes.toList() == listOf(
+                String::class.java,
+                Map::class.java,
+                Int::class.javaPrimitiveType,
+                kotlin.coroutines.Continuation::class.java,
+            )
+        }
+
+        assertTrue(overload != null)
+    }
+
+    @Test
+    fun `tapOnElement serializes selectors timeout and method`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        client.tapOnElement(
+            AndroidElementSelectors(
+                text = "Exact",
+                textContains = "Partial",
+                resourceId = "com.example:id/login",
+                className = "android.widget.Button",
+                contentDescription = "Log in",
+            ),
+            timeoutMs = 5_000,
+        )
+
+        val body = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.tapOnElement", body["method"].asString)
+        val params = body.getAsJsonObject("params")
+        assertEquals("Exact", params["text"].asString)
+        assertEquals("Partial", params["textContains"].asString)
+        assertEquals("com.example:id/login", params["resourceId"].asString)
+        assertEquals("android.widget.Button", params["className"].asString)
+        assertEquals("Log in", params["contentDescription"].asString)
+        assertEquals(5_000, params["timeoutMs"].asInt)
+    }
+
+    @Test
+    fun `tapOnElement omits null selectors`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        client.tapOnElement(AndroidElementSelectors(resourceId = "com.example:id/login"), timeoutMs = 1_000)
+
+        val params = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject.getAsJsonObject("params")
+        assertEquals(setOf("resourceId", "timeoutMs"), params.keySet())
+    }
+
+    @Test
+    fun `tapOnElement rejects timeout outside platform range before sending request`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        assertFailsWith<IllegalArgumentException> {
+            client.tapOnElement(AndroidElementSelectors(text = "Login"), timeoutMs = 0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            client.tapOnElement(
+                AndroidElementSelectors(text = "Login"),
+                timeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS.toInt() + 1,
+            )
+        }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `tapOnElement read timeout includes transport grace`() {
+        assertEquals(
+            40_000,
+            elementTapReadTimeoutMs(
+                timeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS.toInt(),
+                maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+                graceMs = AutomationConfig.ELEMENT_TAP_TRANSPORT_GRACE_MS,
+            ),
+        )
     }
 
     // --- isServerRunning ---

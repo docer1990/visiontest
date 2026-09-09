@@ -37,6 +37,7 @@ class IOSAutomationToolRegistrar(
         registerSwipe(scope)
         registerSwipeDirection(scope)
         registerSwipeOnElement(scope)
+        registerTapOnElement(scope)
         registerFindElement(scope)
         registerGetDeviceInfo(scope)
         registerPressHome(scope)
@@ -248,6 +249,22 @@ class IOSAutomationToolRegistrar(
         return iosAutomationClient.swipeOnElement(direction, selectors, speed)
     }
 
+    internal suspend fun tapOnElement(selectors: IOSElementSelectors, timeoutMs: Int? = null): String {
+        val timeout = validateElementTap(
+            selectorValues = listOf(
+                "text" to selectors.text, "textContains" to selectors.textContains,
+                "resourceId" to selectors.identifier, "className" to selectors.elementType,
+                "contentDescription" to selectors.label, "bundleId" to selectors.bundleId,
+            ),
+            hasSelector = selectors.hasAnySelector(),
+            timeoutMs = timeoutMs,
+            defaultTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
+            maxTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+        )
+        requireServer()
+        return successfulElementTapResponse(iosAutomationClient.tapOnElement(selectors, timeout))
+    }
+
     internal suspend fun findElement(
         text: String?,
         textContains: String?,
@@ -362,7 +379,7 @@ class IOSAutomationToolRegistrar(
                 The iOS automation server must be running first (use ios_start_automation_server).
 
                 Returns only elements you can interact with (buttons, text fields, switches, etc.)
-                with center coordinates ready for tapping via ios_tap_by_coordinates.
+                with center coordinates for intentional coordinate targets.
 
                 OPTIONAL PARAMETERS:
                 - includeDisabled: Set to true to include disabled elements (default: false)
@@ -373,7 +390,8 @@ class IOSAutomationToolRegistrar(
                 WORKFLOW:
                 1. Call ios_get_interactive_elements with bundleId to see what you can interact with
                 2. Find the element by text, label, or identifier
-                3. Use centerX, centerY with ios_tap_by_coordinates to tap it
+                3. Prefer ios_tap_on_element with a stable selector. Use centerX, centerY with
+                   ios_tap_by_coordinates only when coordinates are the intended target.
             """.trimIndent(),
             timeoutMs = 30000
         ) { request ->
@@ -498,6 +516,31 @@ class IOSAutomationToolRegistrar(
         }
     }
 
+    private fun registerTapOnElement(scope: ToolScope) {
+        registerElementTapTool(
+            scope = scope,
+            name = "ios_tap_on_element",
+            description = "Waits until a matching iOS element is actionable, then taps it. " +
+                "Requires a selector; bundleId scopes the app and is not a selector. timeoutMs defaults " +
+                "to 10000ms and has a 30000ms maximum. Does not auto-scroll.",
+            selectorNames = listOf(
+                "text", "textContains", "resourceId", "className", "contentDescription", "bundleId",
+            ),
+        ) { request ->
+            tapOnElement(
+                IOSElementSelectors(
+                    text = request.optionalString("text"),
+                    textContains = request.optionalString("textContains"),
+                    identifier = request.optionalString("resourceId"),
+                    elementType = request.optionalString("className"),
+                    label = request.optionalString("contentDescription"),
+                    bundleId = request.optionalString("bundleId"),
+                ),
+                request.optionalInt("timeoutMs"),
+            )
+        }
+    }
+
     private fun registerFindElement(scope: ToolScope) {
         scope.tool(
             name = "ios_find_element",
@@ -567,8 +610,9 @@ class IOSAutomationToolRegistrar(
                 Types text into the currently focused element on the iOS simulator.
                 The iOS automation server must be running first (use ios_start_automation_server).
 
-                WORKFLOW: First tap on a text field using 'ios_tap_by_coordinates' to focus it,
-                then call this tool to type text into it.
+                WORKFLOW: Prefer ios_tap_on_element with a stable selector to focus a text field,
+                then call this tool to type text into it. Use ios_tap_by_coordinates only when
+                coordinates are the intended target.
 
                 PARAMETERS:
                 - text (required): The text to type.

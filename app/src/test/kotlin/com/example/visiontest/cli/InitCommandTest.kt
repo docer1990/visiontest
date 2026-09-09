@@ -50,6 +50,19 @@ class InitCommandTest {
         assertTrue(content != null && content.contains("VisionTest"), "Resource should contain VisionTest content")
     }
 
+    @Test
+    fun `embedded resource guides stable element taps with app scope and timeout`() {
+        val content = requireNotNull(InitCommand.loadClasspathResource("agent-instructions.md"))
+
+        assertContains(content, "Prefer `tap_on_element` with stable selectors")
+        assertContains(content, "`--bundle-id` scopes iOS lookup and taps")
+        assertContains(content, "does not satisfy that requirement by itself; Android rejects it")
+        assertContains(content, "waits natively at 500 ms intervals")
+        assertContains(content, "defaults to a 10,000 ms timeout")
+        assertContains(content, "at most 30,000 ms")
+        assertContains(content, "does not auto-scroll")
+    }
+
     // --- single agent writes correct file ---
 
     @Test

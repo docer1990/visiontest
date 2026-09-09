@@ -175,6 +175,25 @@ class JsonRpcServerInstrumented(
                 uiAutomator.tapByCoordinates(x, y)
             }
 
+            "ui.tapOnElement" -> {
+                val selectors = try {
+                    com.example.automationserver.uiautomator.parseTapOnElementSelectors(params)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid selector")
+                }
+                val timeoutParameter = params?.get("timeoutMs")
+                    ?: throw InvalidParamsException("Missing 'timeoutMs' parameter")
+                val timeoutMs = try {
+                    com.example.automationserver.uiautomator.parseTapOnElementTimeoutMs(timeoutParameter)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid timeoutMs")
+                }
+
+                uiAutomator.tapOnElement(
+                    com.example.automationserver.uiautomator.TapOnElementRequest(selectors, timeoutMs)
+                )
+            }
+
             // Find element method
             "ui.findElement" -> {
                 val text = params?.get("text")?.asString

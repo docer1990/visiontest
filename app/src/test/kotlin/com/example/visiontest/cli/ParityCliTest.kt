@@ -7,10 +7,13 @@ import com.example.visiontest.cli.commands.AvailableDeviceCommand
 import com.example.visiontest.cli.commands.FindElementCommand
 import com.example.visiontest.cli.commands.GetDeviceInfoCommand
 import com.example.visiontest.cli.commands.GetInteractiveElementsCommand
+import com.example.visiontest.cli.commands.GetUiHierarchyCommand
 import com.example.visiontest.cli.commands.InfoAppCommand
+import com.example.visiontest.cli.commands.InputTextCommand
 import com.example.visiontest.cli.commands.ListAppsCommand
 import com.example.visiontest.cli.commands.SwipeCommand
 import com.example.visiontest.cli.commands.SwipeOnElementCommand
+import com.example.visiontest.cli.commands.TapOnElementCommand
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.common.DeviceType
 import com.example.visiontest.common.MobileDevice
@@ -148,6 +151,51 @@ class ParityCliTest {
     }
 
     @Test
+    fun `ios app scope forwards unchanged to inspection and input operations`() {
+        val cases = listOf(
+            Triple(
+                ::GetUiHierarchyCommand,
+                arrayOf("-p", "ios", "--bundle-id", "com.example.app"),
+                "ui.dumpHierarchy",
+            ),
+            Triple(
+                ::GetInteractiveElementsCommand,
+                arrayOf("-p", "ios", "--bundle-id", "com.example.app"),
+                "ui.getInteractiveElements",
+            ),
+            Triple(
+                ::InputTextCommand,
+                arrayOf("-p", "ios", "hello", "--bundle-id", "com.example.app"),
+                "ui.inputText",
+            ),
+        )
+        for ((factory, args, method) in cases) {
+            respond(iosServer, """{"success":true}""")
+            val result = invoke(factory, *args)
+            assertEquals(0, result.exitCode, result.stderr)
+            val wire = request(iosServer)
+            assertEquals(method, wire["method"].asString)
+            assertEquals("com.example.app", wire["params"].asJsonObject["bundleId"].asString)
+        }
+    }
+
+    @Test
+    fun `omitting ios app scope preserves Springboard requests`() {
+        val cases = listOf(
+            Triple(::GetUiHierarchyCommand, arrayOf("-p", "ios"), "ui.dumpHierarchy"),
+            Triple(::GetInteractiveElementsCommand, arrayOf("-p", "ios"), "ui.getInteractiveElements"),
+            Triple(::InputTextCommand, arrayOf("-p", "ios", "hello"), "ui.inputText"),
+        )
+        for ((factory, args, method) in cases) {
+            respond(iosServer, """{"success":true}""")
+            assertEquals(0, invoke(factory, *args).exitCode)
+            val wire = request(iosServer)
+            assertEquals(method, wire["method"].asString)
+            assertFalse(wire["params"].asJsonObject.has("bundleId"))
+        }
+    }
+
+    @Test
     fun `invalid command arguments never access backend`() {
         val cases = listOf(
             ::FindElementCommand to arrayOf("-p", "android"),
@@ -158,6 +206,20 @@ class ParityCliTest {
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "up"),
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "up", "--text", ""),
             ::SwipeOnElementCommand to arrayOf("-p", "android", "left", "--text", "a", "--bundle-id", "app.id"),
+            ::TapOnElementCommand to arrayOf("-p", "android"),
+            ::TapOnElementCommand to arrayOf("-p", "ios", "--bundle-id", "app.id"),
+            ::TapOnElementCommand to arrayOf("-p", "android", "--text", " "),
+            ::TapOnElementCommand to arrayOf("-p", "android", "--text", "a", "--bundle-id", "app.id"),
+            ::TapOnElementCommand to arrayOf("-p", "ios", "--text", "a", "--bundle-id", " "),
+            ::TapOnElementCommand to arrayOf("-p", "android", "--text", "a", "--timeout", "0"),
+            ::TapOnElementCommand to arrayOf("-p", "ios", "--text", "a", "--timeout", "30001"),
+            ::TapOnElementCommand to arrayOf("-p", "ios", "--text", "a", "--timeout", "not-a-number"),
+            ::GetUiHierarchyCommand to arrayOf("-p", "android", "--bundle-id", "app.id"),
+            ::GetInteractiveElementsCommand to arrayOf("-p", "android", "--bundle-id", "app.id"),
+            ::InputTextCommand to arrayOf("-p", "android", "hello", "--bundle-id", "app.id"),
+            ::GetUiHierarchyCommand to arrayOf("-p", "ios", "--bundle-id", " "),
+            ::GetInteractiveElementsCommand to arrayOf("-p", "ios", "--bundle-id", " "),
+            ::InputTextCommand to arrayOf("-p", "ios", "hello", "--bundle-id", " "),
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "diagonal", "--text", "a"),
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "up", "--text", "a", "--speed", "warp"),
             ::SwipeCommand to arrayOf("-p", "android", "1", "2", "3", "4", "--steps", "0"),
@@ -173,8 +235,19 @@ class ParityCliTest {
     }
 
     @Test
+    fun `find and element swipe show app scope apart from selectors`() {
+        for (factory in listOf(::FindElementCommand, ::SwipeOnElementCommand, ::TapOnElementCommand)) {
+            val help = assertNotNull(factory(components) {}.getFormattedHelp())
+            assertTrue(help.contains("Element selectors:"))
+            assertTrue(help.contains("iOS app scope:"))
+            val selectors = help.substringBefore("iOS app scope:")
+            assertFalse(selectors.contains("--bundle-id"))
+        }
+    }
+
+    @Test
     fun `all new commands require explicit valid platform`() {
-        val factories = listOf(::FindElementCommand, ::SwipeCommand, ::SwipeOnElementCommand,
+        val factories = listOf(::FindElementCommand, ::SwipeCommand, ::SwipeOnElementCommand, ::TapOnElementCommand,
             ::ListAppsCommand, ::InfoAppCommand, ::AvailableDeviceCommand)
         for (factory in factories) {
             assertEquals(2, invoke(factory).exitCode)
@@ -219,6 +292,63 @@ class ParityCliTest {
             assertEquals("carousel", wire["params"].asJsonObject["resourceId"].asString)
             assertEquals("fast", wire["params"].asJsonObject["speed"].asString)
         }
+    }
+
+    @Test
+    fun `element tap maps selectors app scope and timeout on both platforms`() {
+        for ((platform, server) in listOf("android" to androidServer, "ios" to iosServer)) {
+            respond(server, """{"success":true,"message":"Tapped"}""")
+            val args = mutableListOf(
+                "-p", platform, "--text", "exact", "--text-contains", "partial",
+                "--resource-id", "login", "--class-name", "Button", "--content-description", "label",
+                "--timeout", "1234"
+            )
+            if (platform == "ios") args += listOf("--bundle-id", "com.example.app")
+
+            val result = invoke(::TapOnElementCommand, *args.toTypedArray())
+            assertEquals(0, result.exitCode, result.stderr)
+            assertEquals("""{"jsonrpc":"2.0","id":17,"result":{"success":true,"message":"Tapped"}}""", result.stdout)
+            val wire = request(server)
+            assertEquals("ui.tapOnElement", wire["method"].asString)
+            val params = wire["params"].asJsonObject
+            assertEquals("exact", params["text"].asString)
+            assertEquals("partial", params["textContains"].asString)
+            assertEquals("login", params["resourceId"].asString)
+            assertEquals("Button", params["className"].asString)
+            assertEquals("label", params["contentDescription"].asString)
+            assertEquals(1234, params["timeoutMs"].asInt)
+            assertEquals(platform == "ios", params.has("bundleId"))
+        }
+    }
+
+    @Test
+    fun `element tap defaults timeout and omits unscoped ios bundle`() {
+        for ((platform, server) in listOf("android" to androidServer, "ios" to iosServer)) {
+            respond(server, """{"success":true}""")
+            assertEquals(0, invoke(::TapOnElementCommand, "-p", platform, "--text", "Login").exitCode)
+            val params = request(server)["params"].asJsonObject
+            assertEquals(10_000, params["timeoutMs"].asInt)
+            assertFalse(params.has("bundleId"))
+        }
+    }
+
+    @Test
+    fun `element tap native failures exit one and write stderr`() {
+        for (payload in listOf("""{"success":false,"error":"Element not found"}""", """{"error":"Native failure"}""")) {
+            respond(androidServer, payload)
+            val result = invoke(::TapOnElementCommand, "-p", "android", "--text", "Login")
+            assertEquals(1, result.exitCode)
+            assertNull(result.stdout)
+            assertNotNull(result.stderr)
+        }
+    }
+
+    @Test
+    fun `element tap exits three when the automation server is unreachable`() {
+        val result = invoke(::TapOnElementCommand, "-p", "android", "--text", "Login")
+        assertEquals(3, result.exitCode)
+        assertNull(result.stdout)
+        assertNotNull(result.stderr)
     }
 
     @Test

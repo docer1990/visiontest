@@ -21,6 +21,14 @@ internal fun describeSelectors(vararg selectors: Pair<String, String?>): String 
     return present.joinToString(", ") { (name, value) -> "$name='$value'" }
 }
 
+/** Validates a native element-tap timeout before adding its HTTP transport grace period. */
+internal fun elementTapReadTimeoutMs(timeoutMs: Int, maxTimeoutMs: Long, graceMs: Long): Int {
+    require(timeoutMs in 1..maxTimeoutMs.toInt()) {
+        "timeoutMs must be between 1 and $maxTimeoutMs, got $timeoutMs"
+    }
+    return Math.addExact(timeoutMs, graceMs.toInt())
+}
+
 /**
  * Base HTTP client for the JSON-RPC 2.0 automation servers.
  *
@@ -44,7 +52,21 @@ abstract class JsonRpcHttpClient(
     /**
      * Sends a JSON-RPC request to the automation server and returns the raw response body.
      */
-    suspend fun sendRequest(method: String, params: Map<String, Any>? = null, id: Int = 1): String {
+    suspend fun sendRequest(
+        method: String,
+        params: Map<String, Any>? = null,
+        id: Int = 1,
+    ): String = sendRequest(method, params, id, REQUEST_TIMEOUT_MS)
+
+    /**
+     * Sends a JSON-RPC request with a method-specific HTTP read timeout.
+     */
+    suspend fun sendRequest(
+        method: String,
+        params: Map<String, Any>? = null,
+        id: Int = 1,
+        readTimeoutMs: Int = REQUEST_TIMEOUT_MS,
+    ): String {
         return withContext(Dispatchers.IO) {
             val requestBody = gson.toJson(
                 mapOf(
@@ -62,7 +84,7 @@ abstract class JsonRpcHttpClient(
                 connection.requestMethod = "POST"
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.connectTimeout = REQUEST_TIMEOUT_MS
-                connection.readTimeout = REQUEST_TIMEOUT_MS
+                connection.readTimeout = readTimeoutMs
                 connection.doOutput = true
 
                 connection.outputStream.use { os ->

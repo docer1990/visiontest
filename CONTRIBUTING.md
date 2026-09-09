@@ -53,7 +53,7 @@ The `run-visiontest.sh` launcher handles `JAVA_HOME`, `ANDROID_HOME`, and APK pa
 
 VisionTest has three components:
 
-1. **MCP Server and CLI** (`app/`) — Kotlin/JVM application that exposes mobile automation through Model Context Protocol (stdio transport) and 22 CLI subcommands
+1. **MCP Server and CLI** (`app/`) — Kotlin/JVM application that exposes mobile automation through Model Context Protocol (stdio transport) and 23 CLI subcommands
 2. **Android Automation Server** (`automation-server/`) — Native Android app with UIAutomator API access via JSON-RPC, using the instrumentation pattern (like Maestro/Appium)
 3. **iOS Automation Server** (`ios-automation-server/`) — Native iOS app with XCUITest access via JSON-RPC
 
@@ -66,7 +66,7 @@ visiontest/
 │       ├── Main.kt                   # Entry point (MCP server or CLI dispatch)
 │       ├── ToolFactory.kt            # Thin coordinator wiring registrars
 │       ├── cli/
-│       │   ├── VisionTestCli.kt      # Root Clikt command with 22 subcommands
+│       │   ├── VisionTestCli.kt      # Root Clikt command with 23 subcommands
 │       │   ├── CliErrorHandler.kt    # Exit-code mapping + runCliCommand
 │       │   ├── CliExit.kt            # CliExit exception + ExitCode enum
 │       │   ├── PlatformOption.kt     # Platform enum + --platform option helpers
@@ -128,7 +128,7 @@ visiontest/
 └── build.gradle.kts                  # Root build config
 ```
 
-`VisionTestCli` registers 22 subcommands. The authoritative command and argument
+`VisionTestCli` registers 23 subcommands. The authoritative command and argument
 contract is [docs/agentico/specs/cli.md](docs/agentico/specs/cli.md); use
 `visiontest --help` to inspect the built artifact. CLI adapters delegate to the
 same registrar operations exposed through MCP.
@@ -171,6 +171,7 @@ Both automation servers expose a JSON-RPC 2.0 API. Most users interact through t
 |--------|------------|---------|-----|
 | `ui.dumpHierarchy` | - | Yes | Yes |
 | `ui.tapByCoordinates` | `x`, `y` | Yes | Yes |
+| `ui.tapOnElement` | `text`, `textContains`, `resourceId`, `className`, `contentDescription`, `timeoutMs`; iOS optional `bundleId` app scope. Waits natively, then directly taps an actionable match. | Yes | Yes |
 | `ui.swipe` | `startX`, `startY`, `endX`, `endY`, `steps` | Yes | Yes |
 | `ui.swipeByDirection` | `direction`, `distance`, `speed` | Yes | Yes |
 | `ui.swipeOnElement` | `direction`, selector, `speed` | Yes | Yes |
@@ -225,6 +226,7 @@ curl -X POST http://localhost:9009/jsonrpc \
 | `wait_for_element` | Poll until an element appears (optional `timeoutMs`, max 30s) |
 | `wait_until_gone` | Poll until an element disappears (spinners, dialogs) |
 | `android_tap_by_coordinates` | Tap at screen coordinates |
+| `tap_on_element` | Wait for a visible, enabled selected element and tap it directly |
 | `android_swipe` | Swipe by coordinates |
 | `android_swipe_direction` | Swipe by direction with distance and speed |
 | `android_swipe_on_element` | Swipe on a specific element |
@@ -246,6 +248,7 @@ curl -X POST http://localhost:9009/jsonrpc \
 | `ios_wait_for_element` | Poll until an element appears (optional `timeoutMs`, max 30s) |
 | `ios_wait_until_gone` | Poll until an element disappears (spinners, sheets) |
 | `ios_tap_by_coordinates` | Tap at screen coordinates |
+| `ios_tap_on_element` | Wait for an existing, enabled, hittable selected element and tap it directly |
 | `ios_swipe` | Swipe by coordinates |
 | `ios_swipe_direction` | Swipe by direction with distance and speed |
 | `ios_swipe_on_element` | Swipe inside a selected element |
@@ -312,6 +315,7 @@ The Gradle `test` tasks run pure JVM unit tests (no device or emulator required)
 | `app/tools` | `AndroidScreenshotToolTest.kt` | Android screenshot paths, persistence, and error handling |
 | `app/tools` | `AndroidStopToolRegistrarTest.kt` | Idempotent stop and port-forward cleanup |
 | `app/tools` | `AndroidWaitToolRegistrarTest.kt` | Android wait-tool selectors and timeout bounds |
+| `app/tools` | `ElementTapToolRegistrarTest.kt` | Element-tap registrar schemas and handlers, validation, timeout defaults, and failure mapping |
 | `app/tools` | `IOSDeviceToolRegistrarTest.kt` | iOS device tool handlers |
 | `app/tools` | `IOSSwipeToolRegistrarTest.kt` | iOS element-swipe schema, validation, and delegation |
 | `app/tools` | `IOSScreenshotToolTest.kt` | iOS screenshot paths, persistence, and error handling |

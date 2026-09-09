@@ -1,6 +1,7 @@
 package com.example.visiontest.android
 
 import com.example.visiontest.common.JsonRpcHttpClient
+import com.example.visiontest.common.elementTapReadTimeoutMs
 import com.example.visiontest.config.AutomationConfig
 
 /**
@@ -131,6 +132,27 @@ class AutomationClient(
         contentDescription?.let { params["contentDescription"] = it }
 
         return sendRequest("ui.swipeOnElement", params)
+    }
+
+    /** Taps an actionable element, waiting up to [timeoutMs] in the native server. */
+    suspend fun tapOnElement(selectors: AndroidElementSelectors, timeoutMs: Int): String {
+        val params = mutableMapOf<String, Any>("timeoutMs" to timeoutMs)
+        selectors.text?.let { params["text"] = it }
+        selectors.textContains?.let { params["textContains"] = it }
+        selectors.resourceId?.let { params["resourceId"] = it }
+        selectors.className?.let { params["className"] = it }
+        selectors.contentDescription?.let { params["contentDescription"] = it }
+
+        return sendRequest(
+            method = "ui.tapOnElement",
+            params = params,
+            id = 1,
+            readTimeoutMs = elementTapReadTimeoutMs(
+                timeoutMs = timeoutMs,
+                maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+                graceMs = AutomationConfig.ELEMENT_TAP_TRANSPORT_GRACE_MS,
+            ),
+        )
     }
 
     /**

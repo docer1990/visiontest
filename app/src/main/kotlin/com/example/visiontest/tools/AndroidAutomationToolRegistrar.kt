@@ -1,6 +1,7 @@
 package com.example.visiontest.tools
 
 import com.example.visiontest.ServerNotRunningException
+import com.example.visiontest.android.AndroidElementSelectors
 import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
@@ -11,6 +12,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 
 class AndroidAutomationToolRegistrar(
     private val android: DeviceConfig,
@@ -28,6 +32,7 @@ class AndroidAutomationToolRegistrar(
         registerSwipe(scope)
         registerSwipeDirection(scope)
         registerSwipeOnElement(scope)
+        registerTapOnElement(scope)
         registerPressBack(scope)
         registerPressHome(scope)
         registerInputText(scope)
@@ -180,6 +185,22 @@ class AndroidAutomationToolRegistrar(
             contentDescription = contentDescription,
             speed = speed
         )
+    }
+
+    internal suspend fun tapOnElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
+        val timeout = validateElementTap(
+            selectorValues = listOf(
+                "text" to selectors.text, "textContains" to selectors.textContains,
+                "resourceId" to selectors.resourceId, "className" to selectors.className,
+                "contentDescription" to selectors.contentDescription,
+            ),
+            hasSelector = selectors.hasAnySelector(),
+            timeoutMs = timeoutMs,
+            defaultTimeoutMs = AutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
+            maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+        )
+        requireServer()
+        return successfulElementTapResponse(automationClient.tapOnElement(selectors, timeout))
     }
 
     internal suspend fun pressBack(): String {
@@ -449,6 +470,40 @@ class AndroidAutomationToolRegistrar(
             )
         }
     }
+
+    private fun registerTapOnElement(scope: ToolScope) {
+        scope.tool(
+            name = "tap_on_element",
+            description = "Waits until a matching Android element is actionable, then taps it. " +
+                "Requires a selector; timeoutMs defaults to 10000ms and has a 30000ms maximum. " +
+                "Does not auto-scroll.",
+            inputSchema = elementTapInputSchema(),
+            timeoutMs = ELEMENT_TAP_TOOL_TIMEOUT_MS,
+        ) { request ->
+            tapOnElement(
+                AndroidElementSelectors(
+                    text = request.optionalString("text"),
+                    textContains = request.optionalString("textContains"),
+                    resourceId = request.optionalString("resourceId"),
+                    className = request.optionalString("className"),
+                    contentDescription = request.optionalString("contentDescription"),
+                ),
+                request.optionalInt("timeoutMs"),
+            )
+        }
+    }
+
+    private fun elementTapInputSchema() = Tool.Input(properties = buildJsonObject {
+        listOf("text", "textContains", "resourceId", "className", "contentDescription").forEach { name ->
+            putJsonObject(name) { put("type", "string") }
+        }
+        putJsonObject("timeoutMs") {
+            put("type", "integer")
+            put("minimum", 1)
+            put("maximum", 30_000)
+            put("default", 10_000)
+        }
+    })
 
     private fun registerPressBack(scope: ToolScope) {
         scope.tool(

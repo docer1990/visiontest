@@ -37,6 +37,7 @@ class IOSAutomationToolRegistrar(
         registerSwipe(scope)
         registerSwipeDirection(scope)
         registerSwipeOnElement(scope)
+        registerTapOnElement(scope)
         registerFindElement(scope)
         registerGetDeviceInfo(scope)
         registerPressHome(scope)
@@ -246,6 +247,22 @@ class IOSAutomationToolRegistrar(
         }
         requireServer()
         return iosAutomationClient.swipeOnElement(direction, selectors, speed)
+    }
+
+    internal suspend fun tapOnElement(selectors: IOSElementSelectors, timeoutMs: Int? = null): String {
+        val timeout = validateElementTap(
+            selectorValues = listOf(
+                "text" to selectors.text, "textContains" to selectors.textContains,
+                "resourceId" to selectors.identifier, "className" to selectors.elementType,
+                "contentDescription" to selectors.label, "bundleId" to selectors.bundleId,
+            ),
+            hasSelector = selectors.hasAnySelector(),
+            timeoutMs = timeoutMs,
+            defaultTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
+            maxTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+        )
+        requireServer()
+        return successfulElementTapResponse(iosAutomationClient.tapOnElement(selectors, timeout))
     }
 
     internal suspend fun findElement(
@@ -494,6 +511,39 @@ class IOSAutomationToolRegistrar(
                     bundleId = request.optionalString("bundleId"),
                 ),
                 speed = request.optionalString("speed") ?: "normal"
+            )
+        }
+    }
+
+    private fun registerTapOnElement(scope: ToolScope) {
+        scope.tool(
+            name = "ios_tap_on_element",
+            description = "Waits until a matching iOS element is actionable, then taps it. " +
+                "Requires a selector; bundleId scopes the app and is not a selector. timeoutMs defaults " +
+                "to 10000ms and has a 30000ms maximum. Does not auto-scroll.",
+            inputSchema = Tool.Input(properties = buildJsonObject {
+                listOf("text", "textContains", "resourceId", "className", "contentDescription", "bundleId").forEach { name ->
+                    putJsonObject(name) { put("type", "string") }
+                }
+                putJsonObject("timeoutMs") {
+                    put("type", "integer")
+                    put("minimum", 1)
+                    put("maximum", 30_000)
+                    put("default", 10_000)
+                }
+            }),
+            timeoutMs = ELEMENT_TAP_TOOL_TIMEOUT_MS,
+        ) { request ->
+            tapOnElement(
+                IOSElementSelectors(
+                    text = request.optionalString("text"),
+                    textContains = request.optionalString("textContains"),
+                    identifier = request.optionalString("resourceId"),
+                    elementType = request.optionalString("className"),
+                    label = request.optionalString("contentDescription"),
+                    bundleId = request.optionalString("bundleId"),
+                ),
+                request.optionalInt("timeoutMs"),
             )
         }
     }

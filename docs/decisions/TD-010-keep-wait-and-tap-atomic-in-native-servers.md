@@ -1,7 +1,7 @@
 ---
 id: TD-010
 title: "Keep wait and tap atomic in native servers"
-status: proposed
+status: accepted
 date: 2026-09-09
 supersedes: null
 superseded_by: null

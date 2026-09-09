@@ -175,6 +175,43 @@ class JsonRpcServerInstrumented(
                 uiAutomator.tapByCoordinates(x, y)
             }
 
+            "ui.tapOnElement" -> {
+                val text = params?.get("text")?.asString
+                val textContains = params?.get("textContains")?.asString
+                val resourceId = params?.get("resourceId")?.asString
+                val className = params?.get("className")?.asString
+                val contentDescription = params?.get("contentDescription")?.asString
+                if (text == null && textContains == null && resourceId == null &&
+                    className == null && contentDescription == null) {
+                    throw InvalidParamsException("At least one selector required: text, textContains, resourceId, className, or contentDescription")
+                }
+
+                val timeoutParameter = params.get("timeoutMs")
+                    ?: throw InvalidParamsException("Missing 'timeoutMs' parameter")
+                if (!timeoutParameter.isJsonPrimitive || !timeoutParameter.asJsonPrimitive.isNumber) {
+                    throw InvalidParamsException("'timeoutMs' must be an integer between 1 and 30000")
+                }
+                val timeoutMs = try {
+                    java.math.BigDecimal(timeoutParameter.asString).intValueExact()
+                } catch (e: NumberFormatException) {
+                    throw InvalidParamsException("'timeoutMs' must be an integer between 1 and 30000")
+                } catch (e: ArithmeticException) {
+                    throw InvalidParamsException("'timeoutMs' must be an integer between 1 and 30000")
+                }
+                if (timeoutMs !in 1..30_000) {
+                    throw InvalidParamsException("'timeoutMs' must be an integer between 1 and 30000")
+                }
+
+                uiAutomator.tapOnElement(
+                    text = text,
+                    textContains = textContains,
+                    resourceId = resourceId,
+                    className = className,
+                    contentDescription = contentDescription,
+                    timeoutMs = timeoutMs
+                )
+            }
+
             // Find element method
             "ui.findElement" -> {
                 val text = params?.get("text")?.asString

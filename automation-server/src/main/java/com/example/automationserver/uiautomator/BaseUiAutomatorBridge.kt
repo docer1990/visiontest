@@ -4,6 +4,7 @@ import android.app.UiAutomation
 import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.util.Xml
 import android.view.accessibility.AccessibilityNodeInfo
@@ -289,6 +290,47 @@ abstract class BaseUiAutomatorBridge {
         }
     }
 
+    fun tapOnElement(
+        text: String? = null,
+        textContains: String? = null,
+        resourceId: String? = null,
+        className: String? = null,
+        contentDescription: String? = null,
+        timeoutMs: Int
+    ): OperationResult {
+        val selector = buildSelector(text, textContains, resourceId, className, contentDescription)
+            ?: return OperationResult(success = false, error = "No selector provided")
+        val selectorDescription = selectorDescription(
+            text,
+            textContains,
+            resourceId,
+            className,
+            contentDescription
+        )
+
+        val result = waitAndTapElement(
+            timeoutMs = timeoutMs.toLong(),
+            elementDescription = selectorDescription,
+            nowMs = SystemClock::elapsedRealtime,
+            sleepMs = SystemClock::sleep,
+            lookup = {
+                getUiDevice().findObject(selector)?.let { element ->
+                    val visibleBounds = element.visibleBounds
+                    val isVisibleOnDisplay = visibleBounds.width() > 0 &&
+                        visibleBounds.height() > 0 &&
+                        Rect.intersects(visibleBounds, getDisplayRect())
+                    ElementTapCandidate(
+                        element = element,
+                        enabled = element.isEnabled,
+                        hasVisibleBounds = isVisibleOnDisplay
+                    )
+                }
+            },
+            tap = { it.click() }
+        )
+        return OperationResult(success = result.success, error = result.error)
+    }
+
     /**
      * Types text into the currently focused element.
      *
@@ -459,6 +501,20 @@ abstract class BaseUiAutomatorBridge {
         contentDescription?.let { selector = (selector?.desc(it) ?: By.desc(it)) }
         return selector
     }
+
+    private fun selectorDescription(
+        text: String?,
+        textContains: String?,
+        resourceId: String?,
+        className: String?,
+        contentDescription: String?
+    ): String = listOfNotNull(
+        text?.let { "text=$it" },
+        textContains?.let { "textContains=$it" },
+        resourceId?.let { "resourceId=$it" },
+        className?.let { "className=$it" },
+        contentDescription?.let { "contentDescription=$it" }
+    ).joinToString(", ")
 
     fun findElement(
         text: String? = null,

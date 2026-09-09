@@ -134,7 +134,7 @@ class VisionTestCliTest {
         // subcommand only captures that lazy, so no ADB/device init happens here. This
         // introspects the real registration, so it fails if a command is added, removed,
         // or renamed — unlike asserting a hard-coded list's size.
-        val registered = VisionTestCli().registeredSubcommands().map { it.commandName }.toSet()
+        val registered = VisionTestCli().registeredSubcommands().map { it.commandName }
 
         val expected = setOf(
             "install_automation_server", "start_automation_server", "stop_automation_server",
@@ -142,11 +142,13 @@ class VisionTestCliTest {
             "get_interactive_elements", "get_ui_hierarchy", "get_device_info", "screenshot",
             "wait_for_element", "find_element", "available_device", "list_apps", "info_app",
             "swipe", "swipe_on_element",
-            "tap_by_coordinates", "input_text", "swipe_direction",
+            "tap_by_coordinates", "tap_on_element", "input_text", "swipe_direction",
             "press_back", "press_home", "launch_app",
             "init",
         )
-        assertEquals(expected, registered)
+        assertEquals(expected, registered.toSet())
+        assertEquals(23, registered.size)
+        assertEquals(23, registered.distinct().size)
     }
 
     // --- SwipeDirection choice validation ---

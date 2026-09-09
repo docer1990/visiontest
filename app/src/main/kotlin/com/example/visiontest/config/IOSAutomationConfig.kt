@@ -88,9 +88,6 @@ object IOSAutomationConfig {
      */
     const val WAIT_TOOL_TIMEOUT_MS = 35_000L
 
-    /** Interval between native element-tap actionability checks. */
-    const val ELEMENT_TAP_POLL_INTERVAL_MS = 500L
-
     /** Native element-tap wait budget when timeoutMs is omitted. */
     const val ELEMENT_TAP_DEFAULT_TIMEOUT_MS = 10_000L
 

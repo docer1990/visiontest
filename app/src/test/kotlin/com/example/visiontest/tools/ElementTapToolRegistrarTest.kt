@@ -95,7 +95,7 @@ class ElementTapToolRegistrarTest {
     }
 
     @Test
-    fun `element tap maps operation failures to command errors`() = runBlocking {
+    fun `element tap maps operation failures to command errors on both platforms`() = runBlocking {
         val responses = listOf(
             """{"jsonrpc":"2.0","id":1,"result":{"success":false,"error":"not tappable"}}""",
             """{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"Method not found"}}""",
@@ -109,6 +109,13 @@ class ElementTapToolRegistrarTest {
                 android.tapOnElement(AndroidElementSelectors(text = "Login"))
             }
             assertTrue(error.message!!.isNotBlank())
+
+            iosHttp.enqueue(MockResponse().setBody("OK"))
+            iosHttp.enqueue(MockResponse().setBody(response))
+            val iosError = assertFailsWith<CommandExecutionException> {
+                ios.tapOnElement(IOSElementSelectors(text = "Login", bundleId = "app.id"))
+            }
+            assertTrue(iosError.message!!.isNotBlank())
         }
     }
 
@@ -131,10 +138,45 @@ class ElementTapToolRegistrarTest {
         assertEquals("1", androidSchema.captured.properties["timeoutMs"]!!.jsonObject["minimum"]!!.jsonPrimitive.content)
         assertEquals("30000", androidSchema.captured.properties["timeoutMs"]!!.jsonObject["maximum"]!!.jsonPrimitive.content)
         assertTrue(iosSchema.captured.properties.containsKey("bundleId"))
+        assertEquals("integer", iosSchema.captured.properties["timeoutMs"]!!.jsonObject["type"]!!.jsonPrimitive.content)
+        assertEquals("10000", iosSchema.captured.properties["timeoutMs"]!!.jsonObject["default"]!!.jsonPrimitive.content)
+        assertEquals("1", iosSchema.captured.properties["timeoutMs"]!!.jsonObject["minimum"]!!.jsonPrimitive.content)
+        assertEquals("30000", iosSchema.captured.properties["timeoutMs"]!!.jsonObject["maximum"]!!.jsonPrimitive.content)
+        assertEquals(45_000L, ELEMENT_TAP_TOOL_TIMEOUT_MS)
 
         androidHttp.enqueue(MockResponse().setBody("OK"))
         androidHttp.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
         val result = androidHandler.captured(CallToolRequest("tap_on_element", JsonObject(mapOf("text" to JsonPrimitive("Login")))))
         assertFalse(result.isError == true)
+
+        iosHttp.enqueue(MockResponse().setBody("OK"))
+        iosHttp.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        val iosResult = iosHandler.captured(
+            CallToolRequest(
+                "ios_tap_on_element",
+                JsonObject(mapOf("resourceId" to JsonPrimitive("login"), "bundleId" to JsonPrimitive("app.id"))),
+            )
+        )
+        assertFalse(iosResult.isError == true)
+        assertEquals("/health", iosHttp.takeRequest().path)
+        val iosRequest = JsonParser.parseString(iosHttp.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.tapOnElement", iosRequest["method"].asString)
+        assertEquals("login", iosRequest["params"].asJsonObject["resourceId"].asString)
+        assertEquals("app.id", iosRequest["params"].asJsonObject["bundleId"].asString)
+
+        val failedResponses = listOf(
+            """{"result":{"success":false,"error":"not tappable"}}""",
+            """{"error":{"code":-32601,"message":"Method not found"}}""",
+            """{"result":{}}""",
+            "not JSON",
+        )
+        for (response in failedResponses) {
+            iosHttp.enqueue(MockResponse().setBody("OK"))
+            iosHttp.enqueue(MockResponse().setBody(response))
+            val errorResult = iosHandler.captured(
+                CallToolRequest("ios_tap_on_element", JsonObject(mapOf("text" to JsonPrimitive("Login")))),
+            )
+            assertTrue(errorResult.content.single().toString().contains("Command execution failed"))
+        }
     }
 }

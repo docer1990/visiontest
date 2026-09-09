@@ -110,6 +110,106 @@ private func validatedString(_ params: [String: Any]?, _ key: String) throws -> 
     return value
 }
 
+/// Validates and describes a native element-tap request without accessing XCUITest.
+struct ElementTapRequest {
+    static let defaultTimeoutMs = 10_000
+    static let maximumTimeoutMs = 30_000
+
+    let text: String?
+    let textContains: String?
+    let identifier: String?
+    let elementType: String?
+    let label: String?
+    let bundleId: String?
+    let timeoutMs: Int
+
+    init(params: [String: Any]?) throws {
+        text = try validatedString(params, "text")
+        textContains = try validatedString(params, "textContains")
+        identifier = try validatedString(params, "resourceId")
+        elementType = try validatedString(params, "className")
+        label = try validatedString(params, "contentDescription")
+        bundleId = try validatedString(params, "bundleId")
+        guard [text, textContains, identifier, elementType, label].contains(where: { $0 != nil }) else {
+            throw InvalidParamsException("At least one selector required: text, textContains, resourceId, className, or contentDescription")
+        }
+        if let value = params?["timeoutMs"] {
+            guard let timeout = strictInteger(value), (1...Self.maximumTimeoutMs).contains(timeout) else {
+                throw InvalidParamsException("'timeoutMs' must be an integer between 1 and \(Self.maximumTimeoutMs)")
+            }
+            timeoutMs = timeout
+        } else {
+            timeoutMs = Self.defaultTimeoutMs
+        }
+    }
+
+    var selectorDescription: String {
+        if let text = text { return "text='\(text)'" }
+        if let textContains = textContains { return "textContains='\(textContains)'" }
+        if let identifier = identifier { return "resourceId='\(identifier)'" }
+        if let elementType = elementType { return "className='\(elementType)'" }
+        return "contentDescription='\(label ?? "")'"
+    }
+}
+
+private func strictInteger(_ value: Any) -> Int? {
+    guard !(value is Bool), let number = value as? NSNumber else { return nil }
+    let typeEncoding = String(cString: number.objCType)
+    guard ["c", "s", "i", "l", "q", "C", "S", "I", "L", "Q"].contains(typeEncoding) else {
+        return nil
+    }
+    let double = number.doubleValue
+    guard double.isFinite, double.rounded(.towardZero) == double,
+          double >= Double(Int.min), double <= Double(Int.max) else { return nil }
+    return Int(double)
+}
+
+enum ElementTapReadiness {
+    case absent
+    case blocked
+    case ready
+}
+
+func isElementTapReady(exists: Bool, isEnabled: Bool, isHittable: Bool) -> Bool {
+    exists && isEnabled && isHittable
+}
+
+/// Waits for an element to become tappable while keeping timing deterministic in unit tests.
+func performElementTap(
+    request: ElementTapRequest,
+    now: () -> TimeInterval,
+    wait: (TimeInterval) -> Void,
+    readiness: () -> ElementTapReadiness,
+    tap: () -> Void
+) -> OperationResult {
+    let deadline = now() + Double(request.timeoutMs) / 1_000
+    var observedBlockedElement = false
+
+    while true {
+        switch readiness() {
+        case .ready:
+            guard now() < deadline else { break }
+            tap()
+            return OperationResult(success: true, error: nil)
+        case .blocked:
+            observedBlockedElement = true
+        case .absent:
+            break
+        }
+
+        let remaining = deadline - now()
+        guard remaining > 0 else { break }
+        wait(min(0.5, remaining))
+        guard now() < deadline else { break }
+    }
+
+    let status = observedBlockedElement ? "Element found but not tappable" : "Element not found"
+    return OperationResult(
+        success: false,
+        error: "\(status) after \(request.timeoutMs)ms for \(request.selectorDescription)"
+    )
+}
+
 /// Rejects missing/unusable element frames before dispatching any gesture.
 func performElementSwipe(
     frame: CGRect?, visibleFrame: CGRect? = nil,

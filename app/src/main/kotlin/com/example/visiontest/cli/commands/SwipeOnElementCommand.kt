@@ -3,6 +3,7 @@ package com.example.visiontest.cli.commands
 import com.example.visiontest.cli.CliCommandRunner
 import com.example.visiontest.cli.ComponentHolder
 import com.example.visiontest.cli.ElementSelectorOptions
+import com.example.visiontest.cli.IosAppScopeOptions
 import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
@@ -22,10 +23,12 @@ class SwipeOnElementCommand(
     private val platform by platformOption()
     private val direction by argument().choice("up", "down", "left", "right")
     private val selectors by ElementSelectorOptions()
+    private val appScope by IosAppScopeOptions()
     private val speed by option("--speed", help = "Swipe speed").choice("slow", "normal", "fast").default("normal")
 
     override fun run() = runner {
-        selectors.validate(platform)
+        selectors.validate()
+        appScope.validate(platform)
         requireServerRunning { components.value.isServerRunning(platform) }
         when (platform) {
             Platform.Android -> components.value.androidAutomationRegistrar.swipeOnElement(
@@ -40,7 +43,7 @@ class SwipeOnElementCommand(
                     identifier = selectors.resourceId,
                     elementType = selectors.className,
                     label = selectors.contentDescription,
-                    bundleId = selectors.bundleId,
+                    bundleId = appScope.bundleId,
                 ),
                 speed,
             )

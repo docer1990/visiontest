@@ -7,7 +7,9 @@ import com.example.visiontest.cli.commands.AvailableDeviceCommand
 import com.example.visiontest.cli.commands.FindElementCommand
 import com.example.visiontest.cli.commands.GetDeviceInfoCommand
 import com.example.visiontest.cli.commands.GetInteractiveElementsCommand
+import com.example.visiontest.cli.commands.GetUiHierarchyCommand
 import com.example.visiontest.cli.commands.InfoAppCommand
+import com.example.visiontest.cli.commands.InputTextCommand
 import com.example.visiontest.cli.commands.ListAppsCommand
 import com.example.visiontest.cli.commands.SwipeCommand
 import com.example.visiontest.cli.commands.SwipeOnElementCommand
@@ -148,6 +150,39 @@ class ParityCliTest {
     }
 
     @Test
+    fun `ios app scope forwards unchanged to inspection and input operations`() {
+        val cases = listOf(
+            Triple(::GetUiHierarchyCommand, arrayOf("-p", "ios", "--bundle-id", "com.example.app"), "ui.dumpHierarchy"),
+            Triple(::GetInteractiveElementsCommand, arrayOf("-p", "ios", "--bundle-id", "com.example.app"), "ui.getInteractiveElements"),
+            Triple(::InputTextCommand, arrayOf("-p", "ios", "hello", "--bundle-id", "com.example.app"), "ui.inputText"),
+        )
+        for ((factory, args, method) in cases) {
+            respond(iosServer, """{"success":true}""")
+            val result = invoke(factory, *args)
+            assertEquals(0, result.exitCode, result.stderr)
+            val wire = request(iosServer)
+            assertEquals(method, wire["method"].asString)
+            assertEquals("com.example.app", wire["params"].asJsonObject["bundleId"].asString)
+        }
+    }
+
+    @Test
+    fun `omitting ios app scope preserves Springboard requests`() {
+        val cases = listOf(
+            Triple(::GetUiHierarchyCommand, arrayOf("-p", "ios"), "ui.dumpHierarchy"),
+            Triple(::GetInteractiveElementsCommand, arrayOf("-p", "ios"), "ui.getInteractiveElements"),
+            Triple(::InputTextCommand, arrayOf("-p", "ios", "hello"), "ui.inputText"),
+        )
+        for ((factory, args, method) in cases) {
+            respond(iosServer, """{"success":true}""")
+            assertEquals(0, invoke(factory, *args).exitCode)
+            val wire = request(iosServer)
+            assertEquals(method, wire["method"].asString)
+            assertFalse(wire["params"].asJsonObject.has("bundleId"))
+        }
+    }
+
+    @Test
     fun `invalid command arguments never access backend`() {
         val cases = listOf(
             ::FindElementCommand to arrayOf("-p", "android"),
@@ -158,6 +193,12 @@ class ParityCliTest {
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "up"),
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "up", "--text", ""),
             ::SwipeOnElementCommand to arrayOf("-p", "android", "left", "--text", "a", "--bundle-id", "app.id"),
+            ::GetUiHierarchyCommand to arrayOf("-p", "android", "--bundle-id", "app.id"),
+            ::GetInteractiveElementsCommand to arrayOf("-p", "android", "--bundle-id", "app.id"),
+            ::InputTextCommand to arrayOf("-p", "android", "hello", "--bundle-id", "app.id"),
+            ::GetUiHierarchyCommand to arrayOf("-p", "ios", "--bundle-id", " "),
+            ::GetInteractiveElementsCommand to arrayOf("-p", "ios", "--bundle-id", " "),
+            ::InputTextCommand to arrayOf("-p", "ios", "hello", "--bundle-id", " "),
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "diagonal", "--text", "a"),
             ::SwipeOnElementCommand to arrayOf("-p", "ios", "up", "--text", "a", "--speed", "warp"),
             ::SwipeCommand to arrayOf("-p", "android", "1", "2", "3", "4", "--steps", "0"),
@@ -170,6 +211,17 @@ class ParityCliTest {
         assertEquals(0, iosServer.requestCount)
         assertEquals(0, deviceCalls)
         assertFalse(components.isInitialized())
+    }
+
+    @Test
+    fun `find and element swipe show app scope apart from selectors`() {
+        for (factory in listOf(::FindElementCommand, ::SwipeOnElementCommand)) {
+            val help = assertNotNull(factory(components) {}.getFormattedHelp())
+            assertTrue(help.contains("Element selectors:"))
+            assertTrue(help.contains("iOS app scope:"))
+            val selectors = help.substringBefore("iOS app scope:")
+            assertFalse(selectors.contains("--bundle-id"))
+        }
     }
 
     @Test

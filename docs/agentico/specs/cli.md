@@ -38,15 +38,15 @@ The CLI SHALL register these 22 subcommands and argument contracts:
 | `start_automation_server` | Android or iOS | None |
 | `stop_automation_server` | Android or iOS | None |
 | `automation_server_status` | Android or iOS | None |
-| `get_interactive_elements` | Android or iOS | Optional `--include-disabled`, `--json` |
-| `get_ui_hierarchy` | Android or iOS | None |
+| `get_interactive_elements` | Android or iOS | Optional `--include-disabled`, iOS app scope `--bundle-id`, `--json` |
+| `get_ui_hierarchy` | Android or iOS | Optional iOS app scope `--bundle-id` |
 | `get_device_info` | Android or iOS | Optional `--json` |
 | `find_element` | Android or iOS | At least one selector; optional `--bundle-id` on iOS and `--json` |
 | `available_device` | Android or iOS | Optional `--json` |
 | `screenshot` | Android or iOS | Optional `--output PATH` |
 | `wait_for_element` | Android or iOS | One or more selector options; optional iOS app scope `--bundle-id`, plus `--timeout MS` and `--gone` |
 | `tap_by_coordinates` | Android or iOS | Required integer `x` and `y` arguments |
-| `input_text` | Android or iOS | Required `text` argument |
+| `input_text` | Android or iOS | Required `text` argument; optional iOS app scope `--bundle-id` |
 | `swipe_direction` | Android or iOS | Required `up`, `down`, `left`, or `right`; optional `--distance` and `--speed` choices |
 | `swipe` | Android or iOS | Integer `startX`, `startY`, `endX`, `endY`; optional positive `--steps` (default 20) |
 | `swipe_on_element` | Android or iOS | Direction and at least one selector; optional `--speed` and iOS `--bundle-id` |

@@ -567,8 +567,9 @@ class AndroidAutomationToolRegistrar(
                 Types text into the currently focused element on the Android device.
                 The automation server must be running first (use start_automation_server).
 
-                WORKFLOW: First tap on a text field using 'android_tap_by_coordinates' to focus it,
-                then call this tool to type text into it.
+                WORKFLOW: Prefer tap_on_element with a stable selector to focus a text field,
+                then call this tool to type text into it. Use android_tap_by_coordinates only when
+                coordinates are the intended target.
             """.trimIndent(),
             inputSchema = Tool.Input(required = listOf("text"))
         ) { request ->

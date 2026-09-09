@@ -618,8 +618,9 @@ class IOSAutomationToolRegistrar(
                 Types text into the currently focused element on the iOS simulator.
                 The iOS automation server must be running first (use ios_start_automation_server).
 
-                WORKFLOW: First tap on a text field using 'ios_tap_by_coordinates' to focus it,
-                then call this tool to type text into it.
+                WORKFLOW: Prefer ios_tap_on_element with a stable selector to focus a text field,
+                then call this tool to type text into it. Use ios_tap_by_coordinates only when
+                coordinates are the intended target.
 
                 PARAMETERS:
                 - text (required): The text to type.

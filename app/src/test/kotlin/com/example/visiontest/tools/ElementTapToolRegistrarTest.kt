@@ -127,6 +127,8 @@ class ElementTapToolRegistrarTest {
         ios.registerTools(ToolScope(iosServer, logger))
         val androidInteractiveElementsDescription = slot<String>()
         val iosInteractiveElementsDescription = slot<String>()
+        val androidInputTextDescription = slot<String>()
+        val iosInputTextDescription = slot<String>()
         val androidSchema = slot<Tool.Input>()
         val androidHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
         val iosSchema = slot<Tool.Input>()
@@ -149,10 +151,16 @@ class ElementTapToolRegistrarTest {
                 any(),
             )
         }
+        verify { androidServer.addTool("android_input_text", capture(androidInputTextDescription), any(), any()) }
+        verify { iosServer.addTool("ios_input_text", capture(iosInputTextDescription), any(), any()) }
         assertTrue(androidInteractiveElementsDescription.captured.contains("Prefer tap_on_element with a stable selector"))
         assertTrue(androidInteractiveElementsDescription.captured.contains("coordinates are the intended target"))
         assertTrue(iosInteractiveElementsDescription.captured.contains("Prefer ios_tap_on_element with a stable selector"))
         assertTrue(iosInteractiveElementsDescription.captured.contains("coordinates are the intended target"))
+        assertTrue(androidInputTextDescription.captured.contains("Prefer tap_on_element with a stable selector"))
+        assertTrue(androidInputTextDescription.captured.contains("coordinates are the intended target"))
+        assertTrue(iosInputTextDescription.captured.contains("Prefer ios_tap_on_element with a stable selector"))
+        assertTrue(iosInputTextDescription.captured.contains("coordinates are the intended target"))
         assertTrue(androidSchema.captured.required.orEmpty().isEmpty())
         assertTrue(iosSchema.captured.required.orEmpty().isEmpty())
         assertEquals("integer", androidSchema.captured.properties["timeoutMs"]!!.jsonObject["type"]!!.jsonPrimitive.content)

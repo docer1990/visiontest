@@ -153,15 +153,21 @@ struct ElementTapRequest {
 }
 
 private func strictInteger(_ value: Any) -> Int? {
-    guard !(value is Bool), let number = value as? NSNumber else { return nil }
+    guard let number = value as? NSNumber,
+          CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }
     let typeEncoding = String(cString: number.objCType)
-    guard ["c", "s", "i", "l", "q", "C", "S", "I", "L", "Q"].contains(typeEncoding) else {
+    switch typeEncoding {
+    case "c", "s", "i", "l", "q":
+        let integer = number.int64Value
+        guard integer >= Int64(Int.min), integer <= Int64(Int.max) else { return nil }
+        return Int(integer)
+    case "C", "S", "I", "L", "Q":
+        let integer = number.uint64Value
+        guard integer <= UInt64(Int.max) else { return nil }
+        return Int(integer)
+    default:
         return nil
     }
-    let double = number.doubleValue
-    guard double.isFinite, double.rounded(.towardZero) == double,
-          double >= Double(Int.min), double <= Double(Int.max) else { return nil }
-    return Int(double)
 }
 
 enum ElementTapReadiness {

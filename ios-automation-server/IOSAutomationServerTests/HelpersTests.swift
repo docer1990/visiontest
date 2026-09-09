@@ -36,6 +36,26 @@ final class HelpersTests: XCTestCase {
         XCTAssertEqual(request.selectorDescription, "resourceId='continue-button'")
     }
 
+    func testElementTapRequestRejectsOutOfRangeJsonIntegerWithoutTrapping() throws {
+        let invalidData = Data("{\"text\":\"ready\",\"timeoutMs\":9223372036854775808}".utf8)
+        let invalidParams = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: invalidData) as? [String: Any]
+        )
+        XCTAssertThrowsError(try ElementTapRequest(params: invalidParams))
+
+        for timeout in ["-1", "0"] {
+            let data = Data("{\"text\":\"ready\",\"timeoutMs\":\(timeout)}".utf8)
+            let params = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertThrowsError(try ElementTapRequest(params: params))
+        }
+
+        for timeout in ["1", "30000"] {
+            let data = Data("{\"text\":\"ready\",\"timeoutMs\":\(timeout)}".utf8)
+            let params = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(try ElementTapRequest(params: params).timeoutMs, Int(timeout))
+        }
+    }
+
     func testElementTapReadinessRequiresExistingEnabledAndHittableElement() {
         XCTAssertTrue(isElementTapReady(exists: true, isEnabled: true, isHittable: true))
         XCTAssertFalse(isElementTapReady(exists: false, isEnabled: true, isHittable: true))

@@ -164,4 +164,21 @@ class IOSAutomationClient(
         selectors.bundleId?.let { params["bundleId"] = it }
         return sendRequest("ui.swipeOnElement", params)
     }
+
+    /** Taps an actionable element, waiting up to [timeoutMs] in the native server. */
+    suspend fun tapOnElement(selectors: IOSElementSelectors, timeoutMs: Int): String {
+        val params = mutableMapOf<String, Any>("timeoutMs" to timeoutMs)
+        selectors.text?.let { params["text"] = it }
+        selectors.textContains?.let { params["textContains"] = it }
+        selectors.identifier?.let { params["resourceId"] = it }
+        selectors.elementType?.let { params["className"] = it }
+        selectors.label?.let { params["contentDescription"] = it }
+        selectors.bundleId?.let { params["bundleId"] = it }
+
+        return sendRequest(
+            method = "ui.tapOnElement",
+            params = params,
+            readTimeoutMs = timeoutMs + IOSAutomationConfig.TAP_TRANSPORT_GRACE_MS.toInt(),
+        )
+    }
 }

@@ -133,6 +133,22 @@ class AutomationClient(
         return sendRequest("ui.swipeOnElement", params)
     }
 
+    /** Taps an actionable element, waiting up to [timeoutMs] in the native server. */
+    suspend fun tapOnElement(selectors: AndroidElementSelectors, timeoutMs: Int): String {
+        val params = mutableMapOf<String, Any>("timeoutMs" to timeoutMs)
+        selectors.text?.let { params["text"] = it }
+        selectors.textContains?.let { params["textContains"] = it }
+        selectors.resourceId?.let { params["resourceId"] = it }
+        selectors.className?.let { params["className"] = it }
+        selectors.contentDescription?.let { params["contentDescription"] = it }
+
+        return sendRequest(
+            method = "ui.tapOnElement",
+            params = params,
+            readTimeoutMs = timeoutMs + AutomationConfig.TAP_TRANSPORT_GRACE_MS.toInt(),
+        )
+    }
+
     /**
      * Types text into the currently focused element.
      */

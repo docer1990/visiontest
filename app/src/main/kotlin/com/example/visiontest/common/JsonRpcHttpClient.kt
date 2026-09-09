@@ -44,7 +44,12 @@ abstract class JsonRpcHttpClient(
     /**
      * Sends a JSON-RPC request to the automation server and returns the raw response body.
      */
-    suspend fun sendRequest(method: String, params: Map<String, Any>? = null, id: Int = 1): String {
+    suspend fun sendRequest(
+        method: String,
+        params: Map<String, Any>? = null,
+        id: Int = 1,
+        readTimeoutMs: Int = REQUEST_TIMEOUT_MS,
+    ): String {
         return withContext(Dispatchers.IO) {
             val requestBody = gson.toJson(
                 mapOf(
@@ -62,7 +67,7 @@ abstract class JsonRpcHttpClient(
                 connection.requestMethod = "POST"
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.connectTimeout = REQUEST_TIMEOUT_MS
-                connection.readTimeout = REQUEST_TIMEOUT_MS
+                connection.readTimeout = readTimeoutMs
                 connection.doOutput = true
 
                 connection.outputStream.use { os ->

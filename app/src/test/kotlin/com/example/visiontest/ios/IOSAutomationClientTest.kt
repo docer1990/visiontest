@@ -59,6 +59,44 @@ class IOSAutomationClientTest {
             params.entrySet().associate { it.key to it.value.asString })
     }
 
+    @Test
+    fun `tapOnElement serializes selectors app scope timeout and method`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        client.tapOnElement(
+            IOSElementSelectors(
+                text = "Exact",
+                textContains = "Partial",
+                identifier = "login",
+                elementType = "Button",
+                label = "Log in",
+                bundleId = "com.example.app",
+            ),
+            timeoutMs = 5_000,
+        )
+
+        val body = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.tapOnElement", body["method"].asString)
+        val params = body.getAsJsonObject("params")
+        assertEquals("Exact", params["text"].asString)
+        assertEquals("Partial", params["textContains"].asString)
+        assertEquals("login", params["resourceId"].asString)
+        assertEquals("Button", params["className"].asString)
+        assertEquals("Log in", params["contentDescription"].asString)
+        assertEquals("com.example.app", params["bundleId"].asString)
+        assertEquals(5_000, params["timeoutMs"].asInt)
+    }
+
+    @Test
+    fun `tapOnElement omits null selectors and bundleId`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        client.tapOnElement(IOSElementSelectors(identifier = "login"), timeoutMs = 1_000)
+
+        val params = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject.getAsJsonObject("params")
+        assertEquals(setOf("resourceId", "timeoutMs"), params.keySet())
+    }
+
     // --- sendRequest ---
 
     @Test

@@ -129,12 +129,27 @@ final class HelpersTests: XCTestCase {
         let result = performElementTap(
             request: request,
             now: { clock },
-            wait: { clock += $0 },
-            readiness: { clock < 0.5 ? .blocked : .ready },
+            wait: { clock += $0 + 0.001 },
+            readiness: { clock <= 0.5 ? .blocked : .ready },
             tap: { taps += 1 }
         )
         XCTAssertFalse(result.success)
         XCTAssertEqual(taps, 0)
+    }
+
+    func testElementTapTapsWhenReadinessIsReadyAtDeadline() throws {
+        let request = try ElementTapRequest(params: ["text": "Continue", "timeoutMs": 500])
+        var clock: TimeInterval = 0
+        var taps = 0
+        let result = performElementTap(
+            request: request,
+            now: { clock },
+            wait: { clock += $0 },
+            readiness: { clock < 0.5 ? .blocked : .ready },
+            tap: { taps += 1 }
+        )
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(taps, 1)
     }
 
     func testElementSwipeEndpointsUseSeventyPercentOfBounds() throws {

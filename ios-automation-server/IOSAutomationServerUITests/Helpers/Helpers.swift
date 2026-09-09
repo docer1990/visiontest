@@ -194,7 +194,7 @@ func performElementTap(
     while true {
         switch readiness() {
         case .ready:
-            guard now() < deadline else { break }
+            guard now() <= deadline else { break }
             tap()
             return OperationResult(success: true, error: nil)
         case .blocked:
@@ -206,7 +206,7 @@ func performElementTap(
         let remaining = deadline - now()
         guard remaining > 0 else { break }
         wait(min(0.5, remaining))
-        guard now() < deadline else { break }
+        guard now() <= deadline else { break }
     }
 
     let status = observedBlockedElement ? "Element found but not tappable" : "Element not found"

@@ -171,6 +171,7 @@ Both automation servers expose a JSON-RPC 2.0 API. Most users interact through t
 |--------|------------|---------|-----|
 | `ui.dumpHierarchy` | - | Yes | Yes |
 | `ui.tapByCoordinates` | `x`, `y` | Yes | Yes |
+| `ui.tapOnElement` | `text`, `textContains`, `resourceId`, `className`, `contentDescription`, `timeoutMs`; iOS optional `bundleId` app scope. Waits natively, then directly taps an actionable match. | Yes | Yes |
 | `ui.swipe` | `startX`, `startY`, `endX`, `endY`, `steps` | Yes | Yes |
 | `ui.swipeByDirection` | `direction`, `distance`, `speed` | Yes | Yes |
 | `ui.swipeOnElement` | `direction`, selector, `speed` | Yes | Yes |

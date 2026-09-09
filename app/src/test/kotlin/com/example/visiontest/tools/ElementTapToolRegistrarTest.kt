@@ -44,8 +44,17 @@ class ElementTapToolRegistrarTest {
         androidHttp = MockWebServer().also { it.start() }
         iosHttp = MockWebServer().also { it.start() }
         val device = mockk<DeviceConfig>()
-        android = AndroidAutomationToolRegistrar(device, AutomationClient(androidHttp.hostName, androidHttp.port), ToolDiscovery(logger))
-        ios = IOSAutomationToolRegistrar(device, IOSAutomationClient(iosHttp.hostName, iosHttp.port), ToolDiscovery(logger), logger)
+        android = AndroidAutomationToolRegistrar(
+            device,
+            AutomationClient(androidHttp.hostName, androidHttp.port),
+            ToolDiscovery(logger),
+        )
+        ios = IOSAutomationToolRegistrar(
+            device,
+            IOSAutomationClient(iosHttp.hostName, iosHttp.port),
+            ToolDiscovery(logger),
+            logger,
+        )
     }
 
     @AfterTest
@@ -58,9 +67,15 @@ class ElementTapToolRegistrarTest {
     fun `element tap validates selectors scope and timeout before health checks`() = runBlocking {
         assertFailsWith<IllegalArgumentException> { android.tapOnElement(AndroidElementSelectors()) }
         assertFailsWith<IllegalArgumentException> { android.tapOnElement(AndroidElementSelectors(text = " ")) }
-        assertFailsWith<IllegalArgumentException> { android.tapOnElement(AndroidElementSelectors(text = "a"), 30_001) }
-        assertFailsWith<IllegalArgumentException> { ios.tapOnElement(IOSElementSelectors(bundleId = "app.id")) }
-        assertFailsWith<IllegalArgumentException> { ios.tapOnElement(IOSElementSelectors(text = "a", bundleId = " ")) }
+        assertFailsWith<IllegalArgumentException> {
+            android.tapOnElement(AndroidElementSelectors(text = "a"), 30_001)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            ios.tapOnElement(IOSElementSelectors(bundleId = "app.id"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            ios.tapOnElement(IOSElementSelectors(text = "a", bundleId = " "))
+        }
         assertEquals(0, androidHttp.requestCount)
         assertEquals(0, iosHttp.requestCount)
     }
@@ -82,12 +97,18 @@ class ElementTapToolRegistrarTest {
         iosHttp.enqueue(MockResponse().setBody(raw))
 
         assertEquals(raw, android.tapOnElement(AndroidElementSelectors(resourceId = "login")))
-        assertEquals(raw, ios.tapOnElement(IOSElementSelectors(identifier = "login", bundleId = "app.id")))
+        assertEquals(
+            raw,
+            ios.tapOnElement(IOSElementSelectors(identifier = "login", bundleId = "app.id")),
+        )
 
         androidHttp.takeRequest()
         val androidRequest = JsonParser.parseString(androidHttp.takeRequest().body.readUtf8())
         assertEquals("ui.tapOnElement", androidRequest.asJsonObject["method"].asString)
-        assertEquals(10_000, androidRequest.asJsonObject["params"].asJsonObject["timeoutMs"].asInt)
+        assertEquals(
+            10_000,
+            androidRequest.asJsonObject["params"].asJsonObject["timeoutMs"].asInt,
+        )
         iosHttp.takeRequest()
         val iosRequest = JsonParser.parseString(iosHttp.takeRequest().body.readUtf8())
         assertEquals("ui.tapOnElement", iosRequest.asJsonObject["method"].asString)
@@ -153,38 +174,35 @@ class ElementTapToolRegistrarTest {
         }
         verify { androidServer.addTool("android_input_text", capture(androidInputTextDescription), any(), any()) }
         verify { iosServer.addTool("ios_input_text", capture(iosInputTextDescription), any(), any()) }
-        assertTrue(androidInteractiveElementsDescription.captured.contains("Prefer tap_on_element with a stable selector"))
-        assertTrue(androidInteractiveElementsDescription.captured.contains("coordinates are the intended target"))
-        assertTrue(iosInteractiveElementsDescription.captured.contains("Prefer ios_tap_on_element with a stable selector"))
-        assertTrue(iosInteractiveElementsDescription.captured.contains("coordinates are the intended target"))
-        assertTrue(androidInputTextDescription.captured.contains("Prefer tap_on_element with a stable selector"))
-        assertTrue(androidInputTextDescription.captured.contains("coordinates are the intended target"))
-        assertTrue(iosInputTextDescription.captured.contains("Prefer ios_tap_on_element with a stable selector"))
-        assertTrue(iosInputTextDescription.captured.contains("coordinates are the intended target"))
-        assertTrue(androidSchema.captured.required.orEmpty().isEmpty())
-        assertTrue(iosSchema.captured.required.orEmpty().isEmpty())
-        assertEquals("integer", androidSchema.captured.properties["timeoutMs"]!!.jsonObject["type"]!!.jsonPrimitive.content)
-        assertEquals("10000", androidSchema.captured.properties["timeoutMs"]!!.jsonObject["default"]!!.jsonPrimitive.content)
-        assertEquals("1", androidSchema.captured.properties["timeoutMs"]!!.jsonObject["minimum"]!!.jsonPrimitive.content)
-        assertEquals("30000", androidSchema.captured.properties["timeoutMs"]!!.jsonObject["maximum"]!!.jsonPrimitive.content)
-        assertTrue(iosSchema.captured.properties.containsKey("bundleId"))
-        assertEquals("integer", iosSchema.captured.properties["timeoutMs"]!!.jsonObject["type"]!!.jsonPrimitive.content)
-        assertEquals("10000", iosSchema.captured.properties["timeoutMs"]!!.jsonObject["default"]!!.jsonPrimitive.content)
-        assertEquals("1", iosSchema.captured.properties["timeoutMs"]!!.jsonObject["minimum"]!!.jsonPrimitive.content)
-        assertEquals("30000", iosSchema.captured.properties["timeoutMs"]!!.jsonObject["maximum"]!!.jsonPrimitive.content)
-        assertEquals(45_000L, ELEMENT_TAP_TOOL_TIMEOUT_MS)
+        assertToolDescriptions(
+            androidInteractiveElementsDescription.captured,
+            iosInteractiveElementsDescription.captured,
+            androidInputTextDescription.captured,
+            iosInputTextDescription.captured,
+        )
+        assertElementTapSchemas(androidSchema.captured, iosSchema.captured)
+        assertRegisteredHandlers(androidHandler.captured, iosHandler.captured)
+    }
 
+    private suspend fun assertRegisteredHandlers(
+        androidHandler: suspend (CallToolRequest) -> CallToolResult,
+        iosHandler: suspend (CallToolRequest) -> CallToolResult,
+    ) {
         androidHttp.enqueue(MockResponse().setBody("OK"))
         androidHttp.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
-        val result = androidHandler.captured(CallToolRequest("tap_on_element", JsonObject(mapOf("text" to JsonPrimitive("Login")))))
+        val result = androidHandler(
+            CallToolRequest("tap_on_element", JsonObject(mapOf("text" to JsonPrimitive("Login")))),
+        )
         assertFalse(result.isError == true)
 
         iosHttp.enqueue(MockResponse().setBody("OK"))
         iosHttp.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
-        val iosResult = iosHandler.captured(
+        val iosResult = iosHandler(
             CallToolRequest(
                 "ios_tap_on_element",
-                JsonObject(mapOf("resourceId" to JsonPrimitive("login"), "bundleId" to JsonPrimitive("app.id"))),
+                JsonObject(
+                    mapOf("resourceId" to JsonPrimitive("login"), "bundleId" to JsonPrimitive("app.id")),
+                ),
             )
         )
         assertFalse(iosResult.isError == true)
@@ -203,10 +221,46 @@ class ElementTapToolRegistrarTest {
         for (response in failedResponses) {
             iosHttp.enqueue(MockResponse().setBody("OK"))
             iosHttp.enqueue(MockResponse().setBody(response))
-            val errorResult = iosHandler.captured(
-                CallToolRequest("ios_tap_on_element", JsonObject(mapOf("text" to JsonPrimitive("Login")))),
+            val errorResult = iosHandler(
+                CallToolRequest(
+                    "ios_tap_on_element",
+                    JsonObject(mapOf("text" to JsonPrimitive("Login"))),
+                ),
             )
             assertTrue(errorResult.content.single().toString().contains("Command execution failed"))
         }
+    }
+
+    private fun assertToolDescriptions(
+        androidInteractiveElements: String,
+        iosInteractiveElements: String,
+        androidInputText: String,
+        iosInputText: String,
+    ) {
+        assertTrue(androidInteractiveElements.contains("Prefer tap_on_element with a stable selector"))
+        assertTrue(androidInteractiveElements.contains("coordinates are the intended target"))
+        assertTrue(iosInteractiveElements.contains("Prefer ios_tap_on_element with a stable selector"))
+        assertTrue(iosInteractiveElements.contains("coordinates are the intended target"))
+        assertTrue(androidInputText.contains("Prefer tap_on_element with a stable selector"))
+        assertTrue(androidInputText.contains("coordinates are the intended target"))
+        assertTrue(iosInputText.contains("Prefer ios_tap_on_element with a stable selector"))
+        assertTrue(iosInputText.contains("coordinates are the intended target"))
+    }
+
+    private fun assertElementTapSchemas(androidSchema: Tool.Input, iosSchema: Tool.Input) {
+        assertTrue(androidSchema.required.orEmpty().isEmpty())
+        assertTrue(iosSchema.required.orEmpty().isEmpty())
+        assertTimeoutSchema(androidSchema)
+        assertTrue(iosSchema.properties.containsKey("bundleId"))
+        assertTimeoutSchema(iosSchema)
+        assertEquals(45_000L, ELEMENT_TAP_TOOL_TIMEOUT_MS)
+    }
+
+    private fun assertTimeoutSchema(schema: Tool.Input) {
+        val timeout = schema.properties["timeoutMs"]!!.jsonObject
+        assertEquals("integer", timeout["type"]!!.jsonPrimitive.content)
+        assertEquals("10000", timeout["default"]!!.jsonPrimitive.content)
+        assertEquals("1", timeout["minimum"]!!.jsonPrimitive.content)
+        assertEquals("30000", timeout["maximum"]!!.jsonPrimitive.content)
     }
 }

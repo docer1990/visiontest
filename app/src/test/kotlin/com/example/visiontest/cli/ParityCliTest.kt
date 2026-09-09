@@ -153,9 +153,21 @@ class ParityCliTest {
     @Test
     fun `ios app scope forwards unchanged to inspection and input operations`() {
         val cases = listOf(
-            Triple(::GetUiHierarchyCommand, arrayOf("-p", "ios", "--bundle-id", "com.example.app"), "ui.dumpHierarchy"),
-            Triple(::GetInteractiveElementsCommand, arrayOf("-p", "ios", "--bundle-id", "com.example.app"), "ui.getInteractiveElements"),
-            Triple(::InputTextCommand, arrayOf("-p", "ios", "hello", "--bundle-id", "com.example.app"), "ui.inputText"),
+            Triple(
+                ::GetUiHierarchyCommand,
+                arrayOf("-p", "ios", "--bundle-id", "com.example.app"),
+                "ui.dumpHierarchy",
+            ),
+            Triple(
+                ::GetInteractiveElementsCommand,
+                arrayOf("-p", "ios", "--bundle-id", "com.example.app"),
+                "ui.getInteractiveElements",
+            ),
+            Triple(
+                ::InputTextCommand,
+                arrayOf("-p", "ios", "hello", "--bundle-id", "com.example.app"),
+                "ui.inputText",
+            ),
         )
         for ((factory, args, method) in cases) {
             respond(iosServer, """{"success":true}""")

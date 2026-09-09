@@ -12,9 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 
 class AndroidAutomationToolRegistrar(
     private val android: DeviceConfig,
@@ -472,13 +469,13 @@ class AndroidAutomationToolRegistrar(
     }
 
     private fun registerTapOnElement(scope: ToolScope) {
-        scope.tool(
+        registerElementTapTool(
+            scope = scope,
             name = "tap_on_element",
             description = "Waits until a matching Android element is actionable, then taps it. " +
                 "Requires a selector; timeoutMs defaults to 10000ms and has a 30000ms maximum. " +
                 "Does not auto-scroll.",
-            inputSchema = elementTapInputSchema(),
-            timeoutMs = ELEMENT_TAP_TOOL_TIMEOUT_MS,
+            selectorNames = listOf("text", "textContains", "resourceId", "className", "contentDescription"),
         ) { request ->
             tapOnElement(
                 AndroidElementSelectors(
@@ -492,18 +489,6 @@ class AndroidAutomationToolRegistrar(
             )
         }
     }
-
-    private fun elementTapInputSchema() = Tool.Input(properties = buildJsonObject {
-        listOf("text", "textContains", "resourceId", "className", "contentDescription").forEach { name ->
-            putJsonObject(name) { put("type", "string") }
-        }
-        putJsonObject("timeoutMs") {
-            put("type", "integer")
-            put("minimum", 1)
-            put("maximum", 30_000)
-            put("default", 10_000)
-        }
-    })
 
     private fun registerPressBack(scope: ToolScope) {
         scope.tool(

@@ -517,23 +517,15 @@ class IOSAutomationToolRegistrar(
     }
 
     private fun registerTapOnElement(scope: ToolScope) {
-        scope.tool(
+        registerElementTapTool(
+            scope = scope,
             name = "ios_tap_on_element",
             description = "Waits until a matching iOS element is actionable, then taps it. " +
                 "Requires a selector; bundleId scopes the app and is not a selector. timeoutMs defaults " +
                 "to 10000ms and has a 30000ms maximum. Does not auto-scroll.",
-            inputSchema = Tool.Input(properties = buildJsonObject {
-                listOf("text", "textContains", "resourceId", "className", "contentDescription", "bundleId").forEach { name ->
-                    putJsonObject(name) { put("type", "string") }
-                }
-                putJsonObject("timeoutMs") {
-                    put("type", "integer")
-                    put("minimum", 1)
-                    put("maximum", 30_000)
-                    put("default", 10_000)
-                }
-            }),
-            timeoutMs = ELEMENT_TAP_TOOL_TIMEOUT_MS,
+            selectorNames = listOf(
+                "text", "textContains", "resourceId", "className", "contentDescription", "bundleId",
+            ),
         ) { request ->
             tapOnElement(
                 IOSElementSelectors(

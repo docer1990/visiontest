@@ -30,7 +30,8 @@ class GetInteractiveElementsCommand(
         requireServerRunning { components.value.isServerRunning(platform) }
         val result = when (platform) {
             Platform.Android -> components.value.androidAutomationRegistrar.getInteractiveElements(includeDisabled)
-            Platform.Ios -> components.value.iosAutomationRegistrar.getInteractiveElements(includeDisabled, appScope.bundleId)
+            Platform.Ios -> components.value.iosAutomationRegistrar
+                .getInteractiveElements(includeDisabled, appScope.bundleId)
         }
         inspectionOutput(result, json)
     }

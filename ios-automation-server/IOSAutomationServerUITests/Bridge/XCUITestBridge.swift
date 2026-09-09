@@ -230,7 +230,6 @@ class XCUITestBridge {
         return performElementTap(
             request: request,
             now: { ProcessInfo.processInfo.systemUptime },
-            wait: { Thread.sleep(forTimeInterval: $0) },
             readiness: {
                 tappableElement = nil
                 guard let element = self.lookupElement(

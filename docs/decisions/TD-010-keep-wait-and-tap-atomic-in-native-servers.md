@@ -18,6 +18,8 @@ Scripts and agents need to tap elements that may appear only after a screen tran
 
 Android and iOS automation servers will expose `ui.tapOnElement`, which waits within a bounded timeout for the selected element to become actionable and then taps the same native element reference. Passive appearance and disappearance waits remain client-polled under TD-006.
 
+iOS polling services the runner's default-mode run loop between lookups instead of sleeping its main thread. The request remains within one main-queue block, preserving serialization of queued automation commands while allowing timers and input sources to progress.
+
 ## Rationale
 
 Keeping readiness detection and the gesture in one native request removes the find-to-tap race and lets each platform use its real interaction semantics: visible enabled `UiObject2` on Android and enabled `isHittable` `XCUIElement` on iOS. This reliability outweighs the artifact update and long-lived-request costs for an action that must operate on the element it validated.

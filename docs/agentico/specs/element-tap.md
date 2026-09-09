@@ -40,6 +40,10 @@ Native Android and iOS handling MUST wait implicitly for a matching element at
 500 ms intervals. The caller timeout defaults to 10,000 ms and MUST NOT exceed
 30,000 ms. Element tapping MUST NOT auto-scroll to make a match visible.
 
+On iOS, polling intervals MUST service the runner's default-mode run loop so
+timers and input sources can progress. Other main-queue automation commands
+MUST remain serialized behind the current request.
+
 #### Scenario: Match arrives during the implicit wait
 
 - **Given** no matching element is present initially

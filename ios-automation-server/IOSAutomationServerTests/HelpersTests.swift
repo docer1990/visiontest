@@ -83,6 +83,36 @@ final class HelpersTests: XCTestCase {
         XCTAssertEqual(taps, 1)
     }
 
+    func testElementTapProcessesRunLoopEventsWithoutInterleavingQueuedCommands() throws {
+        let request = try ElementTapRequest(params: ["text": "Continue", "timeoutMs": 2_000])
+        let completed = expectation(description: "Both main-queue commands complete")
+        DispatchQueue.main.async {
+            var events: [String] = []
+            var ready = false
+            let timer = Timer(timeInterval: 0.05, repeats: false) { _ in
+                ready = true
+                events.append("ready")
+            }
+            RunLoop.main.add(timer, forMode: .default)
+            defer { timer.invalidate() }
+            DispatchQueue.main.async {
+                events.append("next command")
+                XCTAssertEqual(events, ["ready", "tap", "completed", "next command"])
+                completed.fulfill()
+            }
+
+            let result = performElementTap(
+                request: request,
+                now: { ProcessInfo.processInfo.systemUptime },
+                readiness: { ready ? .ready : .absent },
+                tap: { events.append("tap") }
+            )
+            XCTAssertTrue(result.success, result.error ?? "Tap failed")
+            events.append("completed")
+        }
+        wait(for: [completed], timeout: 5)
+    }
+
     func testElementTapWaitsAtFiveHundredMillisecondCadenceUntilReady() throws {
         let request = try ElementTapRequest(params: ["text": "Continue", "timeoutMs": 2_000])
         var clock: TimeInterval = 0

@@ -184,7 +184,7 @@ func isElementTapReady(exists: Bool, isEnabled: Bool, isHittable: Bool) -> Bool 
 func performElementTap(
     request: ElementTapRequest,
     now: () -> TimeInterval,
-    wait: (TimeInterval) -> Void,
+    wait: (TimeInterval) -> Void = { RunLoop.current.run(until: Date(timeIntervalSinceNow: $0)) },
     readiness: () -> ElementTapReadiness,
     tap: () -> Void
 ) -> OperationResult {

@@ -21,10 +21,21 @@ fun <T> waitAndTapElement(
 ): ElementTapWaitResult {
     val startMs = nowMs()
     var foundElement = false
+    fun timeoutResult() = ElementTapWaitResult(
+        success = false,
+        error = if (foundElement) {
+            "Element found but not tappable within ${timeoutMs}ms: $elementDescription"
+        } else {
+            "Element not found within ${timeoutMs}ms: $elementDescription"
+        }
+    )
 
     try {
         while (true) {
             val candidate = lookup()
+            if (nowMs() - startMs > timeoutMs) {
+                return timeoutResult()
+            }
             if (candidate != null) {
                 foundElement = true
                 if (candidate.enabled && candidate.hasVisibleBounds) {
@@ -35,12 +46,7 @@ fun <T> waitAndTapElement(
 
             val elapsedMs = nowMs() - startMs
             if (elapsedMs >= timeoutMs) {
-                val error = if (foundElement) {
-                    "Element found but not tappable within ${timeoutMs}ms: $elementDescription"
-                } else {
-                    "Element not found within ${timeoutMs}ms: $elementDescription"
-                }
-                return ElementTapWaitResult(success = false, error = error)
+                return timeoutResult()
             }
             sleepMs(minOf(500L, timeoutMs - elapsedMs))
         }

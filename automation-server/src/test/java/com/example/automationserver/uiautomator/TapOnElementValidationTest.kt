@@ -1,5 +1,6 @@
 package com.example.automationserver.uiautomator
 
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -36,5 +37,26 @@ class TapOnElementValidationTest {
     @Test
     fun `accepts nonblank selectors`() {
         validateTapOnElementSelectors(text = "Save", contentDescription = "Save changes")
+    }
+
+    @Test
+    fun `parses string selectors from a JSON-RPC params object`() {
+        val selectors = parseTapOnElementSelectors(
+            JsonParser.parseString("{\"text\":\"Save\",\"resourceId\":\"app:id/save\"}").asJsonObject
+        )
+
+        assertEquals("Save", selectors.text)
+        assertEquals("app:id/save", selectors.resourceId)
+    }
+
+    @Test
+    fun `rejects every non-string selector JSON value`() {
+        listOf("true", "1", "null", "{}", "[]").forEach { value ->
+            val params = JsonObject().apply { add("text", JsonParser.parseString(value)) }
+
+            assertFailsWith<IllegalArgumentException> {
+                parseTapOnElementSelectors(params)
+            }
+        }
     }
 }

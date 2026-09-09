@@ -127,6 +127,48 @@ class ElementTapWaitTest {
         assertEquals(1, taps)
     }
 
+    @Test
+    fun `does not tap a ready element found after the deadline`() {
+        val clock = FakeClock()
+        var taps = 0
+
+        val result = waitAndTapElement(
+            timeoutMs = 1_000,
+            nowMs = clock::now,
+            sleepMs = clock::sleep,
+            lookup = {
+                clock.sleep(1_001)
+                ElementTapCandidate("target", enabled = true, hasVisibleBounds = true)
+            },
+            tap = { taps += 1 }
+        )
+
+        assertFalse(result.success)
+        assertEquals(0, taps)
+    }
+
+    @Test
+    fun `taps a ready element found exactly at the deadline`() {
+        val clock = FakeClock()
+        var lookups = 0
+        var taps = 0
+
+        val result = waitAndTapElement(
+            timeoutMs = 500,
+            nowMs = clock::now,
+            sleepMs = clock::sleep,
+            lookup = {
+                lookups += 1
+                if (lookups == 2) ElementTapCandidate("target", enabled = true, hasVisibleBounds = true) else null
+            },
+            tap = { taps += 1 }
+        )
+
+        assertTrue(result.success)
+        assertEquals(1, taps)
+        assertEquals(500, clock.now())
+    }
+
     private class FakeClock {
         private var elapsedMs = 0L
 

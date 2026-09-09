@@ -176,19 +176,8 @@ class JsonRpcServerInstrumented(
             }
 
             "ui.tapOnElement" -> {
-                val text = params?.get("text")?.asString
-                val textContains = params?.get("textContains")?.asString
-                val resourceId = params?.get("resourceId")?.asString
-                val className = params?.get("className")?.asString
-                val contentDescription = params?.get("contentDescription")?.asString
-                try {
-                    com.example.automationserver.uiautomator.validateTapOnElementSelectors(
-                        text,
-                        textContains,
-                        resourceId,
-                        className,
-                        contentDescription
-                    )
+                val selectors = try {
+                    com.example.automationserver.uiautomator.parseTapOnElementSelectors(params)
                 } catch (e: IllegalArgumentException) {
                     throw InvalidParamsException(e.message ?: "Invalid selector")
                 }
@@ -201,11 +190,11 @@ class JsonRpcServerInstrumented(
                 }
 
                 uiAutomator.tapOnElement(
-                    text = text,
-                    textContains = textContains,
-                    resourceId = resourceId,
-                    className = className,
-                    contentDescription = contentDescription,
+                    text = selectors.text,
+                    textContains = selectors.textContains,
+                    resourceId = selectors.resourceId,
+                    className = selectors.className,
+                    contentDescription = selectors.contentDescription,
                     timeoutMs = timeoutMs
                 )
             }

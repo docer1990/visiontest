@@ -181,25 +181,23 @@ class JsonRpcServerInstrumented(
                 val resourceId = params?.get("resourceId")?.asString
                 val className = params?.get("className")?.asString
                 val contentDescription = params?.get("contentDescription")?.asString
-                if (text == null && textContains == null && resourceId == null &&
-                    className == null && contentDescription == null) {
-                    throw InvalidParamsException("At least one selector required: text, textContains, resourceId, className, or contentDescription")
+                try {
+                    com.example.automationserver.uiautomator.validateTapOnElementSelectors(
+                        text,
+                        textContains,
+                        resourceId,
+                        className,
+                        contentDescription
+                    )
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid selector")
                 }
-
-                val timeoutParameter = params.get("timeoutMs")
+                val timeoutParameter = params?.get("timeoutMs")
                     ?: throw InvalidParamsException("Missing 'timeoutMs' parameter")
-                if (!timeoutParameter.isJsonPrimitive || !timeoutParameter.asJsonPrimitive.isNumber) {
-                    throw InvalidParamsException("'timeoutMs' must be an integer between 1 and 30000")
-                }
                 val timeoutMs = try {
-                    java.math.BigDecimal(timeoutParameter.asString).intValueExact()
-                } catch (e: NumberFormatException) {
-                    throw InvalidParamsException("'timeoutMs' must be an integer between 1 and 30000")
-                } catch (e: ArithmeticException) {
-                    throw InvalidParamsException("'timeoutMs' must be an integer between 1 and 30000")
-                }
-                if (timeoutMs !in 1..30_000) {
-                    throw InvalidParamsException("'timeoutMs' must be an integer between 1 and 30000")
+                    com.example.automationserver.uiautomator.parseTapOnElementTimeoutMs(timeoutParameter)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid timeoutMs")
                 }
 
                 uiAutomator.tapOnElement(

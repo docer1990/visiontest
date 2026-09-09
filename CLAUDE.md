@@ -107,6 +107,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `wait_for_element` | Poll until an element appears (same selectors as `find_element`, optional `timeoutMs`, max 30s) |
 | `wait_until_gone` | Poll until an element disappears (spinners, dialogs); server failures are errors, never "gone" |
 | `android_tap_by_coordinates` | Tap at screen coordinates (x, y) |
+| `tap_on_element` | Directly tap a visible, enabled selected Android element; optional timeout |
 | `android_swipe` | Swipe by coordinates (startX, startY) to (endX, endY) |
 | `android_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
 | `android_swipe_on_element` | Swipe on a specific element (for carousels, sliders) |
@@ -127,6 +128,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `ios_wait_for_element` | Poll until an element appears (same selectors as `ios_find_element`, optional `timeoutMs`, max 30s) |
 | `ios_wait_until_gone` | Poll until an element disappears (spinners, sheets); server failures are errors, never "gone" |
 | `ios_tap_by_coordinates` | Tap at screen coordinates (x, y) |
+| `ios_tap_on_element` | Directly tap an existing, enabled, hittable selected iOS element; optional app scope and timeout |
 | `ios_swipe` | Swipe by coordinates |
 | `ios_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
 | `ios_swipe_on_element` | Swipe inside a selected element; optional app scope `bundleId` and speed |
@@ -141,7 +143,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 
 1. **Install/Start** — `install_automation_server` + `start_automation_server` (Android) or `ios_start_automation_server` (iOS, uses pre-built bundle if available)
 2. **Inspect** — `get_interactive_elements` / `ios_get_interactive_elements` (preferred) or `get_ui_hierarchy` / `ios_get_ui_hierarchy` (full XML)
-3. **Interact** — `android_tap_by_coordinates` / `ios_tap_by_coordinates` using centerX/centerY from interactive elements
+3. **Interact** — Prefer `tap_on_element` / `ios_tap_on_element` with stable selectors; use `android_tap_by_coordinates` / `ios_tap_by_coordinates` only when coordinates are the intended target
 4. **Input** — `android_input_text` / `ios_input_text` for text entry
 5. **Navigate** — `android_swipe_direction` / `ios_swipe_direction` (simpler) or coordinate-based swipe (precise)
 
@@ -157,15 +159,16 @@ MCP device and UI operations can be invoked directly from the command line; the 
 | `start_automation_server` | android, ios | — | — |
 | `stop_automation_server` | android, ios | — | — |
 | `automation_server_status` | android, ios | — | — |
-| `get_interactive_elements` | android, ios | — | `--include-disabled`, `--json` |
+| `get_interactive_elements` | android, ios | — | `--include-disabled`, `--bundle-id` (iOS), `--json` |
 | `wait_for_element` | android, ios | at least one selector option | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--timeout MS`, `--gone` |
-| `get_ui_hierarchy` | android, ios | — | — |
+| `get_ui_hierarchy` | android, ios | — | `--bundle-id` (iOS) |
 | `get_device_info` | android, ios | — | `--json` |
 | `find_element` | android, ios | at least one selector | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--json` |
 | `available_device` | android, ios | — | `--json` |
 | `screenshot` | android, ios | — | `--output PATH` |
 | `tap_by_coordinates` | android, ios | `x` `y` (ints) | — |
-| `input_text` | android, ios | `text` (string) | — |
+| `tap_on_element` | android, ios | at least one selector | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--timeout MS` |
+| `input_text` | android, ios | `text` (string) | `--bundle-id` (iOS) |
 | `swipe_direction` | android, ios | `direction` (up\|down\|left\|right) | `--distance`, `--speed` |
 | `swipe` | android, ios | `startX` `startY` `endX` `endY` (ints) | `--steps` (positive, default 20) |
 | `swipe_on_element` | android, ios | `direction` and at least one selector | same selectors as `find_element`, `--speed` |
@@ -176,9 +179,12 @@ MCP device and UI operations can be invoked directly from the command line; the 
 | `info_app` | android, ios | `id` (string) | `--json` |
 | `init` | (none) | — | `--agent` (required, comma-separated: `claude,opencode,codex`) |
 
-`find_element` and `swipe_on_element` reject `--bundle-id` on Android and require
-an element selector even when an iOS bundle is provided. Selector names follow
-`wait_for_element` mappings. iOS element swipe requires an updated automation
+`find_element`, `swipe_on_element`, and `tap_on_element` reject `--bundle-id` on
+Android and require an element selector even when an iOS bundle is provided.
+Selector names follow `wait_for_element` mappings. `tap_on_element` defaults to
+a 10-second native wait, caps `--timeout` at 30 seconds, and performs no
+automatic scrolling. It requires updated Android APKs or an iOS automation
+bundle supporting `ui.tapOnElement`; iOS element swipe similarly requires a
 bundle with `ui.swipeOnElement`.
 
 Inspection `--json` emits structured objects; see [JSON schemas and examples](docs/cli-json.md).

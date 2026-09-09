@@ -190,12 +190,7 @@ class JsonRpcServerInstrumented(
                 }
 
                 uiAutomator.tapOnElement(
-                    text = selectors.text,
-                    textContains = selectors.textContains,
-                    resourceId = selectors.resourceId,
-                    className = selectors.className,
-                    contentDescription = selectors.contentDescription,
-                    timeoutMs = timeoutMs
+                    com.example.automationserver.uiautomator.TapOnElementRequest(selectors, timeoutMs)
                 )
             }
 

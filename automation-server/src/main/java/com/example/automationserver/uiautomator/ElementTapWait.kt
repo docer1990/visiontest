@@ -11,46 +11,71 @@ data class ElementTapWaitResult(
     val error: String? = null
 )
 
+data class ElementTapClock(
+    val nowMs: () -> Long,
+    val sleepMs: (Long) -> Unit
+)
+
+data class ElementTapOperation<T>(
+    val lookup: () -> ElementTapCandidate<T>?,
+    val tap: (T) -> Unit
+)
+
+private const val ELEMENT_TAP_POLL_INTERVAL_MS = 500L
+
+@Suppress("TooGenericExceptionCaught")
 fun <T> waitAndTapElement(
     timeoutMs: Long,
     elementDescription: String = "element",
-    nowMs: () -> Long,
-    sleepMs: (Long) -> Unit,
-    lookup: () -> ElementTapCandidate<T>?,
-    tap: (T) -> Unit
+    clock: ElementTapClock,
+    operation: ElementTapOperation<T>
 ): ElementTapWaitResult {
-    val startMs = nowMs()
-    var foundElement = false
-    fun timeoutResult() = ElementTapWaitResult(
-        success = false,
-        error = if (foundElement) {
-            "Element found but not tappable within ${timeoutMs}ms: $elementDescription"
-        } else {
-            "Element not found within ${timeoutMs}ms: $elementDescription"
-        }
-    )
-
     try {
-        while (true) {
-            val candidate = lookup()
-            if (nowMs() - startMs > timeoutMs) {
-                return timeoutResult()
-            }
-            if (candidate != null) {
-                foundElement = true
-                if (candidate.enabled && candidate.hasVisibleBounds) {
-                    tap(candidate.element)
-                    return ElementTapWaitResult(success = true)
-                }
-            }
-
-            val elapsedMs = nowMs() - startMs
-            if (elapsedMs >= timeoutMs) {
-                return timeoutResult()
-            }
-            sleepMs(minOf(500L, timeoutMs - elapsedMs))
-        }
-    } catch (e: Exception) {
-        return ElementTapWaitResult(success = false, error = e.message ?: "Unexpected element tap error")
+        return runElementTapLoop(timeoutMs, elementDescription, clock, operation)
+    } catch (error: Exception) {
+        return ElementTapWaitResult(success = false, error = error.message ?: "Unexpected element tap error")
     }
 }
+
+private fun <T> runElementTapLoop(
+    timeoutMs: Long,
+    elementDescription: String,
+    clock: ElementTapClock,
+    operation: ElementTapOperation<T>
+): ElementTapWaitResult {
+    val startMs = clock.nowMs()
+    var foundElement = false
+    var result: ElementTapWaitResult? = null
+    while (result == null) {
+        val candidate = operation.lookup()
+        val elapsedMs = clock.nowMs() - startMs
+        if (elapsedMs > timeoutMs) {
+            result = timeoutResult(foundElement, timeoutMs, elementDescription)
+        } else if (candidate?.let { it.enabled && it.hasVisibleBounds } == true) {
+            operation.tap(candidate.element)
+            result = ElementTapWaitResult(success = true)
+        } else {
+            foundElement = foundElement || candidate != null
+            result = if (elapsedMs >= timeoutMs) {
+                timeoutResult(foundElement, timeoutMs, elementDescription)
+            } else {
+                clock.sleepMs(minOf(ELEMENT_TAP_POLL_INTERVAL_MS, timeoutMs - elapsedMs))
+                null
+            }
+        }
+    }
+    return result
+}
+
+private fun timeoutResult(
+    foundElement: Boolean,
+    timeoutMs: Long,
+    elementDescription: String
+) = ElementTapWaitResult(
+    success = false,
+    error = if (foundElement) {
+        "Element found but not tappable within ${timeoutMs}ms: $elementDescription"
+    } else {
+        "Element not found within ${timeoutMs}ms: $elementDescription"
+    }
+)

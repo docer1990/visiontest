@@ -15,13 +15,11 @@ class ElementTapWaitTest {
 
         val result = waitAndTapElement(
             timeoutMs = 1_000,
-            nowMs = clock::now,
-            sleepMs = clock::sleep,
-            lookup = {
+            clock = ElementTapClock(clock::now, clock::sleep),
+            operation = ElementTapOperation(lookup = {
                 lookups += 1
                 if (lookups == 2) ElementTapCandidate("target", enabled = true, hasVisibleBounds = true) else null
-            },
-            tap = { taps += 1 }
+            }, tap = { taps += 1 })
         )
 
         assertTrue(result.success)
@@ -37,13 +35,11 @@ class ElementTapWaitTest {
 
         val result = waitAndTapElement(
             timeoutMs = 1_000,
-            nowMs = clock::now,
-            sleepMs = clock::sleep,
-            lookup = {
+            clock = ElementTapClock(clock::now, clock::sleep),
+            operation = ElementTapOperation(lookup = {
                 lookups += 1
                 ElementTapCandidate("target", enabled = lookups == 2, hasVisibleBounds = true)
-            },
-            tap = { taps += 1 }
+            }, tap = { taps += 1 })
         )
 
         assertTrue(result.success)
@@ -58,10 +54,8 @@ class ElementTapWaitTest {
 
         val result = waitAndTapElement<String>(
             timeoutMs = 1_000,
-            nowMs = clock::now,
-            sleepMs = clock::sleep,
-            lookup = { null },
-            tap = { taps += 1 }
+            clock = ElementTapClock(clock::now, clock::sleep),
+            operation = ElementTapOperation(lookup = { null }, tap = { taps += 1 })
         )
 
         assertFalse(result.success)
@@ -77,10 +71,11 @@ class ElementTapWaitTest {
 
         val result = waitAndTapElement(
             timeoutMs = 1_000,
-            nowMs = clock::now,
-            sleepMs = clock::sleep,
-            lookup = { ElementTapCandidate("target", enabled = false, hasVisibleBounds = true) },
-            tap = { taps += 1 }
+            clock = ElementTapClock(clock::now, clock::sleep),
+            operation = ElementTapOperation(
+                lookup = { ElementTapCandidate("target", enabled = false, hasVisibleBounds = true) },
+                tap = { taps += 1 }
+            )
         )
 
         assertFalse(result.success)
@@ -95,10 +90,11 @@ class ElementTapWaitTest {
 
         val result = waitAndTapElement<String>(
             timeoutMs = 1_000,
-            nowMs = clock::now,
-            sleepMs = clock::sleep,
-            lookup = { throw IllegalStateException("lookup failed") },
-            tap = { taps += 1 }
+            clock = ElementTapClock(clock::now, clock::sleep),
+            operation = ElementTapOperation(
+                lookup = { throw IllegalStateException("lookup failed") },
+                tap = { taps += 1 }
+            )
         )
 
         assertFalse(result.success)
@@ -113,13 +109,13 @@ class ElementTapWaitTest {
 
         val result = waitAndTapElement(
             timeoutMs = 1_000,
-            nowMs = clock::now,
-            sleepMs = clock::sleep,
-            lookup = { ElementTapCandidate("target", enabled = true, hasVisibleBounds = true) },
-            tap = {
+            clock = ElementTapClock(clock::now, clock::sleep),
+            operation = ElementTapOperation(lookup = {
+                ElementTapCandidate("target", enabled = true, hasVisibleBounds = true)
+            }, tap = {
                 taps += 1
-                throw IllegalStateException("tap failed")
-            }
+                error("tap failed")
+            })
         )
 
         assertFalse(result.success)
@@ -134,13 +130,11 @@ class ElementTapWaitTest {
 
         val result = waitAndTapElement(
             timeoutMs = 1_000,
-            nowMs = clock::now,
-            sleepMs = clock::sleep,
-            lookup = {
+            clock = ElementTapClock(clock::now, clock::sleep),
+            operation = ElementTapOperation(lookup = {
                 clock.sleep(1_001)
                 ElementTapCandidate("target", enabled = true, hasVisibleBounds = true)
-            },
-            tap = { taps += 1 }
+            }, tap = { taps += 1 })
         )
 
         assertFalse(result.success)
@@ -155,13 +149,11 @@ class ElementTapWaitTest {
 
         val result = waitAndTapElement(
             timeoutMs = 500,
-            nowMs = clock::now,
-            sleepMs = clock::sleep,
-            lookup = {
+            clock = ElementTapClock(clock::now, clock::sleep),
+            operation = ElementTapOperation(lookup = {
                 lookups += 1
                 if (lookups == 2) ElementTapCandidate("target", enabled = true, hasVisibleBounds = true) else null
-            },
-            tap = { taps += 1 }
+            }, tap = { taps += 1 })
         )
 
         assertTrue(result.success)

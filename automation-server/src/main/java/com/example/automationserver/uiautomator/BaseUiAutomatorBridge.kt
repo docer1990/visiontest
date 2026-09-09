@@ -290,43 +290,44 @@ abstract class BaseUiAutomatorBridge {
         }
     }
 
-    fun tapOnElement(
-        text: String? = null,
-        textContains: String? = null,
-        resourceId: String? = null,
-        className: String? = null,
-        contentDescription: String? = null,
-        timeoutMs: Int
-    ): OperationResult {
-        val selector = buildSelector(text, textContains, resourceId, className, contentDescription)
+    fun tapOnElement(request: TapOnElementRequest): OperationResult {
+        val selectors = request.selectors
+        val selector = buildSelector(
+            selectors.text,
+            selectors.textContains,
+            selectors.resourceId,
+            selectors.className,
+            selectors.contentDescription
+        )
             ?: return OperationResult(success = false, error = "No selector provided")
         val selectorDescription = selectorDescription(
-            text,
-            textContains,
-            resourceId,
-            className,
-            contentDescription
+            selectors.text,
+            selectors.textContains,
+            selectors.resourceId,
+            selectors.className,
+            selectors.contentDescription
         )
 
         val result = waitAndTapElement(
-            timeoutMs = timeoutMs.toLong(),
+            timeoutMs = request.timeoutMs.toLong(),
             elementDescription = selectorDescription,
-            nowMs = SystemClock::elapsedRealtime,
-            sleepMs = SystemClock::sleep,
-            lookup = {
-                getUiDevice().findObject(selector)?.let { element ->
-                    val visibleBounds = element.visibleBounds
-                    val isVisibleOnDisplay = visibleBounds.width() > 0 &&
-                        visibleBounds.height() > 0 &&
-                        Rect.intersects(visibleBounds, getDisplayRect())
-                    ElementTapCandidate(
-                        element = element,
-                        enabled = element.isEnabled,
-                        hasVisibleBounds = isVisibleOnDisplay
-                    )
-                }
-            },
-            tap = { it.click() }
+            clock = ElementTapClock(SystemClock::elapsedRealtime, SystemClock::sleep),
+            operation = ElementTapOperation(
+                lookup = {
+                    getUiDevice().findObject(selector)?.let { element ->
+                        val visibleBounds = element.visibleBounds
+                        val isVisibleOnDisplay = visibleBounds.width() > 0 &&
+                            visibleBounds.height() > 0 &&
+                            Rect.intersects(visibleBounds, getDisplayRect())
+                        ElementTapCandidate(
+                            element = element,
+                            enabled = element.isEnabled,
+                            hasVisibleBounds = isVisibleOnDisplay
+                        )
+                    }
+                },
+                tap = { it.click() }
+            )
         )
         return OperationResult(success = result.success, error = result.error)
     }

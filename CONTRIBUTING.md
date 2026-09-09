@@ -315,6 +315,7 @@ The Gradle `test` tasks run pure JVM unit tests (no device or emulator required)
 | `app/tools` | `AndroidScreenshotToolTest.kt` | Android screenshot paths, persistence, and error handling |
 | `app/tools` | `AndroidStopToolRegistrarTest.kt` | Idempotent stop and port-forward cleanup |
 | `app/tools` | `AndroidWaitToolRegistrarTest.kt` | Android wait-tool selectors and timeout bounds |
+| `app/tools` | `ElementTapToolRegistrarTest.kt` | Element-tap registrar schemas and handlers, validation, timeout defaults, and failure mapping |
 | `app/tools` | `IOSDeviceToolRegistrarTest.kt` | iOS device tool handlers |
 | `app/tools` | `IOSSwipeToolRegistrarTest.kt` | iOS element-swipe schema, validation, and delegation |
 | `app/tools` | `IOSScreenshotToolTest.kt` | iOS screenshot paths, persistence, and error handling |

@@ -389,6 +389,39 @@ abstract class BaseUiAutomatorBridge {
         }
     }
 
+    fun pressKey(keyCode: Int): OperationResult {
+        return try {
+            OperationResult(success = getUiDevice().pressKeyCode(keyCode))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error pressing key code $keyCode", e)
+            OperationResult(success = false, error = e.message)
+        }
+    }
+
+    fun clearText(): OperationResult {
+        val focusedNode = findFocusedNode()
+            ?: return OperationResult(success = false, error = "No focused editable element found")
+        return try {
+            if (!focusedNode.isEditable || !focusedNode.isEnabled) {
+                OperationResult(success = false, error = "Focused element is not editable and enabled")
+            } else {
+                val arguments = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "")
+                }
+                val success = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+                OperationResult(
+                    success = success,
+                    error = if (success) null else "Focused element rejected the clear-text action",
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing focused text", e)
+            OperationResult(success = false, error = e.message)
+        } finally {
+            focusedNode.recycle()
+        }
+    }
+
     /**
      * Presses the device back button.
      *

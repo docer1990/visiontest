@@ -163,6 +163,17 @@ class JsonRpcServerInstrumented(
             "device.pressBack" -> uiAutomator.pressBack()
             "device.pressHome" -> uiAutomator.pressHome()
 
+            "ui.pressKey" -> {
+                val keyCode = try {
+                    com.example.automationserver.uiautomator.parseKeyRequest(params)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid key")
+                }
+                uiAutomator.pressKey(keyCode)
+            }
+
+            "ui.clearText" -> uiAutomator.clearText()
+
             // Screenshot
             "ui.screenshot" -> uiAutomator.screenshot()
 

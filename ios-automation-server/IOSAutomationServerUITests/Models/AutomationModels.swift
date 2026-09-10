@@ -54,10 +54,18 @@ struct ScreenshotResult {
 struct OperationResult {
     let success: Bool
     let error: String?
+    let message: String?
+
+    init(success: Bool, error: String?, message: String? = nil) {
+        self.success = success
+        self.error = error
+        self.message = message
+    }
 
     func toDictionary() -> [String: Any] {
         var dict: [String: Any] = ["success": success]
         if let error = error { dict["error"] = error }
+        if let message = message { dict["message"] = message }
         return dict
     }
 }

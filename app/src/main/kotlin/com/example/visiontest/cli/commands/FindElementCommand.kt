@@ -3,6 +3,7 @@ package com.example.visiontest.cli.commands
 import com.example.visiontest.cli.CliCommandRunner
 import com.example.visiontest.cli.ComponentHolder
 import com.example.visiontest.cli.ElementSelectorOptions
+import com.example.visiontest.cli.InspectionCommand
 import com.example.visiontest.cli.IosAppScopeOptions
 import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.inspectionOutput
@@ -37,6 +38,6 @@ class FindElementCommand(
                 selectors.className, selectors.contentDescription, appScope.bundleId
             )
         }
-        inspectionOutput(result, json)
+        inspectionOutput(result, json, InspectionCommand.FIND_ELEMENT, platform)
     }
 }

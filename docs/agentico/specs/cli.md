@@ -151,13 +151,47 @@ IDs MUST be omitted. Default text output MUST remain compatible.
 Operation-level failures returned normally MUST retain exit 0; scripts MUST
 inspect result fields. Thrown failures MUST retain their mapped exit code and
 stderr channel. Malformed JSON or invalid response structure MUST exit 1 without
-emitting a partial JSON value.
+emitting a partial JSON value. Before printing UI inspection JSON, the shared
+formatter MUST validate the command's required fields and platform-specific
+fields against the documented schema, including when `success` or `found` is
+false. Optional fields MAY be absent, but MUST have their documented type when
+present. Interactive `elements` MUST be an array of objects whose documented
+properties have the specified types when present. Typed inspection fields MUST
+NOT accept null or coerce strings into booleans or numbers. The CLI MUST accept integer fields only
+in the signed 32-bit range. Unknown additive
+fields MUST remain accepted and preserved.
+
+Valid returned JSON-RPC errors MUST emit one object of the form
+`{"error":{"code":-32601,"message":"Unknown method"}}` and retain exit 0.
+The nested `code` MUST be a signed 32-bit integer and `message` a string. Optional `data`
+MAY contain any JSON value; additional error fields MUST be preserved. The CLI
+MUST omit transport framing. Invalid error objects or an error alongside a
+`result` member MUST fail with exit 1, stderr diagnostics, and empty stdout.
+Schema validation and RPC error handling MUST remain shared by the adapters.
 
 #### Scenario: An element is absent
 
 - **Given** the automation server returns an element result with `found: false`
 - **When** `find_element --json` handles it
 - **Then** stdout SHALL contain that result object and exit code SHALL be 0
+
+#### Scenario: Inspection result violates its schema
+
+- **Given** an inspection response has a missing required field, a wrong scalar type, or an invalid array or object shape
+- **When** the command handles it with `--json` on either platform
+- **Then** it SHALL exit 1, print a diagnostic to stderr, and leave stdout empty
+
+#### Scenario: Inspection result has optional and additive fields
+
+- **Given** an inspection result has every required field with the documented type and only correctly typed documented optional fields
+- **When** optional fields are absent or unknown additional fields are present
+- **Then** the command SHALL emit the complete result object and exit 0
+
+#### Scenario: The backend returns a valid RPC error
+
+- **Given** an inspection response contains an error object with an integer code and string message and no result member
+- **When** the command handles it with `--json`
+- **Then** stdout SHALL contain `{"error":{...}}` with the complete error object and no transport framing, stderr SHALL remain empty, and exit code SHALL be 0
 
 #### Scenario: Installed app list is empty
 

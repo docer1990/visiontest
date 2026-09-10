@@ -2,7 +2,7 @@
 
 Add `--json` to `get_interactive_elements`, `get_device_info`, `find_element`,
 `list_apps`, `info_app`, or `available_device`. Every command requires
-`--platform android|ios` (`-p`). Each invocation writes one JSON object and a
+`--platform android|ios` (`-p`). Each successful invocation writes one JSON object and a
 newline to stdout. Diagnostics use stderr. Without `--json`, existing text
 output is preserved.
 
@@ -12,7 +12,13 @@ The CLI emits the automation server's `result` object without the JSON-RPC
 envelope (`jsonrpc`, transport `id`, or the enclosing `result` key). Fields are
 case-sensitive. Optional element fields can be absent when unavailable; callers
 must tolerate additional fields. The platform-specific schemas below describe
-the current contract.
+the current contract. Every field without an optional qualifier is required,
+including when `success` or `found` is false. The CLI validates these fields
+before printing. Optional fields may be absent; when present, they must have
+the documented type. JSON null is not a valid value for these typed inspection
+fields. The CLI accepts integers in the signed 32-bit range
+(-2147483648 through 2147483647). Strings are not coerced to numbers or booleans. Unknown additional
+fields remain accepted and are preserved in the output.
 
 | Command | Both platforms | Android additions | iOS additions |
 | --- | --- | --- | --- |
@@ -22,7 +28,8 @@ the current contract.
 
 Each interactive element can contain string fields `text`, `resourceId`,
 `className`, `contentDescription`, `bounds`; integer `centerX`, `centerY`; and
-boolean `isEnabled`. Android also returns boolean `isClickable`, `isCheckable`,
+boolean `isEnabled`. These element properties are optional; each array entry
+must be an object. Android also returns boolean `isClickable`, `isCheckable`,
 `isScrollable`, `isLongClickable`. iOS can return string `value`.
 
 On iOS, `resourceId` means accessibility identifier, `className` means element
@@ -97,7 +104,18 @@ server, 4 for a missing device/simulator, and 5 for an unsupported platform.
 An operation can return `found: false` or `success: false` and still exit 0.
 Scripts must inspect these fields. Thrown failures write stderr and leave stdout
 empty. Invalid JSON or an invalid response structure fails with code 1 instead
-of emitting partial JSON.
+of emitting partial JSON. This includes missing required fields, incorrect field
+types, and invalid nested element structures.
+
+A valid JSON-RPC error is an alternative response for all three UI inspection
+commands. The CLI emits `{"error":{"code":-32601,"message":"Unknown method"}}`
+and exits 0, following the normally returned failure rule. `code` must be an
+integer in the same signed 32-bit range and `message` a string. Optional `data` may contain any JSON value;
+additional error fields are preserved. Transport framing is omitted. An error
+that lacks either required field, has an incorrect type, or occurs alongside a
+`result` member is invalid and fails with exit 1, stderr diagnostics, and empty
+stdout. Scripts must check for this top-level error object before reading the
+command's result fields.
 
 ```bash
 visiontest find_element -p android --text "Login" --json | jq -e '.found == true'

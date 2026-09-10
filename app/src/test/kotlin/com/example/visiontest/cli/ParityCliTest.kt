@@ -126,6 +126,74 @@ class ParityCliTest {
     }
 
     @Test
+    fun `inspection json rejects incomplete results on both platforms`() {
+        for (factory in listOf(::GetDeviceInfoCommand, ::GetInteractiveElementsCommand, ::FindElementCommand)) {
+            for ((platform, server) in listOf("android" to androidServer, "ios" to iosServer)) {
+                respond(server, """{"success":true}""")
+                val args = mutableListOf("-p", platform, "--json")
+                if (factory == ::FindElementCommand) args += listOf("--text", "Login")
+                val result = invoke(factory, *args.toTypedArray())
+                assertEquals(1, result.exitCode, "$factory $platform")
+                assertNull(result.stdout)
+                assertNotNull(result.stderr)
+            }
+        }
+    }
+
+    @Test
+    fun `inspection json rejects wrong field types through both platform clients`() {
+        val cases = listOf(
+            ::GetDeviceInfoCommand to """{"success":true,"displayWidth":"100","displayHeight":200,
+                "displayRotation":0,"productName":"Phone","sdkVersion":35,"osVersion":"26.5"}""",
+            ::GetInteractiveElementsCommand to """{"success":true,"count":1,"elements":[{"isEnabled":"true"}]}""",
+            ::FindElementCommand to """{"found":false,"text":null}""",
+        )
+        for ((factory, payload) in cases) {
+            for ((platform, server) in listOf("android" to androidServer, "ios" to iosServer)) {
+                respond(server, payload)
+                val args = mutableListOf("-p", platform, "--json")
+                if (factory == ::FindElementCommand) args += listOf("--text", "Login")
+                val result = invoke(factory, *args.toTypedArray())
+                assertEquals(1, result.exitCode, "$factory $platform")
+                assertNull(result.stdout)
+                assertNotNull(result.stderr)
+            }
+        }
+    }
+
+    @Test
+    fun `inspection json validates RPC errors through every command and platform`() {
+        for (factory in listOf(::GetDeviceInfoCommand, ::GetInteractiveElementsCommand, ::FindElementCommand)) {
+            for ((platform, server) in listOf("android" to androidServer, "ios" to iosServer)) {
+                for (code in listOf("-32601", "\"-32601\"")) {
+                    assertRpcErrorResult(factory, platform, server, code)
+                }
+            }
+        }
+    }
+
+    private fun assertRpcErrorResult(
+        factory: (Lazy<ComponentHolder>, CliCommandRunner) -> CliktCommand,
+        platform: String,
+        server: MockWebServer,
+        code: String
+    ) {
+        server.enqueue(MockResponse().setBody("OK"))
+        server.enqueue(MockResponse().setBody("OK"))
+        val error = """{"code":$code,"message":"Unknown method","data":{"detail":null}}"""
+        server.enqueue(MockResponse().setBody("""{"jsonrpc":"2.0","id":17,"error":$error}"""))
+        val args = mutableListOf("-p", platform, "--json")
+        if (factory == ::FindElementCommand) args += listOf("--text", "Login")
+        val result = invoke(factory, *args.toTypedArray())
+        if (code == "-32601") assertEquals(CliResult(0, """{"error":$error}""", null), result)
+        else {
+            assertEquals(1, result.exitCode)
+            assertNull(result.stdout)
+            assertNotNull(result.stderr)
+        }
+    }
+
+    @Test
     fun `find maps all selectors on both platforms and removes transport framing`() {
         for ((platform, server) in listOf("android" to androidServer, "ios" to iosServer)) {
             respond(server, """{"found":true,"text":"quoted \\\"label\\\"","bounds":"[1,2][3,4]"}""")
@@ -353,7 +421,7 @@ class ParityCliTest {
 
     @Test
     fun `inspection json retains operation failures and malformed responses fail cleanly`() {
-        for (payload in listOf("""{"found":false}""", """{"success":false,"error":"failed"}""")) {
+        for (payload in listOf("""{"found":false}""", """{"found":false,"error":"failed"}""")) {
             respond(androidServer, payload)
             val result = invoke(::FindElementCommand, "-p", "android", "--text", "missing", "--json")
             assertEquals(CliResult(0, payload, null), result)
@@ -388,8 +456,13 @@ class ParityCliTest {
     fun `existing inspection commands unwrap json and preserve default text`() {
         for (factory in listOf(::GetDeviceInfoCommand, ::GetInteractiveElementsCommand)) {
             for ((platform, server) in listOf("android" to androidServer, "ios" to iosServer)) {
-                respond(server, """{"success":true}""")
-                assertEquals("""{"success":true}""", invoke(factory, "-p", platform, "--json").stdout)
+                val version = if (platform == "android") "\"sdkVersion\":35" else "\"osVersion\":\"26.5\""
+                val payload = if (factory == ::GetDeviceInfoCommand) {
+                    """{"success":true,"displayWidth":100,"displayHeight":200,""" +
+                        """"displayRotation":0,"productName":"Phone",$version}"""
+                } else """{"success":true,"count":0,"elements":[]}"""
+                respond(server, payload)
+                assertEquals(payload, invoke(factory, "-p", platform, "--json").stdout)
                 respond(server, """{"success":true}""")
                 val expected = """{"jsonrpc":"2.0","id":17,"result":{"success":true}}"""
                 assertEquals(expected, invoke(factory, "-p", platform).stdout)

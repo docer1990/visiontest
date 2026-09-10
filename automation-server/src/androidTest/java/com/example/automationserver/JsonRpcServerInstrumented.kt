@@ -205,6 +205,24 @@ class JsonRpcServerInstrumented(
                 )
             }
 
+            "ui.longPress" -> {
+                val gesture = try {
+                    com.example.automationserver.uiautomator.parseGestureRequest(params)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid long-press target")
+                }
+                uiAutomator.longPress(gesture)
+            }
+
+            "ui.doubleTap" -> {
+                val gesture = try {
+                    com.example.automationserver.uiautomator.parseGestureRequest(params)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid double-tap target")
+                }
+                uiAutomator.doubleTap(gesture)
+            }
+
             // Find element method
             "ui.findElement" -> {
                 val text = params?.get("text")?.asString
@@ -306,9 +324,12 @@ class JsonRpcServerInstrumented(
             }
 
             "ui.inputText" -> {
-                val text = params?.get("text")?.asString
-                    ?: throw InvalidParamsException("Missing 'text' parameter")
-                uiAutomator.inputText(text)
+                val input = try {
+                    com.example.automationserver.uiautomator.parseTargetedInputRequest(params)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid text input")
+                }
+                uiAutomator.inputText(input)
             }
 
             else -> throw MethodNotFoundException(method)

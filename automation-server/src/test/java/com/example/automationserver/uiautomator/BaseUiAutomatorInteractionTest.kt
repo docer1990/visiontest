@@ -3,7 +3,9 @@ package com.example.automationserver.uiautomator
 import android.app.UiAutomation
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiObject2
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -62,4 +64,74 @@ class BaseUiAutomatorInteractionTest {
         verify(exactly = 0) { node.performAction(any(), any()) }
         verify(exactly = 1) { node.recycle() }
     }
+
+    @Test
+    fun `coordinate longPress holds the point for eight hundred milliseconds`() {
+        every { device.swipe(10, 20, 10, 20, 160) } returns true
+
+        val result = bridge.longPress(
+            NativeGestureRequest(NativeGestureTarget.Coordinates(10, 20))
+        )
+
+        assertTrue(result.success)
+        verify(exactly = 1) { device.swipe(10, 20, 10, 20, 160) }
+    }
+
+    @Test
+    fun `element longPress acts on the ready native element`() {
+        val element = readyElement()
+        every { device.findObject(any<BySelector>()) } returns element
+        every { element.click(800L) } returns Unit
+
+        val result = bridge.longPress(elementRequest("menu"))
+
+        assertTrue(result.success)
+        verify(exactly = 1) { element.click(800L) }
+    }
+
+    @Test
+    fun `coordinate doubleTap injects two taps`() {
+        every { device.click(30, 40) } returns true
+
+        val result = bridge.doubleTap(
+            NativeGestureRequest(NativeGestureTarget.Coordinates(30, 40))
+        )
+
+        assertTrue(result.success)
+        verify(exactly = 2) { device.click(30, 40) }
+    }
+
+    @Test
+    fun `targeted input taps focuses and sets text on one element`() {
+        val element = readyElement()
+        every { element.isFocusable } returns true
+        every { element.click() } returns Unit
+        every { element.isFocused } returns true
+        every { element.text = "Ada" } returns Unit
+        every { device.findObject(any<BySelector>()) } returns element
+
+        val result = bridge.inputText(
+            TargetedInputRequest(
+                text = "Ada",
+                selectors = TapOnElementSelectors(resourceId = "name"),
+                timeoutMs = 1_000,
+            )
+        )
+
+        assertTrue(result.success)
+        verify(exactly = 1) { element.click() }
+        verify(exactly = 1) { element.text = "Ada" }
+    }
+
+    private fun readyElement(): UiObject2 = mockk<UiObject2>().also { element ->
+        every { element.isEnabled } returns true
+        every { element.visibleBounds } returns Rect(100, 100, 200, 200)
+    }
+
+    private fun elementRequest(resourceId: String) = NativeGestureRequest(
+        NativeGestureTarget.Element(
+            selectors = TapOnElementSelectors(resourceId = resourceId),
+            timeoutMs = 1_000,
+        )
+    )
 }

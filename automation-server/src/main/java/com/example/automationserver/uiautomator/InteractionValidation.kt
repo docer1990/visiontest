@@ -60,7 +60,7 @@ fun parseGestureRequest(params: JsonObject?): NativeGestureRequest {
     }
     return if (hasCoordinates) {
         require(xValue != null && yValue != null) { "Both 'x' and 'y' are required" }
-        require(params?.get("timeoutMs") == null) { "'timeoutMs' is only valid with selectors" }
+        require(params.get("timeoutMs") == null) { "'timeoutMs' is only valid with selectors" }
         val x = parseStrictInteger(xValue, "x")
         val y = parseStrictInteger(yValue, "y")
         require(x >= 0 && y >= 0) { "Coordinates must be nonnegative" }

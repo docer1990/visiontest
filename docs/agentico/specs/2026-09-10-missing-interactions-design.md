@@ -22,7 +22,7 @@ iOS adds these tools:
 - `ios_long_press`
 - `ios_double_tap`
 
-The existing Android `input_text` and iOS `ios_input_text` tools gain optional target selectors. Existing calls that provide only `text`, plus the existing optional iOS `bundleId`, retain their current behavior.
+The existing Android `android_input_text` and iOS `ios_input_text` tools gain optional target selectors. Existing calls that provide only `text`, plus the existing optional iOS `bundleId`, retain their current behavior.
 
 ### CLI commands
 
@@ -39,7 +39,7 @@ The existing `input_text` command keeps its required positional text argument. I
 
 A request fails validation if it provides neither form, only one coordinate, or both coordinates and selectors. Element selectors use the existing platform mapping for exact text, partial text, resource identifier, class name, and content description. On iOS these map to text, partial text, accessibility identifier, element type, and accessibility label. Optional iOS `bundleId` scopes the application and does not count as a selector.
 
-Targeted `input_text` uses `targetText`, `targetTextContains`, `targetResourceId`, `targetClassName`, and `targetContentDescription` in MCP and JSON-RPC requests. The CLI equivalents start with `--target-`. The prefix avoids a conflict with the existing `text` value to type. Callers may provide no target selectors or at least one target selector. Partial coordinate input does not apply to text input.
+Targeted `input_text` uses `targetText`, `targetTextContains`, `targetResourceId`, `targetClassName`, and `targetContentDescription` in MCP and JSON-RPC requests. The CLI equivalents start with `--target-`. The prefix avoids a conflict with the existing `text` value to type. Callers may provide no target selectors or at least one target selector. A request that supplies `timeoutMs` without a target selector fails validation. Partial coordinate input does not apply to text input.
 
 Selector-based gestures and targeted input accept an optional `timeoutMs`. The default is 10,000 ms, and valid values range from 1 through 30,000 ms. Coordinate gestures reject `timeoutMs`. iOS app scope accepts a nonblank `bundleId`; Android rejects app scope.
 

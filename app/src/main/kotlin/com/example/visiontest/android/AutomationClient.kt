@@ -135,32 +135,79 @@ class AutomationClient(
     }
 
     /** Taps an actionable element, waiting up to [timeoutMs] in the native server. */
-    suspend fun tapOnElement(selectors: AndroidElementSelectors, timeoutMs: Int): String {
+    suspend fun tapOnElement(selectors: AndroidElementSelectors, timeoutMs: Int): String =
+        sendElementInteractionRequest("ui.tapOnElement", selectors, timeoutMs)
+
+    suspend fun pressKey(keyCode: Int): String =
+        sendRequest("ui.pressKey", mapOf("keyCode" to keyCode))
+
+    suspend fun pressKey(action: String): String =
+        sendRequest("ui.pressKey", mapOf("action" to action))
+
+    suspend fun clearText(): String = sendRequest("ui.clearText")
+
+    suspend fun longPress(x: Int, y: Int): String =
+        sendRequest("ui.longPress", mapOf("x" to x, "y" to y))
+
+    suspend fun longPress(selectors: AndroidElementSelectors, timeoutMs: Int): String =
+        sendElementInteractionRequest("ui.longPress", selectors, timeoutMs)
+
+    suspend fun doubleTap(x: Int, y: Int): String =
+        sendRequest("ui.doubleTap", mapOf("x" to x, "y" to y))
+
+    suspend fun doubleTap(selectors: AndroidElementSelectors, timeoutMs: Int): String =
+        sendElementInteractionRequest("ui.doubleTap", selectors, timeoutMs)
+
+    /**
+     * Types text into the currently focused element.
+     */
+    suspend fun inputText(
+        text: String,
+        selectors: AndroidElementSelectors? = null,
+        timeoutMs: Int? = null,
+    ): String {
+        val params = mutableMapOf<String, Any>("text" to text)
+        selectors?.text?.let { params["targetText"] = it }
+        selectors?.textContains?.let { params["targetTextContains"] = it }
+        selectors?.resourceId?.let { params["targetResourceId"] = it }
+        selectors?.className?.let { params["targetClassName"] = it }
+        selectors?.contentDescription?.let { params["targetContentDescription"] = it }
+        timeoutMs?.let { params["timeoutMs"] = it }
+        return if (timeoutMs == null) {
+            sendRequest("ui.inputText", params)
+        } else {
+            sendWaitingRequest("ui.inputText", params, timeoutMs)
+        }
+    }
+
+    private suspend fun sendElementInteractionRequest(
+        method: String,
+        selectors: AndroidElementSelectors,
+        timeoutMs: Int,
+    ): String {
         val params = mutableMapOf<String, Any>("timeoutMs" to timeoutMs)
         selectors.text?.let { params["text"] = it }
         selectors.textContains?.let { params["textContains"] = it }
         selectors.resourceId?.let { params["resourceId"] = it }
         selectors.className?.let { params["className"] = it }
         selectors.contentDescription?.let { params["contentDescription"] = it }
-
-        return sendRequest(
-            method = "ui.tapOnElement",
-            params = params,
-            id = 1,
-            readTimeoutMs = elementTapReadTimeoutMs(
-                timeoutMs = timeoutMs,
-                maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
-                graceMs = AutomationConfig.ELEMENT_TAP_TRANSPORT_GRACE_MS,
-            ),
-        )
+        return sendWaitingRequest(method, params, timeoutMs)
     }
 
-    /**
-     * Types text into the currently focused element.
-     */
-    suspend fun inputText(text: String): String {
-        return sendRequest("ui.inputText", mapOf("text" to text))
-    }
+    private suspend fun sendWaitingRequest(
+        method: String,
+        params: Map<String, Any>,
+        timeoutMs: Int,
+    ): String = sendRequest(
+        method = method,
+        params = params,
+        id = 1,
+        readTimeoutMs = elementTapReadTimeoutMs(
+            timeoutMs = timeoutMs,
+            maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+            graceMs = AutomationConfig.ELEMENT_TAP_TRANSPORT_GRACE_MS,
+        ),
+    )
 
     /**
      * Presses the back button.

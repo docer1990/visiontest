@@ -1,12 +1,21 @@
 package com.example.visiontest.tools
 
 import com.example.visiontest.ServerNotRunningException
+import com.example.visiontest.android.AndroidElementSelectors
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.common.DeviceType
 import com.example.visiontest.common.MobileDevice
 import com.example.visiontest.discovery.ToolDiscovery
+import com.google.gson.JsonParser
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
+import io.modelcontextprotocol.kotlin.sdk.Tool
+import io.modelcontextprotocol.kotlin.sdk.server.Server
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.slf4j.LoggerFactory
@@ -161,5 +170,60 @@ class AndroidAutomationToolRegistrarTest {
         val result = registrar.tapByCoordinates(100, 200)
         // The raw JSON-RPC response is returned by AutomationClient
         assertTrue(result.isNotEmpty())
+    }
+
+    @Test
+    fun `interaction validation happens before server access`() = runBlocking {
+        assertFailsWith<IllegalArgumentException> { registrar.pressKey(null, null) }
+        assertFailsWith<IllegalArgumentException> {
+            registrar.longPress(10, 20, AndroidElementSelectors(text = "Menu"), 1_000)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            registrar.doubleTap(10, null, AndroidElementSelectors(), null)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            registrar.inputText("hello", AndroidElementSelectors(), 1_000)
+        }
+        assertEquals(0, mockServer.requestCount)
+    }
+
+    @Test
+    fun `pressKey and selector longPress delegate normalized requests`() = runBlocking {
+        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        mockServer.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        registrar.pressKey(null, "ENTER")
+        assertEquals("/health", mockServer.takeRequest().path)
+        val keyRequest = JsonParser.parseString(mockServer.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.pressKey", keyRequest["method"].asString)
+        assertEquals("enter", keyRequest["params"].asJsonObject["action"].asString)
+
+        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        mockServer.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        registrar.longPress(null, null, AndroidElementSelectors(resourceId = "menu"), null)
+        mockServer.takeRequest()
+        val gestureRequest = JsonParser.parseString(mockServer.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.longPress", gestureRequest["method"].asString)
+        assertEquals(10_000, gestureRequest["params"].asJsonObject["timeoutMs"].asInt)
+    }
+
+    @Test
+    fun `registered interaction tools expose bounded schemas`() {
+        val server = mockk<Server>(relaxed = true)
+        registrar.registerTools(ToolScope(server, logger))
+        val longPressSchema = slot<Tool.Input>()
+        val inputSchema = slot<Tool.Input>()
+        verify { server.addTool("android_press_key", any(), any(), any()) }
+        verify { server.addTool("android_clear_text", any(), any(), any()) }
+        verify { server.addTool("android_long_press", any(), capture(longPressSchema), any()) }
+        verify { server.addTool("android_double_tap", any(), any(), any()) }
+        verify { server.addTool("android_input_text", any(), capture(inputSchema), any()) }
+
+        assertTrue(longPressSchema.captured.required.orEmpty().isEmpty())
+        assertEquals("integer", longPressSchema.captured.properties["x"]!!.jsonObject["type"]!!.jsonPrimitive.content)
+        val timeout = longPressSchema.captured.properties["timeoutMs"]!!.jsonObject
+        assertEquals("10000", timeout["default"]!!.jsonPrimitive.content)
+        assertEquals("30000", timeout["maximum"]!!.jsonPrimitive.content)
+        assertEquals(listOf("text"), inputSchema.captured.required)
+        assertEquals(45_000L, INTERACTION_TOOL_TIMEOUT_MS)
     }
 }

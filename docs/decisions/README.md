@@ -14,3 +14,4 @@ Technical Decisions (TDs) preserve the rationale for consequential architectural
 | [TD-008](TD-008-structured-cli-output-and-native-ios-element-swipe.md) | Structured CLI output and native iOS element swipe | Accepted |
 | [TD-009](TD-009-separate-repository-guidance-from-distributed-skill.md) | Separate repository guidance from the distributed skill | Accepted |
 | [TD-010](TD-010-keep-wait-and-tap-atomic-in-native-servers.md) | Keep wait and tap atomic in native servers | Accepted |
+| [TD-011](TD-011-preserve-returned-rpc-errors-in-cli-json.md) | Preserve returned RPC errors in CLI JSON | Accepted |

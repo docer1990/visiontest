@@ -256,6 +256,141 @@ class XCUITestBridge {
         )
     }
 
+    func longPress(_ request: GestureRequest) -> OperationResult {
+        performGesture(
+            request,
+            coordinateGesture: { $0.press(forDuration: 0.8) },
+            elementGesture: { $0.press(forDuration: 0.8) }
+        )
+    }
+
+    func doubleTap(_ request: GestureRequest) -> OperationResult {
+        performGesture(
+            request,
+            coordinateGesture: { $0.doubleTap() },
+            elementGesture: { $0.doubleTap() }
+        )
+    }
+
+    private func performGesture(
+        _ request: GestureRequest,
+        coordinateGesture: (XCUICoordinate) -> Void,
+        elementGesture: (XCUIElement) -> Void
+    ) -> OperationResult {
+        switch request.target {
+        case .coordinates(let point):
+            let screenBounds = CGRect(origin: .zero, size: getScreenSize())
+            guard screenBounds.contains(point) else {
+                return OperationResult(success: false, error: "Coordinates are outside the display")
+            }
+            let coordinate = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+                .withOffset(CGVector(dx: point.x, dy: point.y))
+            coordinateGesture(coordinate)
+            return OperationResult(success: true, error: nil)
+        case .element(let selectors, let bundleId, let timeoutMs):
+            let deadline = ProcessInfo.processInfo.systemUptime + Double(timeoutMs) / 1_000
+            var observedBlocked = false
+            while true {
+                if let element = lookupElement(selectors: selectors, bundleId: bundleId) {
+                    if element.exists && element.isEnabled && element.isHittable {
+                        guard ProcessInfo.processInfo.systemUptime <= deadline else { break }
+                        elementGesture(element)
+                        return OperationResult(success: true, error: nil)
+                    }
+                    observedBlocked = true
+                }
+                let remaining = deadline - ProcessInfo.processInfo.systemUptime
+                guard remaining > 0 else { break }
+                RunLoop.current.run(until: Date(timeIntervalSinceNow: min(0.5, remaining)))
+            }
+            let status = observedBlocked ? "Element found but not actionable" : "Element not found"
+            return OperationResult(success: false, error: "\(status) for \(selectors.description)")
+        }
+    }
+
+    func inputText(_ request: TargetedInputRequest) -> OperationResult {
+        guard let selectors = request.selectors, request.timeoutMs != nil else {
+            return inputText(text: request.text, bundleId: request.bundleId)
+        }
+        var selectedElement: XCUIElement?
+        let target = queryTarget(bundleId: request.bundleId)
+        return performTargetedInput(
+            request: request,
+            now: { ProcessInfo.processInfo.systemUptime },
+            readiness: {
+                selectedElement = nil
+                guard let element = self.lookupElement(selectors: selectors, bundleId: request.bundleId) else {
+                    return .absent
+                }
+                guard self.isEditable(element), element.exists, element.isEnabled, element.isHittable else {
+                    return .blocked
+                }
+                selectedElement = element
+                return .ready
+            },
+            tap: { selectedElement?.tap() },
+            hasFocus: {
+                guard let selectedElement else { return false }
+                let focused = target.descendants(matching: .any)
+                    .matching(NSPredicate(format: "hasKeyboardFocus == true")).firstMatch
+                return focused.exists && focused.frame == selectedElement.frame
+            },
+            typeText: { selectedElement?.typeText(request.text) }
+        )
+    }
+
+    func dismissKeyboard(bundleId: String?) -> OperationResult {
+        let keyboard = queryTarget(bundleId: bundleId).keyboards.firstMatch
+        let wasVisible = keyboard.exists && keyboard.isHittable
+        if wasVisible {
+            keyboard.swipeDown()
+            _ = keyboard.waitForNonExistence(timeout: 2)
+        }
+        return verifyKeyboardDismissal(wasVisible: wasVisible, isVisible: keyboard.exists)
+    }
+
+    func handleAlert(_ request: HandleAlertRequest) -> OperationResult {
+        let appAlert = queryTarget(bundleId: request.bundleId).alerts.firstMatch
+        let systemAlert = springboard.alerts.firstMatch
+        let alert = appAlert.exists ? appAlert : systemAlert
+        guard alert.exists else {
+            return OperationResult(success: false, error: "No alert is visible")
+        }
+        let buttons = alert.buttons.allElementsBoundByIndex
+        let descriptions = buttons.map {
+            AlertButton(label: $0.label, actionable: $0.exists && $0.isEnabled && $0.isHittable)
+        }
+        if let label = request.buttonLabel,
+           let requested = descriptions.first(where: { $0.label == label }),
+           !requested.actionable {
+            return OperationResult(success: false, error: "Requested alert button is blocked")
+        }
+        guard let selected = selectAlertButton(descriptions, action: request.action, label: request.buttonLabel) else {
+            let error = request.buttonLabel == nil ? "No actionable alert button" : "Requested alert button not found"
+            return OperationResult(success: false, error: error)
+        }
+        guard let button = buttons.first(where: { $0.label == selected.label && $0.isEnabled && $0.isHittable }) else {
+            return OperationResult(success: false, error: "Requested alert button is blocked")
+        }
+        button.tap()
+        return OperationResult(success: true, error: nil, message: "Tapped alert button '\(selected.label)'")
+    }
+
+    private func lookupElement(selectors: ElementSelectors, bundleId: String?) -> XCUIElement? {
+        lookupElement(
+            text: selectors.text,
+            textContains: selectors.textContains,
+            identifier: selectors.identifier,
+            elementType: selectors.elementType,
+            label: selectors.label,
+            bundleId: bundleId
+        )
+    }
+
+    private func isEditable(_ element: XCUIElement) -> Bool {
+        [.textField, .secureTextField, .textView, .searchField].contains(element.elementType)
+    }
+
     // MARK: - Interactive Elements
 
     /// Collects interactive elements using snapshot API for speed.

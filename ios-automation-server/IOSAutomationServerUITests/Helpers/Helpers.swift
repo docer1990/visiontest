@@ -188,6 +188,14 @@ struct ElementSelectors {
     var hasAny: Bool {
         [text, textContains, identifier, elementType, label].contains { $0 != nil }
     }
+
+    var description: String {
+        if let text { return "text='\(text)'" }
+        if let textContains { return "textContains='\(textContains)'" }
+        if let identifier { return "resourceId='\(identifier)'" }
+        if let elementType { return "className='\(elementType)'" }
+        return "contentDescription='\(label ?? "")'"
+    }
 }
 
 private extension String {

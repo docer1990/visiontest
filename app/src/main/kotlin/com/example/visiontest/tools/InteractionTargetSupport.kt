@@ -1,6 +1,7 @@
 package com.example.visiontest.tools
 
 import com.example.visiontest.android.AndroidElementSelectors
+import com.example.visiontest.ios.IOSElementSelectors
 
 internal const val INTERACTION_TOOL_TIMEOUT_MS = 45_000L
 internal const val INTERACTION_DEFAULT_TIMEOUT_MS = 10_000
@@ -18,9 +19,9 @@ internal sealed interface InteractionTarget {
     data class Element(val timeoutMs: Int) : InteractionTarget
 }
 
-internal data class InteractionGesture(
+internal data class InteractionGesture<S>(
     val coordinates: suspend (Int, Int) -> String,
-    val element: suspend (AndroidElementSelectors, Int) -> String,
+    val element: suspend (S, Int) -> String,
 )
 
 internal fun validateKeyInput(keyCode: Int?, action: String?): KeyInput {
@@ -92,3 +93,24 @@ internal fun AndroidElementSelectors.values() = listOf(
 )
 
 internal fun AndroidElementSelectors.count() = values().count { it.second != null }
+
+internal fun IOSElementSelectors.values() = listOf(
+    "text" to text,
+    "textContains" to textContains,
+    "resourceId" to identifier,
+    "className" to elementType,
+    "contentDescription" to label,
+)
+
+internal fun IOSElementSelectors.count() = values().count { it.second != null }
+
+internal fun validateBundleId(bundleId: String?): String? {
+    require(bundleId == null || bundleId.isNotBlank()) { "bundleId must not be blank" }
+    return bundleId
+}
+
+internal fun validateAlertAction(action: String): String {
+    val normalized = action.lowercase()
+    require(normalized == "accept" || normalized == "dismiss") { "action must be accept or dismiss" }
+    return normalized
+}

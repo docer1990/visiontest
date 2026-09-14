@@ -56,7 +56,7 @@ internal class AndroidInteractionOperations(
         y: Int?,
         selectors: AndroidElementSelectors,
         timeoutMs: Int?,
-        gesture: InteractionGesture,
+        gesture: InteractionGesture<AndroidElementSelectors>,
     ): String {
         val target = validateInteractionTarget(x, y, selectors.values(), selectors.count(), timeoutMs)
         requireServer()

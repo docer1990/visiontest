@@ -30,7 +30,7 @@ The JAR MUST start the MCP stdio server when invoked with no arguments or when i
 
 ### Requirement: The CLI exposes the current command set
 
-The CLI SHALL register these 23 subcommands and argument contracts:
+The CLI SHALL register these 29 subcommands and argument contracts:
 
 | Subcommand | Platform contract | Operation-specific inputs |
 |---|---|---|
@@ -47,7 +47,13 @@ The CLI SHALL register these 23 subcommands and argument contracts:
 | `wait_for_element` | Android or iOS | One or more selector options; optional iOS app scope `--bundle-id`, plus `--timeout MS` and `--gone` |
 | `tap_by_coordinates` | Android or iOS | Required integer `x` and `y` arguments |
 | `tap_on_element` | Android or iOS | At least one selector; optional iOS app scope `--bundle-id` and `--timeout MS` |
-| `input_text` | Android or iOS | Required `text` argument; optional iOS app scope `--bundle-id` |
+| `input_text` | Android or iOS | Required `text` argument; optional `--target-*` selectors, selector `--timeout MS`, and iOS app scope `--bundle-id` |
+| `press_key` | Android only | Required named action or nonnegative integer key code |
+| `clear_text` | Android only | None; clears the focused editable element |
+| `long_press` | Android or iOS | Exactly one target: `--x X --y Y` or selectors; optional selector `--timeout MS` and iOS `--bundle-id` |
+| `double_tap` | Android or iOS | Exactly one target: `--x X --y Y` or selectors; optional selector `--timeout MS` and iOS `--bundle-id` |
+| `dismiss_keyboard` | iOS only | Optional `--bundle-id` |
+| `handle_alert` | iOS only | Required `accept` or `dismiss`; optional `--button-label` and `--bundle-id` |
 | `swipe_direction` | Android or iOS | Required `up`, `down`, `left`, or `right`; optional `--distance` and `--speed` choices |
 | `swipe` | Android or iOS | Integer `startX`, `startY`, `endX`, `endY`; optional positive `--steps` (default 20) |
 | `swipe_on_element` | Android or iOS | Direction and at least one selector; optional `--speed` and iOS `--bundle-id` |
@@ -66,7 +72,7 @@ The CLI SHALL register these 23 subcommands and argument contracts:
 
 ### Requirement: Device commands require an explicit supported platform
 
-Every subcommand except `init` MUST require `--platform` or `-p` with exactly `android` or `ios`; there MUST be no default or platform auto-detection. Root `--help` and `--version` MUST also work without a platform. Android-only commands MUST parse `ios` and reject it as unsupported at execution time so the process can use exit code 5.
+Every subcommand except `init` MUST require `--platform` or `-p` with exactly `android` or `ios`; there MUST be no default or platform auto-detection. Root `--help` and `--version` MUST also work without a platform. Commands restricted to one platform MUST parse the other valid platform and reject it before creating device components or contacting a backend, with exit code 5.
 
 #### Scenario: Platform is missing or invalid
 
@@ -76,9 +82,15 @@ Every subcommand except `init` MUST require `--platform` or `-p` with exactly `a
 
 #### Scenario: Android-only command receives iOS
 
-- **Given** `install_automation_server` or `press_back` specifies `--platform ios`
+- **Given** `install_automation_server`, `press_back`, `press_key`, or `clear_text` specifies `--platform ios`
 - **When** the command executes
 - **Then** it SHALL print an Android-only error to stderr and exit with code 5
+
+#### Scenario: iOS-only command receives Android
+
+- **Given** `dismiss_keyboard` or `handle_alert` specifies `--platform android`
+- **When** the command executes
+- **Then** it SHALL print an iOS-only error to stderr and exit with code 5 before backend access
 
 #### Scenario: Non-device entry points
 
@@ -134,6 +146,34 @@ iOS maps these to text, partial text, identifier, element type, and label.
 Android use of this flag MUST exit 2. Invalid direction/speed and nonpositive
 coordinate swipe steps MUST exit 2 before backend access. `tap_on_element`
 timeouts MUST be from 1 through 30,000 ms inclusive before backend access.
+
+### Requirement: Interaction commands validate target forms before device access
+
+`long_press` and `double_tap` MUST accept exactly one of a complete nonnegative
+integer `--x X --y Y` pair or at least one standard selector. Missing targets,
+partial coordinate pairs, mixed coordinates and selectors, and blank selector
+values MUST exit 2 before creating device components or contacting a backend.
+Coordinate targets MUST reject `--timeout`.
+
+`input_text` MUST retain its required positional text, including an empty string.
+Its optional selectors MUST be `--target-text`, `--target-text-contains`,
+`--target-resource-id`, `--target-class-name`, and `--target-content-description`.
+Without these selectors it SHALL retain focused-input behavior and MUST reject
+`--timeout`. With selectors, it SHALL focus and type in one native request.
+Selector-based gestures and input SHALL default to 10,000 ms and MUST accept
+only timeouts from 1 through 30,000 ms inclusive.
+
+For these interactions, `--bundle-id` MUST be nonblank when supplied, MUST scope
+only iOS, and MUST NOT count as a target selector. Android MUST reject it with
+exit 2. `press_key` MUST accept one unsigned decimal key code in the signed
+32-bit range or one of `enter`, `tab`, `backspace`, `delete`, and `escape`.
+`handle_alert` MUST accept only `accept` or `dismiss`. Invalid key values,
+actions, scope, and timeouts MUST fail before device access.
+
+These commands SHALL return text and SHALL NOT add `--json`. Operation failures
+returned normally SHALL retain exit 0; thrown failures SHALL retain the existing
+exit mapping. See [missing interactions](missing-interactions.md) for readiness,
+gesture behavior, keyboard operations, alert ordering, and native compatibility.
 
 ### Requirement: Element taps retain text output
 

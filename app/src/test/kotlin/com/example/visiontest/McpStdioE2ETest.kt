@@ -1,5 +1,6 @@
 package com.example.visiontest
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import org.junit.jupiter.api.AfterEach
@@ -60,6 +61,10 @@ class McpStdioE2ETest {
             "android_get_device_info",
             "get_interactive_elements",
             "android_input_text",
+            "android_press_key",
+            "android_clear_text",
+            "android_long_press",
+            "android_double_tap",
             "android_press_back",
             "android_press_home",
             "android_screenshot",
@@ -83,6 +88,10 @@ class McpStdioE2ETest {
             "ios_get_interactive_elements",
             "ios_get_device_info",
             "ios_input_text",
+            "ios_dismiss_keyboard",
+            "ios_handle_alert",
+            "ios_long_press",
+            "ios_double_tap",
             "ios_press_home",
             "ios_screenshot",
             "ios_stop_automation_server",
@@ -174,8 +183,7 @@ class McpStdioE2ETest {
         )
     }
 
-    @Test
-    fun `tools list returns exactly the expected tool contract`() {
+    private fun listTools(): JsonArray {
         val (writer, _) = startServer()
 
         writer.sendLine(
@@ -188,7 +196,12 @@ class McpStdioE2ETest {
         val response = awaitResponse(2)
         val result = response.getAsJsonObject("result")
             ?: fail("tools/list returned no result. Full response: $response")
-        val tools = result.getAsJsonArray("tools")
+        return result.getAsJsonArray("tools")
+    }
+
+    @Test
+    fun `tools list returns exactly the expected tool contract`() {
+        val tools = listTools()
         val names = tools.map { it.asJsonObject.get("name").asString }.toSet()
 
         assertEquals(
@@ -210,4 +223,97 @@ class McpStdioE2ETest {
             assertTrue(obj.has("inputSchema"), "Tool '$name' has no inputSchema")
         }
     }
+
+    @Test
+    fun `packaged interaction schemas describe supported targets and input contracts`() {
+        val toolsByName = listTools().associate { it.asJsonObject.get("name").asString to it.asJsonObject }
+        for (platform in listOf("android", "ios")) {
+            for (gesture in listOf("long_press", "double_tap")) {
+                assertGestureSchema(toolsByName.getValue("${platform}_$gesture"), platform)
+            }
+            assertInputSchema(toolsByName.getValue("${platform}_input_text"), platform)
+        }
+
+        val key = toolsByName.getValue("android_press_key")
+        assertEquals(setOf("keyCode", "action"), key.properties().keySet())
+        assertEquals(emptySet(), key.requiredFields())
+        assertTrue(key.get("description").asString.contains("one Android key by keyCode or named action"))
+        assertEquals("integer", key.properties().getAsJsonObject("keyCode").get("type").asString)
+        assertEquals(0, key.properties().getAsJsonObject("keyCode").get("minimum").asInt)
+        assertEquals("string", key.properties().getAsJsonObject("action").get("type").asString)
+        assertEquals(
+            setOf("enter", "tab", "backspace", "delete", "escape"),
+            key.properties().getAsJsonObject("action").getAsJsonArray("enum").map { it.asString }.toSet(),
+        )
+        val clear = toolsByName.getValue("android_clear_text")
+        assertEquals(emptySet(), clear.properties().keySet())
+        assertEquals(emptySet(), clear.requiredFields())
+
+        val alert = toolsByName.getValue("ios_handle_alert")
+        assertEquals(setOf("action", "buttonLabel", "bundleId"), alert.properties().keySet())
+        assertEquals(setOf("action"), alert.requiredFields())
+        alert.properties().entrySet().forEach { (_, value) ->
+            assertEquals("string", value.asJsonObject.get("type").asString)
+        }
+        assertEquals(
+            setOf("accept", "dismiss"),
+            alert.properties().getAsJsonObject("action").getAsJsonArray("enum").map { it.asString }.toSet(),
+        )
+        val keyboard = toolsByName.getValue("ios_dismiss_keyboard")
+        assertEquals(setOf("bundleId"), keyboard.properties().keySet())
+        assertEquals(emptySet(), keyboard.requiredFields())
+        assertEquals("string", keyboard.properties().getAsJsonObject("bundleId").get("type").asString)
+    }
+
+    private fun assertGestureSchema(tool: JsonObject, platform: String) {
+        val selectors = setOf("text", "textContains", "resourceId", "className", "contentDescription")
+        val scope = if (platform == "ios") setOf("bundleId") else emptySet()
+        assertEquals(selectors + scope + setOf("x", "y", "timeoutMs"), tool.properties().keySet())
+        // Runtime validation enforces the alternatives; neither target form is globally required.
+        assertEquals(emptySet(), tool.requiredFields())
+        assertTrue(
+            tool.get("description").asString.contains(
+                "exactly one $platform target: coordinates or selectors", ignoreCase = true,
+            ),
+            "Gesture description must explain exclusive targets: $tool",
+        )
+        assertTrue(tool.get("description").asString.contains("Selector targets wait until actionable"))
+        for (coordinate in listOf("x", "y")) {
+            val property = tool.properties().getAsJsonObject(coordinate)
+            assertEquals("integer", property.get("type").asString)
+            assertEquals(0, property.get("minimum").asInt)
+        }
+        for (selector in selectors + scope) {
+            assertEquals("string", tool.properties().getAsJsonObject(selector).get("type").asString)
+        }
+        assertTimeoutSchema(tool)
+    }
+
+    private fun assertInputSchema(tool: JsonObject, platform: String) {
+        val targets = setOf(
+            "targetText", "targetTextContains", "targetResourceId", "targetClassName", "targetContentDescription",
+        )
+        val scope = if (platform == "ios") setOf("bundleId") else emptySet()
+        assertEquals(targets + scope + setOf("text", "timeoutMs"), tool.properties().keySet())
+        assertEquals(setOf("text"), tool.requiredFields())
+        for (field in targets + scope + "text") {
+            assertEquals("string", tool.properties().getAsJsonObject(field).get("type").asString)
+        }
+        assertTrue(tool.get("description").asString.contains("focused element or an optional selector target"))
+        assertTrue(tool.get("description").asString.contains("Selector targets wait until editable and focused"))
+        assertTimeoutSchema(tool)
+    }
+
+    private fun assertTimeoutSchema(tool: JsonObject) {
+        val timeout = tool.properties().getAsJsonObject("timeoutMs")
+        assertEquals("integer", timeout.get("type").asString)
+        assertEquals(1, timeout.get("minimum").asInt)
+        assertEquals(30_000, timeout.get("maximum").asInt)
+        assertEquals(10_000, timeout.get("default").asInt)
+    }
+
+    private fun JsonObject.properties(): JsonObject = getAsJsonObject("inputSchema").getAsJsonObject("properties")
+
+    private fun JsonObject.requiredFields(): Set<String> =
+        getAsJsonObject("inputSchema").getAsJsonArray("required")?.map { it.asString }?.toSet() ?: emptySet()
 }

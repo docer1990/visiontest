@@ -143,22 +143,17 @@ class IOSInteractionToolRegistrarTest {
     }
 
     @Test
-    fun `registered iOS interaction tools expose schemas and adapt MCP requests`() = runBlocking {
+    fun `registered iOS interaction tools expose schemas`() {
         val server = mockk<Server>(relaxed = true)
         registrar.registerTools(ToolScope(server, logger))
         val gestureSchema = slot<Tool.Input>()
         val alertSchema = slot<Tool.Input>()
         val inputSchema = slot<Tool.Input>()
-        val dismissKeyboardHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
-        val alertHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
-        val longPressHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
-        val doubleTapHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
-        val inputHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
-        verify { server.addTool("ios_dismiss_keyboard", any(), any(), capture(dismissKeyboardHandler)) }
-        verify { server.addTool("ios_handle_alert", any(), capture(alertSchema), capture(alertHandler)) }
-        verify { server.addTool("ios_long_press", any(), capture(gestureSchema), capture(longPressHandler)) }
-        verify { server.addTool("ios_double_tap", any(), any(), capture(doubleTapHandler)) }
-        verify { server.addTool("ios_input_text", any(), capture(inputSchema), capture(inputHandler)) }
+        verify { server.addTool("ios_dismiss_keyboard", any(), any(), any()) }
+        verify { server.addTool("ios_handle_alert", any(), capture(alertSchema), any()) }
+        verify { server.addTool("ios_long_press", any(), capture(gestureSchema), any()) }
+        verify { server.addTool("ios_double_tap", any(), any(), any()) }
+        verify { server.addTool("ios_input_text", any(), capture(inputSchema), any()) }
         assertEquals(listOf("action"), alertSchema.captured.required)
         assertEquals(
             listOf("accept", "dismiss"),
@@ -170,18 +165,26 @@ class IOSInteractionToolRegistrarTest {
         assertEquals(listOf("text"), inputSchema.captured.required)
         assertEquals(true, inputSchema.captured.properties.containsKey("targetResourceId"))
         assertTimeoutSchema(inputSchema.captured)
+    }
 
+    @Test
+    fun `registered keyboard dismissal adapts MCP requests`() = runBlocking {
+        val handler = registeredHandler("ios_dismiss_keyboard")
         enqueueSuccessfulCall()
-        val dismissResult = dismissKeyboardHandler.captured(
+        val dismissResult = handler(
             request("ios_dismiss_keyboard", "bundleId" to JsonPrimitive("app.id")),
         )
         assertFalse(dismissResult.isError == true)
         val dismiss = takeRpcRequest()
         assertEquals("ui.dismissKeyboard", dismiss["method"].asString)
         assertEquals(mapOf("bundleId" to "app.id"), dismiss.stringParams())
+    }
 
+    @Test
+    fun `registered alert handling adapts MCP requests`() = runBlocking {
+        val handler = registeredHandler("ios_handle_alert")
         enqueueSuccessfulCall()
-        val alertResult = alertHandler.captured(
+        val alertResult = handler(
             request(
                 "ios_handle_alert",
                 "action" to JsonPrimitive("dismiss"),
@@ -194,9 +197,13 @@ class IOSInteractionToolRegistrarTest {
             mapOf("action" to "dismiss", "buttonLabel" to "Not Now", "bundleId" to "app.id"),
             takeRpcRequest().stringParams(),
         )
+    }
 
+    @Test
+    fun `registered long press adapts coordinate MCP requests`() = runBlocking {
+        val handler = registeredHandler("ios_long_press")
         enqueueSuccessfulCall()
-        val gestureResult = longPressHandler.captured(
+        val gestureResult = handler(
             request(
                 "ios_long_press",
                 "x" to JsonPrimitive(12),
@@ -207,9 +214,13 @@ class IOSInteractionToolRegistrarTest {
         val gesture = takeRpcRequest()
         assertEquals("ui.longPress", gesture["method"].asString)
         assertEquals(mapOf("x" to "12", "y" to "34"), gesture.stringParams())
+    }
 
+    @Test
+    fun `registered double tap adapts selector MCP requests`() = runBlocking {
+        val handler = registeredHandler("ios_double_tap")
         enqueueSuccessfulCall()
-        val selectorGestureResult = doubleTapHandler.captured(
+        val selectorGestureResult = handler(
             request(
                 "ios_double_tap",
                 "resourceId" to JsonPrimitive("menu"),
@@ -224,9 +235,13 @@ class IOSInteractionToolRegistrarTest {
             mapOf("resourceId" to "menu", "bundleId" to "app.id", "timeoutMs" to "2500"),
             selectorGesture.stringParams(),
         )
+    }
 
+    @Test
+    fun `registered targeted input adapts MCP requests`() = runBlocking {
+        val handler = registeredHandler("ios_input_text")
         enqueueSuccessfulCall()
-        val inputResult = inputHandler.captured(
+        val inputResult = handler(
             request(
                 "ios_input_text",
                 "text" to JsonPrimitive("Ada"),
@@ -255,6 +270,14 @@ class IOSInteractionToolRegistrarTest {
             ),
             input.stringParams(),
         )
+    }
+
+    private fun registeredHandler(name: String): suspend (CallToolRequest) -> CallToolResult {
+        val server = mockk<Server>(relaxed = true)
+        registrar.registerTools(ToolScope(server, logger))
+        val handler = slot<suspend (CallToolRequest) -> CallToolResult>()
+        verify { server.addTool(name, any(), any(), capture(handler)) }
+        return handler.captured
     }
 
     private fun enqueueSuccessfulCall() {

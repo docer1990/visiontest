@@ -78,7 +78,10 @@ class ElementInteractionWaitTest {
                 lookup = { if (clock.now() >= 500) ready("field") else null },
                 tap = { },
                 hasEditableFocus = { false },
-                input = { typed = true },
+                input = {
+                    typed = true
+                    ElementTapWaitResult(success = true)
+                },
             ),
         )
 
@@ -100,7 +103,10 @@ class ElementInteractionWaitTest {
                 lookup = { ready("field") },
                 tap = { events += "tap" },
                 hasEditableFocus = { clock.now() >= 500 },
-                input = { events += "input" },
+                input = {
+                    events += "input"
+                    ElementTapWaitResult(success = true)
+                },
             ),
         )
 

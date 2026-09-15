@@ -102,12 +102,26 @@ class BaseUiAutomatorInteractionTest {
     }
 
     @Test
+    fun `element doubleTap injects two taps at the retained element center`() {
+        val element = readyElement()
+        every { device.findObject(any<BySelector>()) } returns element
+        every { device.click(150, 150) } returns true
+
+        val result = bridge.doubleTap(elementRequest("menu"))
+
+        assertTrue(result.success)
+        verify(exactly = 2) { device.click(150, 150) }
+        verify(exactly = 0) { element.click() }
+    }
+
+    @Test
     fun `targeted input taps focuses and sets text on one element`() {
         val element = readyElement()
+        val focusedNode = editableFocusedNode(inputAccepted = true)
         every { element.isFocusable } returns true
         every { element.click() } returns Unit
         every { element.isFocused } returns true
-        every { element.text = "Ada" } returns Unit
+        every { automation.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) } returns focusedNode
         every { device.findObject(any<BySelector>()) } returns element
 
         val result = bridge.inputText(
@@ -120,13 +134,69 @@ class BaseUiAutomatorInteractionTest {
 
         assertTrue(result.success)
         verify(exactly = 1) { element.click() }
-        verify(exactly = 1) { element.text = "Ada" }
+        verify(exactly = 1) {
+            focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, any())
+        }
+        verify(exactly = 1) { focusedNode.recycle() }
+    }
+
+    @Test
+    fun `targeted input rejects a focused noneditable element`() {
+        val element = readyElement()
+        val focusedNode = editableFocusedNode(inputAccepted = true, editable = false)
+        every { element.isFocusable } returns true
+        every { element.click() } returns Unit
+        every { element.isFocused } returns true
+        every { automation.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) } returns focusedNode
+        every { device.findObject(any<BySelector>()) } returns element
+
+        val result = bridge.inputText(targetedInputRequest())
+
+        assertFalse(result.success)
+        assertTrue(result.error!!.contains("not editable"))
+        verify(exactly = 0) {
+            focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, any())
+        }
+        verify(exactly = 1) { focusedNode.recycle() }
+    }
+
+    @Test
+    fun `targeted input reports a rejected native text action`() {
+        val element = readyElement()
+        val focusedNode = editableFocusedNode(inputAccepted = false)
+        every { element.isFocusable } returns true
+        every { element.click() } returns Unit
+        every { element.isFocused } returns true
+        every { automation.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) } returns focusedNode
+        every { device.findObject(any<BySelector>()) } returns element
+
+        val result = bridge.inputText(targetedInputRequest())
+
+        assertFalse(result.success)
+        assertTrue(result.error!!.contains("rejected"))
+        verify(exactly = 1) { focusedNode.recycle() }
     }
 
     private fun readyElement(): UiObject2 = mockk<UiObject2>().also { element ->
         every { element.isEnabled } returns true
         every { element.visibleBounds } returns Rect(100, 100, 200, 200)
     }
+
+    private fun editableFocusedNode(
+        inputAccepted: Boolean,
+        editable: Boolean = true,
+    ): AccessibilityNodeInfo = mockk<AccessibilityNodeInfo>().also { node ->
+        every { node.isEditable } returns editable
+        every { node.isEnabled } returns true
+        every { node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, any()) } returns inputAccepted
+        every { node.recycle() } returns Unit
+    }
+
+    private fun targetedInputRequest() = TargetedInputRequest(
+        text = "Ada",
+        selectors = TapOnElementSelectors(resourceId = "name"),
+        timeoutMs = 1_000,
+    )
 
     private fun elementRequest(resourceId: String) = NativeGestureRequest(
         NativeGestureTarget.Element(

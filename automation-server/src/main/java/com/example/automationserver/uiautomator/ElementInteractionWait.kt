@@ -19,7 +19,7 @@ data class TargetedInputOperation<T>(
     val lookup: () -> ElementInteractionCandidate<T>?,
     val tap: (T) -> Unit,
     val hasEditableFocus: (T) -> Boolean,
-    val input: (T) -> Unit,
+    val input: (T) -> ElementTapWaitResult,
 )
 
 private const val INTERACTION_POLL_INTERVAL_MS = 500L
@@ -93,7 +93,6 @@ fun <T> waitForTargetFocusAndInput(
         )
     }
     operation.input(target)
-    ElementTapWaitResult(success = true)
 }
 
 @Suppress("TooGenericExceptionCaught")

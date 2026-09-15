@@ -1,7 +1,10 @@
 package com.example.automationserver.uiautomator
 
+import android.app.UiAutomation
 import android.graphics.Rect
+import android.os.Bundle
 import android.os.SystemClock
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
@@ -12,6 +15,7 @@ private const val DOUBLE_TAP_INTERVAL_MS = 100L
 
 internal class AndroidInteractionActions(
     private val device: UiDevice,
+    private val automation: UiAutomation,
     private val displayRect: Rect,
     private val selectorBuilder: (TapOnElementSelectors) -> BySelector?,
     private val selectorDescription: (TapOnElementSelectors) -> String,
@@ -30,9 +34,12 @@ internal class AndroidInteractionActions(
             device.click(x, y) && first
         }
         is NativeGestureTarget.Element -> elementGesture(target) {
-            it.click()
+            val center = it.visibleBounds
+            val first = device.click(center.centerX(), center.centerY())
             SystemClock.sleep(DOUBLE_TAP_INTERVAL_MS)
-            it.click()
+            check(device.click(center.centerX(), center.centerY()) && first) {
+                "Native element double-tap failed"
+            }
         }
     }
 
@@ -49,10 +56,34 @@ internal class AndroidInteractionActions(
                 lookup = { findCandidate(selector, requireFocusable = true) },
                 tap = UiObject2::click,
                 hasEditableFocus = UiObject2::isFocused,
-                input = { it.text = request.text },
+                input = { inputFocusedText(request.text) },
             ),
         )
         return OperationResult(success = result.success, error = result.error)
+    }
+
+    private fun inputFocusedText(text: String): ElementTapWaitResult {
+        val focusedNode = automation.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            ?: return ElementTapWaitResult(
+                success = false,
+                error = "Focused editable element is unavailable",
+            )
+        return try {
+            if (!focusedNode.isEditable || !focusedNode.isEnabled) {
+                ElementTapWaitResult(success = false, error = "Focused element is not editable and enabled")
+            } else {
+                val arguments = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+                }
+                val accepted = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+                ElementTapWaitResult(
+                    success = accepted,
+                    error = if (accepted) null else "Focused element rejected the text-input action",
+                )
+            }
+        } finally {
+            focusedNode.recycle()
+        }
     }
 
     @Suppress("TooGenericExceptionCaught")

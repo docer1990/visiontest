@@ -13,6 +13,20 @@ import XCTest
 /// ```
 class AutomationServerUITest: XCTestCase {
 
+    func testSelectorGestureWithoutBundleIdUsesForegroundApplication() throws {
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        safari.activate()
+        XCTAssertTrue(safari.textFields.firstMatch.waitForExistence(timeout: 2))
+        let request = try GestureRequest(params: [
+            "className": "TextField",
+            "timeoutMs": 500,
+        ])
+
+        let result = XCUITestBridge().doubleTap(request)
+
+        XCTAssertTrue(result.success, result.error ?? "Expected selector gesture to succeed")
+    }
+
     private static let defaultPort: UInt16 = 9009
     private static let envPortKey = "PORT"
 

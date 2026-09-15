@@ -339,6 +339,7 @@ abstract class BaseUiAutomatorBridge {
 
     private fun interactionActions() = AndroidInteractionActions(
         device = getUiDevice(),
+        automation = getUiAutomation(),
         displayRect = getDisplayRect(),
         selectorBuilder = { selectors ->
             buildUiSelector(selectors)

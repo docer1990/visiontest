@@ -13,6 +13,15 @@ private const val LONG_PRESS_DURATION_MS = 800L
 private const val LONG_PRESS_SWIPE_STEPS = 160
 private const val DOUBLE_TAP_INTERVAL_MS = 100L
 
+internal fun performComposedDoubleTap(
+    tap: () -> Boolean,
+    sleepMs: (Long) -> Unit,
+): Boolean {
+    val first = tap()
+    sleepMs(DOUBLE_TAP_INTERVAL_MS)
+    return tap() && first
+}
+
 internal class AndroidInteractionActions(
     private val device: UiDevice,
     private val automation: UiAutomation,
@@ -29,15 +38,18 @@ internal class AndroidInteractionActions(
 
     fun doubleTap(request: NativeGestureRequest): OperationResult = when (val target = request.target) {
         is NativeGestureTarget.Coordinates -> coordinateGesture(target.x, target.y) { x, y ->
-            val first = device.click(x, y)
-            SystemClock.sleep(DOUBLE_TAP_INTERVAL_MS)
-            device.click(x, y) && first
+            performComposedDoubleTap(
+                tap = { device.click(x, y) },
+                sleepMs = SystemClock::sleep,
+            )
         }
         is NativeGestureTarget.Element -> elementGesture(target) {
             val center = it.visibleBounds
-            val first = device.click(center.centerX(), center.centerY())
-            SystemClock.sleep(DOUBLE_TAP_INTERVAL_MS)
-            check(device.click(center.centerX(), center.centerY()) && first) {
+            val success = performComposedDoubleTap(
+                tap = { device.click(center.centerX(), center.centerY()) },
+                sleepMs = SystemClock::sleep,
+            )
+            check(success) {
                 "Native element double-tap failed"
             }
         }

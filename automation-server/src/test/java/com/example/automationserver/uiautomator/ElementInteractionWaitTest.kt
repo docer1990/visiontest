@@ -8,6 +8,26 @@ import kotlin.test.assertTrue
 class ElementInteractionWaitTest {
 
     @Test
+    fun `composed double tap separates native taps by one hundred milliseconds`() {
+        val clock = FakeClock()
+        val events = mutableListOf<String>()
+
+        val result = performComposedDoubleTap(
+            tap = {
+                events += "tap@${clock.now()}"
+                true
+            },
+            sleepMs = {
+                events += "sleep@$it"
+                clock.sleep(it)
+            },
+        )
+
+        assertTrue(result)
+        assertEquals(listOf("tap@0", "sleep@100", "tap@100"), events)
+    }
+
+    @Test
     fun `gesture waits at five hundred millisecond cadence until ready`() {
         val clock = FakeClock()
         var lookups = 0

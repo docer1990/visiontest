@@ -33,12 +33,13 @@ class XCUITestBridge {
     }
 
     private func interactionTarget(bundleId: String?) -> XCUIApplication {
-        if let bundleId, !bundleId.isEmpty {
-            return queryTarget(bundleId: bundleId)
-        }
-        return discoverActiveApplication()
-            ?? appCache.values.first(where: { $0.state == .runningForeground })
-            ?? springboard
+        let explicit = bundleId.flatMap { $0.isEmpty ? nil : queryTarget(bundleId: $0) }
+        return selectInteractionTarget(
+            explicit: explicit,
+            discovered: discoverActiveApplication(),
+            cached: appCache.values.first(where: { $0.state == .runningForeground }),
+            system: springboard
+        )
     }
 
     private func discoverActiveApplication() -> XCUIApplication? {
@@ -419,10 +420,10 @@ class XCUITestBridge {
     func handleAlert(_ request: HandleAlertRequest) -> OperationResult {
         let appAlert = interactionTarget(bundleId: request.bundleId).alerts.firstMatch
         let systemAlert = springboard.alerts.firstMatch
-        let alert = appAlert.exists ? appAlert : systemAlert
-        guard alert.exists else {
+        guard let source = selectAlertSource(appExists: appAlert.exists, systemExists: systemAlert.exists) else {
             return OperationResult(success: false, error: "No alert is visible")
         }
+        let alert = source == .application ? appAlert : systemAlert
         let buttons = alert.buttons.allElementsBoundByIndex
         let descriptions = buttons.map {
             AlertButton(label: $0.label, actionable: $0.exists && $0.isEnabled && $0.isHittable)

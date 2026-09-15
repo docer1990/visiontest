@@ -297,6 +297,25 @@ struct AlertButton {
     let actionable: Bool
 }
 
+func selectInteractionTarget<T>(
+    explicit: T?,
+    discovered: @autoclosure () -> T?,
+    cached: @autoclosure () -> T?,
+    system: @autoclosure () -> T
+) -> T {
+    explicit ?? discovered() ?? cached() ?? system()
+}
+
+enum AlertSource: Equatable {
+    case application
+    case system
+}
+
+func selectAlertSource(appExists: Bool, systemExists: Bool) -> AlertSource? {
+    if appExists { return .application }
+    return systemExists ? .system : nil
+}
+
 func selectAlertButton(_ buttons: [AlertButton], action: AlertAction, label: String?) -> AlertButton? {
     let actionable = buttons.filter(\.actionable)
     if let label { return actionable.first { $0.label == label } }

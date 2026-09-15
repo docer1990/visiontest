@@ -3,6 +3,31 @@ import CoreGraphics
 
 final class HelpersTests: XCTestCase {
 
+    func testInteractionTargetPriorityAndFallback() {
+        XCTAssertEqual(
+            selectInteractionTarget(explicit: "explicit", discovered: "active", cached: "cached", system: "system"),
+            "explicit"
+        )
+        XCTAssertEqual(
+            selectInteractionTarget(explicit: nil, discovered: "active", cached: "cached", system: "system"),
+            "active"
+        )
+        XCTAssertEqual(
+            selectInteractionTarget(explicit: nil, discovered: nil, cached: "cached", system: "system"),
+            "cached"
+        )
+        XCTAssertEqual(
+            selectInteractionTarget(explicit: nil, discovered: nil, cached: nil, system: "system"),
+            "system"
+        )
+    }
+
+    func testAlertSourcePrefersAppThenFallsBackToSystem() {
+        XCTAssertEqual(selectAlertSource(appExists: true, systemExists: true), .application)
+        XCTAssertEqual(selectAlertSource(appExists: false, systemExists: true), .system)
+        XCTAssertNil(selectAlertSource(appExists: false, systemExists: false))
+    }
+
     func testGestureRequestAcceptsCoordinatesOrSelectorsAndRejectsMixedTargets() throws {
         let coordinates = try GestureRequest(params: ["x": 12, "y": 34])
         guard case .coordinates(let point) = coordinates.target else {

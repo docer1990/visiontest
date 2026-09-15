@@ -27,39 +27,76 @@ class AutomationServerUITest: XCTestCase {
         XCTAssertTrue(result.success, result.error ?? "Expected selector gesture to succeed")
     }
 
-    func testInteractionRoutesUseTheSharedTargetResolver() throws {
+    func testInteractionJsonRpcRoutesUseTheSharedTargetResolver() throws {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         var scopes: [String?] = []
         let bridge = XCUITestBridge(interactionTargetOverride: {
             scopes.append($0)
             return springboard
         })
-        let gesture = try GestureRequest(params: ["text": "missing", "timeoutMs": 1])
-        let targetedInput = try TargetedInputRequest(params: [
-            "text": "value", "targetText": "missing", "timeoutMs": 1,
-        ])
-        let alert = try HandleAlertRequest(params: ["action": "accept"])
-        let scopedAlert = try HandleAlertRequest(params: ["action": "accept", "bundleId": "app.id"])
+        let server = JsonRpcServer(port: 0, bridge: bridge)
+        let requests: [(String, [String: Any])] = [
+            ("ui.longPress", ["text": "missing", "timeoutMs": 1]),
+            ("ui.doubleTap", ["resourceId": "missing", "bundleId": "gesture.app", "timeoutMs": 1]),
+            ("ui.dismissKeyboard", [:]),
+            ("ui.handleAlert", ["action": "accept", "bundleId": "alert.app"]),
+            ("ui.inputText", [
+                "text": "value", "targetText": "missing", "bundleId": "input.app", "timeoutMs": 1,
+            ]),
+        ]
 
-        _ = bridge.doubleTap(gesture)
-        _ = bridge.inputText(targetedInput)
-        _ = bridge.inputText(text: "value")
-        _ = bridge.dismissKeyboard(bundleId: nil)
-        _ = bridge.handleAlert(alert)
-        _ = bridge.handleAlert(scopedAlert)
+        for (index, request) in requests.enumerated() {
+            let response = server.handleRequest(try jsonRpcRequest(
+                method: request.0,
+                params: request.1,
+                id: index + 1
+            ))
+            XCTAssertEqual(response["jsonrpc"] as? String, "2.0")
+            XCTAssertEqual(response["id"] as? Int, index + 1)
+            XCTAssertNotNil(response["result"] as? [String: Any])
+            XCTAssertNil(response["error"])
+        }
 
-        XCTAssertEqual(scopes.count, 6)
-        XCTAssertTrue(scopes.dropLast().allSatisfy { $0 == nil })
-        XCTAssertEqual(scopes.last!, "app.id")
+        XCTAssertEqual(scopes.count, 5)
+        XCTAssertNil(scopes[0])
+        XCTAssertEqual(scopes[1], "gesture.app")
+        XCTAssertNil(scopes[2])
+        XCTAssertEqual(scopes[3], "alert.app")
+        XCTAssertEqual(scopes[4], "input.app")
+    }
+
+    func testInteractionJsonRpcRoutesRejectInvalidParameters() throws {
+        let server = JsonRpcServer(port: 0, bridge: XCUITestBridge())
+        let requests: [(String, [String: Any])] = [
+            ("ui.longPress", [:]),
+            ("ui.doubleTap", ["x": 1]),
+            ("ui.dismissKeyboard", ["bundleId": " "]),
+            ("ui.handleAlert", ["action": "later"]),
+            ("ui.inputText", ["text": "value", "timeoutMs": 1]),
+        ]
+
+        for (index, request) in requests.enumerated() {
+            let response = server.handleRequest(try jsonRpcRequest(
+                method: request.0,
+                params: request.1,
+                id: index + 1
+            ))
+            let error = try XCTUnwrap(response["error"] as? [String: Any])
+            XCTAssertEqual(error["code"] as? Int, JsonRpcError.INVALID_PARAMS)
+            XCTAssertNil(response["result"])
+        }
     }
 
     private static let defaultPort: UInt16 = 9009
     private static let envPortKey = "PORT"
 
-    override class var defaultTestSuite: XCTestSuite {
-        // Disable test timeout — the server needs to run indefinitely
-        let suite = super.defaultTestSuite
-        return suite
+    private func jsonRpcRequest(method: String, params: [String: Any], id: Int) throws -> Data {
+        try JSONSerialization.data(withJSONObject: [
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+            "id": id,
+        ])
     }
 
     func testRunAutomationServer() {
@@ -77,8 +114,7 @@ class AutomationServerUITest: XCTestCase {
         NSLog("Port: \(port)")
         NSLog("==============================================")
 
-        // No host app launch needed — we use springboard for all queries,
-        // so whatever app is in the foreground stays there.
+        // The bridge resolves the foreground application without launching a host app.
         let bridge = XCUITestBridge()
         let server = JsonRpcServer(port: port, bridge: bridge)
 

@@ -100,7 +100,7 @@ class IOSAutomationClient(
      *
      * @param text The text to type.
      * @param bundleId Bundle ID of the target app. When provided, text is typed into that app;
-     *                 when null, the server targets Springboard (which may fail if no focused element is found).
+     *                 when null, the server resolves the foreground application.
      */
     @Deprecated(
         message = "Use inputText with selectors and timeoutMs",

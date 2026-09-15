@@ -27,6 +27,32 @@ class AutomationServerUITest: XCTestCase {
         XCTAssertTrue(result.success, result.error ?? "Expected selector gesture to succeed")
     }
 
+    func testInteractionRoutesUseTheSharedTargetResolver() throws {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        var scopes: [String?] = []
+        let bridge = XCUITestBridge(interactionTargetOverride: {
+            scopes.append($0)
+            return springboard
+        })
+        let gesture = try GestureRequest(params: ["text": "missing", "timeoutMs": 1])
+        let targetedInput = try TargetedInputRequest(params: [
+            "text": "value", "targetText": "missing", "timeoutMs": 1,
+        ])
+        let alert = try HandleAlertRequest(params: ["action": "accept"])
+        let scopedAlert = try HandleAlertRequest(params: ["action": "accept", "bundleId": "app.id"])
+
+        _ = bridge.doubleTap(gesture)
+        _ = bridge.inputText(targetedInput)
+        _ = bridge.inputText(text: "value")
+        _ = bridge.dismissKeyboard(bundleId: nil)
+        _ = bridge.handleAlert(alert)
+        _ = bridge.handleAlert(scopedAlert)
+
+        XCTAssertEqual(scopes.count, 6)
+        XCTAssertTrue(scopes.dropLast().allSatisfy { $0 == nil })
+        XCTAssertEqual(scopes.last!, "app.id")
+    }
+
     private static let defaultPort: UInt16 = 9009
     private static let envPortKey = "PORT"
 

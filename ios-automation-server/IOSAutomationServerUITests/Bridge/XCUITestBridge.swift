@@ -16,8 +16,11 @@ class XCUITestBridge {
     private var cachedOrientation: UIDeviceOrientation?
     /// Cache of XCUIApplication instances by bundleId
     private var appCache: [String: XCUIApplication] = [:]
+    private let interactionTargetOverride: ((String?) -> XCUIApplication)?
 
-    init() {}
+    init(interactionTargetOverride: ((String?) -> XCUIApplication)? = nil) {
+        self.interactionTargetOverride = interactionTargetOverride
+    }
 
     /// Returns the XCUIApplication for the given bundleId, or springboard if nil.
     private func queryTarget(bundleId: String?) -> XCUIApplication {
@@ -33,6 +36,9 @@ class XCUITestBridge {
     }
 
     private func interactionTarget(bundleId: String?) -> XCUIApplication {
+        if let interactionTargetOverride {
+            return interactionTargetOverride(bundleId)
+        }
         let explicit = bundleId.flatMap { $0.isEmpty ? nil : queryTarget(bundleId: $0) }
         return selectInteractionTarget(
             explicit: explicit,

@@ -168,6 +168,19 @@ class BaseUiAutomatorInteractionTest {
     }
 
     @Test
+    fun `targeted input does not tap a noneditable selected element`() {
+        val element = readyElement(className = "android.widget.Button")
+        every { element.isFocusable } returns true
+        every { device.findObject(any<BySelector>()) } returns element
+
+        val result = bridge.inputText(targetedInputRequest())
+
+        assertFalse(result.success)
+        assertTrue(result.error!!.contains("not actionable"))
+        verify(exactly = 0) { element.click() }
+    }
+
+    @Test
     fun `targeted input rejects a focused noneditable element`() {
         val element = readyElement()
         val focusedNode = editableFocusedNode(inputAccepted = true, editable = false)
@@ -204,9 +217,10 @@ class BaseUiAutomatorInteractionTest {
         verify(exactly = 1) { focusedNode.recycle() }
     }
 
-    private fun readyElement(): UiObject2 = mockk<UiObject2>().also { element ->
+    private fun readyElement(className: String = "android.widget.EditText"): UiObject2 = mockk<UiObject2>().also { element ->
         every { element.isEnabled } returns true
         every { element.visibleBounds } returns Rect(100, 100, 200, 200)
+        every { element.className } returns className
     }
 
     private fun editableFocusedNode(

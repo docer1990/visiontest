@@ -92,7 +92,17 @@ fun <T> waitForTargetFocusAndInput(
             error = "Element did not acquire editable focus within ${timeoutMs}ms: $description",
         )
     }
-    operation.input(target)
+    val inputResult = operation.input(target)
+    if (!inputResult.success) {
+        inputResult
+    } else if (clock.nowMs() > deadline) {
+        ElementTapWaitResult(
+            success = false,
+            error = "Text input exceeded the original timeout; input within ${timeoutMs}ms was required: $description",
+        )
+    } else {
+        inputResult
+    }
 }
 
 @Suppress("TooGenericExceptionCaught")

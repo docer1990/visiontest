@@ -65,7 +65,7 @@ internal class AndroidInteractionActions(
             description = selectorDescription(selectors),
             clock = ElementInteractionClock(SystemClock::elapsedRealtime, SystemClock::sleep),
             operation = TargetedInputOperation(
-                lookup = { findCandidate(selector, requireFocusable = true) },
+                lookup = { findCandidate(selector, requireEditable = true) },
                 tap = UiObject2::click,
                 hasEditableFocus = UiObject2::isFocused,
                 input = { inputFocusedText(request.text) },
@@ -132,14 +132,20 @@ internal class AndroidInteractionActions(
 
     private fun findCandidate(
         selector: BySelector,
-        requireFocusable: Boolean = false,
+        requireEditable: Boolean = false,
     ): ElementInteractionCandidate<UiObject2>? = device.findObject(selector)?.let { element ->
         val bounds = element.visibleBounds
         val visible = bounds.width() > 0 && bounds.height() > 0 && Rect.intersects(bounds, displayRect)
-        val ready = visible && element.isEnabled && (!requireFocusable || element.isFocusable)
+        val ready = visible && element.isEnabled && (
+            !requireEditable || (element.isFocusable && element.className.isEditableControlClass())
+        )
         ElementInteractionCandidate(
             element,
             if (ready) ElementInteractionReadiness.READY else ElementInteractionReadiness.BLOCKED,
         )
     }
 }
+
+private fun String?.isEditableControlClass(): Boolean = this?.let { className ->
+    className.endsWith("EditText") || className.endsWith("AutoCompleteTextView")
+} == true

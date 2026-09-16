@@ -135,6 +135,52 @@ class ElementInteractionWaitTest {
         assertEquals(500, clock.now())
     }
 
+    @Test
+    fun `successful input that finishes after deadline times out`() {
+        val clock = FakeClock()
+
+        val result = waitForTargetFocusAndInput(
+            timeoutMs = 1_000,
+            description = "field",
+            clock = ElementInteractionClock(clock::now, clock::sleep),
+            operation = TargetedInputOperation(
+                lookup = { ready("field") },
+                tap = {},
+                hasEditableFocus = { true },
+                input = {
+                    clock.sleep(1_001)
+                    ElementTapWaitResult(success = true)
+                },
+            ),
+        )
+
+        assertFalse(result.success)
+        assertTrue(result.error!!.contains("input within 1000ms"))
+    }
+
+    @Test
+    fun `native input failure after deadline remains unchanged`() {
+        val clock = FakeClock()
+        val nativeFailure = ElementTapWaitResult(success = false, error = "Focused element rejected the text-input action")
+
+        val result = waitForTargetFocusAndInput(
+            timeoutMs = 1_000,
+            description = "field",
+            clock = ElementInteractionClock(clock::now, clock::sleep),
+            operation = TargetedInputOperation(
+                lookup = { ready("field") },
+                tap = {},
+                hasEditableFocus = { true },
+                input = {
+                    clock.sleep(1_001)
+                    nativeFailure
+                },
+            ),
+        )
+
+        assertEquals(nativeFailure, result)
+    }
+
     private fun ready(value: String) =
         ElementInteractionCandidate(value, ElementInteractionReadiness.READY)
 

@@ -423,8 +423,10 @@ abstract class BaseUiAutomatorBridge {
         val focusedNode = findFocusedNode()
             ?: return OperationResult(success = false, error = "No focused editable element found")
         return try {
-            if (!focusedNode.isEditable || !focusedNode.isEnabled) {
-                OperationResult(success = false, error = "Focused element is not editable or not enabled")
+            if (!focusedNode.isEditable) {
+                OperationResult(success = false, error = "Focused element is not editable")
+            } else if (!focusedNode.isEnabled) {
+                OperationResult(success = false, error = "Focused element is not enabled")
             } else {
                 val arguments = Bundle().apply {
                     putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "")

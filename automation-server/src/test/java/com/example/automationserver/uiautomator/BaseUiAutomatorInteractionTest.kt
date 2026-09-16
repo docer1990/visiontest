@@ -71,7 +71,7 @@ class BaseUiAutomatorInteractionTest {
         val result = bridge.clearText()
 
         assertFalse(result.success)
-        assertEquals("Focused element is not editable or not enabled", result.error)
+        assertEquals("Focused element is not editable", result.error)
         verify(exactly = 0) { node.performAction(any(), any()) }
         verify(exactly = 1) { node.recycle() }
     }
@@ -87,7 +87,7 @@ class BaseUiAutomatorInteractionTest {
         val result = bridge.clearText()
 
         assertFalse(result.success)
-        assertEquals("Focused element is not editable or not enabled", result.error)
+        assertEquals("Focused element is not enabled", result.error)
         verify(exactly = 0) { node.performAction(any(), any()) }
         verify(exactly = 1) { node.recycle() }
     }

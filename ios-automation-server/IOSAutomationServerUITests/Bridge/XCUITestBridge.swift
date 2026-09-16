@@ -16,8 +16,11 @@ class XCUITestBridge {
     private var cachedOrientation: UIDeviceOrientation?
     /// Cache of XCUIApplication instances by bundleId
     private var appCache: [String: XCUIApplication] = [:]
+    private let interactionTargetOverride: ((String?) -> XCUIApplication)?
 
-    init() {}
+    init(interactionTargetOverride: ((String?) -> XCUIApplication)? = nil) {
+        self.interactionTargetOverride = interactionTargetOverride
+    }
 
     /// Returns the XCUIApplication for the given bundleId, or springboard if nil.
     private func queryTarget(bundleId: String?) -> XCUIApplication {
@@ -30,6 +33,63 @@ class XCUITestBridge {
         let app = XCUIApplication(bundleIdentifier: bundleId)
         appCache[bundleId] = app
         return app
+    }
+
+    private func interactionTarget(bundleId: String?) -> XCUIApplication {
+        if let interactionTargetOverride {
+            return interactionTargetOverride(bundleId)
+        }
+        let explicit = bundleId.flatMap { $0.isEmpty ? nil : queryTarget(bundleId: $0) }
+        return selectInteractionTarget(
+            explicit: explicit,
+            discovered: discoverActiveApplication(),
+            cached: appCache.values.first(where: { $0.state == .runningForeground }),
+            system: springboard
+        )
+    }
+
+    private func discoverActiveApplication() -> XCUIApplication? {
+        guard let accessibility = objectReturned(
+            by: "accessibilityInterface",
+            from: XCUIDevice.shared as NSObject
+        ) as? NSObject,
+              let activeElements = objectReturned(by: "activeApplications", from: accessibility) as? [NSObject],
+              let systemElement = objectReturned(by: "systemApplication", from: accessibility) as? NSObject,
+              let systemPid = processIdentifier(of: systemElement),
+              let tracker = objectReturned(by: "applicationProcessTracker", from: accessibility) as? NSObject else {
+            return nil
+        }
+        for element in activeElements {
+            guard let pid = processIdentifier(of: element),
+                  pid != systemPid,
+                  let application = monitoredApplication(pid: pid, tracker: tracker) else {
+                continue
+            }
+            return application
+        }
+        return nil
+    }
+
+    private func objectReturned(by selectorName: String, from object: NSObject) -> AnyObject? {
+        let selector = NSSelectorFromString(selectorName)
+        guard object.responds(to: selector) else { return nil }
+        return object.perform(selector)?.takeUnretainedValue()
+    }
+
+    private func processIdentifier(of object: NSObject) -> Int32? {
+        let selector = NSSelectorFromString("processIdentifier")
+        guard object.responds(to: selector) else { return nil }
+        typealias Implementation = @convention(c) (AnyObject, Selector) -> Int32
+        let implementation = unsafeBitCast(object.method(for: selector), to: Implementation.self)
+        return implementation(object, selector)
+    }
+
+    private func monitoredApplication(pid: Int32, tracker: NSObject) -> XCUIApplication? {
+        let selector = NSSelectorFromString("monitoredApplicationWithProcessIdentifier:")
+        guard tracker.responds(to: selector) else { return nil }
+        typealias Implementation = @convention(c) (AnyObject, Selector, Int32) -> Unmanaged<AnyObject>?
+        let implementation = unsafeBitCast(tracker.method(for: selector), to: Implementation.self)
+        return implementation(tracker, selector, pid)?.takeUnretainedValue() as? XCUIApplication
     }
 
     /// Returns screen size, caching per orientation to avoid repeated screenshot calls.
@@ -182,26 +242,39 @@ class XCUITestBridge {
         text: String?, textContains: String?, identifier: String?, elementType: String?,
         label: String?, bundleId: String?
     ) -> XCUIElement? {
-        let queryTarget = queryTarget(bundleId: bundleId)
+        lookupElement(
+            text: text,
+            textContains: textContains,
+            identifier: identifier,
+            elementType: elementType,
+            label: label,
+            target: queryTarget(bundleId: bundleId)
+        )
+    }
+
+    private func lookupElement(
+        text: String?, textContains: String?, identifier: String?, elementType: String?,
+        label: String?, target: XCUIApplication
+    ) -> XCUIElement? {
         let element: XCUIElement?
 
         if let text = text {
             let predicate = NSPredicate(format: "label == %@ OR value == %@", text, text)
-            let match = queryTarget.descendants(matching: .any).matching(predicate).firstMatch
+            let match = target.descendants(matching: .any).matching(predicate).firstMatch
             element = match.exists ? match : nil
         } else if let textContains = textContains {
             let predicate = NSPredicate(format: "label CONTAINS[c] %@ OR value CONTAINS[c] %@", textContains, textContains)
-            let match = queryTarget.descendants(matching: .any).matching(predicate).firstMatch
+            let match = target.descendants(matching: .any).matching(predicate).firstMatch
             element = match.exists ? match : nil
         } else if let identifier = identifier {
-            let match = queryTarget.descendants(matching: .any).matching(identifier: identifier).firstMatch
+            let match = target.descendants(matching: .any).matching(identifier: identifier).firstMatch
             element = match.exists ? match : nil
         } else if let elementType = elementType, let type = xcuiElementType(from: elementType) {
-            let match = queryTarget.descendants(matching: type).firstMatch
+            let match = target.descendants(matching: type).firstMatch
             element = match.exists ? match : nil
         } else if let label = label {
             let predicate = NSPredicate(format: "label == %@", label)
-            let match = queryTarget.descendants(matching: .any).matching(predicate).firstMatch
+            let match = target.descendants(matching: .any).matching(predicate).firstMatch
             element = match.exists ? match : nil
         } else {
             return nil
@@ -254,6 +327,141 @@ class XCUITestBridge {
             },
             tap: { tappableElement?.tap() }
         )
+    }
+
+    func longPress(_ request: GestureRequest) -> OperationResult {
+        performGesture(
+            request,
+            coordinateGesture: { $0.press(forDuration: 0.8) },
+            elementGesture: { $0.press(forDuration: 0.8) }
+        )
+    }
+
+    func doubleTap(_ request: GestureRequest) -> OperationResult {
+        performGesture(
+            request,
+            coordinateGesture: { $0.doubleTap() },
+            elementGesture: { $0.doubleTap() }
+        )
+    }
+
+    private func performGesture(
+        _ request: GestureRequest,
+        coordinateGesture: (XCUICoordinate) -> Void,
+        elementGesture: (XCUIElement) -> Void
+    ) -> OperationResult {
+        switch request.target {
+        case .coordinates(let point):
+            let screenBounds = CGRect(origin: .zero, size: getScreenSize())
+            guard screenBounds.contains(point) else {
+                return OperationResult(success: false, error: "Coordinates are outside the display")
+            }
+            let coordinate = springboard.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+                .withOffset(CGVector(dx: point.x, dy: point.y))
+            coordinateGesture(coordinate)
+            return OperationResult(success: true, error: nil)
+        case .element(let selectors, let bundleId, let timeoutMs):
+            let target = interactionTarget(bundleId: bundleId)
+            let deadline = ProcessInfo.processInfo.systemUptime + Double(timeoutMs) / 1_000
+            var observedBlocked = false
+            while true {
+                if let element = lookupElement(selectors: selectors, target: target) {
+                    if element.exists && element.isEnabled && element.isHittable {
+                        guard ProcessInfo.processInfo.systemUptime <= deadline else { break }
+                        elementGesture(element)
+                        return OperationResult(success: true, error: nil)
+                    }
+                    observedBlocked = true
+                }
+                let remaining = deadline - ProcessInfo.processInfo.systemUptime
+                guard remaining > 0 else { break }
+                RunLoop.current.run(until: Date(timeIntervalSinceNow: min(0.5, remaining)))
+            }
+            let status = observedBlocked ? "Element found but not actionable" : "Element not found"
+            return OperationResult(success: false, error: "\(status) for \(selectors.description)")
+        }
+    }
+
+    func inputText(_ request: TargetedInputRequest) -> OperationResult {
+        guard let selectors = request.selectors, request.timeoutMs != nil else {
+            return inputText(text: request.text, bundleId: request.bundleId)
+        }
+        var selectedElement: XCUIElement?
+        let target = interactionTarget(bundleId: request.bundleId)
+        return performTargetedInput(
+            request: request,
+            now: { ProcessInfo.processInfo.systemUptime },
+            readiness: {
+                selectedElement = nil
+                guard let element = self.lookupElement(selectors: selectors, target: target) else {
+                    return .absent
+                }
+                guard self.isEditable(element), element.exists, element.isEnabled, element.isHittable else {
+                    return .blocked
+                }
+                selectedElement = element
+                return .ready
+            },
+            tap: { selectedElement?.tap() },
+            hasFocus: {
+                guard let selectedElement else { return false }
+                let focused = target.descendants(matching: .any)
+                    .matching(NSPredicate(format: "hasKeyboardFocus == true")).firstMatch
+                return focused.exists && focused.frame == selectedElement.frame
+            },
+            typeText: { selectedElement?.typeText(request.text) }
+        )
+    }
+
+    func dismissKeyboard(bundleId: String?) -> OperationResult {
+        let keyboard = interactionTarget(bundleId: bundleId).keyboards.firstMatch
+        let wasVisible = keyboard.exists && keyboard.isHittable
+        if wasVisible {
+            keyboard.swipeDown()
+            _ = keyboard.waitForNonExistence(timeout: 2)
+        }
+        return verifyKeyboardDismissal(wasVisible: wasVisible, isVisible: keyboard.exists)
+    }
+
+    func handleAlert(_ request: HandleAlertRequest) -> OperationResult {
+        let appAlert = interactionTarget(bundleId: request.bundleId).alerts.firstMatch
+        let systemAlert = springboard.alerts.firstMatch
+        guard let source = selectAlertSource(appExists: appAlert.exists, systemExists: systemAlert.exists) else {
+            return OperationResult(success: false, error: "No alert is visible")
+        }
+        let alert = source == .application ? appAlert : systemAlert
+        let buttons = alert.buttons.allElementsBoundByIndex
+        let descriptions = buttons.map {
+            AlertButton(label: $0.label, actionable: $0.exists && $0.isEnabled && $0.isHittable)
+        }
+        guard let selectedIndex = selectAlertButtonIndex(descriptions, action: request.action, label: request.buttonLabel) else {
+            return OperationResult(
+                success: false,
+                error: alertButtonSelectionFailure(descriptions, label: request.buttonLabel)
+            )
+        }
+        let button = buttons[selectedIndex]
+        button.tap()
+        return OperationResult(
+            success: true,
+            error: nil,
+            message: "Tapped alert button '\(descriptions[selectedIndex].label)'"
+        )
+    }
+
+    private func lookupElement(selectors: ElementSelectors, target: XCUIApplication) -> XCUIElement? {
+        lookupElement(
+            text: selectors.text,
+            textContains: selectors.textContains,
+            identifier: selectors.identifier,
+            elementType: selectors.elementType,
+            label: selectors.label,
+            target: target
+        )
+    }
+
+    private func isEditable(_ element: XCUIElement) -> Bool {
+        [.textField, .secureTextField, .textView, .searchField].contains(element.elementType)
     }
 
     // MARK: - Interactive Elements
@@ -418,12 +626,10 @@ class XCUITestBridge {
     // MARK: - Input Text
     
     /// Types text into the currently focused element of the target application using the keyboard.
-    /// The `bundleId` determines which app to target: when provided, text is typed into the app
-    /// identified by that bundle identifier; when `nil` or empty, the Springboard app is used
-    /// via `queryTarget(bundleId:)`. The caller should ensure a text field in the target app is
-    /// already focused (e.g. via a tap operation) before calling this.
+    /// The `bundleId` selects an explicit app. Without it, input targets the active app.
+    /// The caller should ensure a text field in the target app is already focused.
     func inputText(text: String, bundleId: String? = nil) -> OperationResult {
-        let target = queryTarget(bundleId: bundleId)
+        let target = interactionTarget(bundleId: bundleId)
 
         // Find the focused text input element to avoid cross-process keyboard relay.
         // Typing on the focused element directly avoids the _UIRemoteKeyboards protocol

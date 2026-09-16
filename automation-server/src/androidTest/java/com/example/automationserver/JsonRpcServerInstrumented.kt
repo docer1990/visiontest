@@ -163,6 +163,24 @@ class JsonRpcServerInstrumented(
             "device.pressBack" -> uiAutomator.pressBack()
             "device.pressHome" -> uiAutomator.pressHome()
 
+            "ui.pressKey" -> {
+                val keyCode = try {
+                    com.example.automationserver.uiautomator.parseKeyRequest(params)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid key")
+                }
+                uiAutomator.pressKey(keyCode)
+            }
+
+            "ui.clearText" -> {
+                try {
+                    com.example.automationserver.uiautomator.requireNoParams(params, method)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid clear-text request")
+                }
+                uiAutomator.clearText()
+            }
+
             // Screenshot
             "ui.screenshot" -> uiAutomator.screenshot()
 
@@ -192,6 +210,24 @@ class JsonRpcServerInstrumented(
                 uiAutomator.tapOnElement(
                     com.example.automationserver.uiautomator.TapOnElementRequest(selectors, timeoutMs)
                 )
+            }
+
+            "ui.longPress" -> {
+                val gesture = try {
+                    com.example.automationserver.uiautomator.parseGestureRequest(params)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid long-press target")
+                }
+                uiAutomator.longPress(gesture)
+            }
+
+            "ui.doubleTap" -> {
+                val gesture = try {
+                    com.example.automationserver.uiautomator.parseGestureRequest(params)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid double-tap target")
+                }
+                uiAutomator.doubleTap(gesture)
             }
 
             // Find element method
@@ -295,9 +331,12 @@ class JsonRpcServerInstrumented(
             }
 
             "ui.inputText" -> {
-                val text = params?.get("text")?.asString
-                    ?: throw InvalidParamsException("Missing 'text' parameter")
-                uiAutomator.inputText(text)
+                val input = try {
+                    com.example.automationserver.uiautomator.parseTargetedInputRequest(params)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid text input")
+                }
+                uiAutomator.inputText(input)
             }
 
             else -> throw MethodNotFoundException(method)

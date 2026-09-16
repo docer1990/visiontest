@@ -1,0 +1,151 @@
+package com.example.automationserver.uiautomator
+
+import android.app.UiAutomation
+import android.graphics.Rect
+import android.os.Bundle
+import android.os.SystemClock
+import android.view.accessibility.AccessibilityNodeInfo
+import androidx.test.uiautomator.BySelector
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiObject2
+
+private const val LONG_PRESS_DURATION_MS = 800L
+private const val LONG_PRESS_SWIPE_STEPS = 160
+private const val DOUBLE_TAP_INTERVAL_MS = 100L
+
+internal fun performComposedDoubleTap(
+    tap: () -> Boolean,
+    sleepMs: (Long) -> Unit,
+): Boolean {
+    val first = tap()
+    sleepMs(DOUBLE_TAP_INTERVAL_MS)
+    return tap() && first
+}
+
+internal class AndroidInteractionActions(
+    private val device: UiDevice,
+    private val automation: UiAutomation,
+    private val displayRect: Rect,
+    private val selectorBuilder: (TapOnElementSelectors) -> BySelector?,
+    private val selectorDescription: (TapOnElementSelectors) -> String,
+) {
+    fun longPress(request: NativeGestureRequest): OperationResult = when (val target = request.target) {
+        is NativeGestureTarget.Coordinates -> coordinateGesture(target.x, target.y) { x, y ->
+            device.swipe(x, y, x, y, LONG_PRESS_SWIPE_STEPS)
+        }
+        is NativeGestureTarget.Element -> elementGesture(target) { it.click(LONG_PRESS_DURATION_MS) }
+    }
+
+    fun doubleTap(request: NativeGestureRequest): OperationResult = when (val target = request.target) {
+        is NativeGestureTarget.Coordinates -> coordinateGesture(target.x, target.y) { x, y ->
+            performComposedDoubleTap(
+                tap = { device.click(x, y) },
+                sleepMs = SystemClock::sleep,
+            )
+        }
+        is NativeGestureTarget.Element -> elementGesture(target) {
+            val center = it.visibleBounds
+            val success = performComposedDoubleTap(
+                tap = { device.click(center.centerX(), center.centerY()) },
+                sleepMs = SystemClock::sleep,
+            )
+            check(success) {
+                "Native element double-tap failed"
+            }
+        }
+    }
+
+    fun targetedInput(request: TargetedInputRequest): OperationResult {
+        val selectors = requireNotNull(request.selectors)
+        val timeoutMs = requireNotNull(request.timeoutMs)
+        val selector = selectorBuilder(selectors)
+            ?: return OperationResult(success = false, error = "No selector provided")
+        val result = waitForTargetFocusAndInput(
+            timeoutMs = timeoutMs.toLong(),
+            description = selectorDescription(selectors),
+            clock = ElementInteractionClock(SystemClock::elapsedRealtime, SystemClock::sleep),
+            operation = TargetedInputOperation(
+                lookup = { findCandidate(selector, requireEditable = true) },
+                tap = UiObject2::click,
+                hasEditableFocus = UiObject2::isFocused,
+                input = { inputFocusedText(request.text) },
+            ),
+        )
+        return OperationResult(success = result.success, error = result.error)
+    }
+
+    private fun inputFocusedText(text: String): ElementTapWaitResult {
+        val focusedNode = automation.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            ?: return ElementTapWaitResult(
+                success = false,
+                error = "Focused editable element is unavailable",
+            )
+        return try {
+            if (!focusedNode.isEditable || !focusedNode.isEnabled) {
+                ElementTapWaitResult(success = false, error = "Focused element is not editable and enabled")
+            } else {
+                val arguments = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+                }
+                val accepted = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+                ElementTapWaitResult(
+                    success = accepted,
+                    error = if (accepted) null else "Focused element rejected the text-input action",
+                )
+            }
+        } finally {
+            focusedNode.recycle()
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun coordinateGesture(x: Int, y: Int, gesture: (Int, Int) -> Boolean): OperationResult {
+        if (!displayRect.contains(x, y)) {
+            return OperationResult(success = false, error = "Coordinates are outside the display")
+        }
+        return try {
+            val success = gesture(x, y)
+            OperationResult(
+                success = success,
+                error = if (success) null else "Native coordinate gesture failed",
+            )
+        } catch (error: RuntimeException) {
+            OperationResult(success = false, error = error.message)
+        }
+    }
+
+    private fun elementGesture(
+        target: NativeGestureTarget.Element,
+        gesture: (UiObject2) -> Unit,
+    ): OperationResult {
+        val selector = selectorBuilder(target.selectors)
+            ?: return OperationResult(success = false, error = "No selector provided")
+        val result = waitForTargetAndInteract(
+            timeoutMs = target.timeoutMs.toLong(),
+            description = selectorDescription(target.selectors),
+            clock = ElementInteractionClock(SystemClock::elapsedRealtime, SystemClock::sleep),
+            lookup = { findCandidate(selector) },
+            interact = gesture,
+        )
+        return OperationResult(success = result.success, error = result.error)
+    }
+
+    private fun findCandidate(
+        selector: BySelector,
+        requireEditable: Boolean = false,
+    ): ElementInteractionCandidate<UiObject2>? = device.findObject(selector)?.let { element ->
+        val bounds = element.visibleBounds
+        val visible = bounds.width() > 0 && bounds.height() > 0 && Rect.intersects(bounds, displayRect)
+        val ready = visible && element.isEnabled && (
+            !requireEditable || (element.isFocusable && element.className.isEditableControlClass())
+        )
+        ElementInteractionCandidate(
+            element,
+            if (ready) ElementInteractionReadiness.READY else ElementInteractionReadiness.BLOCKED,
+        )
+    }
+}
+
+private fun String?.isEditableControlClass(): Boolean = this?.let { className ->
+    className.endsWith("EditText") || className.endsWith("AutoCompleteTextView")
+} == true

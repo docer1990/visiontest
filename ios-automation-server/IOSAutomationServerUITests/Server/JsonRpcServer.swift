@@ -130,6 +130,19 @@ class JsonRpcServer {
             let request = try ElementTapRequest(params: params)
             return bridge.tapOnElement(request).toDictionary()
 
+        case "ui.longPress":
+            return bridge.longPress(try GestureRequest(params: params)).toDictionary()
+
+        case "ui.doubleTap":
+            return bridge.doubleTap(try GestureRequest(params: params)).toDictionary()
+
+        case "ui.dismissKeyboard":
+            let bundleId = try validatedBundleId(params)
+            return bridge.dismissKeyboard(bundleId: bundleId).toDictionary()
+
+        case "ui.handleAlert":
+            return bridge.handleAlert(try HandleAlertRequest(params: params)).toDictionary()
+
         // Find element
         case "ui.findElement":
             let text = params?["text"] as? String
@@ -181,11 +194,7 @@ class JsonRpcServer {
 
         // Input text
         case "ui.inputText":
-            guard let text = params?["text"] as? String else {
-                throw InvalidParamsException("Missing 'text' parameter")
-            }
-            let inputBundleId = params?["bundleId"] as? String
-            return bridge.inputText(text: text, bundleId: inputBundleId).toDictionary()
+            return bridge.inputText(try TargetedInputRequest(params: params)).toDictionary()
 
         case "ui.swipeOnElement":
             let request = try ElementSwipeRequest(params: params)
@@ -216,6 +225,15 @@ class JsonRpcServer {
     }
 
     // MARK: - Helpers
+
+    private func validatedBundleId(_ params: [String: Any]?) throws -> String? {
+        guard let raw = params?["bundleId"] else { return nil }
+        guard let bundleId = raw as? String,
+              !bundleId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw InvalidParamsException("'bundleId' must be a nonblank string")
+        }
+        return bundleId
+    }
 
     /// Executes a block synchronously on the main thread.
     /// XCUITest APIs (XCUIDevice, XCUIElement, etc.) must be called from the main thread.

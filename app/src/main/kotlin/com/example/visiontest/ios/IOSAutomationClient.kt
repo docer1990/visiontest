@@ -100,12 +100,57 @@ class IOSAutomationClient(
      *
      * @param text The text to type.
      * @param bundleId Bundle ID of the target app. When provided, text is typed into that app;
-     *                 when null, the server targets Springboard (which may fail if no focused element is found).
+     *                 when null, the server resolves the foreground application.
      */
-    suspend fun inputText(text: String, bundleId: String? = null): String {
+    @Deprecated(
+        message = "Use inputText with selectors and timeoutMs",
+        level = DeprecationLevel.HIDDEN,
+    )
+    suspend fun inputText(text: String, bundleId: String? = null): String =
+        inputText(text, bundleId, selectors = null, timeoutMs = null)
+
+    suspend fun inputText(
+        text: String,
+        bundleId: String? = null,
+        selectors: IOSElementSelectors? = null,
+        timeoutMs: Int? = null,
+    ): String {
         val params = mutableMapOf<String, Any>("text" to text)
+        (bundleId ?: selectors?.bundleId)?.let { params["bundleId"] = it }
+        selectors?.text?.let { params["targetText"] = it }
+        selectors?.textContains?.let { params["targetTextContains"] = it }
+        selectors?.identifier?.let { params["targetResourceId"] = it }
+        selectors?.elementType?.let { params["targetClassName"] = it }
+        selectors?.label?.let { params["targetContentDescription"] = it }
+        timeoutMs?.let { params["timeoutMs"] = it }
+        return if (timeoutMs == null) sendRequest("ui.inputText", params)
+        else sendWaitingRequest("ui.inputText", params, timeoutMs)
+    }
+
+    suspend fun longPress(x: Int, y: Int): String =
+        sendRequest("ui.longPress", mapOf("x" to x, "y" to y))
+
+    suspend fun longPress(selectors: IOSElementSelectors, timeoutMs: Int): String =
+        sendElementInteractionRequest("ui.longPress", selectors, timeoutMs)
+
+    suspend fun doubleTap(x: Int, y: Int): String =
+        sendRequest("ui.doubleTap", mapOf("x" to x, "y" to y))
+
+    suspend fun doubleTap(selectors: IOSElementSelectors, timeoutMs: Int): String =
+        sendElementInteractionRequest("ui.doubleTap", selectors, timeoutMs)
+
+    suspend fun dismissKeyboard(bundleId: String? = null): String =
+        sendRequest("ui.dismissKeyboard", bundleId?.let { mapOf("bundleId" to it) })
+
+    suspend fun handleAlert(
+        action: String,
+        buttonLabel: String? = null,
+        bundleId: String? = null,
+    ): String {
+        val params = mutableMapOf<String, Any>("action" to action)
+        buttonLabel?.let { params["buttonLabel"] = it }
         bundleId?.let { params["bundleId"] = it }
-        return sendRequest("ui.inputText", params)
+        return sendRequest("ui.handleAlert", params)
     }
 
     /**
@@ -168,6 +213,14 @@ class IOSAutomationClient(
 
     /** Taps an actionable element, waiting up to [timeoutMs] in the native server. */
     suspend fun tapOnElement(selectors: IOSElementSelectors, timeoutMs: Int): String {
+        return sendElementInteractionRequest("ui.tapOnElement", selectors, timeoutMs)
+    }
+
+    private suspend fun sendElementInteractionRequest(
+        method: String,
+        selectors: IOSElementSelectors,
+        timeoutMs: Int,
+    ): String {
         val params = mutableMapOf<String, Any>("timeoutMs" to timeoutMs)
         selectors.text?.let { params["text"] = it }
         selectors.textContains?.let { params["textContains"] = it }
@@ -176,8 +229,15 @@ class IOSAutomationClient(
         selectors.label?.let { params["contentDescription"] = it }
         selectors.bundleId?.let { params["bundleId"] = it }
 
-        return sendRequest(
-            method = "ui.tapOnElement",
+        return sendWaitingRequest(method, params, timeoutMs)
+    }
+
+    private suspend fun sendWaitingRequest(
+        method: String,
+        params: Map<String, Any>,
+        timeoutMs: Int,
+    ): String = sendRequest(
+            method = method,
             params = params,
             id = 1,
             readTimeoutMs = elementTapReadTimeoutMs(
@@ -186,5 +246,4 @@ class IOSAutomationClient(
                 graceMs = IOSAutomationConfig.ELEMENT_TAP_TRANSPORT_GRACE_MS,
             ),
         )
-    }
 }

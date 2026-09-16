@@ -128,6 +128,17 @@ class ToolDslTest {
         assertTrue(ex.message!!.contains("must be true or false"))
     }
 
+    @Test
+    fun `rejectArguments throws when an unsupported argument is present`() {
+        val req = request("bundleId" to "app.id")
+
+        val ex = assertFailsWith<IllegalArgumentException> {
+            req.rejectArguments(setOf("bundleId"), "Android interactions do not support bundleId")
+        }
+
+        assertEquals("Android interactions do not support bundleId", ex.message)
+    }
+
     // --- requireDirection ---
 
     @Test

@@ -170,6 +170,177 @@ private func strictInteger(_ value: Any) -> Int? {
     }
 }
 
+struct ElementSelectors {
+    let text: String?
+    let textContains: String?
+    let identifier: String?
+    let elementType: String?
+    let label: String?
+
+    init(params: [String: Any]?, prefix: String = "") throws {
+        text = try validatedString(params, "\(prefix)Text".lowercasingFirstCharacter(if: prefix.isEmpty))
+        textContains = try validatedString(params, "\(prefix)TextContains".lowercasingFirstCharacter(if: prefix.isEmpty))
+        identifier = try validatedString(params, "\(prefix)ResourceId".lowercasingFirstCharacter(if: prefix.isEmpty))
+        elementType = try validatedString(params, "\(prefix)ClassName".lowercasingFirstCharacter(if: prefix.isEmpty))
+        label = try validatedString(params, "\(prefix)ContentDescription".lowercasingFirstCharacter(if: prefix.isEmpty))
+    }
+
+    var hasAny: Bool {
+        [text, textContains, identifier, elementType, label].contains { $0 != nil }
+    }
+
+    var description: String {
+        if let text { return "text='\(text)'" }
+        if let textContains { return "textContains='\(textContains)'" }
+        if let identifier { return "resourceId='\(identifier)'" }
+        if let elementType { return "className='\(elementType)'" }
+        return "contentDescription='\(label ?? "")'"
+    }
+}
+
+private extension String {
+    func lowercasingFirstCharacter(if condition: Bool) -> String {
+        guard condition, let first else { return self }
+        return first.lowercased() + dropFirst()
+    }
+}
+
+enum GestureTarget {
+    case coordinates(CGPoint)
+    case element(ElementSelectors, bundleId: String?, timeoutMs: Int)
+}
+
+struct GestureRequest {
+    static let defaultTimeoutMs = 10_000
+    static let maximumTimeoutMs = 30_000
+
+    let target: GestureTarget
+
+    init(params: [String: Any]?) throws {
+        let selectors = try ElementSelectors(params: params)
+        let bundleId = try validatedString(params, "bundleId")
+        let hasCoordinate = params?["x"] != nil || params?["y"] != nil
+        guard hasCoordinate != selectors.hasAny else {
+            throw InvalidParamsException("Provide exactly one target: coordinates or selectors")
+        }
+        if hasCoordinate {
+            guard let xValue = params?["x"], let yValue = params?["y"],
+                  let x = strictInteger(xValue), let y = strictInteger(yValue), x >= 0, y >= 0 else {
+                throw InvalidParamsException("Both 'x' and 'y' must be nonnegative integers")
+            }
+            guard params?["timeoutMs"] == nil, bundleId == nil else {
+                throw InvalidParamsException("timeoutMs and bundleId are only valid with selectors")
+            }
+            target = .coordinates(CGPoint(x: x, y: y))
+        } else {
+            target = .element(selectors, bundleId: bundleId, timeoutMs: try Self.timeout(params))
+        }
+    }
+
+    static func timeout(_ params: [String: Any]?) throws -> Int {
+        guard let value = params?["timeoutMs"] else { return defaultTimeoutMs }
+        guard let timeout = strictInteger(value), (1...maximumTimeoutMs).contains(timeout) else {
+            throw InvalidParamsException("'timeoutMs' must be an integer between 1 and \(maximumTimeoutMs)")
+        }
+        return timeout
+    }
+}
+
+struct TargetedInputRequest {
+    let text: String
+    let selectors: ElementSelectors?
+    let bundleId: String?
+    let timeoutMs: Int?
+
+    init(params: [String: Any]?) throws {
+        guard let text = params?["text"] as? String else {
+            throw InvalidParamsException("'text' must be a string")
+        }
+        self.text = text
+        bundleId = try validatedString(params, "bundleId")
+        let parsedSelectors = try ElementSelectors(params: params, prefix: "target")
+        selectors = parsedSelectors.hasAny ? parsedSelectors : nil
+        if parsedSelectors.hasAny {
+            timeoutMs = try GestureRequest.timeout(params)
+        } else {
+            guard params?["timeoutMs"] == nil else {
+                throw InvalidParamsException("'timeoutMs' is only valid with target selectors")
+            }
+            timeoutMs = nil
+        }
+    }
+}
+
+enum AlertAction: String {
+    case accept
+    case dismiss
+}
+
+struct HandleAlertRequest {
+    let action: AlertAction
+    let buttonLabel: String?
+    let bundleId: String?
+
+    init(params: [String: Any]?) throws {
+        guard let rawAction = params?["action"] as? String,
+              let action = AlertAction(rawValue: rawAction.lowercased()) else {
+            throw InvalidParamsException("'action' must be accept or dismiss")
+        }
+        self.action = action
+        buttonLabel = try validatedString(params, "buttonLabel")
+        bundleId = try validatedString(params, "bundleId")
+    }
+}
+
+struct AlertButton {
+    let label: String
+    let actionable: Bool
+}
+
+func selectInteractionTarget<T>(
+    explicit: T?,
+    discovered: @autoclosure () -> T?,
+    cached: @autoclosure () -> T?,
+    system: @autoclosure () -> T
+) -> T {
+    explicit ?? discovered() ?? cached() ?? system()
+}
+
+enum AlertSource: Equatable {
+    case application
+    case system
+}
+
+func selectAlertSource(appExists: Bool, systemExists: Bool) -> AlertSource? {
+    if appExists { return .application }
+    return systemExists ? .system : nil
+}
+
+func selectAlertButtonIndex(_ buttons: [AlertButton], action: AlertAction, label: String?) -> Int? {
+    let actionableIndices = buttons.indices.filter { buttons[$0].actionable }
+    if let label {
+        return actionableIndices.first { buttons[$0].label == label }
+    }
+    return action == .accept ? actionableIndices.last : actionableIndices.first
+}
+
+func alertButtonSelectionFailure(_ buttons: [AlertButton], label: String?) -> String {
+    guard let label else { return "No actionable alert button" }
+    return buttons.contains { $0.label == label }
+        ? "Requested alert button is blocked"
+        : "Requested alert button not found"
+}
+
+func verifyKeyboardDismissal(wasVisible: Bool, isVisible: Bool) -> OperationResult {
+    guard wasVisible else {
+        return OperationResult(success: false, error: "No software keyboard is visible")
+    }
+    guard !isVisible else {
+        return OperationResult(success: false, error: "Software keyboard remained visible")
+    }
+    return OperationResult(success: true, error: nil)
+}
+
 enum ElementTapReadiness {
     case absent
     case blocked
@@ -214,6 +385,57 @@ func performElementTap(
         success: false,
         error: "\(status) after \(request.timeoutMs)ms for \(request.selectorDescription)"
     )
+}
+
+func performTargetedInput(
+    request: TargetedInputRequest,
+    now: () -> TimeInterval,
+    wait: (TimeInterval) -> Void = { RunLoop.current.run(until: Date(timeIntervalSinceNow: $0)) },
+    readiness: () -> ElementTapReadiness,
+    tap: () -> Void,
+    hasFocus: () -> Bool,
+    typeText: () -> Void
+) -> OperationResult {
+    guard let timeoutMs = request.timeoutMs else {
+        typeText()
+        return OperationResult(success: true, error: nil)
+    }
+    let deadline = now() + Double(timeoutMs) / 1_000
+    var observedBlocked = false
+    while true {
+        switch readiness() {
+        case .ready where now() <= deadline:
+            tap()
+            while !hasFocus() {
+                let remaining = deadline - now()
+                guard remaining > 0 else {
+                    return OperationResult(success: false, error: "Element did not acquire editable focus")
+                }
+                wait(min(0.5, remaining))
+            }
+            guard now() <= deadline else {
+                return OperationResult(success: false, error: "Element did not acquire editable focus")
+            }
+            typeText()
+            guard now() <= deadline else {
+                return OperationResult(
+                    success: false,
+                    error: "Text input exceeded the original timeout; input within \(timeoutMs)ms was required: \(request.selectors?.description ?? "target")"
+                )
+            }
+            return OperationResult(success: true, error: nil)
+        case .blocked:
+            observedBlocked = true
+        case .absent, .ready:
+            break
+        }
+        let remaining = deadline - now()
+        guard remaining > 0 else {
+            let status = observedBlocked ? "Element found but not actionable" : "Element not found"
+            return OperationResult(success: false, error: "\(status) within \(timeoutMs)ms")
+        }
+        wait(min(0.5, remaining))
+    }
 }
 
 /// Rejects missing/unusable element frames before dispatching any gesture.

@@ -15,3 +15,5 @@ Technical Decisions (TDs) preserve the rationale for consequential architectural
 | [TD-009](TD-009-separate-repository-guidance-from-distributed-skill.md) | Separate repository guidance from the distributed skill | Accepted |
 | [TD-010](TD-010-keep-wait-and-tap-atomic-in-native-servers.md) | Keep wait and tap atomic in native servers | Accepted |
 | [TD-011](TD-011-preserve-returned-rpc-errors-in-cli-json.md) | Preserve returned RPC errors in CLI JSON | Accepted |
+| [TD-012](TD-012-use-one-command-per-gesture-with-explicit-targeting.md) | Use one command per gesture with explicit targeting | Accepted |
+| [TD-013](TD-013-resolve-the-active-ios-app-through-xctest-accessibility.md) | Resolve the active iOS app through XCTest accessibility | Accepted |

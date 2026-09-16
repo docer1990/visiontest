@@ -3,6 +3,152 @@ import CoreGraphics
 
 final class HelpersTests: XCTestCase {
 
+    func testInteractionTargetPriorityAndFallback() {
+        XCTAssertEqual(
+            selectInteractionTarget(explicit: "explicit", discovered: "active", cached: "cached", system: "system"),
+            "explicit"
+        )
+        XCTAssertEqual(
+            selectInteractionTarget(explicit: nil, discovered: "active", cached: "cached", system: "system"),
+            "active"
+        )
+        XCTAssertEqual(
+            selectInteractionTarget(explicit: nil, discovered: nil, cached: "cached", system: "system"),
+            "cached"
+        )
+        XCTAssertEqual(
+            selectInteractionTarget(explicit: nil, discovered: nil, cached: nil, system: "system"),
+            "system"
+        )
+    }
+
+    func testAlertSourcePrefersAppThenFallsBackToSystem() {
+        XCTAssertEqual(selectAlertSource(appExists: true, systemExists: true), .application)
+        XCTAssertEqual(selectAlertSource(appExists: false, systemExists: true), .system)
+        XCTAssertNil(selectAlertSource(appExists: false, systemExists: false))
+    }
+
+    func testGestureRequestAcceptsCoordinatesOrSelectorsAndRejectsMixedTargets() throws {
+        let coordinates = try GestureRequest(params: ["x": 12, "y": 34])
+        guard case .coordinates(let point) = coordinates.target else {
+            return XCTFail("Expected coordinate target")
+        }
+        XCTAssertEqual(point, CGPoint(x: 12, y: 34))
+
+        let element = try GestureRequest(params: ["resourceId": "menu", "timeoutMs": 1_500])
+        guard case .element(let selectors, let bundleId, let timeoutMs) = element.target else {
+            return XCTFail("Expected element target")
+        }
+        XCTAssertEqual(selectors.identifier, "menu")
+        XCTAssertNil(bundleId)
+        XCTAssertEqual(timeoutMs, 1_500)
+
+        XCTAssertThrowsError(try GestureRequest(params: [:]))
+        XCTAssertThrowsError(try GestureRequest(params: ["x": 1]))
+        XCTAssertThrowsError(try GestureRequest(params: ["x": 1, "y": 2, "text": "Menu"]))
+        XCTAssertThrowsError(try GestureRequest(params: ["x": 1.0, "y": 2]))
+        XCTAssertThrowsError(try GestureRequest(params: ["text": "Menu", "timeoutMs": 30_001]))
+    }
+
+    func testTargetedInputUsesPrefixedSelectorsAndRejectsTimeoutWithoutTarget() throws {
+        let focused = try TargetedInputRequest(params: ["text": "hello", "bundleId": "app.id"])
+        XCTAssertNil(focused.selectors)
+        XCTAssertNil(focused.timeoutMs)
+
+        let targeted = try TargetedInputRequest(params: [
+            "text": "hello", "targetTextContains": "Email", "timeoutMs": 2_000
+        ])
+        XCTAssertEqual(targeted.selectors?.textContains, "Email")
+        XCTAssertEqual(targeted.timeoutMs, 2_000)
+        XCTAssertThrowsError(try TargetedInputRequest(params: ["text": "hello", "timeoutMs": 500]))
+        XCTAssertThrowsError(try TargetedInputRequest(params: ["text": "hello", "targetText": " "]))
+    }
+
+    func testAlertRequestAndFallbackButtonSelection() throws {
+        let request = try HandleAlertRequest(params: [
+            "action": "accept", "buttonLabel": "Allow", "bundleId": "app.id"
+        ])
+        XCTAssertEqual(request.action, .accept)
+        XCTAssertEqual(request.buttonLabel, "Allow")
+        XCTAssertThrowsError(try HandleAlertRequest(params: ["action": "later"]))
+        XCTAssertThrowsError(try HandleAlertRequest(params: ["action": "dismiss", "bundleId": " "]))
+
+        let buttons = [
+            AlertButton(label: "Allow", actionable: false),
+            AlertButton(label: "Allow", actionable: true),
+            AlertButton(label: "More Info", actionable: true)
+        ]
+        XCTAssertEqual(selectAlertButtonIndex(buttons, action: .accept, label: "Allow"), 1)
+        XCTAssertEqual(selectAlertButtonIndex(buttons, action: .accept, label: nil), 2)
+        XCTAssertEqual(selectAlertButtonIndex(buttons, action: .dismiss, label: nil), 1)
+        XCTAssertNil(selectAlertButtonIndex(buttons, action: .accept, label: "Missing"))
+
+        let blockedButtons = [AlertButton(label: "Allow", actionable: false)]
+        XCTAssertNil(selectAlertButtonIndex(blockedButtons, action: .accept, label: "Allow"))
+        XCTAssertEqual(
+            alertButtonSelectionFailure(blockedButtons, label: "Allow"),
+            "Requested alert button is blocked"
+        )
+        XCTAssertEqual(
+            alertButtonSelectionFailure(buttons, label: "Missing"),
+            "Requested alert button not found"
+        )
+    }
+
+    func testTargetedInputWaitsForReadinessAndFocusWithinOneDeadline() throws {
+        let request = try TargetedInputRequest(params: [
+            "text": "hello", "targetText": "Email", "timeoutMs": 1_500
+        ])
+        var clock: TimeInterval = 0
+        var readiness: [ElementTapReadiness] = [.absent, .ready]
+        var taps = 0
+        var focusChecks = 0
+        var typed = 0
+        let result = performTargetedInput(
+            request: request,
+            now: { clock },
+            wait: { clock += $0 },
+            readiness: { readiness.removeFirst() },
+            tap: { taps += 1 },
+            hasFocus: { focusChecks += 1; return focusChecks > 1 },
+            typeText: { typed += 1 }
+        )
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(clock, 1.0)
+        XCTAssertEqual(taps, 1)
+        XCTAssertEqual(typed, 1)
+    }
+
+    func testTargetedInputFailsWhenTypingExceedsOriginalDeadline() throws {
+        let request = try TargetedInputRequest(params: [
+            "text": "hello", "targetText": "Email", "timeoutMs": 1_000
+        ])
+        var clock: TimeInterval = 0
+        var typed = 0
+        let result = performTargetedInput(
+            request: request,
+            now: { clock },
+            readiness: { .ready },
+            tap: {},
+            hasFocus: { true },
+            typeText: {
+                typed += 1
+                clock += 1.001
+            }
+        )
+
+        XCTAssertFalse(result.success)
+        XCTAssertTrue(result.error?.contains("input within 1000ms") == true)
+        XCTAssertEqual(typed, 1)
+        XCTAssertEqual(clock, 1.001)
+    }
+
+    func testKeyboardDismissalRequiresVisibleKeyboardToDisappear() {
+        XCTAssertFalse(verifyKeyboardDismissal(wasVisible: false, isVisible: false).success)
+        XCTAssertTrue(verifyKeyboardDismissal(wasVisible: true, isVisible: false).success)
+        XCTAssertFalse(verifyKeyboardDismissal(wasVisible: true, isVisible: true).success)
+    }
+
     func testElementTapRequestValidatesSelectorsBundleAndStrictTimeoutBeforeLookup() throws {
         let invalid: [[String: Any]] = [
             [:],

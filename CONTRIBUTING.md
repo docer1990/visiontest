@@ -53,7 +53,7 @@ The `run-visiontest.sh` launcher handles `JAVA_HOME`, `ANDROID_HOME`, and APK pa
 
 VisionTest has three components:
 
-1. **MCP Server and CLI** (`app/`) — Kotlin/JVM application that exposes mobile automation through Model Context Protocol (stdio transport) and 23 CLI subcommands
+1. **MCP Server and CLI** (`app/`) — Kotlin/JVM application that exposes mobile automation through Model Context Protocol (stdio transport) and 29 CLI subcommands
 2. **Android Automation Server** (`automation-server/`) — Native Android app with UIAutomator API access via JSON-RPC, using the instrumentation pattern (like Maestro/Appium)
 3. **iOS Automation Server** (`ios-automation-server/`) — Native iOS app with XCUITest access via JSON-RPC
 
@@ -66,7 +66,7 @@ visiontest/
 │       ├── Main.kt                   # Entry point (MCP server or CLI dispatch)
 │       ├── ToolFactory.kt            # Thin coordinator wiring registrars
 │       ├── cli/
-│       │   ├── VisionTestCli.kt      # Root Clikt command with 23 subcommands
+│       │   ├── VisionTestCli.kt      # Root Clikt command with 29 subcommands
 │       │   ├── CliErrorHandler.kt    # Exit-code mapping + runCliCommand
 │       │   ├── CliExit.kt            # CliExit exception + ExitCode enum
 │       │   ├── PlatformOption.kt     # Platform enum + --platform option helpers
@@ -128,7 +128,7 @@ visiontest/
 └── build.gradle.kts                  # Root build config
 ```
 
-`VisionTestCli` registers 23 subcommands. The authoritative command and argument
+`VisionTestCli` registers 29 subcommands. The authoritative command and argument
 contract is [docs/agentico/specs/cli.md](docs/agentico/specs/cli.md); use
 `visiontest --help` to inspect the built artifact. CLI adapters delegate to the
 same registrar operations exposed through MCP.
@@ -172,6 +172,8 @@ Both automation servers expose a JSON-RPC 2.0 API. Most users interact through t
 | `ui.dumpHierarchy` | - | Yes | Yes |
 | `ui.tapByCoordinates` | `x`, `y` | Yes | Yes |
 | `ui.tapOnElement` | `text`, `textContains`, `resourceId`, `className`, `contentDescription`, `timeoutMs`; iOS optional `bundleId` app scope. Waits natively, then directly taps an actionable match. | Yes | Yes |
+| `ui.longPress` | Exactly one target: `x` and `y`, or selectors with optional `timeoutMs`; iOS selectors accept `bundleId` | Yes | Yes |
+| `ui.doubleTap` | Exactly one target: `x` and `y`, or selectors with optional `timeoutMs`; iOS selectors accept `bundleId` | Yes | Yes |
 | `ui.swipe` | `startX`, `startY`, `endX`, `endY`, `steps` | Yes | Yes |
 | `ui.swipeByDirection` | `direction`, `distance`, `speed` | Yes | Yes |
 | `ui.swipeOnElement` | `direction`, selector, `speed` | Yes | Yes |
@@ -179,7 +181,11 @@ Both automation servers expose a JSON-RPC 2.0 API. Most users interact through t
 | `ui.getInteractiveElements` | `includeDisabled` | Yes | Yes |
 | `ui.screenshot` | - | Yes | Yes |
 | `device.getInfo` | - | Yes | Yes |
-| `ui.inputText` | `text` | Yes | Yes |
+| `ui.inputText` | `text`; optional `target*` selectors and selector `timeoutMs`; iOS optional `bundleId` | Yes | Yes |
+| `ui.pressKey` | Exactly one nonnegative `keyCode` or named `action` | Yes | No |
+| `ui.clearText` | - | Yes | No |
+| `ui.dismissKeyboard` | Optional `bundleId` | No | Yes |
+| `ui.handleAlert` | `action`; optional `buttonLabel` and `bundleId` | No | Yes |
 | `device.pressBack` | - | Yes | No |
 | `device.pressHome` | - | Yes | Yes |
 
@@ -227,11 +233,15 @@ curl -X POST http://localhost:9009/jsonrpc \
 | `wait_until_gone` | Poll until an element disappears (spinners, dialogs) |
 | `android_tap_by_coordinates` | Tap at screen coordinates |
 | `tap_on_element` | Wait for a visible, enabled selected element and tap it directly |
+| `android_long_press` | Long-press coordinates or a selected element |
+| `android_double_tap` | Double-tap coordinates or a selected element |
 | `android_swipe` | Swipe by coordinates |
 | `android_swipe_direction` | Swipe by direction with distance and speed |
 | `android_swipe_on_element` | Swipe on a specific element |
 | `android_get_device_info` | Get display size, rotation, SDK version |
-| `android_input_text` | Type text into the currently focused element |
+| `android_input_text` | Type into the focused element or an optional selector target |
+| `android_press_key` | Press a key by nonnegative key code or named action |
+| `android_clear_text` | Clear the currently focused editable element |
 | `android_press_back` | Press the back button |
 | `android_press_home` | Press the home button |
 | `android_screenshot` | Capture a PNG and save it on the host |
@@ -249,11 +259,15 @@ curl -X POST http://localhost:9009/jsonrpc \
 | `ios_wait_until_gone` | Poll until an element disappears (spinners, sheets) |
 | `ios_tap_by_coordinates` | Tap at screen coordinates |
 | `ios_tap_on_element` | Wait for an existing, enabled, hittable selected element and tap it directly |
+| `ios_long_press` | Long-press coordinates or a selected element |
+| `ios_double_tap` | Double-tap coordinates or a selected element |
 | `ios_swipe` | Swipe by coordinates |
 | `ios_swipe_direction` | Swipe by direction with distance and speed |
 | `ios_swipe_on_element` | Swipe inside a selected element |
 | `ios_get_device_info` | Get display size, rotation, iOS version |
-| `ios_input_text` | Type text into the currently focused element |
+| `ios_input_text` | Type into the focused element or an optional selector target |
+| `ios_dismiss_keyboard` | Dismiss a visible software keyboard and verify it disappears |
+| `ios_handle_alert` | Accept or dismiss an app or system alert |
 | `ios_press_home` | Press home button |
 | `ios_stop_automation_server` | Stop the running XCUITest server |
 | `ios_screenshot` | Capture a PNG and save it on the host |

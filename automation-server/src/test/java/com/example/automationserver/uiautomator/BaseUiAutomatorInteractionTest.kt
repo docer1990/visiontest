@@ -217,7 +217,9 @@ class BaseUiAutomatorInteractionTest {
         verify(exactly = 1) { focusedNode.recycle() }
     }
 
-    private fun readyElement(className: String = "android.widget.EditText"): UiObject2 = mockk<UiObject2>().also { element ->
+    private fun readyElement(
+        className: String = "android.widget.EditText",
+    ): UiObject2 = mockk<UiObject2>().also { element ->
         every { element.isEnabled } returns true
         every { element.visibleBounds } returns Rect(100, 100, 200, 200)
         every { element.className } returns className

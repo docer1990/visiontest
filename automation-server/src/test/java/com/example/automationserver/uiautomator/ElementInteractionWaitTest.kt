@@ -161,7 +161,10 @@ class ElementInteractionWaitTest {
     @Test
     fun `native input failure after deadline remains unchanged`() {
         val clock = FakeClock()
-        val nativeFailure = ElementTapWaitResult(success = false, error = "Focused element rejected the text-input action")
+        val nativeFailure = ElementTapWaitResult(
+            success = false,
+            error = "Focused element rejected the text-input action",
+        )
 
         val result = waitForTargetFocusAndInput(
             timeoutMs = 1_000,

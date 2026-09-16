@@ -74,12 +74,25 @@ final class HelpersTests: XCTestCase {
         XCTAssertThrowsError(try HandleAlertRequest(params: ["action": "dismiss", "bundleId": " "]))
 
         let buttons = [
-            AlertButton(label: "Don't Allow", actionable: true),
-            AlertButton(label: "Allow", actionable: true)
+            AlertButton(label: "Allow", actionable: false),
+            AlertButton(label: "Allow", actionable: true),
+            AlertButton(label: "More Info", actionable: true)
         ]
-        XCTAssertEqual(selectAlertButton(buttons, action: .accept, label: nil)?.label, "Allow")
-        XCTAssertEqual(selectAlertButton(buttons, action: .dismiss, label: nil)?.label, "Don't Allow")
-        XCTAssertNil(selectAlertButton(buttons, action: .accept, label: "Missing"))
+        XCTAssertEqual(selectAlertButtonIndex(buttons, action: .accept, label: "Allow"), 1)
+        XCTAssertEqual(selectAlertButtonIndex(buttons, action: .accept, label: nil), 2)
+        XCTAssertEqual(selectAlertButtonIndex(buttons, action: .dismiss, label: nil), 1)
+        XCTAssertNil(selectAlertButtonIndex(buttons, action: .accept, label: "Missing"))
+
+        let blockedButtons = [AlertButton(label: "Allow", actionable: false)]
+        XCTAssertNil(selectAlertButtonIndex(blockedButtons, action: .accept, label: "Allow"))
+        XCTAssertEqual(
+            alertButtonSelectionFailure(blockedButtons, label: "Allow"),
+            "Requested alert button is blocked"
+        )
+        XCTAssertEqual(
+            alertButtonSelectionFailure(buttons, label: "Missing"),
+            "Requested alert button not found"
+        )
     }
 
     func testTargetedInputWaitsForReadinessAndFocusWithinOneDeadline() throws {
@@ -104,6 +117,30 @@ final class HelpersTests: XCTestCase {
         XCTAssertEqual(clock, 1.0)
         XCTAssertEqual(taps, 1)
         XCTAssertEqual(typed, 1)
+    }
+
+    func testTargetedInputFailsWhenTypingExceedsOriginalDeadline() throws {
+        let request = try TargetedInputRequest(params: [
+            "text": "hello", "targetText": "Email", "timeoutMs": 1_000
+        ])
+        var clock: TimeInterval = 0
+        var typed = 0
+        let result = performTargetedInput(
+            request: request,
+            now: { clock },
+            readiness: { .ready },
+            tap: {},
+            hasFocus: { true },
+            typeText: {
+                typed += 1
+                clock += 1.001
+            }
+        )
+
+        XCTAssertFalse(result.success)
+        XCTAssertTrue(result.error?.contains("input within 1000ms") == true)
+        XCTAssertEqual(typed, 1)
+        XCTAssertEqual(clock, 1.001)
     }
 
     func testKeyboardDismissalRequiresVisibleKeyboardToDisappear() {

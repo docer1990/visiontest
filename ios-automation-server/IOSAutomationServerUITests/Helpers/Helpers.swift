@@ -316,10 +316,19 @@ func selectAlertSource(appExists: Bool, systemExists: Bool) -> AlertSource? {
     return systemExists ? .system : nil
 }
 
-func selectAlertButton(_ buttons: [AlertButton], action: AlertAction, label: String?) -> AlertButton? {
-    let actionable = buttons.filter(\.actionable)
-    if let label { return actionable.first { $0.label == label } }
-    return action == .accept ? actionable.last : actionable.first
+func selectAlertButtonIndex(_ buttons: [AlertButton], action: AlertAction, label: String?) -> Int? {
+    let actionableIndices = buttons.indices.filter { buttons[$0].actionable }
+    if let label {
+        return actionableIndices.first { buttons[$0].label == label }
+    }
+    return action == .accept ? actionableIndices.last : actionableIndices.first
+}
+
+func alertButtonSelectionFailure(_ buttons: [AlertButton], label: String?) -> String {
+    guard let label else { return "No actionable alert button" }
+    return buttons.contains { $0.label == label }
+        ? "Requested alert button is blocked"
+        : "Requested alert button not found"
 }
 
 func verifyKeyboardDismissal(wasVisible: Bool, isVisible: Bool) -> OperationResult {
@@ -408,6 +417,12 @@ func performTargetedInput(
                 return OperationResult(success: false, error: "Element did not acquire editable focus")
             }
             typeText()
+            guard now() <= deadline else {
+                return OperationResult(
+                    success: false,
+                    error: "Text input exceeded the original timeout; input within \(timeoutMs)ms was required: \(request.selectors?.description ?? "target")"
+                )
+            }
             return OperationResult(success: true, error: nil)
         case .blocked:
             observedBlocked = true

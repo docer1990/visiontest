@@ -434,20 +434,15 @@ class XCUITestBridge {
         let descriptions = buttons.map {
             AlertButton(label: $0.label, actionable: $0.exists && $0.isEnabled && $0.isHittable)
         }
-        if let label = request.buttonLabel,
-           let requested = descriptions.first(where: { $0.label == label }),
-           !requested.actionable {
-            return OperationResult(success: false, error: "Requested alert button is blocked")
+        guard let selectedIndex = selectAlertButtonIndex(descriptions, action: request.action, label: request.buttonLabel) else {
+            return OperationResult(
+                success: false,
+                error: alertButtonSelectionFailure(descriptions, label: request.buttonLabel)
+            )
         }
-        guard let selected = selectAlertButton(descriptions, action: request.action, label: request.buttonLabel) else {
-            let error = request.buttonLabel == nil ? "No actionable alert button" : "Requested alert button not found"
-            return OperationResult(success: false, error: error)
-        }
-        guard let button = buttons.first(where: { $0.label == selected.label && $0.isEnabled && $0.isHittable }) else {
-            return OperationResult(success: false, error: "Requested alert button is blocked")
-        }
+        let button = buttons[selectedIndex]
         button.tap()
-        return OperationResult(success: true, error: nil, message: "Tapped alert button '\(selected.label)'")
+        return OperationResult(success: true, error: nil, message: "Tapped alert button '\(button.label)'")
     }
 
     private func lookupElement(selectors: ElementSelectors, bundleId: String?) -> XCUIElement? {

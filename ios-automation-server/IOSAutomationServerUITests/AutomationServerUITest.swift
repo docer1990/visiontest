@@ -13,6 +13,22 @@ import XCTest
 /// ```
 class AutomationServerUITest: XCTestCase {
 
+    func testAlertResultSurvivesDismissal() throws {
+        let app = XCUIApplication(bundleIdentifier: "com.example.IOSAutomationServer")
+        app.launchArguments = ["--review-alert"]
+        app.launch()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
+        let request = try HandleAlertRequest(params: [
+            "action": "accept", "buttonLabel": "Accept fixture", "bundleId": "com.example.IOSAutomationServer",
+        ])
+
+        let result = XCUITestBridge().handleAlert(request)
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.message, "Tapped alert button 'Accept fixture'")
+        XCTAssertFalse(app.alerts.firstMatch.exists)
+    }
+
     func testSelectorGestureWithoutBundleIdUsesForegroundApplication() throws {
         let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
         safari.activate()

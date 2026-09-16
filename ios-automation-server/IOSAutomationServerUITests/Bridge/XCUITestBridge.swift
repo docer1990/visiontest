@@ -442,11 +442,11 @@ class XCUITestBridge {
         }
         let button = buttons[selectedIndex]
         button.tap()
-        return OperationResult(success: true, error: nil, message: "Tapped alert button '\(button.label)'")
-    }
-
-    private func lookupElement(selectors: ElementSelectors, bundleId: String?) -> XCUIElement? {
-        lookupElement(selectors: selectors, target: queryTarget(bundleId: bundleId))
+        return OperationResult(
+            success: true,
+            error: nil,
+            message: "Tapped alert button '\(descriptions[selectedIndex].label)'"
+        )
     }
 
     private func lookupElement(selectors: ElementSelectors, target: XCUIApplication) -> XCUIElement? {

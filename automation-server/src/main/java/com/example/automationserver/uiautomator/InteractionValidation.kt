@@ -49,7 +49,14 @@ fun parseKeyRequest(params: JsonObject?): Int {
     }
 }
 
+fun requireNoParams(params: JsonObject?, method: String) {
+    require(params == null || params.entrySet().isEmpty()) {
+        "'$method' does not accept parameters"
+    }
+}
+
 fun parseGestureRequest(params: JsonObject?): NativeGestureRequest {
+    require(params?.get("bundleId") == null) { "Android interactions do not support bundleId" }
     val xValue = params?.get("x")
     val yValue = params?.get("y")
     val selectors = parseSelectors(params)
@@ -60,7 +67,7 @@ fun parseGestureRequest(params: JsonObject?): NativeGestureRequest {
     }
     return if (hasCoordinates) {
         require(xValue != null && yValue != null) { "Both 'x' and 'y' are required" }
-        require(params.get("timeoutMs") == null) { "'timeoutMs' is only valid with selectors" }
+        require(params?.get("timeoutMs") == null) { "'timeoutMs' is only valid with selectors" }
         val x = parseStrictInteger(xValue, "x")
         val y = parseStrictInteger(yValue, "y")
         require(x >= 0 && y >= 0) { "Coordinates must be nonnegative" }
@@ -72,6 +79,7 @@ fun parseGestureRequest(params: JsonObject?): NativeGestureRequest {
 }
 
 fun parseTargetedInputRequest(params: JsonObject?): TargetedInputRequest {
+    require(params?.get("bundleId") == null) { "Android interactions do not support bundleId" }
     val text = parseString(params?.get("text"), "text", allowBlank = true)
     val selectors = parseSelectors(params, prefix = "target")
     val timeoutValue = params?.get("timeoutMs")

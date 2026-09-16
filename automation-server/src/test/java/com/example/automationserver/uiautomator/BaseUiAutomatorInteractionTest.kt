@@ -12,6 +12,7 @@ import io.mockk.verify
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -32,6 +33,16 @@ class BaseUiAutomatorInteractionTest {
         assertTrue(bridge.pressKey(66).success)
 
         verify(exactly = 1) { device.pressKeyCode(66) }
+    }
+
+    @Test
+    fun `pressKey reports a rejected native key action`() {
+        every { device.pressKeyCode(66) } returns false
+
+        val result = bridge.pressKey(66)
+
+        assertFalse(result.success)
+        assertEquals("Native key press failed", result.error)
     }
 
     @Test
@@ -60,7 +71,23 @@ class BaseUiAutomatorInteractionTest {
         val result = bridge.clearText()
 
         assertFalse(result.success)
-        assertTrue(result.error!!.contains("editable"))
+        assertEquals("Focused element is not editable or not enabled", result.error)
+        verify(exactly = 0) { node.performAction(any(), any()) }
+        verify(exactly = 1) { node.recycle() }
+    }
+
+    @Test
+    fun `clearText rejects a focused disabled node`() {
+        val node = mockk<AccessibilityNodeInfo>()
+        every { automation.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) } returns node
+        every { node.isEditable } returns true
+        every { node.isEnabled } returns false
+        every { node.recycle() } returns Unit
+
+        val result = bridge.clearText()
+
+        assertFalse(result.success)
+        assertEquals("Focused element is not editable or not enabled", result.error)
         verify(exactly = 0) { node.performAction(any(), any()) }
         verify(exactly = 1) { node.recycle() }
     }

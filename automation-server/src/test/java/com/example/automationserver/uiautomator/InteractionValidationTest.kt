@@ -61,6 +61,7 @@ class InteractionValidationTest {
             """{"text":" "}""",
             """{"text":"Menu","timeoutMs":0}""",
             """{"text":"Menu","timeoutMs":30001}""",
+            """{"x":10,"y":20,"bundleId":"app.id"}""",
         ).forEach { value ->
             assertFailsWith<IllegalArgumentException>(value) { parseGestureRequest(json(value)) }
         }
@@ -88,8 +89,16 @@ class InteractionValidationTest {
             """{"text":"Ada","timeoutMs":1000}""",
             """{"text":"Ada","targetText":" "}""",
             """{"text":"Ada","targetText":"Name","timeoutMs":false}""",
+            """{"text":"Ada","bundleId":"app.id"}""",
         ).forEach { value ->
             assertFailsWith<IllegalArgumentException>(value) { parseTargetedInputRequest(json(value)) }
+        }
+    }
+
+    @Test
+    fun `clear text rejects parameters`() {
+        assertFailsWith<IllegalArgumentException> {
+            requireNoParams(json("""{"text":"Name"}"""), "ui.clearText")
         }
     }
 

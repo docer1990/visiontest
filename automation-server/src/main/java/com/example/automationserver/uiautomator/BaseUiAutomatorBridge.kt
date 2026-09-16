@@ -408,7 +408,11 @@ abstract class BaseUiAutomatorBridge {
 
     fun pressKey(keyCode: Int): OperationResult {
         return try {
-            OperationResult(success = getUiDevice().pressKeyCode(keyCode))
+            val success = getUiDevice().pressKeyCode(keyCode)
+            OperationResult(
+                success = success,
+                error = if (success) null else "Native key press failed",
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Error pressing key code $keyCode", e)
             OperationResult(success = false, error = e.message)
@@ -420,7 +424,7 @@ abstract class BaseUiAutomatorBridge {
             ?: return OperationResult(success = false, error = "No focused editable element found")
         return try {
             if (!focusedNode.isEditable || !focusedNode.isEnabled) {
-                OperationResult(success = false, error = "Focused element is not editable and enabled")
+                OperationResult(success = false, error = "Focused element is not editable or not enabled")
             } else {
                 val arguments = Bundle().apply {
                     putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "")

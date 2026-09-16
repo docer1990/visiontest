@@ -172,7 +172,14 @@ class JsonRpcServerInstrumented(
                 uiAutomator.pressKey(keyCode)
             }
 
-            "ui.clearText" -> uiAutomator.clearText()
+            "ui.clearText" -> {
+                try {
+                    com.example.automationserver.uiautomator.requireNoParams(params, method)
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidParamsException(e.message ?: "Invalid clear-text request")
+                }
+                uiAutomator.clearText()
+            }
 
             // Screenshot
             "ui.screenshot" -> uiAutomator.screenshot()

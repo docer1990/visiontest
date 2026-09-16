@@ -8,6 +8,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import java.net.SocketTimeoutException
+import kotlin.coroutines.Continuation
 import kotlin.test.*
 
 class AutomationClientTest {
@@ -345,6 +346,17 @@ class AutomationClientTest {
         client.inputText("Ada")
 
         assertEquals(mapOf("text" to "Ada"), requestBody()["params"].asJsonObject.stringValues())
+    }
+
+    @Test
+    fun `legacy focused input descriptor remains available`() {
+        assertTrue(
+            AutomationClient::class.java.declaredMethods.any {
+                it.name == "inputText" && it.parameterTypes.contentEquals(
+                    arrayOf(String::class.java, Continuation::class.java),
+                )
+            },
+        )
     }
 
     private fun requestBody() = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject

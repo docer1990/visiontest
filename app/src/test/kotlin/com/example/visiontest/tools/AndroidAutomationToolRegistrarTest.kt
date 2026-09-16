@@ -7,15 +7,21 @@ import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.common.DeviceType
 import com.example.visiontest.common.MobileDevice
 import com.example.visiontest.discovery.ToolDiscovery
+import com.example.visiontest.utils.ErrorHandler
 import com.google.gson.JsonParser
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.slf4j.LoggerFactory
@@ -210,9 +216,10 @@ class AndroidAutomationToolRegistrarTest {
     fun `registered interaction tools expose bounded schemas`() {
         val server = mockk<Server>(relaxed = true)
         registrar.registerTools(ToolScope(server, logger))
+        val pressKeySchema = slot<Tool.Input>()
         val longPressSchema = slot<Tool.Input>()
         val inputSchema = slot<Tool.Input>()
-        verify { server.addTool("android_press_key", any(), any(), any()) }
+        verify { server.addTool("android_press_key", any(), capture(pressKeySchema), any()) }
         verify { server.addTool("android_clear_text", any(), any(), any()) }
         verify { server.addTool("android_long_press", any(), capture(longPressSchema), any()) }
         verify { server.addTool("android_double_tap", any(), any(), any()) }
@@ -220,10 +227,47 @@ class AndroidAutomationToolRegistrarTest {
 
         assertTrue(longPressSchema.captured.required.orEmpty().isEmpty())
         assertEquals("integer", longPressSchema.captured.properties["x"]!!.jsonObject["type"]!!.jsonPrimitive.content)
+        assertEquals(
+            Int.MAX_VALUE.toString(),
+            pressKeySchema.captured.properties["keyCode"]!!.jsonObject["maximum"]!!.jsonPrimitive.content,
+        )
         val timeout = longPressSchema.captured.properties["timeoutMs"]!!.jsonObject
         assertEquals("10000", timeout["default"]!!.jsonPrimitive.content)
         assertEquals("30000", timeout["maximum"]!!.jsonPrimitive.content)
         assertEquals(listOf("text"), inputSchema.captured.required)
         assertEquals(45_000L, INTERACTION_TOOL_TIMEOUT_MS)
     }
+
+    @Test
+    fun `interaction handlers reject unsupported arguments before backend access`() = runBlocking {
+        val server = mockk<Server>(relaxed = true)
+        registrar.registerTools(ToolScope(server, logger))
+        val clearTextHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
+        val longPressHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
+        val doubleTapHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
+        val inputTextHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
+        verify { server.addTool("android_clear_text", any(), any(), capture(clearTextHandler)) }
+        verify { server.addTool("android_long_press", any(), any(), capture(longPressHandler)) }
+        verify { server.addTool("android_double_tap", any(), any(), capture(doubleTapHandler)) }
+        verify { server.addTool("android_input_text", any(), any(), capture(inputTextHandler)) }
+
+        assertInvalidArgument(clearTextHandler.captured, requestWith("unexpected", "value"))
+        assertInvalidArgument(longPressHandler.captured, requestWith("bundleId", "app.id"))
+        assertInvalidArgument(doubleTapHandler.captured, requestWith("bundleId", "app.id"))
+        assertInvalidArgument(inputTextHandler.captured, requestWith("bundleId", "app.id"))
+        assertEquals(0, mockServer.requestCount)
+    }
+
+    private suspend fun assertInvalidArgument(
+        handler: suspend (CallToolRequest) -> CallToolResult,
+        request: CallToolRequest,
+    ) {
+        val result = handler(request)
+        assertTrue((result.content.single() as TextContent).text!!.contains(ErrorHandler.ERROR_INVALID_ARG))
+    }
+
+    private fun requestWith(key: String, value: String) = CallToolRequest(
+        name = "test",
+        arguments = buildJsonObject { put(key, value) },
+    )
 }

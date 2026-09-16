@@ -14,7 +14,8 @@ internal class AndroidInteractionToolRegistration(
 ) {
     fun register(scope: ToolScope) {
         registerPressKey(scope)
-        scope.tool("android_clear_text", "Clears the currently focused editable Android element.") {
+        scope.tool("android_clear_text", "Clears the currently focused editable Android element.") { request ->
+            request.rejectArguments(request.arguments.keys, "android_clear_text does not accept arguments")
             registrar.clearText()
         }
         registerGesture(scope, "android_long_press", "Long-presses", registrar::longPress)
@@ -27,7 +28,11 @@ internal class AndroidInteractionToolRegistration(
             name = "android_press_key",
             description = "Presses one Android key by keyCode or named action: enter, tab, backspace, delete, escape.",
             inputSchema = Tool.Input(properties = buildJsonObject {
-                putJsonObject("keyCode") { put("type", "integer"); put("minimum", 0) }
+                putJsonObject("keyCode") {
+                    put("type", "integer")
+                    put("minimum", 0)
+                    put("maximum", Int.MAX_VALUE)
+                }
                 putJsonObject("action") {
                     put("type", "string")
                     put("enum", buildJsonArray {
@@ -51,6 +56,7 @@ internal class AndroidInteractionToolRegistration(
             inputSchema = interactionSchema(),
             timeoutMs = INTERACTION_TOOL_TIMEOUT_MS,
         ) { request ->
+            request.rejectArguments(setOf("bundleId"), "Android interactions do not support bundleId")
             gesture(
                 request.optionalInt("x"),
                 request.optionalInt("y"),
@@ -74,6 +80,7 @@ internal class AndroidInteractionToolRegistration(
             inputSchema = targetedInputSchema(),
             timeoutMs = INTERACTION_TOOL_TIMEOUT_MS,
         ) { request ->
+            request.rejectArguments(setOf("bundleId"), "Android interactions do not support bundleId")
             val selectors = request.androidTargetSelectors()
             registrar.inputText(
                 text = request.requireString("text"),

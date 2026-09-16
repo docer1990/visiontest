@@ -86,6 +86,12 @@ fun CallToolRequest.optionalBoolean(key: String): Boolean? {
     }
 }
 
+fun CallToolRequest.rejectArguments(unsupportedArguments: Set<String>, message: String) {
+    if (arguments.keys.any { it in unsupportedArguments }) {
+        throw IllegalArgumentException(message)
+    }
+}
+
 private val VALID_DIRECTIONS = listOf("up", "down", "left", "right")
 
 fun CallToolRequest.requireDirection(key: String = "direction"): String {

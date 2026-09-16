@@ -180,6 +180,12 @@ class AutomationClient(
         }
     }
 
+    @Deprecated(
+        message = "Use inputText with selectors and timeoutMs",
+        level = DeprecationLevel.HIDDEN,
+    )
+    suspend fun inputText(text: String): String = inputText(text, selectors = null, timeoutMs = null)
+
     private suspend fun sendElementInteractionRequest(
         method: String,
         selectors: AndroidElementSelectors,

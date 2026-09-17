@@ -6,6 +6,7 @@ import androidx.test.uiautomator.UiDevice
 import com.example.automationserver.jsonrpc.JsonRpcError
 import com.example.automationserver.jsonrpc.JsonRpcRequest
 import com.example.automationserver.jsonrpc.JsonRpcResponse
+import com.example.automationserver.uiautomator.requireObjectParams
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import io.ktor.serialization.gson.*
@@ -129,7 +130,12 @@ class JsonRpcServerInstrumented(
         }
 
         return try {
-            val result = executeMethod(request.method, request.params as? JsonObject)
+            val params = try {
+                requireObjectParams(request.params, request.method)
+            } catch (e: IllegalArgumentException) {
+                throw InvalidParamsException(e.message ?: "Invalid parameters")
+            }
+            val result = executeMethod(request.method, params)
             JsonRpcResponse(result = result, id = request.id)
         } catch (e: MethodNotFoundException) {
             JsonRpcResponse(error = JsonRpcError.methodNotFound(request.method), id = request.id)

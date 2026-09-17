@@ -1,6 +1,7 @@
 package com.example.automationserver.uiautomator
 
 import android.view.KeyEvent
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import org.junit.Test
@@ -34,6 +35,29 @@ class InteractionValidationTest {
             """{"action":" "}""",
         ).forEach { value ->
             assertFailsWith<IllegalArgumentException>(value) { parseKeyRequest(json(value)) }
+        }
+    }
+
+    @Test
+    fun `key request rejects app scope`() {
+        assertFailsWith<IllegalArgumentException> {
+            parseKeyRequest(json("""{"keyCode":66,"bundleId":"app.id"}"""))
+        }
+    }
+
+    @Test
+    fun `object parameters accept absent params and reject other JSON shapes`() {
+        assertNull(requireObjectParams(null, "ui.pressKey"))
+        assertEquals(
+            json("""{"keyCode":66}"""),
+            requireObjectParams(element("""{"keyCode":66}"""), "ui.pressKey"),
+        )
+
+        listOf("null", "[]", "true", "1", "\"key\"").forEach { value ->
+            val exception = assertFailsWith<IllegalArgumentException>(value) {
+                requireObjectParams(element(value), "ui.pressKey")
+            }
+            assertEquals("'ui.pressKey' parameters must be an object", exception.message)
         }
     }
 
@@ -103,4 +127,6 @@ class InteractionValidationTest {
     }
 
     private fun json(value: String): JsonObject = JsonParser.parseString(value).asJsonObject
+
+    private fun element(value: String): JsonElement = JsonParser.parseString(value)
 }

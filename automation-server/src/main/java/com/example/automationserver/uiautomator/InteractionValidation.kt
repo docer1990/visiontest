@@ -35,6 +35,7 @@ fun parseNamedKeyAction(action: String): Int = when (action) {
 }
 
 fun parseKeyRequest(params: JsonObject?): Int {
+    require(params?.get("bundleId") == null) { "Android interactions do not support bundleId" }
     val keyCodeValue = params?.get("keyCode")
     val actionValue = params?.get("action")
     require((keyCodeValue == null) xor (actionValue == null)) {
@@ -47,6 +48,12 @@ fun parseKeyRequest(params: JsonObject?): Int {
     } else {
         parseString(actionValue, "action").let(::parseNamedKeyAction)
     }
+}
+
+fun requireObjectParams(params: JsonElement?, method: String): JsonObject? = when (params) {
+    null -> null
+    is JsonObject -> params
+    else -> throw IllegalArgumentException("'$method' parameters must be an object")
 }
 
 fun requireNoParams(params: JsonObject?, method: String) {

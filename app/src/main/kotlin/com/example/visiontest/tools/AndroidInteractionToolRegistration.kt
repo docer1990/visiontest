@@ -40,7 +40,10 @@ internal class AndroidInteractionToolRegistration(
                     })
                 }
             }),
-        ) { request -> registrar.pressKey(request.optionalInt("keyCode"), request.optionalString("action")) }
+        ) { request ->
+            request.rejectArguments(setOf("bundleId"), "Android interactions do not support bundleId")
+            registrar.pressKey(request.optionalInt("keyCode"), request.optionalString("action"))
+        }
     }
 
     private fun registerGesture(

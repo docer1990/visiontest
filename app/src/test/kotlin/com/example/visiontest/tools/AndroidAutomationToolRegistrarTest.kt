@@ -242,15 +242,22 @@ class AndroidAutomationToolRegistrarTest {
     fun `interaction handlers reject unsupported arguments before backend access`() = runBlocking {
         val server = mockk<Server>(relaxed = true)
         registrar.registerTools(ToolScope(server, logger))
+        val pressKeyHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
         val clearTextHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
         val longPressHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
         val doubleTapHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
         val inputTextHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
+        verify { server.addTool("android_press_key", any(), any(), capture(pressKeyHandler)) }
         verify { server.addTool("android_clear_text", any(), any(), capture(clearTextHandler)) }
         verify { server.addTool("android_long_press", any(), any(), capture(longPressHandler)) }
         verify { server.addTool("android_double_tap", any(), any(), capture(doubleTapHandler)) }
         verify { server.addTool("android_input_text", any(), any(), capture(inputTextHandler)) }
 
+        assertInvalidArgument(
+            pressKeyHandler.captured,
+            requestWith("bundleId", "app.id"),
+            "Android interactions do not support bundleId",
+        )
         assertInvalidArgument(clearTextHandler.captured, requestWith("unexpected", "value"))
         assertInvalidArgument(longPressHandler.captured, requestWith("bundleId", "app.id"))
         assertInvalidArgument(doubleTapHandler.captured, requestWith("bundleId", "app.id"))
@@ -261,9 +268,12 @@ class AndroidAutomationToolRegistrarTest {
     private suspend fun assertInvalidArgument(
         handler: suspend (CallToolRequest) -> CallToolResult,
         request: CallToolRequest,
+        expectedMessage: String? = null,
     ) {
         val result = handler(request)
-        assertTrue((result.content.single() as TextContent).text!!.contains(ErrorHandler.ERROR_INVALID_ARG))
+        val message = (result.content.single() as TextContent).text!!
+        assertTrue(message.contains(ErrorHandler.ERROR_INVALID_ARG))
+        expectedMessage?.let { assertTrue(message.contains(it)) }
     }
 
     private fun requestWith(key: String, value: String) = CallToolRequest(

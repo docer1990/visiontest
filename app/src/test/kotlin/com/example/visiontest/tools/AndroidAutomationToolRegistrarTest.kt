@@ -256,7 +256,8 @@ class AndroidAutomationToolRegistrarTest {
         assertInvalidArgument(
             pressKeyHandler.captured,
             requestWith("bundleId", "app.id"),
-            "Android interactions do not support bundleId",
+            "Invalid argument: Android interactions do not support bundleId " +
+                "[Code: ${ErrorHandler.ERROR_INVALID_ARG}]",
         )
         assertInvalidArgument(clearTextHandler.captured, requestWith("unexpected", "value"))
         assertInvalidArgument(longPressHandler.captured, requestWith("bundleId", "app.id"))
@@ -272,8 +273,11 @@ class AndroidAutomationToolRegistrarTest {
     ) {
         val result = handler(request)
         val message = (result.content.single() as TextContent).text!!
-        assertTrue(message.contains(ErrorHandler.ERROR_INVALID_ARG))
-        expectedMessage?.let { assertTrue(message.contains(it)) }
+        if (expectedMessage == null) {
+            assertTrue(message.contains(ErrorHandler.ERROR_INVALID_ARG))
+        } else {
+            assertEquals(expectedMessage, message)
+        }
     }
 
     private fun requestWith(key: String, value: String) = CallToolRequest(

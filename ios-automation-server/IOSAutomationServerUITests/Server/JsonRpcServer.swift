@@ -79,8 +79,18 @@ class JsonRpcServer {
             return JsonRpcResponse.error(.invalidRequest("Invalid jsonrpc version"), id: request.id)
         }
 
+        let params: [String: Any]?
+        switch request.paramsState {
+        case .absent:
+            params = nil
+        case .object(let value):
+            params = value
+        case .invalid:
+            return JsonRpcResponse.error(.invalidParams("Params must be an object"), id: request.id)
+        }
+
         do {
-            let result = try executeMethod(request.method, params: request.params)
+            let result = try executeMethod(request.method, params: params)
             return JsonRpcResponse.success(result: result, id: request.id)
         } catch is MethodNotFoundException {
             return JsonRpcResponse.error(.methodNotFound(request.method), id: request.id)

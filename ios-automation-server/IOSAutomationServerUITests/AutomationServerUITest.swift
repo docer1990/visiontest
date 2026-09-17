@@ -103,6 +103,26 @@ class AutomationServerUITest: XCTestCase {
         }
     }
 
+    func testInteractionJsonRpcRoutesRejectNonObjectParameters() throws {
+        let bridge = XCUITestBridge(interactionTargetOverride: { _ in
+            XCTFail("Malformed parameters must be rejected before keyboard dismissal")
+            return XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        })
+        let server = JsonRpcServer(port: 0, bridge: bridge)
+        let request = try JSONSerialization.data(withJSONObject: [
+            "jsonrpc": "2.0",
+            "method": "ui.dismissKeyboard",
+            "params": [1],
+            "id": 1,
+        ])
+
+        let response = server.handleRequest(request)
+
+        let error = try XCTUnwrap(response["error"] as? [String: Any])
+        XCTAssertEqual(error["code"] as? Int, JsonRpcError.INVALID_PARAMS)
+        XCTAssertNil(response["result"])
+    }
+
     private static let defaultPort: UInt16 = 9009
     private static let envPortKey = "PORT"
 

@@ -45,6 +45,25 @@ final class JsonRpcModelsTests: XCTestCase {
         XCTAssertNil(request?.id)
     }
 
+    func testParsePreservesInvalidParamsShape() throws {
+        let invalidParams: [Any] = [[1], "value", NSNull()]
+
+        for params in invalidParams {
+            let json = try JSONSerialization.data(withJSONObject: [
+                "jsonrpc": "2.0",
+                "method": "ui.dismissKeyboard",
+                "params": params,
+                "id": 1,
+            ])
+
+            let request = try XCTUnwrap(JsonRpcRequest.parse(from: json))
+            guard case .invalid = request.paramsState else {
+                return XCTFail("Expected invalid params state for \(params)")
+            }
+            XCTAssertNil(request.params)
+        }
+    }
+
     func testParseIdAsString() {
         let json = """
         {"jsonrpc":"2.0","method":"test","id":"abc-123"}

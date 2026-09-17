@@ -2,11 +2,22 @@ import Foundation
 
 // MARK: - JSON-RPC 2.0 Models
 
+enum JsonRpcParamsState {
+    case absent
+    case object([String: Any])
+    case invalid
+}
+
 struct JsonRpcRequest {
     let jsonrpc: String
     let method: String
-    let params: [String: Any]?
+    let paramsState: JsonRpcParamsState
     let id: Any?
+
+    var params: [String: Any]? {
+        guard case .object(let params) = paramsState else { return nil }
+        return params
+    }
 
     static func parse(from data: Data) -> JsonRpcRequest? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
@@ -15,10 +26,20 @@ struct JsonRpcRequest {
         guard let method = json["method"] as? String else {
             return nil
         }
+        let paramsState: JsonRpcParamsState
+        if let rawParams = json["params"] {
+            if let params = rawParams as? [String: Any] {
+                paramsState = .object(params)
+            } else {
+                paramsState = .invalid
+            }
+        } else {
+            paramsState = .absent
+        }
         return JsonRpcRequest(
             jsonrpc: json["jsonrpc"] as? String ?? "",
             method: method,
-            params: json["params"] as? [String: Any],
+            paramsState: paramsState,
             id: json["id"]
         )
     }

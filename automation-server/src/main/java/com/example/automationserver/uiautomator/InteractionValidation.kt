@@ -50,12 +50,6 @@ fun parseKeyRequest(params: JsonObject?): Int {
     }
 }
 
-fun requireObjectParams(params: JsonElement?, method: String): JsonObject? = when (params) {
-    null -> null
-    is JsonObject -> params
-    else -> throw IllegalArgumentException("'$method' parameters must be an object")
-}
-
 fun requireNoParams(params: JsonObject?, method: String) {
     require(params == null || params.entrySet().isEmpty()) {
         "'$method' does not accept parameters"

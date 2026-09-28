@@ -3,6 +3,16 @@ import CoreGraphics
 
 final class HelpersTests: XCTestCase {
 
+    func testForegroundApplicationSelectionSkipsBackgroundCandidates() {
+        let candidates = ["background", "foreground"]
+        let selected = firstForegroundApplication(in: candidates) { $0 == "foreground" }
+        XCTAssertEqual(selected, "foreground")
+    }
+
+    func testForegroundApplicationSelectionReturnsNilWithoutForegroundCandidate() {
+        XCTAssertNil(firstForegroundApplication(in: ["one", "two"]) { _ in false })
+    }
+
     func testInteractionTargetPriorityAndFallback() {
         XCTAssertEqual(
             selectInteractionTarget(explicit: "explicit", discovered: "active", cached: "cached", system: "system"),

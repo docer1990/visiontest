@@ -59,15 +59,14 @@ class XCUITestBridge {
               let tracker = objectReturned(by: "applicationProcessTracker", from: accessibility) as? NSObject else {
             return nil
         }
-        for element in activeElements {
+        let applications = activeElements.compactMap { element -> XCUIApplication? in
             guard let pid = processIdentifier(of: element),
-                  pid != systemPid,
-                  let application = monitoredApplication(pid: pid, tracker: tracker) else {
-                continue
+                  pid != systemPid else {
+                return nil
             }
-            return application
+            return monitoredApplication(pid: pid, tracker: tracker)
         }
-        return nil
+        return firstForegroundApplication(in: applications) { $0.state == .runningForeground }
     }
 
     private func objectReturned(by selectorName: String, from object: NSObject) -> AnyObject? {

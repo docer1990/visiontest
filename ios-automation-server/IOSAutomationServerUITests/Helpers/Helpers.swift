@@ -4,6 +4,13 @@ import CoreGraphics
 // MARK: - Pure helper functions extracted for testability
 // These functions have no XCUITest or Swifter dependencies.
 
+func firstForegroundApplication<T>(
+    in applications: [T],
+    isForeground: (T) -> Bool
+) -> T? {
+    applications.first(where: isForeground)
+}
+
 /// Escapes XML special characters in a string.
 /// Returns empty string for nil input.
 func escapeXML(_ text: String?) -> String {

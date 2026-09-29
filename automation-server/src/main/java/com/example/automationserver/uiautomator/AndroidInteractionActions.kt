@@ -28,6 +28,7 @@ internal class AndroidInteractionActions(
     private val displayRect: Rect,
     private val selectorBuilder: (TapOnElementSelectors) -> BySelector?,
     private val selectorDescription: (TapOnElementSelectors) -> String,
+    private val isEditable: (UiObject2) -> Boolean = UiObject2::isAccessibilityEditable,
 ) {
     fun longPress(request: NativeGestureRequest): OperationResult = when (val target = request.target) {
         is NativeGestureTarget.Coordinates -> coordinateGesture(target.x, target.y) { x, y ->
@@ -137,7 +138,7 @@ internal class AndroidInteractionActions(
         val bounds = element.visibleBounds
         val visible = bounds.width() > 0 && bounds.height() > 0 && Rect.intersects(bounds, displayRect)
         val ready = visible && element.isEnabled && (
-            !requireEditable || (element.isFocusable && element.className.isEditableControlClass())
+            !requireEditable || (element.isFocusable && isEditable(element))
         )
         ElementInteractionCandidate(
             element,
@@ -145,7 +146,3 @@ internal class AndroidInteractionActions(
         )
     }
 }
-
-private fun String?.isEditableControlClass(): Boolean = this?.let { className ->
-    className.endsWith("EditText") || className.endsWith("AutoCompleteTextView")
-} == true

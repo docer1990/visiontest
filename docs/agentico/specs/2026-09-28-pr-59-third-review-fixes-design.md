@@ -29,15 +29,16 @@ element, and reads `AccessibilityNodeInfo.isEditable` without recycling the node
 
 Readiness still requires visible bounds and an enabled element. Editable custom
 controls become ready regardless of class name. Noneditable controls remain
-blocked before tap. Reflection or invocation failures propagate as native
-operation failures instead of being reclassified as a blocked element timeout.
+blocked before tap. The existing interaction safety boundary converts reflection
+or invocation failures into a normal failed `OperationResult` with the original
+message. It does not tap the element or misclassify the failure as a timeout.
 
 ## Error handling
 
 The iOS fallback behavior remains deterministic when no foreground application
-is observed. Android accessibility-access failures preserve their cause in the
-existing JSON-RPC automation error path. No public error code or success shape
-changes.
+is observed. Android accessibility-access failures preserve their message in the
+existing normally returned operation-failure path. No public error code or
+success shape changes.
 
 ## Testing
 

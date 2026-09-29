@@ -165,11 +165,10 @@ fun `editability access failure propagates before tap`() {
     every { element.isFocusable } returns true
     val actions = interactionActions(isEditable = { error("node unavailable") })
 
-    val failure = assertFailsWith<IllegalStateException> {
-        actions.targetedInput(targetedInputRequest())
-    }
+    val result = actions.targetedInput(targetedInputRequest())
 
-    assertEquals("node unavailable", failure.message)
+    assertFalse(result.success)
+    assertEquals("node unavailable", result.error)
     verify(exactly = 0) { element.click() }
 }
 ```
@@ -222,7 +221,9 @@ internal fun UiObject2.isAccessibilityEditable(): Boolean
 selected `UiObject2` and reads `isEditable`. It must not recycle the returned
 node because `UiObject2` owns it. If invocation wraps a native failure, rethrow
 the original cause when it is a runtime exception; otherwise throw an
-`IllegalStateException` with the original cause.
+`IllegalStateException` with the original cause. The existing
+`waitForTargetFocusAndInput` safety boundary must convert that exception into a
+normal failed operation result that retains the message and does not tap.
 
 Add this constructor parameter to `AndroidInteractionActions`:
 

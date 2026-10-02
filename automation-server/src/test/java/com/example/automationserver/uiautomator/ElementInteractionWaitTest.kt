@@ -28,6 +28,22 @@ class ElementInteractionWaitTest {
     }
 
     @Test
+    fun `composed double tap stops when first tap is rejected`() {
+        val events = mutableListOf<String>()
+
+        val result = performComposedDoubleTap(
+            tap = {
+                events += "tap"
+                false
+            },
+            sleepMs = { events += "sleep" },
+        )
+
+        assertFalse(result)
+        assertEquals(listOf("tap"), events)
+    }
+
+    @Test
     fun `gesture waits at five hundred millisecond cadence until ready`() {
         val clock = FakeClock()
         var lookups = 0

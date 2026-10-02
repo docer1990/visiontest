@@ -17,9 +17,11 @@ internal fun performComposedDoubleTap(
     tap: () -> Boolean,
     sleepMs: (Long) -> Unit,
 ): Boolean {
-    val first = tap()
+    if (!tap()) {
+        return false
+    }
     sleepMs(DOUBLE_TAP_INTERVAL_MS)
-    return tap() && first
+    return tap()
 }
 
 internal class AndroidInteractionActions(

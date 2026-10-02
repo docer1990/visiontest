@@ -116,3 +116,75 @@ Run `./gradlew :app:test :app:e2eTest build` and `git diff --check`. Expected: b
 git add automation-server/src/main/java/com/example/automationserver/uiautomator/AndroidInteractionActions.kt automation-server/src/test/java/com/example/automationserver/uiautomator/ElementInteractionWaitTest.kt
 git commit -m "fix: stop rejected Android double taps"
 ```
+
+### Task 3: Cover Android interaction dispatch
+
+**Files:**
+- Create: `automation-server/src/main/java/com/example/automationserver/uiautomator/AndroidInteractionJsonRpcDispatcher.kt`
+- Create: `automation-server/src/test/java/com/example/automationserver/uiautomator/AndroidInteractionJsonRpcDispatcherTest.kt`
+- Modify: `automation-server/src/androidTest/java/com/example/automationserver/JsonRpcServerInstrumented.kt`
+
+**Review:** checkpoint (final task)
+
+- [ ] **Step 1: Write the failing dispatcher tests**
+
+Define tests against this planned interface:
+
+```kotlin
+internal interface AndroidInteractionJsonRpcOperations {
+    fun pressKey(keyCode: Int): OperationResult
+    fun clearText(): OperationResult
+    fun longPress(request: NativeGestureRequest): OperationResult
+    fun doubleTap(request: NativeGestureRequest): OperationResult
+    fun inputText(request: TargetedInputRequest): OperationResult
+}
+
+internal fun dispatchAndroidInteractionMethod(
+    method: String,
+    params: JsonObject?,
+    operations: AndroidInteractionJsonRpcOperations,
+): OperationResult?
+```
+
+Use a recording fake and typed assertions to verify these mappings:
+
+```kotlin
+private sealed interface OperationCall {
+    data class PressKey(val keyCode: Int) : OperationCall
+    data object ClearText : OperationCall
+    data class LongPress(val request: NativeGestureRequest) : OperationCall
+    data class DoubleTap(val request: NativeGestureRequest) : OperationCall
+    data class InputText(val request: TargetedInputRequest) : OperationCall
+}
+
+assertEquals(OperationCall.PressKey(66), dispatch("ui.pressKey", """{"keyCode":66}"""))
+assertEquals(OperationCall.ClearText, dispatch("ui.clearText", null))
+assertEquals(
+    OperationCall.LongPress(NativeGestureRequest(NativeGestureTarget.Coordinates(10, 20))),
+    dispatch("ui.longPress", """{"x":10,"y":20}"""),
+)
+assertEquals("menu", dispatchedDoubleTapElement.selectors.resourceId)
+assertEquals("name", dispatchedInput.selectors?.resourceId)
+assertNull(dispatchAndroidInteractionMethod("ui.dumpHierarchy", null, operations))
+```
+
+Each fake operation must return a distinct `OperationResult`, and each handled dispatch must return that same value. Include selector `ui.doubleTap` parameters with `timeoutMs` and targeted `ui.inputText` parameters with `targetResourceId` and `timeoutMs`.
+
+Run `./gradlew :automation-server:testDebugUnitTest --tests com.example.automationserver.uiautomator.AndroidInteractionJsonRpcDispatcherTest`. Expected: test compilation fails because the dispatcher and operations interface do not exist.
+
+- [ ] **Step 2: Implement and wire the pure dispatcher**
+
+Create the interface and function with the signatures above. Return `null` only for unrecognized methods. For the five recognized methods, call `parseKeyRequest`, `requireNoParams`, `parseGestureRequest`, or `parseTargetedInputRequest` before invoking the matching operation.
+
+In `JsonRpcServerInstrumented`, add one adapter from `UiAutomatorBridgeInstrumented` to `AndroidInteractionJsonRpcOperations`. At the start of `executeMethod`, call the pure dispatcher. Translate `IllegalArgumentException` to the existing `InvalidParamsException`, return a handled `OperationResult`, and leave unrelated routes in the existing `when`. Remove the five duplicate interaction branches from that `when`.
+
+- [ ] **Step 3: Verify and commit**
+
+Run `./gradlew :automation-server:testDebugUnitTest --tests com.example.automationserver.uiautomator.AndroidInteractionJsonRpcDispatcherTest`. Expected: PASS with no failed tests.
+
+Run `./gradlew :automation-server:compileDebugAndroidTestKotlin`, then run the repository gate `./gradlew :app:test :app:e2eTest build`. Run `git diff --check`. Expected: all commands exit 0.
+
+```bash
+git add automation-server/src/main/java/com/example/automationserver/uiautomator/AndroidInteractionJsonRpcDispatcher.kt automation-server/src/test/java/com/example/automationserver/uiautomator/AndroidInteractionJsonRpcDispatcherTest.kt automation-server/src/androidTest/java/com/example/automationserver/JsonRpcServerInstrumented.kt
+git commit -m "test: cover Android interaction dispatch"
+```

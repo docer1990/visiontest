@@ -18,6 +18,7 @@ import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -263,6 +264,28 @@ class AndroidAutomationToolRegistrarTest {
         assertInvalidArgument(longPressHandler.captured, requestWith("bundleId", "app.id"))
         assertInvalidArgument(doubleTapHandler.captured, requestWith("bundleId", "app.id"))
         assertInvalidArgument(inputTextHandler.captured, requestWith("bundleId", "app.id"))
+        assertEquals(0, mockServer.requestCount)
+    }
+
+    @Test
+    fun `interaction handler rejects quoted integer before backend access`() = runBlocking {
+        val server = mockk<Server>(relaxed = true)
+        registrar.registerTools(ToolScope(server, logger))
+        val longPressHandler = slot<suspend (CallToolRequest) -> CallToolResult>()
+        verify { server.addTool("android_long_press", any(), any(), capture(longPressHandler)) }
+        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+        mockServer.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        assertInvalidArgument(
+            longPressHandler.captured,
+            CallToolRequest(
+                name = "android_long_press",
+                arguments = buildJsonObject {
+                    put("x", JsonPrimitive("10"))
+                    put("y", JsonPrimitive(20))
+                },
+            ),
+        )
         assertEquals(0, mockServer.requestCount)
     }
 

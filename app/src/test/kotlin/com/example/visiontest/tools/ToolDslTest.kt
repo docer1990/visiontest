@@ -12,6 +12,7 @@ import io.mockk.verify
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.slf4j.LoggerFactory
@@ -25,8 +26,8 @@ class ToolDslTest {
 
     // ===== CallToolRequest extension helpers =====
 
-    private fun request(vararg pairs: Pair<String, String>): CallToolRequest {
-        val args = JsonObject(pairs.associate { (k, v) -> k to JsonPrimitive(v) })
+    private fun request(vararg pairs: Pair<String, JsonElement>): CallToolRequest {
+        val args = JsonObject(pairs.toMap())
         return CallToolRequest(name = "test", arguments = args)
     }
 
@@ -34,8 +35,14 @@ class ToolDslTest {
 
     @Test
     fun `requireString returns value when present`() {
-        val req = request("key" to "hello")
+        val req = request("key" to JsonPrimitive("hello"))
         assertEquals("hello", req.requireString("key"))
+    }
+
+    @Test
+    fun `requireString rejects numeric primitives`() {
+        val req = request("key" to JsonPrimitive(42))
+        assertFailsWith<IllegalArgumentException> { req.requireString("key") }
     }
 
     @Test
@@ -49,13 +56,13 @@ class ToolDslTest {
 
     @Test
     fun `requireInt returns parsed int`() {
-        val req = request("x" to "42")
+        val req = request("x" to JsonPrimitive(42))
         assertEquals(42, req.requireInt("x"))
     }
 
     @Test
-    fun `requireInt throws on non-integer`() {
-        val req = request("x" to "abc")
+    fun `requireInt rejects quoted integers`() {
+        val req = request("x" to JsonPrimitive("42"))
         val ex = assertFailsWith<IllegalArgumentException> { req.requireInt("x") }
         assertTrue(ex.message!!.contains("must be an integer"))
     }
@@ -70,8 +77,14 @@ class ToolDslTest {
 
     @Test
     fun `optionalString returns value when present`() {
-        val req = request("key" to "val")
+        val req = request("key" to JsonPrimitive("val"))
         assertEquals("val", req.optionalString("key"))
+    }
+
+    @Test
+    fun `optionalString rejects boolean primitives`() {
+        val req = request("key" to JsonPrimitive(true))
+        assertFailsWith<IllegalArgumentException> { req.optionalString("key") }
     }
 
     @Test
@@ -84,7 +97,7 @@ class ToolDslTest {
 
     @Test
     fun `optionalInt returns parsed int when present`() {
-        val req = request("n" to "7")
+        val req = request("n" to JsonPrimitive(7))
         assertEquals(7, req.optionalInt("n"))
     }
 
@@ -95,8 +108,8 @@ class ToolDslTest {
     }
 
     @Test
-    fun `optionalInt throws on non-integer value`() {
-        val req = request("n" to "abc")
+    fun `optionalInt rejects quoted integers`() {
+        val req = request("n" to JsonPrimitive("7"))
         val ex = assertFailsWith<IllegalArgumentException> { req.optionalInt("n") }
         assertTrue(ex.message!!.contains("must be an integer"))
     }
@@ -105,13 +118,13 @@ class ToolDslTest {
 
     @Test
     fun `optionalBoolean returns true`() {
-        val req = request("flag" to "true")
+        val req = request("flag" to JsonPrimitive(true))
         assertEquals(true, req.optionalBoolean("flag"))
     }
 
     @Test
     fun `optionalBoolean returns false`() {
-        val req = request("flag" to "false")
+        val req = request("flag" to JsonPrimitive(false))
         assertEquals(false, req.optionalBoolean("flag"))
     }
 
@@ -122,15 +135,15 @@ class ToolDslTest {
     }
 
     @Test
-    fun `optionalBoolean throws on invalid value`() {
-        val req = request("flag" to "yes")
+    fun `optionalBoolean rejects quoted booleans`() {
+        val req = request("flag" to JsonPrimitive("true"))
         val ex = assertFailsWith<IllegalArgumentException> { req.optionalBoolean("flag") }
         assertTrue(ex.message!!.contains("must be true or false"))
     }
 
     @Test
     fun `rejectArguments throws when an unsupported argument is present`() {
-        val req = request("bundleId" to "app.id")
+        val req = request("bundleId" to JsonPrimitive("app.id"))
 
         val ex = assertFailsWith<IllegalArgumentException> {
             req.rejectArguments(setOf("bundleId"), "Android interactions do not support bundleId")
@@ -144,27 +157,27 @@ class ToolDslTest {
     @Test
     fun `requireDirection accepts valid directions`() {
         for (dir in listOf("up", "down", "left", "right")) {
-            val req = request("direction" to dir)
+            val req = request("direction" to JsonPrimitive(dir))
             assertEquals(dir, req.requireDirection())
         }
     }
 
     @Test
     fun `requireDirection is case-insensitive for validation`() {
-        val req = request("direction" to "UP")
+        val req = request("direction" to JsonPrimitive("UP"))
         assertEquals("UP", req.requireDirection())
     }
 
     @Test
     fun `requireDirection throws on invalid direction`() {
-        val req = request("direction" to "diagonal")
+        val req = request("direction" to JsonPrimitive("diagonal"))
         val ex = assertFailsWith<IllegalArgumentException> { req.requireDirection() }
         assertTrue(ex.message!!.contains("Invalid direction"))
     }
 
     @Test
     fun `requireDirection uses custom key`() {
-        val req = request("swipeDir" to "left")
+        val req = request("swipeDir" to JsonPrimitive("left"))
         assertEquals("left", req.requireDirection("swipeDir"))
     }
 

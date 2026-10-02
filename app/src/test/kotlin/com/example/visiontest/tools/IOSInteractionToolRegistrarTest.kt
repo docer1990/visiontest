@@ -4,12 +4,14 @@ import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.discovery.ToolDiscovery
 import com.example.visiontest.ios.IOSAutomationClient
 import com.example.visiontest.ios.IOSElementSelectors
+import com.example.visiontest.utils.ErrorHandler
 import com.google.gson.JsonParser
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import kotlinx.coroutines.runBlocking
@@ -27,6 +29,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class IOSInteractionToolRegistrarTest {
     private lateinit var http: MockWebServer
@@ -270,6 +273,24 @@ class IOSInteractionToolRegistrarTest {
             ),
             input.stringParams(),
         )
+    }
+
+    @Test
+    fun `interaction handler rejects non-string selector before backend access`() = runBlocking {
+        val handler = registeredHandler("ios_input_text")
+        enqueueSuccessfulCall()
+
+        val result = handler(
+            request(
+                "ios_input_text",
+                "text" to JsonPrimitive("Ada"),
+                "targetText" to JsonPrimitive(123),
+            ),
+        )
+
+        val message = (result.content.single() as TextContent).text!!
+        assertTrue(message.contains(ErrorHandler.ERROR_INVALID_ARG))
+        assertEquals(0, http.requestCount)
     }
 
     private fun registeredHandler(name: String): suspend (CallToolRequest) -> CallToolResult {

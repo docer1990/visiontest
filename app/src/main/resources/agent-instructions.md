@@ -42,15 +42,21 @@ visiontest launch_app -p <platform> <package-or-bundle-id>
 automation-server version. iOS requires a booted simulator and a current
 XCUITest bundle.
 
+Upgrade both Android automation APKs or the iOS XCUITest bundle before using
+`press_key`, `clear_text`, `long_press`, `double_tap`, `dismiss_keyboard`,
+`handle_alert`, or targeted `input_text`. Updating only the CLI/MCP JAR does
+not update native methods. Restart the automation server after upgrading.
+
 ## Evidence-driven automation loop
 
 1. Capture the initial screen with `screenshot`.
 2. Read `get_interactive_elements --json` and identify stable selectors and
    current coordinates. On iOS, use `--bundle-id <bundle-id>` to scope
    inspection to the target app.
-3. Prefer `tap_on_element` with stable selectors for taps; use coordinates only
-   when a coordinate is the intended target. Reproduce the user flow with taps,
-   swipes, text input, and explicit waits.
+3. Prefer selectors for taps, long press, double tap, and targeted input when
+   stable element identity matters. Use coordinates when the location itself is
+   intentional. Reproduce the user flow and handle its keyboard or alert steps
+   before checking the outcome.
 4. After every navigation or layout change, inspect elements again before using
    coordinates.
 5. Wait for the defined success marker. For transient UI, wait for disappearance
@@ -82,9 +88,68 @@ but does not satisfy that requirement by itself; Android rejects it. In Flutter
 apps, visible labels commonly appear as `contentDescription`, so inspect that
 field when `text` is empty.
 
+`long_press` and `double_tap` accept the same selectors or a complete
+nonnegative integer `--x X --y Y` pair. Supply exactly one target form. An iOS
+`--bundle-id` must be nonblank and does not count as a selector. Android rejects
+app scope.
+
+`input_text` keeps its required positional text value and accepts optional
+`--target-text`, `--target-text-contains`, `--target-resource-id`,
+`--target-class-name`, and `--target-content-description`. On iOS these match
+text, partial text, accessibility identifier, element type, and accessibility
+label. MCP and native JSON-RPC use `targetText`, `targetTextContains`,
+`targetResourceId`, `targetClassName`, and `targetContentDescription`.
+Without target selectors, input types into the focused element as before.
+
+Selector gestures and targeted input poll natively every 500 ms. Their timeout
+defaults to 10,000 ms and accepts 1 through 30,000 ms via `--timeout` or MCP
+`timeoutMs`. Android targets must be visible and enabled; iOS targets must
+exist, be enabled, and be hittable. Text targets must also be editable. Lookup,
+tap, focus confirmation, and input share one timeout budget in one native
+request. Coordinate gestures and input without selectors reject a timeout.
+
+## Forms and permission prompts
+
+For an Android field that needs replacing, focus it with empty targeted input,
+clear it, enter the new value, and submit with the keyboard:
+
+```bash
+visiontest input_text -p android "" --target-resource-id "com.example:id/search"
+visiontest clear_text -p android
+visiontest input_text -p android "coffee" --target-resource-id "com.example:id/search"
+visiontest press_key -p android enter
+visiontest wait_for_element -p android --text "Search results"
+```
+
+`clear_text` works only on the focused editable Android element and accepts no
+selectors. `press_key` accepts a nonnegative Android key code or `enter`, `tab`,
+`backspace`, `delete`, or `escape`. In MCP, `android_press_key` requires exactly
+one of `keyCode` or `action`. Backspace deletes before the cursor; delete removes
+text after it.
+
+On iOS, inspect the alert and choose its exact button label when the choice
+matters:
+
+```bash
+visiontest handle_alert -p ios accept --bundle-id com.example.app --button-label "Allow"
+```
+
+`handle_alert` searches the scoped or active app first, then SpringBoard for
+system permission prompts. Without a label, `accept` chooses the last enabled,
+hittable button and `dismiss` the first. The result identifies the tapped
+button. Verify the expected app state after handling the prompt.
+
+Use `dismiss_keyboard -p ios --bundle-id com.example.app` when the next control
+requires hiding a visible software keyboard. It swipes downward on the keyboard
+and verifies disappearance without submitting the field. No keyboard or a
+keyboard that remains visible returns an operation failure.
+
 ## Command reference
 
-Every device command below requires `-p android` or `-p ios`.
+The CLI has 29 commands. The 28 device commands below require `-p android` or
+`-p ios`. The remaining command, `init --agent claude,opencode,codex`, installs
+project-local agent instructions without a platform. Root `--help` and
+`--version` also need no platform.
 
 | Command | Purpose |
 | --- | --- |
@@ -101,7 +166,13 @@ Every device command below requires `-p android` or `-p ios`.
 | `screenshot [--output PATH]` | Save a PNG on the host |
 | `tap_by_coordinates <x> <y>` | Tap integer screen coordinates |
 | `tap_on_element [selectors] [--timeout MS]` | Directly tap a selected actionable element; iOS also accepts `--bundle-id` |
-| `input_text <text> [--bundle-id]` | Type into the focused element; iOS app scope is optional |
+| `input_text <text> [target selectors] [--timeout MS] [--bundle-id]` | Type into the focused field or select, focus, and type; iOS app scope is optional |
+| `press_key <key>` | Press an Android key code or named action |
+| `clear_text` | Clear the focused editable Android field |
+| `long_press [selectors or --x X --y Y] [--timeout MS]` | Hold the target for 800 ms; iOS also accepts `--bundle-id`; timeout requires selectors |
+| `double_tap [selectors or --x X --y Y] [--timeout MS]` | Double-tap the target; iOS also accepts `--bundle-id`; timeout requires selectors |
+| `dismiss_keyboard [--bundle-id]` | Dismiss a visible iOS software keyboard and verify disappearance |
+| `handle_alert <accept\|dismiss> [--button-label LABEL] [--bundle-id]` | Handle an iOS app or system alert |
 | `swipe_direction <direction> [--distance VALUE] [--speed VALUE]` | Swipe across the screen |
 | `swipe <startX> <startY> <endX> <endY> [--steps N]` | Swipe between coordinates |
 | `swipe_on_element <direction> [selectors] [--speed VALUE]` | Swipe inside a matched element |
@@ -128,13 +199,16 @@ implement `ui.tapOnElement`.
 `get_device_info`, `find_element`, `list_apps`, and `info_app`. It emits
 one JSON object without the JSON-RPC envelope.
 
-Inspect `found`, `success`, and `error` fields. A normally returned
-operation can exit 0 while reporting `found: false` or `success: false`.
+Inspect `found`, `success`, and `error` fields for structured commands and the
+returned text for interactions. A normally returned operation can exit 0 while
+reporting `found: false`, `success: false`, or a text failure. Missing targets,
+blocked or noneditable elements, focus failure, and native interaction errors
+have distinct failure results. Do not treat exit 0 as proof of success.
 
 | Exit | Meaning | Response |
 | --- | --- | --- |
-| 0 | Command returned normally | Inspect structured outcome fields |
-| 1 | Operation or wait failed | Read stderr and captured state; retry only after changing a relevant condition |
+| 0 | Command returned normally | Inspect outcome fields or returned text |
+| 1 | Unexpected or generic thrown failure | Read stderr and captured state; retry only after changing a relevant condition |
 | 2 | Invalid arguments | Correct the command |
 | 3 | Server unreachable | Start the platform server, then retry once |
 | 4 | Device unavailable | Connect Android or boot an iOS simulator |

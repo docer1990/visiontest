@@ -6,9 +6,10 @@ agent can close its own feedback loop: test a change end to end, reproduce a
 reported bug, observe the UI after each action, and correlate that behavior with
 build, application, and device logs to find the root cause.
 
-One MCP server and CLI expose UI inspection, element lookup, taps, swipes, text
-input, screenshots, and app management. This lets an agent move from
-implementation to evidence without handing the device back to a human.
+One MCP server and CLI expose UI inspection, element lookup, taps, swipes,
+targeted text input, keyboard actions, iOS alert handling, screenshots, and app
+management. This lets an agent move from implementation to evidence without
+handing the device back to a human.
 
 ## Requirements
 
@@ -101,7 +102,8 @@ with logs available in its development environment.
 | --- | --- |
 | Server | install, start, stop, and status |
 | Inspection | hierarchy, interactive elements, element lookup, waits, device info, screenshots |
-| Interaction | selector-based and coordinate taps, coordinate and directional swipes, element swipe, text input, home/back |
+| Interaction | selector-based and coordinate taps, long press, double tap, coordinate and directional swipes, element swipe, targeted text input, home/back |
+| Keyboard and alerts | Android key presses and focused-field clearing; iOS keyboard dismissal and app/system alert handling |
 | Apps and devices | discover devices, list and inspect apps, launch apps |
 
 ## CLI
@@ -135,7 +137,56 @@ rejected on Android. The timeout defaults to 10 seconds and cannot exceed 30
 seconds. Update the Android automation APK pair or iOS automation bundle when
 upgrading to a VisionTest release that introduces this native operation.
 
-Run `visiontest --help` for all 23 commands.
+Run `visiontest --help` for all 29 commands.
+
+### Forms, gestures, and permissions
+
+Use targeted input to wait for a field, focus it, and type in one native request.
+For an Android form submitted with the keyboard:
+
+```bash
+visiontest input_text -p android "" --target-resource-id "com.example:id/search"
+visiontest clear_text -p android
+visiontest input_text -p android "coffee" --target-resource-id "com.example:id/search"
+visiontest press_key -p android enter
+visiontest wait_for_element -p android --text "Search results" --timeout 5000
+```
+
+`clear_text` clears the focused editable Android field. `press_key` accepts
+`enter`, `tab`, `backspace`, `delete`, `escape`, or a nonnegative integer Android
+key code. Backspace deletes before the cursor; delete removes text after it.
+
+For an iOS permission flow, choose the exact button label shown by the dialog:
+
+```bash
+visiontest tap_on_element -p ios --bundle-id com.example.app --text "Enable notifications"
+visiontest handle_alert -p ios accept --bundle-id com.example.app --button-label "Allow"
+visiontest wait_for_element -p ios --bundle-id com.example.app --text "Notifications enabled"
+```
+
+`handle_alert` searches the scoped or active app first, then system alerts in
+SpringBoard. Without `--button-label`, `accept` taps the last enabled, hittable
+button and `dismiss` taps the first. `dismiss_keyboard -p ios` hides a visible
+software keyboard and checks that it disappeared without submitting the field.
+Both commands accept optional `--bundle-id`.
+
+`long_press` and `double_tap` accept either selectors or a complete `--x X --y Y`
+pair. Prefer selectors when stable element identity matters. Use coordinates
+when the screen location is intentional. Long press lasts 800 ms.
+
+Input target flags are `--target-text`, `--target-text-contains`,
+`--target-resource-id`, `--target-class-name`, and `--target-content-description`.
+Selector gestures and targeted input accept `--timeout` from 1 through 30,000 ms,
+defaulting to 10,000 ms. Input lookup, tap, focus, and typing share that budget.
+Coordinate gestures and input without selectors reject a timeout. Optional
+iOS `--bundle-id` must be nonblank and does not count as a selector; Android
+rejects it.
+
+Upgrade both Android automation APKs or the iOS XCUITest bundle before using
+these new native methods or targeted input. Updating only the CLI/MCP JAR is
+insufficient. Restart the automation server after upgrading its artifacts.
+Inspect returned text and verify the app outcome. A normal operation failure
+still exits 0. Thrown failures keep the exit codes below.
 
 Six inspection commands support `--json`: `get_interactive_elements`,
 `get_device_info`, `find_element`, `list_apps`, `info_app`, and
@@ -180,6 +231,7 @@ simulator host network.
 - [JSON output](docs/cli-json.md)
 - [Element waits](docs/agentico/specs/element-waits.md)
 - [Element swipe](docs/agentico/specs/element-swipe.md)
+- [Missing interactions](docs/agentico/specs/missing-interactions.md)
 - [Screenshots](docs/agentico/specs/screenshots.md)
 - [Contributing](CONTRIBUTING.md)
 - [Open issues](https://github.com/docer1990/visiontest/issues)

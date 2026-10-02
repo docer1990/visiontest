@@ -8,6 +8,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import java.net.SocketTimeoutException
+import kotlin.coroutines.Continuation
 import kotlin.test.*
 
 class AutomationClientTest {
@@ -237,6 +238,131 @@ class AutomationClientTest {
             ),
         )
     }
+
+    @Test
+    fun `pressKey serializes numeric and named keys`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        client.pressKey(66)
+        client.pressKey("enter")
+
+        val numeric = requestBody()
+        assertEquals("ui.pressKey", numeric["method"].asString)
+        assertEquals(mapOf("keyCode" to "66"), numeric["params"].asJsonObject.stringValues())
+        val named = requestBody()
+        assertEquals("ui.pressKey", named["method"].asString)
+        assertEquals(mapOf("action" to "enter"), named["params"].asJsonObject.stringValues())
+    }
+
+    @Test
+    fun `clearText sends empty params`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        client.clearText()
+
+        val body = requestBody()
+        assertEquals("ui.clearText", body["method"].asString)
+        assertTrue(body["params"].asJsonObject.entrySet().isEmpty())
+    }
+
+    @Test
+    fun `longPress serializes coordinate and selector targets`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        client.longPress(10, 20)
+        client.longPress(AndroidElementSelectors(resourceId = "menu"), 1_500)
+
+        val coordinate = requestBody()
+        assertEquals("ui.longPress", coordinate["method"].asString)
+        assertEquals(
+            mapOf("x" to "10", "y" to "20"),
+            coordinate["params"].asJsonObject.stringValues(),
+        )
+        val selector = requestBody()
+        assertEquals("ui.longPress", selector["method"].asString)
+        assertEquals(
+            mapOf("resourceId" to "menu", "timeoutMs" to "1500"),
+            selector["params"].asJsonObject.stringValues(),
+        )
+    }
+
+    @Test
+    fun `doubleTap serializes coordinate and selector targets`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        client.doubleTap(30, 40)
+        client.doubleTap(AndroidElementSelectors(text = "Photo"), 2_000)
+
+        val coordinate = requestBody()
+        assertEquals("ui.doubleTap", coordinate["method"].asString)
+        assertEquals(mapOf("x" to "30", "y" to "40"), coordinate["params"].asJsonObject.stringValues())
+        val selector = requestBody()
+        assertEquals("ui.doubleTap", selector["method"].asString)
+        assertEquals(
+            mapOf("text" to "Photo", "timeoutMs" to "2000"),
+            selector["params"].asJsonObject.stringValues(),
+        )
+    }
+
+    @Test
+    fun `targeted input serializes prefixed selectors and timeout`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        client.inputText(
+            text = "Ada",
+            selectors = AndroidElementSelectors(
+                text = "Name",
+                textContains = "Nam",
+                resourceId = "name",
+                className = "android.widget.EditText",
+                contentDescription = "Full name",
+            ),
+            timeoutMs = 1_500,
+        )
+
+        val body = requestBody()
+        assertEquals("ui.inputText", body["method"].asString)
+        assertEquals(
+            mapOf(
+                "text" to "Ada",
+                "targetText" to "Name",
+                "targetTextContains" to "Nam",
+                "targetResourceId" to "name",
+                "targetClassName" to "android.widget.EditText",
+                "targetContentDescription" to "Full name",
+                "timeoutMs" to "1500",
+            ),
+            body["params"].asJsonObject.stringValues(),
+        )
+    }
+
+    @Test
+    fun `focused input preserves the original request shape`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+
+        client.inputText("Ada")
+
+        assertEquals(mapOf("text" to "Ada"), requestBody()["params"].asJsonObject.stringValues())
+    }
+
+    @Test
+    fun `legacy focused input descriptor remains available`() {
+        assertTrue(
+            AutomationClient::class.java.declaredMethods.any {
+                it.name == "inputText" && it.parameterTypes.contentEquals(
+                    arrayOf(String::class.java, Continuation::class.java),
+                )
+            },
+        )
+    }
+
+    private fun requestBody() = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+
+    private fun com.google.gson.JsonObject.stringValues() =
+        entrySet().associate { it.key to it.value.asString }
 
     // --- isServerRunning ---
 

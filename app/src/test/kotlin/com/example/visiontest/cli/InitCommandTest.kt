@@ -51,15 +51,21 @@ class InitCommandTest {
     }
 
     @Test
-    fun `embedded resource guides stable element taps with app scope and timeout`() {
+    fun `embedded resource guides selector interactions with app scope and timeout`() {
         val content = requireNotNull(InitCommand.loadClasspathResource("agent-instructions.md"))
+        val normalizedContent = content.replace(Regex("\\s+"), " ")
 
-        assertContains(content, "Prefer `tap_on_element` with stable selectors")
-        assertContains(content, "`--bundle-id` scopes iOS lookup and taps")
-        assertContains(content, "does not satisfy that requirement by itself; Android rejects it")
-        assertContains(content, "waits natively at 500 ms intervals")
-        assertContains(content, "defaults to a 10,000 ms timeout")
-        assertContains(content, "at most 30,000 ms")
+        assertContains(
+            normalizedContent,
+            "Prefer selectors for taps, long press, double tap, and targeted input when stable element identity " +
+                "matters. Use coordinates when the location itself is intentional.",
+        )
+        assertContains(
+            normalizedContent,
+            "`--bundle-id` must be nonblank and does not count as a selector. Android rejects app scope.",
+        )
+        assertContains(normalizedContent, "Selector gestures and targeted input poll natively every 500 ms.")
+        assertContains(normalizedContent, "Their timeout defaults to 10,000 ms and accepts 1 through 30,000 ms")
         assertContains(content, "does not auto-scroll")
     }
 

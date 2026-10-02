@@ -9,7 +9,7 @@ import io.modelcontextprotocol.kotlin.sdk.server.Server
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonPrimitive
 import java.util.concurrent.TimeoutException
 import org.slf4j.Logger
 
@@ -57,32 +57,54 @@ class ToolScope(
 // --- CallToolRequest extension helpers ---
 
 fun CallToolRequest.requireString(key: String): String {
-    return this.arguments[key]?.jsonPrimitive?.content
+    val value = arguments[key]
         ?: throw IllegalArgumentException("Missing required parameter '$key'")
+    val primitive = value as? JsonPrimitive
+    require(primitive?.isString == true) { "Parameter '$key' must be a string" }
+    return primitive.content
 }
 
 fun CallToolRequest.requireInt(key: String): Int {
-    val raw = this.requireString(key)
-    return raw.toIntOrNull()
+    val value = arguments[key]
+        ?: throw IllegalArgumentException("Missing required parameter '$key'")
+    val primitive = value as? JsonPrimitive
+    val raw = primitive?.content ?: value.toString()
+    return primitive?.takeUnless { it.isString }?.content?.toIntOrNull()
         ?: throw IllegalArgumentException("Parameter '$key' must be an integer, got '$raw'")
 }
 
 fun CallToolRequest.optionalString(key: String): String? {
-    return this.arguments[key]?.jsonPrimitive?.content
+    val value = arguments[key] ?: return null
+    val primitive = value as? JsonPrimitive
+    require(primitive?.isString == true) { "Parameter '$key' must be a string" }
+    return primitive.content
 }
 
 fun CallToolRequest.optionalInt(key: String): Int? {
-    val raw = this.optionalString(key) ?: return null
-    return raw.toIntOrNull()
+    val value = arguments[key] ?: return null
+    val primitive = value as? JsonPrimitive
+    val raw = primitive?.content ?: value.toString()
+    return primitive?.takeUnless { it.isString }?.content?.toIntOrNull()
         ?: throw IllegalArgumentException("Parameter '$key' must be an integer, got '$raw'")
 }
 
 fun CallToolRequest.optionalBoolean(key: String): Boolean? {
-    val raw = this.optionalString(key) ?: return null
+    val value = arguments[key] ?: return null
+    val primitive = value as? JsonPrimitive
+    val raw = primitive?.content ?: value.toString()
+    require(primitive != null && !primitive.isString) {
+        "Parameter '$key' must be true or false, got '$raw'"
+    }
     return when (raw) {
         "true" -> true
         "false" -> false
         else -> throw IllegalArgumentException("Parameter '$key' must be true or false, got '$raw'")
+    }
+}
+
+fun CallToolRequest.rejectArguments(unsupportedArguments: Set<String>, message: String) {
+    if (arguments.keys.any { it in unsupportedArguments }) {
+        throw IllegalArgumentException(message)
     }
 }
 

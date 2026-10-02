@@ -8,8 +8,6 @@ import android.os.SystemClock
 import android.util.Log
 import android.util.Xml
 import android.view.accessibility.AccessibilityNodeInfo
-import androidx.test.uiautomator.By
-import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.UiDevice
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
@@ -292,7 +290,7 @@ abstract class BaseUiAutomatorBridge {
 
     fun tapOnElement(request: TapOnElementRequest): OperationResult {
         val selectors = request.selectors
-        val selector = buildSelector(
+        val selector = buildUiSelector(
             selectors.text,
             selectors.textContains,
             selectors.resourceId,
@@ -300,7 +298,7 @@ abstract class BaseUiAutomatorBridge {
             selectors.contentDescription
         )
             ?: return OperationResult(success = false, error = "No selector provided")
-        val selectorDescription = selectorDescription(
+        val selectorDescription = describeSelector(
             selectors.text,
             selectors.textContains,
             selectors.resourceId,
@@ -331,6 +329,25 @@ abstract class BaseUiAutomatorBridge {
         )
         return OperationResult(success = result.success, error = result.error)
     }
+
+    fun longPress(request: NativeGestureRequest): OperationResult = interactionActions().longPress(request)
+
+    fun doubleTap(request: NativeGestureRequest): OperationResult = interactionActions().doubleTap(request)
+
+    fun inputText(request: TargetedInputRequest): OperationResult =
+        if (request.selectors == null) inputText(request.text) else interactionActions().targetedInput(request)
+
+    private fun interactionActions() = AndroidInteractionActions(
+        device = getUiDevice(),
+        automation = getUiAutomation(),
+        displayRect = getDisplayRect(),
+        selectorBuilder = { selectors ->
+            buildUiSelector(selectors)
+        },
+        selectorDescription = { selectors ->
+            describeSelector(selectors)
+        },
+    )
 
     /**
      * Types text into the currently focused element.
@@ -386,6 +403,45 @@ abstract class BaseUiAutomatorBridge {
         } catch (e: Exception) {
             Log.w(TAG, "Failed to find focused node", e)
             null
+        }
+    }
+
+    fun pressKey(keyCode: Int): OperationResult {
+        return try {
+            val success = getUiDevice().pressKeyCode(keyCode)
+            OperationResult(
+                success = success,
+                error = if (success) null else "Native key press failed",
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error pressing key code $keyCode", e)
+            OperationResult(success = false, error = e.message)
+        }
+    }
+
+    fun clearText(): OperationResult {
+        val focusedNode = findFocusedNode()
+            ?: return OperationResult(success = false, error = "No focused editable element found")
+        return try {
+            if (!focusedNode.isEditable) {
+                OperationResult(success = false, error = "Focused element is not editable")
+            } else if (!focusedNode.isEnabled) {
+                OperationResult(success = false, error = "Focused element is not enabled")
+            } else {
+                val arguments = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "")
+                }
+                val success = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+                OperationResult(
+                    success = success,
+                    error = if (success) null else "Focused element rejected the clear-text action",
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing focused text", e)
+            OperationResult(success = false, error = e.message)
+        } finally {
+            focusedNode.recycle()
         }
     }
 
@@ -480,43 +536,6 @@ abstract class BaseUiAutomatorBridge {
      * @return [ElementResult] with element info if found, or found=false if not
      */
 
-    /**
-     * Builds a [BySelector] by chaining all non-null selector criteria.
-     * When multiple selectors are provided, they are combined (AND logic)
-     * to create a more specific match.
-     *
-     * @return A combined [BySelector], or null if no criteria were provided.
-     */
-    private fun buildSelector(
-        text: String? = null,
-        textContains: String? = null,
-        resourceId: String? = null,
-        className: String? = null,
-        contentDescription: String? = null
-    ): BySelector? {
-        var selector: BySelector? = null
-        text?.let { selector = (selector?.text(it) ?: By.text(it)) }
-        textContains?.let { selector = (selector?.textContains(it) ?: By.textContains(it)) }
-        resourceId?.let { selector = (selector?.res(it) ?: By.res(it)) }
-        className?.let { selector = (selector?.clazz(it) ?: By.clazz(it)) }
-        contentDescription?.let { selector = (selector?.desc(it) ?: By.desc(it)) }
-        return selector
-    }
-
-    private fun selectorDescription(
-        text: String?,
-        textContains: String?,
-        resourceId: String?,
-        className: String?,
-        contentDescription: String?
-    ): String = listOfNotNull(
-        text?.let { "text=$it" },
-        textContains?.let { "textContains=$it" },
-        resourceId?.let { "resourceId=$it" },
-        className?.let { "className=$it" },
-        contentDescription?.let { "contentDescription=$it" }
-    ).joinToString(", ")
-
     fun findElement(
         text: String? = null,
         textContains: String? = null,
@@ -525,7 +544,7 @@ abstract class BaseUiAutomatorBridge {
         contentDescription: String? = null
     ): ElementResult {
         return try {
-            val selector = buildSelector(text, textContains, resourceId, className, contentDescription)
+            val selector = buildUiSelector(text, textContains, resourceId, className, contentDescription)
                 ?: return ElementResult(found = false, error = "No selector provided")
 
             val element = getUiDevice().findObject(selector)
@@ -664,7 +683,7 @@ abstract class BaseUiAutomatorBridge {
             val device = getUiDevice()
 
             // Build selector by combining all provided criteria
-            val selector = buildSelector(text, textContains, resourceId, className, contentDescription)
+            val selector = buildUiSelector(text, textContains, resourceId, className, contentDescription)
                 ?: return OperationResult(success = false, error = "No selector provided")
 
             // Find the element

@@ -25,6 +25,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         ])
         window?.rootViewController = viewController
         window?.makeKeyAndVisible()
+        if ProcessInfo.processInfo.arguments.contains("--review-alert") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let alert = UIAlertController(title: "Review alert", message: "Fixture", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "Dismiss fixture", style: .cancel))
+                alert.addAction(UIAlertAction(title: "Accept fixture", style: .default))
+                viewController.present(alert, animated: true)
+            }
+        }
         return true
     }
 }

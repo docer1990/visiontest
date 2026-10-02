@@ -18,6 +18,7 @@ class AndroidAutomationToolRegistrar(
     private val automationClient: AutomationClient,
     private val discovery: ToolDiscovery
 ) : ToolRegistrar {
+    private val interactionOperations = AndroidInteractionOperations(automationClient, ::requireServer)
 
     override fun registerTools(scope: ToolScope) {
         registerInstallAutomationServer(scope)
@@ -30,9 +31,9 @@ class AndroidAutomationToolRegistrar(
         registerSwipeDirection(scope)
         registerSwipeOnElement(scope)
         registerTapOnElement(scope)
+        AndroidInteractionToolRegistration(this).register(scope)
         registerPressBack(scope)
         registerPressHome(scope)
-        registerInputText(scope)
         registerGetDeviceInfo(scope)
         registerGetInteractiveElements(scope)
         registerScreenshot(scope)
@@ -210,10 +211,30 @@ class AndroidAutomationToolRegistrar(
         return automationClient.pressHome()
     }
 
-    internal suspend fun inputText(text: String): String {
-        requireServer()
-        return automationClient.inputText(text)
-    }
+    internal suspend fun pressKey(keyCode: Int?, action: String?): String =
+        interactionOperations.pressKey(keyCode, action)
+
+    internal suspend fun clearText(): String = interactionOperations.clearText()
+
+    internal suspend fun longPress(
+        x: Int?,
+        y: Int?,
+        selectors: AndroidElementSelectors,
+        timeoutMs: Int?,
+    ): String = interactionOperations.longPress(x, y, selectors, timeoutMs)
+
+    internal suspend fun doubleTap(
+        x: Int?,
+        y: Int?,
+        selectors: AndroidElementSelectors,
+        timeoutMs: Int?,
+    ): String = interactionOperations.doubleTap(x, y, selectors, timeoutMs)
+
+    internal suspend fun inputText(
+        text: String,
+        selectors: AndroidElementSelectors? = null,
+        timeoutMs: Int? = null,
+    ): String = interactionOperations.inputText(text, selectors, timeoutMs)
 
     internal suspend fun getDeviceInfo(): String {
         requireServer()
@@ -542,23 +563,6 @@ class AndroidAutomationToolRegistrar(
             """.trimIndent()
         ) {
             pressHome()
-        }
-    }
-
-    private fun registerInputText(scope: ToolScope) {
-        scope.tool(
-            name = "android_input_text",
-            description = """
-                Types text into the currently focused element on the Android device.
-                The automation server must be running first (use start_automation_server).
-
-                WORKFLOW: Prefer tap_on_element with a stable selector to focus a text field,
-                then call this tool to type text into it. Use android_tap_by_coordinates only when
-                coordinates are the intended target.
-            """.trimIndent(),
-            inputSchema = Tool.Input(required = listOf("text"))
-        ) { request ->
-            inputText(request.requireString("text"))
         }
     }
 

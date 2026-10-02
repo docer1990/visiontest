@@ -6,6 +6,12 @@ import androidx.test.uiautomator.UiDevice
 import com.example.automationserver.jsonrpc.JsonRpcError
 import com.example.automationserver.jsonrpc.JsonRpcRequest
 import com.example.automationserver.jsonrpc.JsonRpcResponse
+import com.example.automationserver.uiautomator.AndroidInteractionJsonRpcOperations
+import com.example.automationserver.uiautomator.NativeGestureRequest
+import com.example.automationserver.uiautomator.OperationResult
+import com.example.automationserver.uiautomator.TargetedInputRequest
+import com.example.automationserver.uiautomator.dispatchAndroidInteractionMethod
+import com.example.automationserver.uiautomator.requireObjectParams
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import io.ktor.serialization.gson.*
@@ -38,6 +44,20 @@ class JsonRpcServerInstrumented(
     private var server: ApplicationEngine? = null
     private val gson = Gson()
     private val uiAutomator = UiAutomatorBridgeInstrumented(uiDevice, instrumentation)
+    private val interactionOperations = object : AndroidInteractionJsonRpcOperations {
+        override fun pressKey(keyCode: Int): OperationResult = uiAutomator.pressKey(keyCode)
+
+        override fun clearText(): OperationResult = uiAutomator.clearText()
+
+        override fun longPress(request: NativeGestureRequest): OperationResult =
+            uiAutomator.longPress(request)
+
+        override fun doubleTap(request: NativeGestureRequest): OperationResult =
+            uiAutomator.doubleTap(request)
+
+        override fun inputText(request: TargetedInputRequest): OperationResult =
+            uiAutomator.inputText(request)
+    }
 
     val isRunning: Boolean
         get() = server != null
@@ -129,7 +149,12 @@ class JsonRpcServerInstrumented(
         }
 
         return try {
-            val result = executeMethod(request.method, request.params as? JsonObject)
+            val params = try {
+                requireObjectParams(request.params, request.method)
+            } catch (e: IllegalArgumentException) {
+                throw InvalidParamsException(e.message ?: "Invalid parameters")
+            }
+            val result = executeMethod(request.method, params)
             JsonRpcResponse(result = result, id = request.id)
         } catch (e: MethodNotFoundException) {
             JsonRpcResponse(error = JsonRpcError.methodNotFound(request.method), id = request.id)
@@ -149,6 +174,13 @@ class JsonRpcServerInstrumented(
      */
     private fun executeMethod(method: String, params: JsonObject?): Any {
         Log.d(TAG, "Executing method: $method with params: $params")
+
+        val interactionResult = try {
+            dispatchAndroidInteractionMethod(method, params, interactionOperations)
+        } catch (e: IllegalArgumentException) {
+            throw InvalidParamsException(e.message ?: "Invalid interaction parameters")
+        }
+        if (interactionResult != null) return interactionResult
 
         return when (method) {
             // UI Hierarchy methods
@@ -292,12 +324,6 @@ class JsonRpcServerInstrumented(
                     contentDescription = contentDescription,
                     speed = speed
                 )
-            }
-
-            "ui.inputText" -> {
-                val text = params?.get("text")?.asString
-                    ?: throw InvalidParamsException("Missing 'text' parameter")
-                uiAutomator.inputText(text)
             }
 
             else -> throw MethodNotFoundException(method)

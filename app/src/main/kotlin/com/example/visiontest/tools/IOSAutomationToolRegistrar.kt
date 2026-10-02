@@ -24,6 +24,7 @@ class IOSAutomationToolRegistrar(
     private val discovery: ToolDiscovery,
     private val logger: Logger
 ) : ToolRegistrar {
+    private val interactionOperations = IOSInteractionOperations(iosAutomationClient, ::requireServer)
 
     @Volatile
     private var iosXcodebuildProcess: Process? = null
@@ -41,7 +42,7 @@ class IOSAutomationToolRegistrar(
         registerFindElement(scope)
         registerGetDeviceInfo(scope)
         registerPressHome(scope)
-        registerInputText(scope)
+        IOSInteractionToolRegistration(this).register(scope)
         registerScreenshot(scope)
         registerStopAutomationServer(scope)
     }
@@ -300,10 +301,29 @@ class IOSAutomationToolRegistrar(
         return iosAutomationClient.pressHome()
     }
 
-    internal suspend fun inputText(text: String, bundleId: String? = null): String {
-        requireServer()
-        return iosAutomationClient.inputText(text, bundleId)
-    }
+    internal suspend fun dismissKeyboard(bundleId: String? = null): String =
+        interactionOperations.dismissKeyboard(bundleId)
+
+    internal suspend fun handleAlert(
+        action: String,
+        buttonLabel: String? = null,
+        bundleId: String? = null,
+    ): String = interactionOperations.handleAlert(action, buttonLabel, bundleId)
+
+    internal suspend fun longPress(
+        x: Int?, y: Int?, selectors: IOSElementSelectors, timeoutMs: Int?,
+    ): String = interactionOperations.longPress(x, y, selectors, timeoutMs)
+
+    internal suspend fun doubleTap(
+        x: Int?, y: Int?, selectors: IOSElementSelectors, timeoutMs: Int?,
+    ): String = interactionOperations.doubleTap(x, y, selectors, timeoutMs)
+
+    internal suspend fun inputText(
+        text: String,
+        bundleId: String? = null,
+        selectors: IOSElementSelectors? = null,
+        timeoutMs: Int? = null,
+    ): String = interactionOperations.inputText(text, bundleId, selectors, timeoutMs)
 
     internal suspend fun stopAutomationServer(): String {
         val process = iosXcodebuildProcess
@@ -600,33 +620,6 @@ class IOSAutomationToolRegistrar(
             """.trimIndent()
         ) {
             pressHome()
-        }
-    }
-
-    private fun registerInputText(scope: ToolScope) {
-        scope.tool(
-            name = "ios_input_text",
-            description = """
-                Types text into the currently focused element on the iOS simulator.
-                The iOS automation server must be running first (use ios_start_automation_server).
-
-                WORKFLOW: Prefer ios_tap_on_element with a stable selector to focus a text field,
-                then call this tool to type text into it. Use ios_tap_by_coordinates only when
-                coordinates are the intended target.
-
-                PARAMETERS:
-                - text (required): The text to type.
-                - bundleId (required for app UI): Bundle ID of the target app (e.g., "com.apple.Preferences").
-                  ALWAYS provide bundleId when typing into a third-party or system app.
-                  Without bundleId, the server targets Springboard and will fail if no focused element is found.
-                  Only omit bundleId when interacting with Springboard system UI itself.
-            """.trimIndent(),
-            inputSchema = Tool.Input(required = listOf("text"))
-        ) { request ->
-            inputText(
-                text = request.requireString("text"),
-                bundleId = request.optionalString("bundleId")
-            )
         }
     }
 

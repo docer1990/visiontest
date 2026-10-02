@@ -144,11 +144,12 @@ class VisionTestCliTest {
             "swipe", "swipe_on_element",
             "tap_by_coordinates", "tap_on_element", "input_text", "swipe_direction",
             "press_back", "press_home", "launch_app",
+            "press_key", "clear_text", "long_press", "double_tap", "dismiss_keyboard", "handle_alert",
             "init",
         )
         assertEquals(expected, registered.toSet())
-        assertEquals(23, registered.size)
-        assertEquals(23, registered.distinct().size)
+        assertEquals(29, registered.size)
+        assertEquals(29, registered.distinct().size)
     }
 
     // --- SwipeDirection choice validation ---

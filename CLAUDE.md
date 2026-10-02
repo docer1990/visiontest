@@ -113,7 +113,11 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `android_swipe_on_element` | Swipe on a specific element (for carousels, sliders) |
 | `android_get_device_info` | Get display size, rotation, and SDK version |
 | `get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
-| `android_input_text` | Type text into the currently focused element |
+| `android_input_text` | Type into the focused element or wait, focus, and type using optional `target*` selectors |
+| `android_press_key` | Press exactly one nonnegative `keyCode` or named `action`: enter, tab, backspace, delete, escape |
+| `android_clear_text` | Clear the focused editable element; no selectors |
+| `android_long_press` | Hold for 800 ms at `x`, `y` or on a selected element; selector timeout is optional |
+| `android_double_tap` | Double-tap at `x`, `y` or on a selected element; selector timeout is optional |
 | `android_press_back` | Press the back button |
 | `android_press_home` | Press the home button |
 | `android_screenshot` | Capture the device display and save as a PNG file (optional `outputPath`; defaults to `./screenshots/` in the project's CWD) |
@@ -134,7 +138,11 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `ios_swipe_on_element` | Swipe inside a selected element; optional app scope `bundleId` and speed |
 | `ios_get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
 | `ios_get_device_info` | Get display size, rotation, and iOS version |
-| `ios_input_text` | Type text into the currently focused element |
+| `ios_input_text` | Type into the focused element or wait, focus, and type using optional `target*` selectors; optional `bundleId` |
+| `ios_dismiss_keyboard` | Dismiss a visible software keyboard and verify disappearance; optional `bundleId` |
+| `ios_handle_alert` | Handle an app or system alert with `action` accept/dismiss; optional exact `buttonLabel` and `bundleId` |
+| `ios_long_press` | Hold for 800 ms at `x`, `y` or on a selected element; optional selector timeout and `bundleId` |
+| `ios_double_tap` | Double-tap at `x`, `y` or on a selected element; optional selector timeout and `bundleId` |
 | `ios_press_home` | Press home button |
 | `ios_screenshot` | Capture the simulator display and save as a PNG file (optional `outputPath`; defaults to `./screenshots/` in the project's CWD) |
 | `ios_stop_automation_server` | Stop the running XCUITest server |
@@ -144,14 +152,14 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 1. **Install/Start** — `install_automation_server` + `start_automation_server` (Android) or `ios_start_automation_server` (iOS, uses pre-built bundle if available)
 2. **Inspect** — `get_interactive_elements` / `ios_get_interactive_elements` (preferred) or `get_ui_hierarchy` / `ios_get_ui_hierarchy` (full XML)
 3. **Interact** — Prefer `tap_on_element` / `ios_tap_on_element` with stable selectors; use `android_tap_by_coordinates` / `ios_tap_by_coordinates` only when coordinates are the intended target
-4. **Input** — `android_input_text` / `ios_input_text` for text entry
+4. Use `android_input_text` / `ios_input_text` with `target*` selectors to focus and type atomically. On Android, use `android_press_key` to submit with Enter. On iOS, use `ios_handle_alert` with an exact button label for permission prompts, or `ios_dismiss_keyboard` to hide the keyboard without submission.
 5. **Navigate** — `android_swipe_direction` / `ios_swipe_direction` (simpler) or coordinate-based swipe (precise)
 
 > **Flutter apps:** Text labels use `content-desc` (contentDescription) instead of `text`. If `find_element` by `text` fails, retry with `contentDescription`.
 
 ## CLI Usage
 
-MCP device and UI operations can be invoked directly from the command line; the wait disappearance operation uses `wait_for_element --gone`. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. With no arguments, `visiontest` starts the MCP stdio server as before. `visiontest --version` prints the installed version (stamped into the JAR manifest at build time from `app/build.gradle.kts`).
+The CLI registers 29 commands. MCP device and UI operations can be invoked directly from the command line; the wait disappearance operation uses `wait_for_element --gone`. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. With no arguments, `visiontest` starts the MCP stdio server as before. `visiontest --version` prints the installed version (stamped into the JAR manifest at build time from `app/build.gradle.kts`).
 
 | Command | Platforms | Required args | Optional flags |
 |---------|-----------|---------------|----------------|
@@ -168,7 +176,13 @@ MCP device and UI operations can be invoked directly from the command line; the 
 | `screenshot` | android, ios | — | `--output PATH` |
 | `tap_by_coordinates` | android, ios | `x` `y` (ints) | — |
 | `tap_on_element` | android, ios | at least one selector | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--timeout MS` |
-| `input_text` | android, ios | `text` (string) | `--bundle-id` (iOS) |
+| `input_text` | android, ios | `text` (string) | `--target-text`, `--target-text-contains`, `--target-resource-id`, `--target-class-name`, `--target-content-description`, selector `--timeout MS`, `--bundle-id` (iOS) |
+| `press_key` | android | key code or `enter`, `tab`, `backspace`, `delete`, `escape` | None |
+| `clear_text` | android | None | None |
+| `long_press` | android, ios | `--x X --y Y` or at least one selector | same selectors as `find_element`, selector `--timeout MS`, `--bundle-id` (iOS) |
+| `double_tap` | android, ios | `--x X --y Y` or at least one selector | same selectors as `find_element`, selector `--timeout MS`, `--bundle-id` (iOS) |
+| `dismiss_keyboard` | ios | None | `--bundle-id` |
+| `handle_alert` | ios | `accept` or `dismiss` | `--button-label`, `--bundle-id` |
 | `swipe_direction` | android, ios | `direction` (up\|down\|left\|right) | `--distance`, `--speed` |
 | `swipe` | android, ios | `startX` `startY` `endX` `endY` (ints) | `--steps` (positive, default 20) |
 | `swipe_on_element` | android, ios | `direction` and at least one selector | same selectors as `find_element`, `--speed` |
@@ -187,6 +201,30 @@ automatic scrolling. It requires updated Android APKs or an iOS automation
 bundle supporting `ui.tapOnElement`; iOS element swipe similarly requires a
 bundle with `ui.swipeOnElement`.
 
+`long_press` and `double_tap` require exactly one target form. Coordinates must
+be a complete nonnegative `x`, `y` pair and cannot be combined with selectors
+or a timeout. Targeted `input_text` uses `targetText`, `targetTextContains`,
+`targetResourceId`, `targetClassName`, and `targetContentDescription` in MCP
+and JSON-RPC; CLI flags use the `--target-` prefix. Its positional text stays
+required, and an empty string can focus a target before Android `clear_text`.
+Input without selectors preserves focused-input behavior and rejects a timeout.
+
+Selector gestures and targeted input default to 10,000 ms and accept 1 through
+30,000 ms. Native polling runs every 500 ms; input lookup, tap, focus, and typing
+share one timeout budget. Optional iOS `bundleId` must be nonblank and never
+counts as a selector. Android rejects app scope. Prefer selectors for stable
+element identity and coordinates when the location itself is intentional.
+
+iOS alerts search the scoped or active app before SpringBoard. An exact
+`buttonLabel` selects that enabled, hittable button. Without a label, `accept`
+chooses the last enabled, hittable button and `dismiss` the first. Keyboard
+dismissal uses a downward gesture and verifies that the keyboard disappeared.
+
+Upgrade both Android automation APKs or the iOS XCUITest bundle before using
+the new native methods or targeted `ui.inputText` fields. A JAR update alone
+does not provide them. See [missing interactions](docs/agentico/specs/missing-interactions.md)
+for the full operation and compatibility contract.
+
 Inspection `--json` emits structured objects; see [JSON schemas and examples](docs/cli-json.md).
 Default text and mapped exit codes remain stable. Scripts must inspect `found`,
 `success`, or `error` for operation-level outcomes that return normally.
@@ -195,7 +233,7 @@ Default text and mapped exit codes remain stable. Scripts must inspect `found`,
 
 | Code | Meaning |
 |------|---------|
-| 0 | Success |
+| 0 | Command returned normally, including operation-level failure results |
 | 1 | Generic failure |
 | 2 | Usage error (missing/invalid args) |
 | 3 | Automation server not reachable |

@@ -79,8 +79,18 @@ class JsonRpcServer {
             return JsonRpcResponse.error(.invalidRequest("Invalid jsonrpc version"), id: request.id)
         }
 
+        let params: [String: Any]?
+        switch request.paramsState {
+        case .absent:
+            params = nil
+        case .object(let value):
+            params = value
+        case .invalid:
+            return JsonRpcResponse.error(.invalidParams("Params must be an object"), id: request.id)
+        }
+
         do {
-            let result = try executeMethod(request.method, params: request.params)
+            let result = try executeMethod(request.method, params: params)
             return JsonRpcResponse.success(result: result, id: request.id)
         } catch is MethodNotFoundException {
             return JsonRpcResponse.error(.methodNotFound(request.method), id: request.id)
@@ -129,6 +139,19 @@ class JsonRpcServer {
         case "ui.tapOnElement":
             let request = try ElementTapRequest(params: params)
             return bridge.tapOnElement(request).toDictionary()
+
+        case "ui.longPress":
+            return bridge.longPress(try GestureRequest(params: params)).toDictionary()
+
+        case "ui.doubleTap":
+            return bridge.doubleTap(try GestureRequest(params: params)).toDictionary()
+
+        case "ui.dismissKeyboard":
+            let bundleId = try validatedBundleId(params)
+            return bridge.dismissKeyboard(bundleId: bundleId).toDictionary()
+
+        case "ui.handleAlert":
+            return bridge.handleAlert(try HandleAlertRequest(params: params)).toDictionary()
 
         // Find element
         case "ui.findElement":
@@ -181,11 +204,7 @@ class JsonRpcServer {
 
         // Input text
         case "ui.inputText":
-            guard let text = params?["text"] as? String else {
-                throw InvalidParamsException("Missing 'text' parameter")
-            }
-            let inputBundleId = params?["bundleId"] as? String
-            return bridge.inputText(text: text, bundleId: inputBundleId).toDictionary()
+            return bridge.inputText(try TargetedInputRequest(params: params)).toDictionary()
 
         case "ui.swipeOnElement":
             let request = try ElementSwipeRequest(params: params)
@@ -216,6 +235,15 @@ class JsonRpcServer {
     }
 
     // MARK: - Helpers
+
+    private func validatedBundleId(_ params: [String: Any]?) throws -> String? {
+        guard let raw = params?["bundleId"] else { return nil }
+        guard let bundleId = raw as? String,
+              !bundleId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw InvalidParamsException("'bundleId' must be a nonblank string")
+        }
+        return bundleId
+    }
 
     /// Executes a block synchronously on the main thread.
     /// XCUITest APIs (XCUIDevice, XCUIElement, etc.) must be called from the main thread.

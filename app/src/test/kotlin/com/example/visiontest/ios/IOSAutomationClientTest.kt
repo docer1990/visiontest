@@ -127,6 +127,131 @@ class IOSAutomationClientTest {
         )
     }
 
+    @Test
+    fun `longPress coordinate and selector overloads serialize exact requests`() = runBlocking {
+        repeat(2) { server.enqueue(MockResponse().setBody("""{"result":{"success":true}}""")) }
+        client.longPress(10, 20)
+        client.longPress(
+            IOSElementSelectors("Exact", "Partial", "menu", "Button", "Open menu", "app.id"),
+            1_500,
+        )
+
+        val longPress = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.longPress", longPress["method"].asString)
+        assertEquals(mapOf("x" to "10", "y" to "20"), longPress.stringParams())
+        val selectorLongPress = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.longPress", selectorLongPress["method"].asString)
+        assertEquals(allSelectorParams(1_500), selectorLongPress.stringParams())
+    }
+
+    @Test
+    fun `doubleTap coordinate and selector overloads serialize exact requests`() = runBlocking {
+        repeat(2) { server.enqueue(MockResponse().setBody("""{"result":{"success":true}}""")) }
+        client.doubleTap(30, 40)
+        client.doubleTap(
+            IOSElementSelectors("Exact", "Partial", "menu", "Button", "Open menu", "app.id"),
+            2_500,
+        )
+
+        val coordinateDoubleTap = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.doubleTap", coordinateDoubleTap["method"].asString)
+        assertEquals(mapOf("x" to "30", "y" to "40"), coordinateDoubleTap.stringParams())
+        val selectorDoubleTap = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.doubleTap", selectorDoubleTap["method"].asString)
+        assertEquals(allSelectorParams(2_500), selectorDoubleTap.stringParams())
+    }
+
+    @Test
+    fun `dismissKeyboard and handleAlert omit absent optional parameters`() = runBlocking {
+        repeat(2) { server.enqueue(MockResponse().setBody("""{"result":{"success":true}}""")) }
+        client.dismissKeyboard()
+        client.handleAlert("dismiss")
+
+        val dismiss = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.dismissKeyboard", dismiss["method"].asString)
+        assertEquals(emptyMap(), dismiss.stringParams())
+        val alert = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.handleAlert", alert["method"].asString)
+        assertEquals(mapOf("action" to "dismiss"), alert.stringParams())
+    }
+
+    @Test
+    fun `dismissKeyboard serializes exact app scope`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        client.dismissKeyboard("app.id")
+
+        val dismiss = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.dismissKeyboard", dismiss["method"].asString)
+        assertEquals(mapOf("bundleId" to "app.id"), dismiss.stringParams())
+    }
+
+    @Test
+    fun `handleAlert serializes exact action label and app scope`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        client.handleAlert("accept", "Allow", "app.id")
+
+        val alert = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.handleAlert", alert["method"].asString)
+        assertEquals(
+            mapOf("action" to "accept", "buttonLabel" to "Allow", "bundleId" to "app.id"),
+            alert.stringParams(),
+        )
+    }
+
+    @Test
+    fun `targeted input maps all selectors app scope and timeout`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+        client.inputText(
+            "Ada",
+            "app.id",
+            IOSElementSelectors("Exact", "Partial", "name", "TextField", "Name"),
+            2_000,
+        )
+
+        val request = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.inputText", request["method"].asString)
+        assertEquals(
+            mapOf(
+                "text" to "Ada",
+                "bundleId" to "app.id",
+                "targetText" to "Exact",
+                "targetTextContains" to "Partial",
+                "targetResourceId" to "name",
+                "targetClassName" to "TextField",
+                "targetContentDescription" to "Name",
+                "timeoutMs" to "2000",
+            ),
+            request.stringParams(),
+        )
+    }
+
+    @Test
+    fun `focused input request stays unchanged`() = runBlocking {
+        repeat(2) { server.enqueue(MockResponse().setBody("""{"result":{"success":true}}""")) }
+        client.inputText("focused", "app.id")
+        client.inputText("springboard")
+
+        val scoped = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.inputText", scoped["method"].asString)
+        assertEquals(mapOf("text" to "focused", "bundleId" to "app.id"), scoped.stringParams())
+        val unscoped = JsonParser.parseString(server.takeRequest().body.readUtf8()).asJsonObject
+        assertEquals("ui.inputText", unscoped["method"].asString)
+        assertEquals(mapOf("text" to "springboard"), unscoped.stringParams())
+    }
+
+    private fun com.google.gson.JsonObject.stringParams(): Map<String, String> =
+        getAsJsonObject("params").entrySet().associate { it.key to it.value.asString }
+
+    private fun allSelectorParams(timeoutMs: Int) = mapOf(
+        "timeoutMs" to timeoutMs.toString(),
+        "text" to "Exact",
+        "textContains" to "Partial",
+        "resourceId" to "menu",
+        "className" to "Button",
+        "contentDescription" to "Open menu",
+        "bundleId" to "app.id",
+    )
+
     // --- sendRequest ---
 
     @Test

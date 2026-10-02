@@ -85,6 +85,12 @@ final class AutomationModelsTests: XCTestCase {
         XCTAssertEqual(dict["error"] as? String, "tap failed")
     }
 
+    func testOperationResultIncludesOptionalMessageOnlyWhenPresent() {
+        XCTAssertNil(OperationResult(success: true, error: nil).toDictionary()["message"])
+        let dict = OperationResult(success: true, error: nil, message: "Tapped Allow").toDictionary()
+        XCTAssertEqual(dict["message"] as? String, "Tapped Allow")
+    }
+
     // MARK: - ElementResult
 
     func testElementResultFoundFalseMinimalFields() {

@@ -60,9 +60,7 @@ fun CallToolRequest.requireString(key: String): String {
     val value = arguments[key]
         ?: throw IllegalArgumentException("Missing required parameter '$key'")
     val primitive = value as? JsonPrimitive
-    if (primitive?.isString != true) {
-        throw IllegalArgumentException("Parameter '$key' must be a string")
-    }
+    require(primitive?.isString == true) { "Parameter '$key' must be a string" }
     return primitive.content
 }
 
@@ -78,9 +76,7 @@ fun CallToolRequest.requireInt(key: String): Int {
 fun CallToolRequest.optionalString(key: String): String? {
     val value = arguments[key] ?: return null
     val primitive = value as? JsonPrimitive
-    if (primitive?.isString != true) {
-        throw IllegalArgumentException("Parameter '$key' must be a string")
-    }
+    require(primitive?.isString == true) { "Parameter '$key' must be a string" }
     return primitive.content
 }
 
@@ -96,8 +92,8 @@ fun CallToolRequest.optionalBoolean(key: String): Boolean? {
     val value = arguments[key] ?: return null
     val primitive = value as? JsonPrimitive
     val raw = primitive?.content ?: value.toString()
-    if (primitive == null || primitive.isString) {
-        throw IllegalArgumentException("Parameter '$key' must be true or false, got '$raw'")
+    require(primitive != null && !primitive.isString) {
+        "Parameter '$key' must be true or false, got '$raw'"
     }
     return when (raw) {
         "true" -> true

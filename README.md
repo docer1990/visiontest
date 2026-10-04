@@ -210,7 +210,10 @@ visiontest init --agent claude,opencode,codex
 ```
 
 This installs or refreshes VisionTest skill files so supported agents can
-discover the CLI workflow inside a project. The shared skill source is
+discover the CLI and MCP workflow inside a project. Running `init` again
+completely replaces the selected skill files with the instructions embedded in
+the installed JAR. Upgrade the CLI first to get the latest instructions. The
+shared skill source is
 [agent-instructions.md](app/src/main/resources/agent-instructions.md).
 
 ## Configuration
@@ -233,6 +236,8 @@ simulator host network.
 - [Element swipe](docs/agentico/specs/element-swipe.md)
 - [Missing interactions](docs/agentico/specs/missing-interactions.md)
 - [Screenshots](docs/agentico/specs/screenshots.md)
+- [Release process](docs/release.md)
+- [0.2.0 release notes](docs/releases/0.2.0.md)
 - [Contributing](CONTRIBUTING.md)
 - [Open issues](https://github.com/docer1990/visiontest/issues)
 

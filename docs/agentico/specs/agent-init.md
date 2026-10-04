@@ -49,8 +49,9 @@ The required `--agent` option MUST split on commas and trim surrounding whitespa
 The build MUST package
 `app/src/main/resources/agent-instructions.md` as a classpath resource with the
 same name. Init MUST load that resource locally and prepend YAML frontmatter
-containing `name: visiontest` and an activation-oriented description; it MUST
-NOT fetch instructions from the network. The embedded body MUST be
+containing `name: visiontest` and an activation-oriented description, followed
+by a generated-by line that identifies the runtime JAR `Implementation-Version`;
+it MUST NOT fetch instructions from the network. The embedded body MUST be
 self-contained and MUST NOT depend on paths in the VisionTest source repository.
 
 #### Scenario: Installed JAR initializes offline
@@ -58,6 +59,12 @@ self-contained and MUST NOT depend on paths in the VisionTest source repository.
 - **Given** the fat JAR contains `agent-instructions.md` and no network is available
 - **When** init writes a supported agent skill
 - **Then** the generated file SHALL contain the hardcoded frontmatter followed by the embedded instruction body
+
+#### Scenario: Generated skill identifies its source version
+
+- **Given** the CLI runs from a packaged JAR with `Implementation-Version` set
+- **When** init writes a supported agent skill
+- **Then** the generated file SHALL state that version between its frontmatter and instructions
 
 #### Scenario: Embedded resource is absent
 

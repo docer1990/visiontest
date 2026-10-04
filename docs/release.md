@@ -57,7 +57,9 @@ unchanged after the smoke run.
 
 ## Publish
 
-Create and push the release tag only after the clean-tree, version, and build checks pass:
+Create and push the release tag only after the clean-tree and version checks
+pass, the local build is green, and the Android emulator smoke run succeeds on
+the exact commit intended for release:
 
 ```bash
 git tag vX.Y.Z

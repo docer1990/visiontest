@@ -47,10 +47,10 @@ visiontest launch_app -p android com.example.app
 
 Install the Android server APK pair before its first start on a device, and
 repeat the install after a new server release. Use `-p ios` and the app's bundle
-ID for iOS. Restart the installer to refresh its prebuilt XCUITest bundle, or
-build from the configured source project. A method-not-found error from a native
-server usually indicates a version mismatch with the JAR. Upgrade the native
-APK or bundle and restart the server before retrying.
+ID for iOS. Run the installer again to download and install an updated prebuilt
+XCUITest bundle, or build from the configured source project. A method-not-found
+error from a native server usually indicates a version mismatch with the JAR.
+Upgrade the native APK or bundle and restart the server before retrying.
 
 If no iOS simulator is booted, list available simulators with
 `xcrun simctl list devices available`, boot the intended simulator with

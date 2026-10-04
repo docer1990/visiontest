@@ -37,6 +37,9 @@ Run the complete local build before publishing:
 
 This exercises the Kotlin/JVM tests, packaged-JAR end-to-end tests, coverage gate, static analysis, and Android module build checks. The release workflow additionally runs the iOS tests and automation-server smoke check on its macOS runner.
 
+Release-specific changes and upgrade steps are recorded in
+[the VisionTest 0.2.0 notes](releases/0.2.0.md).
+
 The Android emulator smoke workflow runs nightly on the default branch. A green
 nightly result does not verify a release branch. After pushing the release
 branch and its final release commit, dispatch the workflow on that branch and

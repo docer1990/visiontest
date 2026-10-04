@@ -39,15 +39,16 @@ before changing device state when the first one is unsuitable.
 Start the automation server, check its status, and launch the app:
 
 ```bash
+visiontest install_automation_server -p android
 visiontest start_automation_server -p android
 visiontest automation_server_status -p android
 visiontest launch_app -p android com.example.app
 ```
 
-Use `-p ios` and the app's bundle ID for iOS. Install the Android server APK
-pair with `install_automation_server -p android` after a new server release.
-For iOS, restart the installer to refresh its prebuilt XCUITest bundle, or build
-from the configured source project. A method-not-found error from a native
+Install the Android server APK pair before its first start on a device, and
+repeat the install after a new server release. Use `-p ios` and the app's bundle
+ID for iOS. Restart the installer to refresh its prebuilt XCUITest bundle, or
+build from the configured source project. A method-not-found error from a native
 server usually indicates a version mismatch with the JAR. Upgrade the native
 APK or bundle and restart the server before retrying.
 

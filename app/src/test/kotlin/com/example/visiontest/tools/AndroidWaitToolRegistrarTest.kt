@@ -57,6 +57,15 @@ class AndroidWaitToolRegistrarTest {
     }
 
     @Test
+    fun `waitForElement rejects blank selector before contacting server`() = runBlocking {
+        val ex = assertFailsWith<IllegalArgumentException> {
+            registrar.waitForElement(AndroidElementSelectors(text = " "))
+        }
+        assertTrue(ex.message!!.contains("must not be blank"))
+        assertEquals(0, mockServer.requestCount)
+    }
+
+    @Test
     fun `waitForElement rejects timeout above the cap`() = runBlocking {
         val ex = assertFailsWith<IllegalArgumentException> {
             registrar.waitForElement(AndroidElementSelectors(text = "Login"), timeoutMs = 31_000)

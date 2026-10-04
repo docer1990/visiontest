@@ -78,6 +78,14 @@ class AndroidWaitToolRegistrar(
         require(selectors.hasAnySelector()) {
             "At least one selector required (text, textContains, resourceId, className, or contentDescription)"
         }
+        val values = listOf(
+            selectors.text,
+            selectors.textContains,
+            selectors.resourceId,
+            selectors.className,
+            selectors.contentDescription,
+        )
+        require(values.filterNotNull().all(String::isNotBlank)) { "Element selectors must not be blank" }
     }
 
     private fun selectorsFrom(request: CallToolRequest) = AndroidElementSelectors(

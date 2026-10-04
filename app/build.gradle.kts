@@ -19,7 +19,7 @@ plugins {
 // Single source of truth for the release version: stamped into the JAR manifest
 // as Implementation-Version and read at runtime by VersionInfo (MCP server info
 // and the CLI --version flag).
-version = "0.1.1"
+version = "0.2.0"
 
 repositories {
     mavenCentral()

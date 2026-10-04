@@ -63,20 +63,38 @@ class IOSWaitToolRegistrarTest {
 
     @Test
     fun `waitForElement requires a selector beyond bundleId`() = runBlocking {
-        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         val ex = assertFailsWith<IllegalArgumentException> {
             registrar.waitForElement(IOSElementSelectors(bundleId = "com.example.app"))
         }
         assertTrue(ex.message!!.contains("At least one selector required"))
+        assertEquals(0, mockServer.requestCount)
+    }
+
+    @Test
+    fun `waitForElement rejects blank selector before contacting server`() = runBlocking {
+        val ex = assertFailsWith<IllegalArgumentException> {
+            registrar.waitForElement(IOSElementSelectors(text = " ", bundleId = "com.example.app"))
+        }
+        assertTrue(ex.message!!.contains("Element selectors must not be blank"))
+        assertEquals(0, mockServer.requestCount)
+    }
+
+    @Test
+    fun `waitForElement rejects blank bundleId before contacting server`() = runBlocking {
+        val ex = assertFailsWith<IllegalArgumentException> {
+            registrar.waitForElement(IOSElementSelectors(text = "Login", bundleId = " "))
+        }
+        assertTrue(ex.message!!.contains("bundleId must not be blank"))
+        assertEquals(0, mockServer.requestCount)
     }
 
     @Test
     fun `waitUntilGone rejects timeout above the cap`() = runBlocking {
-        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         val ex = assertFailsWith<IllegalArgumentException> {
             registrar.waitUntilGone(IOSElementSelectors(text = "Loading"), timeoutMs = 31_000)
         }
         assertTrue(ex.message!!.contains("30000"))
+        assertEquals(0, mockServer.requestCount)
     }
 
     @Test

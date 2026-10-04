@@ -1,10 +1,11 @@
 package com.example.visiontest.cli.commands
 
+import com.example.visiontest.cli.CliCommandRunner
 import com.example.visiontest.cli.ComponentHolder
 import com.example.visiontest.cli.Platform
+import com.example.visiontest.cli.runCliCommand
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
-import com.example.visiontest.cli.runCliCommand
 import com.example.visiontest.android.AndroidElementSelectors
 import com.example.visiontest.config.AutomationConfig
 import com.example.visiontest.ios.IOSElementSelectors
@@ -17,7 +18,10 @@ import com.github.ajalt.clikt.parameters.types.int
  * Exit codes: 0 element found (or gone with `--gone`), 1 timeout, 2 missing selector /
  * timeout above the cap, 3 automation server not running.
  */
-class WaitForElementCommand(private val components: Lazy<ComponentHolder>) :
+class WaitForElementCommand(
+    private val components: Lazy<ComponentHolder>,
+    private val runner: CliCommandRunner = ::runCliCommand,
+) :
     CliktCommand(name = "wait_for_element", help = "Wait for a UI element to appear (or disappear with --gone)") {
 
     private val platform by platformOption()
@@ -37,12 +41,26 @@ class WaitForElementCommand(private val components: Lazy<ComponentHolder>) :
     ).int()
     private val gone by option("--gone", help = "Wait for the element to disappear instead").flag()
 
-    override fun run() = runCliCommand {
+    override fun run() = runner {
+        validateArguments()
         requireServerRunning { components.value.isServerRunning(platform) }
         when (platform) {
             Platform.Android -> runAndroid()
             Platform.Ios -> runIos()
         }
+    }
+
+    private fun validateArguments() {
+        val selectors = listOf(text, textContains, resourceId, className, contentDescription)
+        require(selectors.any { !it.isNullOrBlank() }) {
+            "At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+        }
+        require(selectors.filterNotNull().all { it.isNotBlank() }) { "Element selectors must not be blank" }
+        require(timeout == null || timeout in 1..AutomationConfig.WAIT_MAX_TIMEOUT_MS.toInt()) {
+            "timeoutMs must be between 1 and ${AutomationConfig.WAIT_MAX_TIMEOUT_MS}, got $timeout"
+        }
+        require(platform == Platform.Ios || bundleId == null) { "--bundle-id is only supported on iOS" }
+        require(bundleId?.isNotBlank() != false) { "--bundle-id must not be blank" }
     }
 
     private suspend fun runAndroid(): String {

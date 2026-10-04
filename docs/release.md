@@ -17,6 +17,9 @@ Prepare a release from the repository root on the commit intended for publicatio
    - `version` in `app/build.gradle.kts`, which becomes the JAR `Implementation-Version` and CLI/MCP version
    - `versionName` in `automation-server/build.gradle.kts`
 
+   Increment Android `versionCode` so existing installations can upgrade. For
+   VisionTest 0.2.0, use `versionCode = 2`.
+
 3. Confirm both files agree and commit the version change before tagging. The release tag is the same value with a `v` prefix: `vX.Y.Z`.
 4. Ensure the GitHub CLI is authenticated before using it for remote checks:
 
@@ -34,9 +37,29 @@ Run the complete local build before publishing:
 
 This exercises the Kotlin/JVM tests, packaged-JAR end-to-end tests, coverage gate, static analysis, and Android module build checks. The release workflow additionally runs the iOS tests and automation-server smoke check on its macOS runner.
 
+Release-specific changes and upgrade steps are recorded in
+[the VisionTest 0.2.0 notes](releases/0.2.0.md).
+
+The Android emulator smoke workflow runs nightly on the default branch. A green
+nightly result does not verify a release branch. After pushing the release
+branch and its final release commit, dispatch the workflow on that branch and
+wait for that run to pass:
+
+```bash
+gh workflow run android-emulator-smoke.yaml --ref <release-branch>
+gh run list --workflow android-emulator-smoke.yaml --branch <release-branch>
+gh run view RUN_ID
+```
+
+Confirm the successful run tested the intended release commit. The commit that
+will receive the release tag must include the version updates and remain
+unchanged after the smoke run.
+
 ## Publish
 
-Create and push the release tag only after the clean-tree, version, and build checks pass:
+Create and push the release tag only after the clean-tree and version checks
+pass, the local build is green, and the Android emulator smoke run succeeds on
+the exact commit intended for release:
 
 ```bash
 git tag vX.Y.Z

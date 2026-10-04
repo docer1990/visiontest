@@ -103,6 +103,10 @@ Project setup is separate and does not accept `--platform`:
 visiontest init --agent claude,opencode,codex
 ```
 
+Run `init` again in each project after upgrading VisionTest to replace its
+selected skill files with the version embedded in the new JAR. It overwrites the
+whole file and does not merge local edits.
+
 Run `visiontest --help` for the complete command list and see the
 [embedded agent instructions](../app/src/main/resources/agent-instructions.md)
 for the standard automation loop.

@@ -31,9 +31,9 @@ class AndroidWaitToolRegistrar(
     }
 
     internal suspend fun waitForElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
-        requireServer()
         val timeout = resolveWaitTimeout(timeoutMs)
         requireAnySelector(selectors)
+        requireServer()
         return automationClient.pollForElement(
             expectGone = false,
             timeoutMs = timeout,
@@ -45,9 +45,9 @@ class AndroidWaitToolRegistrar(
     }
 
     internal suspend fun waitUntilGone(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
-        requireServer()
         val timeout = resolveWaitTimeout(timeoutMs)
         requireAnySelector(selectors)
+        requireServer()
         return automationClient.pollForElement(
             expectGone = true,
             timeoutMs = timeout,
@@ -78,6 +78,14 @@ class AndroidWaitToolRegistrar(
         require(selectors.hasAnySelector()) {
             "At least one selector required (text, textContains, resourceId, className, or contentDescription)"
         }
+        val values = listOf(
+            selectors.text,
+            selectors.textContains,
+            selectors.resourceId,
+            selectors.className,
+            selectors.contentDescription,
+        )
+        require(values.filterNotNull().all(String::isNotBlank)) { "Element selectors must not be blank" }
     }
 
     private fun selectorsFrom(request: CallToolRequest) = AndroidElementSelectors(

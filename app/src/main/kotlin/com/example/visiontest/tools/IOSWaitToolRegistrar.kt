@@ -33,9 +33,9 @@ class IOSWaitToolRegistrar(
     }
 
     internal suspend fun waitForElement(selectors: IOSElementSelectors, timeoutMs: Int? = null): String {
-        requireServer()
         val timeout = resolveWaitTimeout(timeoutMs)
         requireAnySelector(selectors)
+        requireServer()
         return iosAutomationClient.pollForElement(
             expectGone = false,
             timeoutMs = timeout,
@@ -47,9 +47,9 @@ class IOSWaitToolRegistrar(
     }
 
     internal suspend fun waitUntilGone(selectors: IOSElementSelectors, timeoutMs: Int? = null): String {
-        requireServer()
         val timeout = resolveWaitTimeout(timeoutMs)
         requireAnySelector(selectors)
+        requireServer()
         return iosAutomationClient.pollForElement(
             expectGone = true,
             timeoutMs = timeout,
@@ -81,6 +81,15 @@ class IOSWaitToolRegistrar(
         require(selectors.hasAnySelector()) {
             "At least one selector required (text, textContains, resourceId, className, or contentDescription)"
         }
+        val values = listOf(
+            selectors.text,
+            selectors.textContains,
+            selectors.identifier,
+            selectors.elementType,
+            selectors.label,
+        )
+        require(values.filterNotNull().all(String::isNotBlank)) { "Element selectors must not be blank" }
+        require(selectors.bundleId?.isNotBlank() != false) { "bundleId must not be blank" }
     }
 
     private fun selectorsFrom(request: CallToolRequest) = IOSElementSelectors(

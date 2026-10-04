@@ -22,15 +22,21 @@ Android waits MUST accept at least one of `text`, `textContains`, `resourceId`, 
 - **When** a wait polls
 - **Then** the iOS client SHALL map them to its identifier, element type, label, and app scope while preserving the tool-facing JSON-RPC parameter names
 
-#### Scenario: No actual selector
+#### Scenario: Invalid wait arguments are rejected before backend access
 
-- **Given** all five element selectors are absent, including when iOS has only `bundleId`
-- **When** a wait begins after its server health check
-- **Then** it MUST fail with an invalid-argument message naming the required selectors
+- **Given** selectors are absent or blank, the timeout is outside its valid range, or iOS `bundleId` is blank
+- **When** a wait validates its arguments
+- **Then** it MUST fail with an invalid-argument message before a health check or find request
+
+#### Scenario: Platform scope validation
+
+- **Given** Android receives an app scope or iOS has only an app scope and no element selector
+- **When** the CLI validates a wait invocation
+- **Then** it MUST exit 2 before constructing device components or contacting a backend
 
 ### Requirement: Wait timing is bounded consistently
 
-Both platforms MUST poll at 500 ms intervals, MUST default to a 10,000 ms caller timeout, and MUST accept explicit timeouts only from 1 through 30,000 ms inclusive. Their MCP tool wrapper timeout MUST be 35,000 ms so the wait's own deadline can report first.
+Both platforms MUST validate an explicit timeout in the range 1 through 30,000 ms before a health check, poll at 500 ms intervals, and default to a 10,000 ms caller timeout. Their MCP tool wrapper timeout MUST be 35,000 ms so the wait's own deadline can report first.
 
 #### Scenario: Default timeout
 
@@ -42,7 +48,7 @@ Both platforms MUST poll at 500 ms intervals, MUST default to a 10,000 ms caller
 
 - **Given** an explicit timeout is zero, negative, or greater than 30,000 ms
 - **When** the registrar validates it
-- **Then** it MUST fail as an invalid argument before polling `ui.findElement`
+- **Then** it MUST fail as an invalid argument before checking server health or polling `ui.findElement`
 
 ### Requirement: Appearance and disappearance have distinct success results
 
@@ -68,12 +74,12 @@ An appearance wait MUST return the raw successful `ui.findElement` JSON-RPC resp
 
 ### Requirement: Server and protocol failures never satisfy a gone wait
 
-Each platform registrar MUST require a successful health check before validation and polling. During polling, an HTTP failure, transport disconnect, JSON-RPC `error`, malformed JSON, missing object `result`, missing `found`, or non-boolean `found` MUST propagate as an error and MUST NOT be interpreted as absence.
+Each platform registrar MUST validate arguments before checking server health. Valid waits MUST require a successful health check before polling. During polling, an HTTP failure, transport disconnect, JSON-RPC `error`, malformed JSON, missing object `result`, missing `found`, or non-boolean `found` MUST propagate as an error and MUST NOT be interpreted as absence.
 
 #### Scenario: Server is unavailable initially
 
-- **Given** the automation server health check fails
-- **When** any wait operation is invoked
+- **Given** valid wait arguments are supplied and the automation server health check fails
+- **When** the wait operation is invoked
 - **Then** it SHALL fail as server-not-running before making a find request; the CLI SHALL map this to exit code 3
 
 #### Scenario: Server dies during a gone wait

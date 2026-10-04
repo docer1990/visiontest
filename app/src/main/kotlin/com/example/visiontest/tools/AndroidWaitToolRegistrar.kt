@@ -31,9 +31,9 @@ class AndroidWaitToolRegistrar(
     }
 
     internal suspend fun waitForElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
-        requireServer()
         val timeout = resolveWaitTimeout(timeoutMs)
         requireAnySelector(selectors)
+        requireServer()
         return automationClient.pollForElement(
             expectGone = false,
             timeoutMs = timeout,
@@ -45,9 +45,9 @@ class AndroidWaitToolRegistrar(
     }
 
     internal suspend fun waitUntilGone(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
-        requireServer()
         val timeout = resolveWaitTimeout(timeoutMs)
         requireAnySelector(selectors)
+        requireServer()
         return automationClient.pollForElement(
             expectGone = true,
             timeoutMs = timeout,

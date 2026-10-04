@@ -10,6 +10,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
@@ -48,29 +49,29 @@ class AndroidWaitToolRegistrarTest {
 
     @Test
     fun `waitForElement requires at least one selector`() = runBlocking {
-        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         val ex = assertFailsWith<IllegalArgumentException> {
             registrar.waitForElement(AndroidElementSelectors())
         }
         assertTrue(ex.message!!.contains("At least one selector required"))
+        assertEquals(0, mockServer.requestCount)
     }
 
     @Test
     fun `waitForElement rejects timeout above the cap`() = runBlocking {
-        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         val ex = assertFailsWith<IllegalArgumentException> {
             registrar.waitForElement(AndroidElementSelectors(text = "Login"), timeoutMs = 31_000)
         }
         assertTrue(ex.message!!.contains("30000"))
+        assertEquals(0, mockServer.requestCount)
     }
 
     @Test
     fun `waitUntilGone rejects non-positive timeout`() = runBlocking {
-        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         val ex = assertFailsWith<IllegalArgumentException> {
             registrar.waitUntilGone(AndroidElementSelectors(text = "Login"), timeoutMs = 0)
         }
         assertTrue(ex.message!!.contains("timeoutMs"))
+        assertEquals(0, mockServer.requestCount)
     }
 
     @Test

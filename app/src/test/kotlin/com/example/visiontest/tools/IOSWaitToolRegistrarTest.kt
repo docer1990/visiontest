@@ -63,20 +63,20 @@ class IOSWaitToolRegistrarTest {
 
     @Test
     fun `waitForElement requires a selector beyond bundleId`() = runBlocking {
-        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         val ex = assertFailsWith<IllegalArgumentException> {
             registrar.waitForElement(IOSElementSelectors(bundleId = "com.example.app"))
         }
         assertTrue(ex.message!!.contains("At least one selector required"))
+        assertEquals(0, mockServer.requestCount)
     }
 
     @Test
     fun `waitUntilGone rejects timeout above the cap`() = runBlocking {
-        mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         val ex = assertFailsWith<IllegalArgumentException> {
             registrar.waitUntilGone(IOSElementSelectors(text = "Loading"), timeoutMs = 31_000)
         }
         assertTrue(ex.message!!.contains("30000"))
+        assertEquals(0, mockServer.requestCount)
     }
 
     @Test

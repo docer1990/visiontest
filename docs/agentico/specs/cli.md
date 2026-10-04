@@ -147,6 +147,12 @@ Android use of this flag MUST exit 2. Invalid direction/speed and nonpositive
 coordinate swipe steps MUST exit 2 before backend access. `tap_on_element`
 timeouts MUST be from 1 through 30,000 ms inclusive before backend access.
 
+`wait_for_element` MUST require at least one nonblank element selector and MUST
+validate timeouts from 1 through 30,000 ms inclusive before constructing device
+components or contacting a backend. `--bundle-id` MUST be rejected on Android;
+on iOS it MUST be nonblank when supplied and MUST NOT replace an element
+selector. Invalid wait input MUST exit 2 even when the server is unavailable.
+
 ### Requirement: Interaction commands validate target forms before device access
 
 `long_press` and `double_tap` MUST accept exactly one of a complete nonnegative

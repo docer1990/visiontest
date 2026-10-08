@@ -344,6 +344,26 @@ fun `invalid screenshot retains returned failure and records decoding failure`()
 
 **Review:** checkpoint. This completes the host measurement boundaries before documentation.
 
+- [ ] Start with a process success and privacy regression. Import the existing
+  coroutine test and Kotlin assertion helpers. The internal traced constructor
+  accepts `trace: TraceRecorder` while existing public constructors remain unchanged.
+
+```kotlin
+@Test
+fun `process trace preserves output without recording it`() = runTest {
+    val events = mutableListOf<TraceEvent>()
+    val trace = TraceRecorder(emit = { events.add(it); Unit })
+    val executor = com.example.visiontest.ios.ProcessExecutor(trace = trace)
+    val result = trace.invocation("ios_get_device_info", "ios") {
+        executor.execute("sh", "-c", "printf synthetic-secret")
+    }
+    assertEquals(0, result.exitCode)
+    assertEquals("synthetic-secret", result.output)
+    assertEquals(1, events.count { it.stage == TraceStage.SIMCTL })
+    assertFalse(events.any { it.toJson().toString().contains("synthetic-secret") })
+}
+```
+
 - [ ] Pass the optional recorder through production device factories and retain
   existing public Kotlin and JVM constructors, including no-argument constructors.
 - [ ] Instrument Android device discovery/library calls and `executeAdb`, plus

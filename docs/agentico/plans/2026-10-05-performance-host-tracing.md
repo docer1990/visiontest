@@ -290,7 +290,7 @@ Task 5 is split into two sequential implementation checkpoints without changing
 the approved scope. Task 5A establishes operations and screenshots; Task 5B adds
 device and process boundaries.
 
-- [ ] Add an optional recorder to `ScreenshotSaver` and the other dependencies,
+- [x] Add an optional recorder to `ScreenshotSaver` and the other dependencies,
   passed from the production factories. Write the failure test first.
 
 ```kotlin
@@ -313,16 +313,16 @@ fun `invalid screenshot retains returned failure and records decoding failure`()
 }
 ```
 
-- [ ] Wrap shared registrar operations once, so CLI and MCP use the same operation
+- [x] Wrap shared registrar operations once, so CLI and MCP use the same operation
   span. Preserve CLI's existing additional health checks for measurement in #63.
   Add no new preflight checks or RPC calls for tracing.
-- [ ] Record screenshot parsing, decoding, writing, and byte counts, preserving
+- [x] Record screenshot parsing, decoding, writing, and byte counts, preserving
   atomic replacement and cleanup behavior. Classify handled failures at their
   existing branches, never by searching the returned English string.
-- [ ] Add screenshot success and I/O failure cases and verify shared operation
+- [x] Add screenshot success and I/O failure cases and verify shared operation
   spans across CLI/MCP consumers. Check no trace contains synthetic secret input
   or output. Compare results and interaction counts with tracing disabled.
-- [ ] Run `./gradlew :app:test --tests '*OperationTraceTest' --tests '*ScreenshotToolTest' --tests '*ToolRegistrarTest'`.
+- [x] Run `./gradlew :app:test --tests '*OperationTraceTest' --tests '*ScreenshotToolTest' --tests '*ToolRegistrarTest'`.
   Expect absent stages at RED, then PASS with unchanged operation expectations.
   Commit as `feat(performance): trace shared operations and screenshots`.
 

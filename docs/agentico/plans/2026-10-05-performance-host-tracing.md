@@ -215,16 +215,18 @@ fun `CLI ignores MCP environment and rejects blank explicit path`() {
 - Modify: `app/src/main/kotlin/com/example/visiontest/ios/IOSAutomationClient.kt`
 - Modify: `app/src/main/kotlin/com/example/visiontest/cli/ComponentHolder.kt`
 - Modify: `app/src/main/kotlin/com/example/visiontest/ToolFactory.kt`
+- Modify: `app/src/main/kotlin/com/example/visiontest/Main.kt`
+- Modify: `docs/agentico/specs/performance-tracing.md`
 - Create: `app/src/test/kotlin/com/example/visiontest/performance/HttpTraceTest.kt`
 - Modify: `app/src/test/kotlin/com/example/visiontest/android/AutomationClientWaitTest.kt`
 - Modify: `app/src/test/kotlin/com/example/visiontest/ios/IOSAutomationClientTest.kt`
 
 **Review:** checkpoint. Native correlation and benchmark stage attribution depend on this.
 
-- [ ] Add an optional `TraceRecorder? = null` constructor dependency to the common
+- [x] Add an optional `TraceRecorder? = null` constructor dependency to the common
   transport and both platform clients. Keep existing constructors and member
   methods source-compatible. Wire the recorder through the factories from Task 3.
-- [ ] Start with this test, importing existing MockWebServer and coroutine helpers.
+- [x] Start with this test, importing existing MockWebServer and coroutine helpers.
 
 ```kotlin
 @Test
@@ -251,17 +253,17 @@ fun `tracing preserves body and request count`() = runTest {
 }
 ```
 
-- [ ] Record preparation, exchange, response processing, and health spans with UTF-8
+- [x] Record preparation, exchange, response processing, and health spans with UTF-8
   byte counts. Keep the HTTP body, JSON-RPC IDs, request count, error mapping, and
   timeouts unchanged. Body bytes are not wire bytes. Never reserialize a result
   to return it merely because tracing is enabled.
-- [ ] Record polling attempts and cumulative explicit waits. Instrument both
+- [x] Record polling attempts and cumulative explicit waits. Instrument both
   appearance and disappearance and preserve invalid-response failures. Record
   structured success/failure only where reliable; leave unknown otherwise.
-- [ ] Test UTF-8 non-ASCII data, HTTP failure, timeout, cancellation, malformed
+- [x] Test UTF-8 non-ASCII data, HTTP failure, timeout, cancellation, malformed
   responses, normally returned `success:false`, backend failure during gone-wait,
   and distinct concurrent invocations whose existing RPC IDs may both equal 1.
-- [ ] Run `./gradlew :app:test --tests '*HttpTraceTest' --tests '*AutomationClientTest' --tests '*AutomationClientWaitTest' --tests '*IOSAutomationClientTest' --tests '*IOSAutomationClientPublicApiTest'`.
+- [x] Run `./gradlew :app:test --tests '*HttpTraceTest' --tests '*AutomationClientTest' --tests '*AutomationClientWaitTest' --tests '*IOSAutomationClientTest' --tests '*IOSAutomationClientPublicApiTest'`.
   Expect missing trace spans at RED and preserved original responses at GREEN.
   Commit as `feat(performance): trace native transport and client waits`.
 

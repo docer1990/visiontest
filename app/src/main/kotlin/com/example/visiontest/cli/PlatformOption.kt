@@ -3,6 +3,8 @@ package com.example.visiontest.cli
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
+import com.github.ajalt.clikt.parameters.options.validate
+import com.example.visiontest.performance.TraceRuntime
 import com.github.ajalt.clikt.parameters.types.choice
 
 /**
@@ -21,6 +23,7 @@ fun CliktCommand.platformOption() =
     option("--platform", "-p", help = "Target platform: android or ios")
         .choice("android" to Platform.Android, "ios" to Platform.Ios)
         .required()
+        .validate { context.findObject<TraceRuntime>()?.platform = it.value }
 
 /**
  * `--platform` option for Android-only CLI subcommands.
@@ -34,6 +37,7 @@ fun CliktCommand.androidOnlyPlatformOption() =
     option("--platform", "-p", help = "Target platform (android only)")
         .choice("android" to Platform.Android, "ios" to Platform.Ios)
         .required()
+        .validate { context.findObject<TraceRuntime>()?.platform = it.value }
 
 /**
  * Throws [CliExit] with [ExitCode.PlatformNotSupported] if [platform] is not Android.

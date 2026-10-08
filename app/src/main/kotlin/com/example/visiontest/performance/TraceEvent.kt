@@ -107,5 +107,11 @@ internal object TraceNames {
 
     fun operation(value: String): String = value.takeIf { it in operations } ?: "other"
 
+    fun toolPlatform(name: String): String? = when {
+        name !in operations -> null
+        name.startsWith("ios_") -> "ios"
+        else -> "android"
+    }
+
     fun platform(value: String?): String? = value?.takeIf { it == "android" || it == "ios" }
 }

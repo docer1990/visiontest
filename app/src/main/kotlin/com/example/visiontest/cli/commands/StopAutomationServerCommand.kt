@@ -4,6 +4,7 @@ import com.example.visiontest.cli.ComponentHolder
 import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.runCliCommand
+import com.example.visiontest.cli.CliCommandRunner
 import com.github.ajalt.clikt.core.CliktCommand
 
 /**
@@ -11,12 +12,15 @@ import com.github.ajalt.clikt.core.CliktCommand
  * not running, so scripts can always call it during teardown. No `requireServerRunning`
  * pre-check — that would defeat the idempotency.
  */
-class StopAutomationServerCommand(private val components: Lazy<ComponentHolder>) :
+class StopAutomationServerCommand(
+    private val components: Lazy<ComponentHolder>,
+    private val runner: CliCommandRunner = ::runCliCommand,
+) :
     CliktCommand(name = "stop_automation_server", help = "Stop the automation server") {
 
     private val platform by platformOption()
 
-    override fun run() = runCliCommand {
+    override fun run() = runner {
         when (platform) {
             Platform.Android -> components.value.androidStopRegistrar.stopAutomationServer()
             Platform.Ios -> components.value.iosAutomationRegistrar.stopAutomationServer()

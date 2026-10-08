@@ -1,5 +1,6 @@
 package com.example.visiontest.cli
 
+import com.example.visiontest.performance.TraceRecorder
 import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.config.AppConfig
@@ -34,6 +35,9 @@ class ComponentHolder internal constructor(
     val iosDeviceRegistrar: IOSDeviceToolRegistrar,
     val iosAutomationRegistrar: IOSAutomationToolRegistrar,
 ) {
+    internal var traceRecorder: TraceRecorder = TraceRecorder.Disabled
+        private set
+
     // Derived from the clients above rather than injected: these registrars have no
     // other dependencies, and keeping them out of the constructor preserves its shape.
     val androidStopRegistrar = AndroidStopToolRegistrar(android, automationClient)
@@ -51,7 +55,9 @@ class ComponentHolder internal constructor(
          * Creates a [ComponentHolder] using [AppConfig.createDefault] with the standard
          * production wiring. Registers a shutdown hook to close device connections.
          */
-        fun createDefault(): ComponentHolder {
+        fun createDefault(): ComponentHolder = createDefault(TraceRecorder.Disabled)
+
+        internal fun createDefault(recorder: TraceRecorder): ComponentHolder {
             val config = AppConfig.createDefault()
             val logger = LoggerFactory.getLogger("VisionTest")
 
@@ -85,7 +91,7 @@ class ComponentHolder internal constructor(
                 androidAutomationRegistrar = AndroidAutomationToolRegistrar(android, automationClient, discovery),
                 iosDeviceRegistrar = IOSDeviceToolRegistrar(ios),
                 iosAutomationRegistrar = IOSAutomationToolRegistrar(ios, iosAutomationClient, discovery, logger),
-            )
+            ).also { it.traceRecorder = recorder }
         }
     }
 }

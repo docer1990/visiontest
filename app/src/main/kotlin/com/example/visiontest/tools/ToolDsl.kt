@@ -1,5 +1,7 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceNames
 import com.example.visiontest.utils.ErrorHandler
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
@@ -27,6 +29,13 @@ class ToolScope(
     private val logger: Logger,
     private val defaultTimeoutMs: Long = 10_000L
 ) {
+    private var recorder = TraceRecorder.Disabled
+
+    internal constructor(server: Server, logger: Logger, defaultTimeoutMs: Long, recorder: TraceRecorder) :
+        this(server, logger, defaultTimeoutMs) {
+        this.recorder = recorder
+    }
+
     fun tool(
         name: String,
         description: String,
@@ -36,8 +45,8 @@ class ToolScope(
     ) {
         server.addTool(name, description, inputSchema) { request ->
             try {
-                val result = withTimeout(timeoutMs) {
-                    handler(request)
+                val result = recorder.invocation(name, TraceNames.toolPlatform(name)) {
+                    withTimeout(timeoutMs) { handler(request) }
                 }
                 CallToolResult(content = listOf(TextContent(result)))
             } catch (e: TimeoutCancellationException) {

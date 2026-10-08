@@ -1,8 +1,44 @@
 # Host performance tracing
 
-Status: the correlated recorder, span schema, and local JSONL sink are implemented.
-Activation, session lifecycle, and production measurement boundaries are subsequent delivery
-steps in [the approved baseline design](2026-10-05-performance-baseline-design.md).
+Status: the correlated recorder, local JSONL sink, CLI/MCP activation, and bounded
+session lifecycle are implemented. Further production measurement boundaries follow
+[the approved baseline design](2026-10-05-performance-baseline-design.md).
+
+## Activation and session lifecycle
+
+CLI tracing requires a root `--trace-performance PATH` option before the subcommand
+or help/version flag. MCP reads `VISIONTEST_TRACE_PERFORMANCE` once at startup;
+a missing or blank environment value disables it. CLI ignores this environment
+variable. No arguments and `serve` still select MCP, ignoring the `serve` tail.
+Nonblank relative paths resolve against the working directory and normalize.
+
+A first record with `type: session` contains `schemaVersion: 1`, `sessionId`,
+`visionTestVersion`, `mode` (`cli` or `mcp`), and monotonic `originNs`, captured
+before entry-point routing. An orderly close writes `type: session.end`, `sessionId`,
+`written`, `dropped`, `invocationsStarted`, `invocationsCompleted`, and `complete`.
+Written/dropped counts cover admitted nonterminal records. Completion requires a
+written terminal record, successful drain, zero drops, and matching started/completed
+invocations. A running MCP call prevents completion even when all completed spans
+have drained. Shutdown waits at most 1,000 ms, and repeated finish calls are idempotent.
+
+Each MCP tool handler starts exactly one invocation around its timed business
+handler. The coroutine context retains correlation across timeout and IO contexts;
+existing result/error formatting remains outside the invocation. Discovery and
+JSON-RPC framing remain unchanged. MCP startup components precede tool invocations
+and are not currently emitted as component spans; the session origin covers startup.
+
+CLI preparation includes parser construction, parsing, and argument validation from
+entry until the first lazy component access, or `init`'s explicit validated dispatch
+marker. It excludes component construction and backend execution. Validation failures,
+help, and version close preparation at their gateway. Preparation is a correlated
+interval that can start before its runner's invocation span; it is not parser CPU
+time. Parse failure before eager trace configuration is available can produce no trace.
+The CLI explicitly carries its dispatch coroutine context into synchronous lazy
+component construction, which emits a separate `component.init` child span.
+
+File failures add only the fixed diagnostic
+`VisionTest performance trace is unavailable or incomplete.` to stderr. They never
+change normal results or exit codes. No trace data enters stdout.
 
 ## Completed host spans
 

@@ -7,6 +7,8 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Tag
 import java.io.BufferedWriter
 import java.nio.file.Path
+import java.nio.file.Files
+import org.junit.jupiter.api.io.TempDir
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.exists
@@ -98,6 +100,7 @@ class McpStdioE2ETest {
         )
     }
 
+    @TempDir lateinit var traceDirectory: Path
     private var process: Process? = null
     private val stdoutLines = LinkedBlockingQueue<String>()
     private val stderrBuffer = StringBuilder()
@@ -126,9 +129,12 @@ class McpStdioE2ETest {
      * the newline-delimited JSON-RPC protocol; stderr carries slf4j logs and is
      * drained so the server never blocks on a full pipe.
      */
-    private fun startServer(): Pair<BufferedWriter, Process> {
+    private fun startServer(tracePath: Path? = null): Pair<BufferedWriter, Process> {
         val javaBin = Path.of(System.getProperty("java.home"), "bin", "java").toString()
-        val proc = ProcessBuilder(javaBin, "-jar", jarPath().toString()).start()
+        val builder = ProcessBuilder(javaBin, "-jar", jarPath().toString())
+        builder.environment().remove("VISIONTEST_TRACE_PERFORMANCE")
+        if (tracePath != null) builder.environment()["VISIONTEST_TRACE_PERFORMANCE"] = tracePath.toString()
+        val proc = builder.start()
         process = proc
 
         Thread {
@@ -181,6 +187,40 @@ class McpStdioE2ETest {
             result.getAsJsonObject("capabilities").has("tools"),
             "Server should advertise tools capability. Full result: $result",
         )
+    }
+
+    @Test
+    fun `traced tool call preserves framing and correlates one invocation`() {
+        val path = traceDirectory.resolve("mcp.jsonl")
+        val (writer, proc) = startServer(path)
+        writer.sendLine(
+            """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05",""" +
+                """"capabilities":{},"clientInfo":{"name":"trace-test","version":"0"}}}"""
+        )
+        assertEquals("2.0", awaitResponse(1).get("jsonrpc").asString)
+        writer.sendLine("""{"jsonrpc":"2.0","method":"notifications/initialized"}""")
+        writer.sendLine("""{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}""")
+        val names = awaitResponse(2).getAsJsonObject("result").getAsJsonArray("tools")
+            .map { it.asJsonObject.get("name").asString }.toSet()
+        assertEquals(EXPECTED_TOOLS, names)
+        // Missing required inputs fails without depending on a device or automation server.
+        writer.sendLine(
+            """{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"ios_input_text","arguments":{}}}"""
+        )
+        val response = awaitResponse(3)
+        assertEquals("2.0", response.get("jsonrpc").asString)
+        assertTrue(response.getAsJsonObject("result").getAsJsonArray("content")[0]
+            .asJsonObject.get("text").asString.contains("ERR_INVALID_ARG"))
+        proc.destroy()
+        assertTrue(proc.waitFor(10, TimeUnit.SECONDS))
+        val rows = Files.readAllLines(path).map { JsonParser.parseString(it).asJsonObject }
+        val invocation = rows.single { it.get("stage")?.asString == "invocation" }
+        assertEquals("ios_input_text", invocation.get("operation").asString)
+        assertEquals("ios", invocation.get("platform").asString)
+        assertEquals("thrown", invocation.get("outcome").asString)
+        assertTrue(rows.last().get("complete").asBoolean)
+        assertEquals(1, rows.last().get("invocationsStarted").asInt)
+        assertEquals(1, rows.last().get("invocationsCompleted").asInt)
     }
 
     private fun listTools(): JsonArray {

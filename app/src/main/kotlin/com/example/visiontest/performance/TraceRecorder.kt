@@ -29,21 +29,37 @@ internal class TraceRecorder(
     private val nowNs: () -> Long = System::nanoTime,
     private val emit: (TraceEvent) -> Unit,
     private val enabled: Boolean = true,
+    val originNs: Long = if (enabled) nowNs() else 0L,
 ) {
     val sessionId: String = newId()
-    val originNs: Long = if (enabled) nowNs() else 0L
     private val invocationSequence = AtomicLong()
+    private val completed = AtomicLong()
+    val invocationsStarted: Long get() = invocationSequence.get()
+    val invocationsCompleted: Long get() = completed.get()
 
     suspend fun <T> invocation(operation: String, platform: String?, block: suspend () -> T): T {
         if (!enabled) return block()
         val invocation = Invocation(newId(), invocationSequence.incrementAndGet(),
             TraceNames.operation(operation), TraceNames.platform(platform))
-        return record(SpanContext(this, invocation, newId(), null), TraceStage.INVOCATION, block)
+        return try {
+            record(SpanContext(this, invocation, newId(), null), TraceStage.INVOCATION, block)
+        } finally {
+            completed.incrementAndGet()
+        }
     }
 
     suspend fun <T> span(stage: TraceStage, block: suspend () -> T): T {
         val parent = activeContext() ?: return block()
         return record(SpanContext(this, parent.invocation, newId(), parent.spanId), stage, block)
+    }
+
+    suspend fun interval(stage: TraceStage, start: Long, end: Long, failure: Throwable? = null) =
+        interval(coroutineContext, stage, start, end, failure)
+
+    fun interval(context: CoroutineContext, stage: TraceStage, start: Long, end: Long, failure: Throwable? = null) {
+        val parent = context[SpanContext]?.takeIf { enabled && it.recorder === this } ?: return
+        val child = SpanContext(this, parent.invocation, newId(), parent.spanId)
+        runCatching { emit(event(child, stage, start, end, failure)) }
     }
 
     suspend fun metric(name: TraceMetric, value: Long) {

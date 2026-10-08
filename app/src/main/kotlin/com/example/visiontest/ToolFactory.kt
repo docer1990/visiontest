@@ -1,5 +1,6 @@
 package com.example.visiontest
 
+import com.example.visiontest.performance.TraceRecorder
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.discovery.ToolDiscovery
@@ -29,8 +30,10 @@ class ToolFactory(
         IOSWaitToolRegistrar(iosAutomationClient)
     )
 
-    fun registerAllTools(server: Server) {
-        val scope = ToolScope(server, logger, toolTimeoutMillis)
+    fun registerAllTools(server: Server) = registerAllTools(server, TraceRecorder.Disabled)
+
+    internal fun registerAllTools(server: Server, recorder: TraceRecorder) {
+        val scope = ToolScope(server, logger, toolTimeoutMillis, recorder)
         registrars.forEach { it.registerTools(scope) }
     }
 }

@@ -22,6 +22,9 @@ class AndroidAutomationToolRegistrar internal constructor(
     private val automationClient: AutomationClient,
     private val discovery: ToolDiscovery,
     private val trace: TraceRecorder,
+    private val launchProcess: (List<String>) -> Process = { command ->
+        ProcessBuilder(command).redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
+    },
 ) : ToolRegistrar {
     constructor(android: DeviceConfig, automationClient: AutomationClient, discovery: ToolDiscovery) :
         this(android, automationClient, discovery, TraceRecorder.Disabled)
@@ -96,10 +99,7 @@ class AndroidAutomationToolRegistrar internal constructor(
                 "-e", "class", AutomationConfig.AUTOMATION_SERVER_TEST_CLASS,
                 "${AutomationConfig.AUTOMATION_SERVER_TEST_PACKAGE}/${AutomationConfig.INSTRUMENTATION_RUNNER}"
             )
-            ProcessBuilder(command)
-                .redirectErrorStream(true)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                .start()
+            trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) }
         }
         var attempts = 0
         val maxAttempts = 10

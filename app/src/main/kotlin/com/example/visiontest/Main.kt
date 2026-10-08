@@ -94,11 +94,13 @@ private fun runMcpServer(trace: TraceRuntime) {
     val android = Android(
         timeoutMillis = config.adbTimeoutMillis,
         cacheValidityPeriod = config.deviceCacheValidityPeriod,
-        logger = LoggerFactory.getLogger(Android::class.java)
+        logger = LoggerFactory.getLogger(Android::class.java),
+        trace = trace.recorder
     )
 
     val ios = IOSManager(
-        logger = LoggerFactory.getLogger(IOSManager::class.java)
+        logger = LoggerFactory.getLogger(IOSManager::class.java),
+        trace = trace.recorder
     )
 
     Runtime.getRuntime().addShutdownHook(Thread {

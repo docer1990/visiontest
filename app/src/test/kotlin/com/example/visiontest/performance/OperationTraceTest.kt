@@ -10,6 +10,7 @@ import com.example.visiontest.ios.IOSAutomationClient
 import com.example.visiontest.ios.IOSElementSelectors
 import com.example.visiontest.discovery.ToolDiscovery
 import org.slf4j.LoggerFactory
+import kotlin.test.assertSame
 import kotlin.test.assertFailsWith
 import com.example.visiontest.tools.ScreenshotSaver
 import com.example.visiontest.tools.AndroidDeviceToolRegistrar
@@ -37,6 +38,194 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 class OperationTraceTest {
+    private class LaunchFailure(val marker: Any) : java.io.IOException("synthetic-secret")
+    @Test
+    fun `Android failed subprocess preserves exit and timeout cleanup`() = runTest {
+        for (timeout in listOf(false, true)) {
+            val events = java.util.Collections.synchronizedList(mutableListOf<TraceEvent>())
+            val trace = TraceRecorder(emit = { events.add(it); Unit })
+            val adb = mockk<com.malinskiy.adam.AndroidDebugBridgeClient>()
+            val device = mockk<com.malinskiy.adam.request.device.Device>()
+            every { device.serial } returns "synthetic-secret"
+            every { device.state } returns com.malinskiy.adam.request.device.DeviceState.DEVICE
+            coEvery { adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>()) } returns listOf(device)
+            val process = mockk<Process>()
+            every { process.inputStream } answers { "synthetic-secret".byteInputStream() }
+            every { process.waitFor(60_000L, java.util.concurrent.TimeUnit.MILLISECONDS) } returns !timeout
+            every { process.waitFor(5L, java.util.concurrent.TimeUnit.SECONDS) } returns true
+            every { process.exitValue() } returns 7
+            every { process.destroyForcibly() } returns process
+            val processes = com.example.visiontest.android.AndroidHostProcesses({}, { process })
+            suspend fun execute(recorder: TraceRecorder): Throwable {
+                val android = com.example.visiontest.android.Android(
+                    trace = recorder, adb = adb, hostProcesses = processes,
+                )
+                return assertFailsWith<Exception> {
+                    recorder.invocation("start_automation_server", "android") {
+                        android.executeAdb("forward", "tcp:9008", "tcp:9008")
+                    }
+                }
+            }
+            val expected = execute(TraceRecorder.Disabled)
+            val actual = execute(trace)
+            assertEquals(expected::class, actual::class)
+            assertEquals(expected.message, actual.message)
+            val span = events.filter { it.stage == TraceStage.ADB }.last()
+            assertEquals(if (timeout) TraceOutcome.TIMEOUT else TraceOutcome.THROWN, span.outcome)
+            if (!timeout) assertEquals(7, (actual as com.example.visiontest.CommandExecutionException).exitCode)
+            verify(exactly = if (timeout) 2 else 0) { process.destroyForcibly() }
+            verify(exactly = if (timeout) 2 else 0) { process.waitFor(5L, java.util.concurrent.TimeUnit.SECONDS) }
+            assertFalse(events.any { it.toJson().toString().contains("synthetic-secret") })
+        }
+    }
+    @Test
+    fun `Android process and library spans preserve calls outputs and validation`() = runTest {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        val adb = mockk<com.malinskiy.adam.AndroidDebugBridgeClient>()
+        val device = mockk<com.malinskiy.adam.request.device.Device>()
+        every { device.serial } returns "synthetic-secret"
+        every { device.state } returns com.malinskiy.adam.request.device.DeviceState.DEVICE
+        coEvery { adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>()) } returns listOf(device)
+        coEvery {
+            adb.execute(any<com.malinskiy.adam.request.shell.v2.ShellCommandRequest>(), "synthetic-secret")
+        } returns
+            com.malinskiy.adam.request.shell.v2.ShellCommandResult("synthetic-secret".toByteArray(), byteArrayOf(), 0)
+        var starts = 0
+        var launches = 0
+        val launch: (List<String>) -> Process = { command ->
+            assertEquals(listOf("adb", "-s", "synthetic-secret", "forward", "tcp:9008", "tcp:9008"), command)
+            launches++
+            ProcessBuilder("sh", "-c", "printf synthetic-secret").start()
+        }
+        val android = com.example.visiontest.android.Android(
+            cacheValidityPeriod = Long.MAX_VALUE, trace = trace, adb = adb,
+            hostProcesses = com.example.visiontest.android.AndroidHostProcesses({ starts++ }, launch),
+        )
+        trace.invocation("get_device_info", "android") {
+            assertFailsWith<IllegalArgumentException> { android.executeAdb("synthetic-secret") }
+            assertEquals(0, starts)
+            assertEquals(0, launches)
+            assertFalse(events.any { it.stage == TraceStage.ADB || it.stage == TraceStage.DEVICE_DISCOVERY })
+            assertEquals("synthetic-secret", android.executeShell("synthetic-secret", null))
+            assertEquals("synthetic-secret", android.executeAdb("forward", "tcp:9008", "tcp:9008"))
+        }
+        assertEquals(4, events.count { it.stage == TraceStage.ADB })
+        assertEquals(1, starts)
+        assertEquals(1, launches)
+        coVerify(exactly = 1) { adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>()) }
+        coVerify(exactly = 1) {
+            adb.execute(any<com.malinskiy.adam.request.shell.v2.ShellCommandRequest>(), "synthetic-secret")
+        }
+        assertFalse(events.any { it.toJson().toString().contains("synthetic-secret") })
+    }
+    @Test
+    fun `Android discovery includes cache hits without repeating ADB work`() = runTest {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        val adb = mockk<com.malinskiy.adam.AndroidDebugBridgeClient>()
+        coEvery { adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>()) } returns emptyList()
+        var starts = 0
+        val device = com.example.visiontest.android.Android(
+            cacheValidityPeriod = Long.MAX_VALUE, trace = trace, adb = adb,
+            hostProcesses = com.example.visiontest.android.AndroidHostProcesses(startAdb = { starts++ }),
+        )
+        trace.invocation("available_device", "android") {
+            assertEquals(emptyList(), device.listDevices())
+            assertEquals(emptyList(), device.listDevices())
+        }
+        assertEquals(2, events.count { it.stage == TraceStage.DEVICE_DISCOVERY })
+        assertEquals(2, events.count { it.stage == TraceStage.ADB })
+        assertEquals(1, starts)
+        coVerify(exactly = 1) { adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>()) }
+    }
+
+    @Test
+    fun `iOS discovery measures parsing and preserves query result`() = runTest {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        val executor = mockk<com.example.visiontest.ios.ProcessExecutor>()
+        coEvery { executor.execute(*anyVararg()) } returns
+            com.example.visiontest.ios.ProcessExecutor.CommandResult(0, """{"devices":{}}""", "")
+        val device = com.example.visiontest.ios.IOSSimulator(trace = trace, processExecutor = executor)
+        trace.invocation("ios_available_device", "ios") { assertEquals(emptyList(), device.listDevices()) }
+        assertEquals(1, events.count { it.stage == TraceStage.DEVICE_DISCOVERY })
+        coVerify(exactly = 1) { executor.execute("xcrun", "simctl", "list", "devices", "available", "--json") }
+    }
+
+    @Test
+    fun `detached launches complete before health polling and exclude secret arguments`() = runTest {
+        for (platform in listOf("android", "ios")) {
+            val events = java.util.Collections.synchronizedList(mutableListOf<TraceEvent>())
+            val trace = TraceRecorder(emit = { events.add(it); Unit })
+            val device = mockk<com.example.visiontest.android.Android>()
+            coEvery { device.getFirstAvailableDevice() } returns com.example.visiontest.common.MobileDevice(
+                "synthetic-secret", "synthetic-secret", com.example.visiontest.common.DeviceType.IOS_SIMULATOR,
+                state = "Booted",
+            )
+            coEvery { device.executeAdb(*anyVararg(), deviceSerial = any()) } returns ""
+            val process = mockk<Process>()
+            every { process.isAlive } returns true
+            var launches = 0
+            val launch: (List<String>) -> Process = { launches++; process }
+            val discovery = mockk<ToolDiscovery>()
+            every { discovery.findXctestrun() } returns "/synthetic-secret/bundle.xctestrun"
+            every { discovery.findXcodeProject() } returns null
+            val androidClient = mockk<AutomationClient>()
+            val iosClient = mockk<IOSAutomationClient>()
+            var health = 0
+            val check: () -> Boolean = {
+                health++
+                if (health == 1) false else {
+                    assertEquals(1, events.count { it.stage == TraceStage.PROCESS_LAUNCH })
+                    true
+                }
+            }
+            coEvery { androidClient.isServerRunning() } answers { check() }
+            coEvery { iosClient.isServerRunning() } answers { check() }
+            suspend fun start(launcher: (List<String>) -> Process) =
+                trace.invocation("start_automation_server", platform) {
+                    if (platform == "android") {
+                        AndroidAutomationToolRegistrar(device, androidClient, discovery, trace, launcher)
+                            .startAutomationServer()
+                    } else {
+                        IOSAutomationToolRegistrar(device, iosClient, discovery,
+                            LoggerFactory.getLogger(javaClass), trace, launcher).startAutomationServer()
+                    }
+                }
+            start(launch)
+            assertEquals(1, launches)
+            assertEquals(2, health)
+            assertEquals(1, events.count { it.stage == TraceStage.OPERATION })
+            assertFalse(events.any { it.toJson().toString().contains("synthetic-secret") })
+            events.clear()
+            health = 0
+            val original = LaunchFailure(Any())
+            val failedLaunch: (List<String>) -> Process = { throw original }
+            val failure = assertFailsWith<LaunchFailure> { start(failedLaunch) }
+            assertSame(original, failure)
+            assertSame(original.marker, failure.marker)
+            assertEquals(1, health)
+            val failedSpan = events.single { it.stage == TraceStage.PROCESS_LAUNCH }
+            assertEquals(TraceOutcome.THROWN, failedSpan.outcome)
+            assertEquals(TraceErrorCategory.IO, failedSpan.errorCategory)
+            assertFalse(events.any { it.toJson().toString().contains("synthetic-secret") })
+        }
+    }
+
+    @Test
+    fun `process trace preserves output without recording it`() = runTest {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        val executor = com.example.visiontest.ios.ProcessExecutor(trace = trace)
+        val result = trace.invocation("ios_get_device_info", "ios") {
+            executor.execute("sh", "-c", "printf synthetic-secret")
+        }
+        assertEquals(0, result.exitCode)
+        assertEquals("synthetic-secret", result.output)
+        assertEquals(1, events.count { it.stage == TraceStage.SIMCTL })
+        assertFalse(events.any { it.toJson().toString().contains("synthetic-secret") })
+    }
 
     @Test
     fun `invalid base64 returns failure and classifies decode span`() = runTest {

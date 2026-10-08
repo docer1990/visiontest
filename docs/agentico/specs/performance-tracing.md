@@ -171,6 +171,35 @@ Screenshot spans serialize no response, image, target path, or exception prose.
 Response byte counts remain at the existing HTTP boundary rather than re-encoding
 the screenshot response solely for a duplicate metric.
 
+## Device discovery and processes
+
+Production CLI and MCP construction passes the session recorder to Android and to
+IOSManager's simulator and both its ordinary and 120,000 ms boot-wait executors.
+Legacy public Kotlin and JVM constructors, including no-argument constructors,
+continue to disable tracing.
+
+`device.discovery` includes Android startup, lock acquisition, cache lookup, and
+on cache misses the existing list query and mapping. A cache hit still records
+this stage but makes no additional ADB list call. iOS discovery includes the
+existing simctl list query and JSON parsing. Empty successful queries do not imply
+that a device is available.
+
+`adb` surrounds actual Android server startup, ADAM list and shell requests, and
+validated host ADB subprocess execution. Invalid host arguments still fail before
+device access or process creation. `simctl` surrounds ProcessExecutor's existing
+process creation, wait, and stream draining. Its exit code sets operationOutcome
+success or failure, while a nonzero code still returns CommandResult normally.
+CommandTimeoutException retains its type and message and records timeout without
+an error category. Existing timeout budgets, cleanup, stream threads, locking,
+cache policy, output, and exception propagation remain unchanged.
+
+`process.launch` surrounds detached instrumentation or xcodebuild process creation
+only. It ends before startup delays and health polling; it does not measure the
+server lifetime. Process creation failures retain their existing propagation.
+No helper thread emits measurements: stream draining remains inside its enclosing
+process span. Device and process traces never record serials, command arguments,
+paths, stdout, stderr, or exception messages, and add no probes or retries.
+
 ## Local JSONL persistence
 
 The sink appends UTF-8 JSON objects as newline-delimited records through one daemon

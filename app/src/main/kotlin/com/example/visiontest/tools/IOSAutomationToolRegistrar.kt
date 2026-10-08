@@ -27,6 +27,9 @@ class IOSAutomationToolRegistrar internal constructor(
     private val discovery: ToolDiscovery,
     private val logger: Logger,
     private val trace: TraceRecorder,
+    private val launchProcess: (List<String>) -> Process = { command ->
+        ProcessBuilder(command).redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
+    },
 ) : ToolRegistrar {
     constructor(
         ios: DeviceConfig,
@@ -110,10 +113,7 @@ class IOSAutomationToolRegistrar internal constructor(
     ): ServerPollResult {
         withContext(Dispatchers.IO) {
             logger.info("Starting iOS automation server ($label): ${command.joinToString(" ")}")
-            val process = ProcessBuilder(command)
-                .redirectErrorStream(true)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                .start()
+            val process = trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) }
             iosXcodebuildProcess = process
         }
 

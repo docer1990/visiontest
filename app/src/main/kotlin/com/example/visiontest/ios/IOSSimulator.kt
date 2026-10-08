@@ -1,5 +1,7 @@
 package com.example.visiontest.ios
 
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
 import com.example.visiontest.AppNotFoundException
 import com.example.visiontest.IOSSimulatorException
 import com.example.visiontest.NoSimulatorAvailableException
@@ -10,13 +12,21 @@ import kotlinx.serialization.json.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class IOSSimulator(
-    private val processExecutor: ProcessExecutor = ProcessExecutor(),
+class IOSSimulator internal constructor(
+    private val trace: TraceRecorder,
+    private val processExecutor: ProcessExecutor = ProcessExecutor(trace = trace),
     // Separate executor for `simctl bootstatus`: a cold simulator boot takes far
     // longer than the default 5s command timeout.
-    private val bootWaitExecutor: ProcessExecutor = ProcessExecutor(timeoutMillis = BOOT_WAIT_TIMEOUT_MILLIS),
+    private val bootWaitExecutor: ProcessExecutor =
+        ProcessExecutor(timeoutMillis = BOOT_WAIT_TIMEOUT_MILLIS, trace = trace),
     private val logger: Logger = LoggerFactory.getLogger(IOSSimulator::class.java)
 ) : DeviceConfig {
+    constructor(
+        processExecutor: ProcessExecutor = ProcessExecutor(),
+        bootWaitExecutor: ProcessExecutor = ProcessExecutor(timeoutMillis = BOOT_WAIT_TIMEOUT_MILLIS),
+        logger: Logger = LoggerFactory.getLogger(IOSSimulator::class.java),
+    ) : this(TraceRecorder.Disabled, processExecutor, bootWaitExecutor, logger)
+    constructor() : this(trace = TraceRecorder.Disabled)
 
     companion object {
         private const val SIMCTL = "xcrun"
@@ -27,13 +37,13 @@ class IOSSimulator(
         internal const val BOOT_WAIT_TIMEOUT_MILLIS = 120_000L
     }
 
-    override suspend fun listDevices(): List<MobileDevice> {
+    override suspend fun listDevices(): List<MobileDevice> = trace.span(TraceStage.DEVICE_DISCOVERY) {
         val result = processExecutor.execute(SIMCTL, "simctl", "list", "devices", "available", "--json")
         if (result.exitCode != 0) {
             throw IOSSimulatorException("Failed to list devices: ${result.errorOutput}")
         }
 
-        return parseDeviceList(result.output)
+        parseDeviceList(result.output)
     }
 
     override suspend fun getFirstAvailableDevice(): MobileDevice {

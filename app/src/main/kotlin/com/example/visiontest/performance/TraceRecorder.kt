@@ -1,5 +1,6 @@
 package com.example.visiontest.performance
 
+import com.example.visiontest.ios.CommandTimeoutException
 import com.example.visiontest.NoDeviceAvailableException
 import com.example.visiontest.NoSimulatorAvailableException
 import com.example.visiontest.ServerNotRunningException
@@ -163,13 +164,14 @@ internal class TraceRecorder(
 
         private fun outcome(error: Throwable?): TraceOutcome = when (error) {
             null -> TraceOutcome.RETURNED
-            is TimeoutCancellationException, is TimeoutException, is SocketTimeoutException -> TraceOutcome.TIMEOUT
+            is TimeoutCancellationException, is TimeoutException, is SocketTimeoutException,
+            is CommandTimeoutException -> TraceOutcome.TIMEOUT
             is CancellationException -> TraceOutcome.CANCELLED
             else -> TraceOutcome.THROWN
         }
 
         private fun category(error: Throwable?): TraceErrorCategory? = when (error) {
-            null, is CancellationException, is TimeoutException -> null
+            null, is CancellationException, is TimeoutException, is CommandTimeoutException -> null
             is CliExit -> cliCategory(error.code)
             is IllegalArgumentException, is CliktError -> TraceErrorCategory.VALIDATION
             is ServerNotRunningException -> TraceErrorCategory.UNREACHABLE

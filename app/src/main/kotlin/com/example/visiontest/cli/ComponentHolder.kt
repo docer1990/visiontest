@@ -74,11 +74,13 @@ class ComponentHolder internal constructor(
             val android = Android(
                 timeoutMillis = config.adbTimeoutMillis,
                 cacheValidityPeriod = config.deviceCacheValidityPeriod,
-                logger = LoggerFactory.getLogger(Android::class.java)
+                logger = LoggerFactory.getLogger(Android::class.java),
+                trace = recorder
             )
 
             val ios = IOSManager(
-                logger = LoggerFactory.getLogger(IOSManager::class.java)
+                logger = LoggerFactory.getLogger(IOSManager::class.java),
+                trace = recorder
             )
 
             val automationClient = AutomationClient(trace = recorder)

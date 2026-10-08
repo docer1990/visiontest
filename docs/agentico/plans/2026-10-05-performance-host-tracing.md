@@ -344,7 +344,7 @@ fun `invalid screenshot retains returned failure and records decoding failure`()
 
 **Review:** checkpoint. This completes the host measurement boundaries before documentation.
 
-- [ ] Start with a process success and privacy regression. Import the existing
+- [x] Start with a process success and privacy regression. Import the existing
   coroutine test and Kotlin assertion helpers. The internal traced constructor
   accepts `trace: TraceRecorder` while existing public constructors remain unchanged.
 
@@ -364,19 +364,19 @@ fun `process trace preserves output without recording it`() = runTest {
 }
 ```
 
-- [ ] Pass the optional recorder through production device factories and retain
+- [x] Pass the optional recorder through production device factories and retain
   existing public Kotlin and JVM constructors, including no-argument constructors.
-- [ ] Instrument Android device discovery/library calls and `executeAdb`, plus
+- [x] Instrument Android device discovery/library calls and `executeAdb`, plus
   iOS discovery and `ProcessExecutor.execute`. Record fixed stages `adb`, `simctl`,
   and `process.launch`; never executable arguments, paths, or output text.
   Carry context into helper threads explicitly where measurements occur there.
-- [ ] Measure detached server launch only around process creation, not daemon
+- [x] Measure detached server launch only around process creation, not daemon
   lifetime, subsequent delays, or health polling. Preserve all existing requests,
   timeout budgets, validation, cleanup, and result/exception behavior.
-- [ ] Add subprocess success, nonzero exit, timeout, discovery cache-hit, and
+- [x] Add subprocess success, nonzero exit, timeout, discovery cache-hit, and
   detached-launch tests. Check no trace contains synthetic secret arguments or
   output. Compare results and interaction counts with tracing disabled.
-- [ ] Run `./gradlew :app:test --tests '*OperationTraceTest' --tests '*ProcessExecutorTest' --tests '*AndroidValidationTest' --tests '*IOSSimulatorTest' --tests '*ToolRegistrarTest'`,
+- [x] Run `./gradlew :app:test --tests '*OperationTraceTest' --tests '*ProcessExecutorTest' --tests '*AndroidValidationTest' --tests '*IOSSimulatorTest' --tests '*ToolRegistrarTest'`,
   plus recorder tests if timeout classification changes, detekt, and whitespace checks.
   Observe missing stages at RED and preserved behavior at GREEN.
   Commit as `feat(performance): trace device discovery and processes`.

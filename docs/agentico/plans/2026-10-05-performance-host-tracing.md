@@ -136,6 +136,10 @@ fun `writer failure is reported without escaping to the operation`() {
   queue, increment the dropped count, and emit a fixed diagnostic once. Reserve
   orderly finalization for the terminal session record. Never await writes on an
   operation coroutine. An incomplete file remains inspectable, not certified complete.
+  Check the deadline before admitting the terminal record. Production file channels
+  must close on interruption. For an injected noninterruptible writer, guarantee
+  bounded caller return and suppression of new writes after expiry; an already
+  admitted write cannot be retracted. Record this limit in the contract and tests.
 - [ ] Test that serialized events never contain synthetic input text, UI labels,
   paths, or exception messages supplied at nearby instrumented boundaries. Use
   the event serializer rather than accepting arbitrary production event maps.

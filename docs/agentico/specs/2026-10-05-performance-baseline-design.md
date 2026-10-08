@@ -39,6 +39,10 @@ transport, or UI synchronization in this work.
   waiting for queue capacity. Report dropped event counts and incomplete traces.
   On normal CLI exit or MCP shutdown, drain for at most 1,000 ms. Diagnostics report
   an incomplete drain even if a final file record cannot be written.
+  Do not start a terminal record after the drain deadline. Production file channels
+  are interrupted and closed on timeout. A noninterruptible test writer can finish
+  a write already started before timeout; its caller still receives an incomplete
+  result. Tests cannot promise to retract bytes from such a writer.
 - Open a regular local file in append mode with an exclusive nonblocking process
   lock. Reject special files and symlinks. Concurrent processes must use different
   paths; a lock conflict disables tracing for that process without blocking work.

@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -153,6 +154,84 @@ class TraceRecorderTest {
         assertEquals(20L, root.durationNs)
         assertEquals(1L, root.metrics[TraceMetric.POLL_COUNT])
         assertEquals(TraceStage.INVOCATION, events.last().stage)
+    }
+
+    @Test
+    fun `inherited child failure preserves exact original throwable`() = runTest {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(nowNs = { 0L }, emit = { events.add(it); Unit })
+        val original = IOException("private child failure")
+
+        val caught = assertFailsWith<IOException> {
+            trace.invocation("get_device_info", "android") {
+                CoroutineScope(currentCoroutineContext()).launch {
+                    delay(1)
+                    throw original
+                }
+            }
+        }
+
+        assertSame(original, caught)
+        assertEquals(TraceOutcome.THROWN, events.single().outcome)
+        assertEquals(TraceErrorCategory.IO, events.single().errorCategory)
+    }
+
+    @Test
+    fun `inherited child failure on IO dispatcher preserves exact original throwable`() = runTest {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(nowNs = { 0L }, emit = { events.add(it); Unit })
+        val original = IOException("private child failure")
+        val mayFail = CompletableDeferred<Unit>()
+
+        val caught = assertFailsWith<IOException> {
+            trace.invocation("get_device_info", "android") {
+                CoroutineScope(currentCoroutineContext()).launch(Dispatchers.IO) {
+                    mayFail.await()
+                    throw original
+                }
+                mayFail.complete(Unit)
+            }
+        }
+
+        assertSame(original, caught)
+        assertEquals(TraceOutcome.THROWN, events.single().outcome)
+    }
+
+    @Test
+    fun `child failure remains authoritative when it cancels the suspended block`() = runTest {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(nowNs = { 0L }, emit = { events.add(it); Unit })
+        val original = IOException("private child failure")
+
+        val caught = assertFailsWith<IOException> {
+            trace.invocation("get_device_info", "android") {
+                CoroutineScope(currentCoroutineContext()).launch {
+                    delay(1)
+                    throw original
+                }
+                awaitCancellation()
+            }
+        }
+
+        assertSame(original, caught)
+        assertEquals(TraceOutcome.THROWN, events.single().outcome)
+    }
+
+    @Test
+    fun `scope cancellation preserves the original completion cause`() = runTest {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(nowNs = { 0L }, emit = { events.add(it); Unit })
+        val original = CancellationException("private scope cancellation")
+
+        val caught = assertFailsWith<CancellationException> {
+            trace.invocation("get_device_info", "android") {
+                checkNotNull(currentCoroutineContext()[Job]).cancel(original)
+                awaitCancellation()
+            }
+        }
+
+        assertSame(original, caught)
+        assertEquals(TraceOutcome.CANCELLED, events.single().outcome)
     }
 
     @Test

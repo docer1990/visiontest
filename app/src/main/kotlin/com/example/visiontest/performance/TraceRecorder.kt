@@ -8,6 +8,7 @@ import com.example.visiontest.cli.ExitCode
 import com.github.ajalt.clikt.core.CliktError
 import com.google.gson.JsonParseException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -62,25 +63,29 @@ internal class TraceRecorder(
     @Suppress("TooGenericExceptionCaught")
     private suspend fun <T> record(context: SpanContext, stage: TraceStage, block: suspend () -> T): T {
         val start = nowNs()
-        var failure: Throwable? = null
+        val failure = AtomicReference<Throwable?>()
         try {
             return withContext(context) {
+                coroutineContext[Job]?.invokeOnCompletion { error ->
+                    if (error != null) failure.set(error)
+                }
                 try {
                     block()
                 } catch (error: Throwable) {
-                    failure = error
+                    failure.compareAndSet(null, error)
                     throw error
                 }
             }
         } catch (error: Throwable) {
             // Coroutine stack-trace recovery can copy the exception at the context boundary.
-            val original = failure ?: error
-            failure = original
+            val original = failure.get() ?: error
+            failure.compareAndSet(null, original)
             throw original
         } finally {
-            val event = event(context, stage, start, nowNs(), failure)
+            val original = failure.get()
+            val event = event(context, stage, start, nowNs(), original)
             runCatching { emit(event) }
-            if (failure == null) coroutineContext.ensureActive()
+            if (original == null) coroutineContext.ensureActive()
         }
     }
 

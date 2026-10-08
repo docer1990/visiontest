@@ -9,15 +9,26 @@ import com.example.visiontest.tools.*
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import org.slf4j.Logger
 
-class ToolFactory(
+class ToolFactory internal constructor(
     private val android: DeviceConfig,
     private val ios: DeviceConfig,
     private val logger: Logger,
+    recorder: TraceRecorder,
     private val toolTimeoutMillis: Long = 10000L,
-    private val automationClient: AutomationClient = AutomationClient(),
-    private val iosAutomationClient: IOSAutomationClient = IOSAutomationClient()
+    clients: Pair<AutomationClient, IOSAutomationClient> =
+        AutomationClient(trace = recorder) to IOSAutomationClient(trace = recorder)
 ) {
+    constructor(
+        android: DeviceConfig,
+        ios: DeviceConfig,
+        logger: Logger,
+        toolTimeoutMillis: Long = 10000L,
+        automationClient: AutomationClient = AutomationClient(),
+        iosAutomationClient: IOSAutomationClient = IOSAutomationClient(),
+    ) : this(android, ios, logger, TraceRecorder.Disabled, toolTimeoutMillis, automationClient to iosAutomationClient)
 
+    private val automationClient = clients.first
+    private val iosAutomationClient = clients.second
     private val discovery = ToolDiscovery(logger)
 
     private val registrars: List<ToolRegistrar> = listOf(

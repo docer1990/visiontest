@@ -1,6 +1,10 @@
 package com.example.visiontest.common
 
 import com.example.visiontest.CommandExecutionException
+import com.example.visiontest.performance.OperationOutcome
+import com.example.visiontest.performance.TraceMetric
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
@@ -36,10 +40,12 @@ internal fun elementTapReadTimeoutMs(timeoutMs: Int, maxTimeoutMs: Long, graceMs
  * `GET /health` and `POST /jsonrpc` — so the transport lives here and the
  * platform clients only add their domain methods.
  */
-abstract class JsonRpcHttpClient(
+abstract class JsonRpcHttpClient internal constructor(
     private val host: String,
     private val port: Int,
+    private val trace: TraceRecorder,
 ) {
+    constructor(host: String, port: Int) : this(host, port, TraceRecorder.Disabled)
     private companion object {
         const val REQUEST_TIMEOUT_MS = 30_000
         const val HEALTH_TIMEOUT_MS = 5_000
@@ -68,41 +74,50 @@ abstract class JsonRpcHttpClient(
         readTimeoutMs: Int = REQUEST_TIMEOUT_MS,
     ): String {
         return withContext(Dispatchers.IO) {
-            val requestBody = gson.toJson(
-                mapOf(
-                    "jsonrpc" to "2.0",
-                    "method" to method,
-                    "params" to (params ?: emptyMap<String, Any>()),
-                    "id" to id
-                )
-            )
-
-            val url = URL("http://$host:$port/jsonrpc")
-            val connection = url.openConnection() as HttpURLConnection
-
-            try {
-                connection.requestMethod = "POST"
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.connectTimeout = REQUEST_TIMEOUT_MS
-                connection.readTimeout = readTimeoutMs
-                connection.doOutput = true
-
-                connection.outputStream.use { os ->
-                    os.write(requestBody.toByteArray(Charsets.UTF_8))
-                }
-
-                val responseCode = connection.responseCode
-                if (responseCode != HttpURLConnection.HTTP_OK) {
-                    val errorStream = connection.errorStream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: "Unknown error"
-                    throw CommandExecutionException("HTTP error: $responseCode - $errorStream", responseCode)
-                }
-
-                // Close the stream (not just disconnect) so the underlying connection
-                // can be returned to the keep-alive pool for reuse.
-                connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-            } finally {
-                connection.disconnect()
+            val requestBytes = trace.span(TraceStage.REQUEST_PREPARE) {
+                gson.toJson(
+                    mapOf(
+                        "jsonrpc" to "2.0",
+                        "method" to method,
+                        "params" to (params ?: emptyMap<String, Any>()),
+                        "id" to id
+                    )
+                ).toByteArray(Charsets.UTF_8)
             }
+            val responseBytes = trace.span(TraceStage.HTTP_EXCHANGE) {
+                exchange(requestBytes, readTimeoutMs)
+            }
+            trace.span(TraceStage.RESPONSE_PROCESS) {
+                val response = responseBytes.toString(Charsets.UTF_8)
+                if (trace !== TraceRecorder.Disabled) trace.operationOutcome(responseOutcome(response))
+                response
+            }
+        }
+    }
+
+    private suspend fun exchange(requestBytes: ByteArray, readTimeoutMs: Int): ByteArray {
+        val connection = URL("http://$host:$port/jsonrpc").openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.connectTimeout = REQUEST_TIMEOUT_MS
+            connection.readTimeout = readTimeoutMs
+            connection.doOutput = true
+            connection.outputStream.use { it.write(requestBytes) }
+            trace.metric(TraceMetric.REQUEST_BYTES, requestBytes.size.toLong())
+            val responseCode = connection.responseCode
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                val errorBytes = connection.errorStream?.use { it.readBytes() }
+                errorBytes?.let { trace.metric(TraceMetric.RESPONSE_BYTES, it.size.toLong()) }
+                val error = errorBytes?.toString(Charsets.UTF_8) ?: "Unknown error"
+                throw CommandExecutionException("HTTP error: $responseCode - $error", responseCode)
+            }
+            // Close the stream so the underlying connection can return to the keep-alive pool.
+            val responseBytes = connection.inputStream.use { it.readBytes() }
+            trace.metric(TraceMetric.RESPONSE_BYTES, responseBytes.size.toLong())
+            return responseBytes
+        } finally {
+            connection.disconnect()
         }
     }
 
@@ -127,11 +142,25 @@ abstract class JsonRpcHttpClient(
         selectorDescription: String,
         find: suspend () -> String,
     ): String {
+        return trace.span(TraceStage.POLL) {
+            pollUntilMatched(expectGone, timeoutMs, pollIntervalMs, selectorDescription, find)
+        }
+    }
+
+    private suspend fun pollUntilMatched(
+        expectGone: Boolean,
+        timeoutMs: Long,
+        pollIntervalMs: Long,
+        selectorDescription: String,
+        find: suspend () -> String,
+    ): String {
         val startNanos = System.nanoTime()
         while (true) {
+            trace.metric(TraceMetric.POLL_COUNT, 1L)
             val response = find()
-            val found = parseElementFound(response)
+            val found = trace.span(TraceStage.RESPONSE_PROCESS) { parseElementFound(response) }
             if (found != expectGone) {
+                trace.operationOutcome(OperationOutcome.SUCCESS)
                 return if (expectGone) "Element is no longer present ($selectorDescription)." else response
             }
             val elapsedMs = (System.nanoTime() - startNanos) / NANOS_PER_MILLI
@@ -141,7 +170,17 @@ abstract class JsonRpcHttpClient(
                     "Element $condition after ${elapsedMs}ms (waited up to ${timeoutMs}ms; $selectorDescription)"
                 )
             }
-            delay(pollIntervalMs)
+            pollWait(pollIntervalMs)
+        }
+    }
+
+    /** Cumulative actual time spent in explicit delay, including interrupted waits. */
+    private suspend fun pollWait(pollIntervalMs: Long) {
+        val start = if (trace === TraceRecorder.Disabled) null else System.nanoTime()
+        try {
+            trace.span(TraceStage.POLL_WAIT) { delay(pollIntervalMs) }
+        } finally {
+            if (start != null) trace.metric(TraceMetric.WAIT_NS, (System.nanoTime() - start).coerceAtLeast(0L))
         }
     }
 
@@ -185,22 +224,50 @@ abstract class JsonRpcHttpClient(
      * Checks if the automation server is running.
      */
     suspend fun isServerRunning(): Boolean {
-        return withContext(Dispatchers.IO) {
-            val connection = try {
-                URL("http://$host:$port/health").openConnection() as HttpURLConnection
-            } catch (e: Exception) {
-                return@withContext false
+        return trace.span(TraceStage.HEALTH) {
+            val running = withContext(Dispatchers.IO) {
+                val connection = try {
+                    URL("http://$host:$port/health").openConnection() as HttpURLConnection
+                } catch (e: Exception) {
+                    return@withContext false
+                }
+                try {
+                    connection.connectTimeout = HEALTH_TIMEOUT_MS
+                    connection.readTimeout = HEALTH_TIMEOUT_MS
+                    connection.requestMethod = "GET"
+                    connection.responseCode == HttpURLConnection.HTTP_OK
+                } catch (e: Exception) {
+                    false
+                } finally {
+                    connection.disconnect()
+                }
             }
-            try {
-                connection.connectTimeout = HEALTH_TIMEOUT_MS
-                connection.readTimeout = HEALTH_TIMEOUT_MS
-                connection.requestMethod = "GET"
-                connection.responseCode == HttpURLConnection.HTTP_OK
-            } catch (e: Exception) {
-                false
-            } finally {
-                connection.disconnect()
-            }
+            trace.operationOutcome(if (running) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
+            running
         }
+    }
+}
+
+/** Best-effort structured classification never changes the raw returned response. */
+private fun responseOutcome(response: String): OperationOutcome {
+    return try {
+        val body = JsonParser.parseString(response).takeIf { it.isJsonObject }?.asJsonObject
+        val error = body?.get("error")
+        val result = body?.get("result")
+        when {
+            error?.isJsonObject == true && !body.has("result") -> OperationOutcome.FAILURE
+            result?.isJsonObject == true && (error == null || error.isJsonNull) -> {
+                val success = result.asJsonObject.get("success")
+                    ?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
+                when (success?.asBoolean) {
+                    true -> OperationOutcome.SUCCESS
+                    false -> OperationOutcome.FAILURE
+                    null -> OperationOutcome.UNKNOWN
+                }
+            }
+            else -> OperationOutcome.UNKNOWN
+        }
+    } catch (ignored: JsonParseException) {
+        OperationOutcome.UNKNOWN
     }
 }

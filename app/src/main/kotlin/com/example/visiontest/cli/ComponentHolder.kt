@@ -71,8 +71,8 @@ class ComponentHolder internal constructor(
                 logger = LoggerFactory.getLogger(IOSManager::class.java)
             )
 
-            val automationClient = AutomationClient()
-            val iosAutomationClient = IOSAutomationClient()
+            val automationClient = AutomationClient(trace = recorder)
+            val iosAutomationClient = IOSAutomationClient(trace = recorder)
             val discovery = ToolDiscovery(logger)
 
             Runtime.getRuntime().addShutdownHook(Thread {

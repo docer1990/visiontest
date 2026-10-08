@@ -1,7 +1,8 @@
 # Host performance tracing
 
 Status: the correlated recorder, local JSONL sink, CLI/MCP activation, and bounded
-session lifecycle are implemented. Further production measurement boundaries follow
+session lifecycle, shared HTTP transport, and client polling are implemented. Further
+production measurement boundaries follow
 [the approved baseline design](2026-10-05-performance-baseline-design.md).
 
 ## Activation and session lifecycle
@@ -110,6 +111,35 @@ different processes. Inclusive spans can overlap; self time requires the union o
 child intervals within the same clock domain. Parent and child durations must not
 be summed as independent work. Native timings are unavailable in this delivery;
 absence never means zero native work or one-way network latency.
+
+## Shared transport and client waits
+
+Default public client constructors disable tracing; internal constructors accept a
+recorder. CLI component creation and MCP factory creation pass their session recorder
+to both platform clients. HTTP tracing sends the same body and JSON-RPC ID once,
+retains existing connect/read timeouts, and returns the original decoded response.
+It adds no headers, health probes, retries, or native metadata.
+
+`request.prepare` covers JSON serialization and UTF-8 request encoding.
+`http.exchange` covers connection setup, body writes, status handling, and body
+reads. Its `requestBytes` counts the successfully written UTF-8 body; `responseBytes`
+counts received body bytes, including an HTTP error body when present. Neither is
+wire traffic. `response.process` covers UTF-8 response decoding and best-effort
+structured classification. A strict boolean `result.success` sets success/failure;
+an RPC error object without a result sets failure; other or malformed bodies stay
+unknown and return unchanged. Disabled tracing skips this extra classification.
+
+`health` preserves the existing boolean result and error handling, classifying true
+as success and false as failure. `poll` surrounds appearance/disappearance polling.
+Its `pollCount` includes every attempted find, including a failed one. A matching
+presence condition sets success. Existing strict polling parsing has a separate
+`response.process` span: malformed responses and backend errors still throw and
+never become absence. `poll.wait` surrounds each explicit delay; the enclosing
+poll's `waitNs` accumulates actual monotonic host time around these delays, including
+an interrupted delay. It excludes find requests and response parsing. No explicit
+wait leaves this metric absent. Poll intervals, timeout budget, and result messages
+retain their existing behavior. Legacy wrapped command errors retain the fixed
+`other` category without inspecting exception messages.
 
 ## Local JSONL persistence
 

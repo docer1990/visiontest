@@ -1,5 +1,6 @@
 package com.example.visiontest.ios
 
+import com.example.visiontest.performance.TraceRecorder
 import com.example.visiontest.common.JsonRpcHttpClient
 import com.example.visiontest.common.elementTapReadTimeoutMs
 import com.example.visiontest.config.IOSAutomationConfig
@@ -16,10 +17,17 @@ import com.example.visiontest.config.IOSAutomationConfig
  * @param host The host to connect to (default: localhost)
  * @param port The port number (default: [IOSAutomationConfig.DEFAULT_PORT])
  */
-class IOSAutomationClient(
+class IOSAutomationClient internal constructor(
     host: String = IOSAutomationConfig.DEFAULT_HOST,
-    port: Int = IOSAutomationConfig.DEFAULT_PORT
-) : JsonRpcHttpClient(host, port) {
+    port: Int = IOSAutomationConfig.DEFAULT_PORT,
+    trace: TraceRecorder,
+) : JsonRpcHttpClient(host, port, trace) {
+    constructor() : this(IOSAutomationConfig.DEFAULT_HOST, IOSAutomationConfig.DEFAULT_PORT, TraceRecorder.Disabled)
+
+    constructor(
+        host: String = IOSAutomationConfig.DEFAULT_HOST,
+        port: Int = IOSAutomationConfig.DEFAULT_PORT,
+    ) : this(host, port, TraceRecorder.Disabled)
 
     /**
      * Gets the UI hierarchy from the iOS simulator.

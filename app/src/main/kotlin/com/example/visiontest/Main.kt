@@ -110,7 +110,9 @@ private fun runMcpServer(trace: TraceRuntime) {
 
     val server = createServer(config)
 
-    val toolFactory = ToolFactory(android, ios, logger, toolTimeoutMillis = config.toolTimeoutMillis)
+    val toolFactory = ToolFactory(
+        android, ios, logger, recorder = trace.recorder, toolTimeoutMillis = config.toolTimeoutMillis
+    )
     toolFactory.registerAllTools(server, trace.recorder)
 
     // Connect using stdio transport

@@ -1,7 +1,7 @@
 # Host performance tracing
 
-Status: the correlated recorder and span schema are implemented. Activation,
-file lifecycle, and production measurement boundaries are subsequent delivery
+Status: the correlated recorder, span schema, and local JSONL sink are implemented.
+Activation, session lifecycle, and production measurement boundaries are subsequent delivery
 steps in [the approved baseline design](2026-10-05-performance-baseline-design.md).
 
 ## Completed host spans
@@ -69,6 +69,45 @@ different processes. Inclusive spans can overlap; self time requires the union o
 child intervals within the same clock domain. Parent and child durations must not
 be summed as independent work. Native timings are unavailable in this delivery;
 absence never means zero native work or one-way network latency.
+
+## Local JSONL persistence
+
+The sink appends UTF-8 JSON objects as newline-delimited records through one daemon
+writer. Its bounded queue holds 4096 records by default. Offering a record never
+waits for queue capacity: overflow rejects the record and counts it as dropped.
+Offers after shutdown begins or writer failure are rejected. Writer errors and
+queue overflow produce at most one fixed diagnostic per sink, without file paths
+or exception messages; diagnostic callback failures do not escape.
+
+Opening a sink creates missing parent directories and requires a regular target
+file. Symbolic links, directories, and special files are rejected. The target is
+opened with `NOFOLLOW_LINKS` and append semantics and held with an exclusive,
+nonblocking process lock. A conflicting owner disables this sink without changing
+operation results. Independent files can have independent owners. Descriptors used
+to inspect the final byte remain open for the owner's lifetime, and local ownership
+checks prevent a conflicting open from releasing another sink's process lock.
+An existing unterminated final line receives a newline before the first new record;
+existing bytes are never truncated. Failed opening and normal shutdown release the
+sink's resources.
+
+Shutdown rejects new offers, drains accepted records, flushes them, and waits for
+writer closure up to the caller's wait budget. The immutable, idempotent result reports
+`complete`, `written`, and `dropped`; `complete` requires successful drain, flush,
+and close with zero drops. Records pending or in flight when the deadline expires
+count as dropped in that result. An optional terminal-record callback runs after
+the queued records have drained and flushed. Its record bypasses queue capacity,
+uses the final event counts, and is excluded from those counts. The sink checks
+the deadline immediately before admitting that record, including after callback
+execution; an expired drain or flush therefore omits it.
+
+The wait is bounded even for an injected `Writer` that ignores interruption. Such
+a writer can finish an already admitted write after shutdown has returned, and
+resource cleanup can remain pending until the writer unblocks. That late write
+cannot change the returned incomplete result. The sink suppresses further record
+admissions and interrupts its worker on expiry; production `FileChannel` I/O
+responds to interruption by closing the channel. A terminal write already admitted
+before expiry likewise cannot be retracted for an arbitrary injected writer. A
+terminal record alone does not prove that shutdown or cleanup succeeded.
 
 ## Completeness
 

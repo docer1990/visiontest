@@ -166,7 +166,7 @@ fun `writer failure is reported without escaping to the operation`() {
 
 **Review:** checkpoint. All instrumented work needs a correctly owned scope.
 
-- [ ] Implement pure configuration resolution behind
+- [x] Implement pure configuration resolution behind
   `resolveTracePath(mode: String, cliPath: String?, environmentPath: String?): Path?`.
   Modes are `cli` and `mcp`. Test precedence and validation before device access.
 
@@ -184,25 +184,25 @@ fun `CLI ignores MCP environment and rejects blank explicit path`() {
 }
 ```
 
-- [ ] Add the root flag before the subcommand. Preserve `route()` and the ignored
+- [x] Add the root flag before the subcommand. Preserve `route()` and the ignored
   tail of `serve`. Avoid manually removing option-like strings from command
   arguments; typed text can legitimately contain `--trace-performance`.
-- [ ] Let `TraceRuntime` own configuration, entry time, writer, and shutdown. Use
+- [x] Let `TraceRuntime` own configuration, entry time, writer, and shutdown. Use
   Clikt lifecycle/runner hooks to close `cli.prepare` at validated dispatch,
   then measure lazy component construction. Do not wrap the entire blocking
   `parse()` call and label device execution as parsing.
-- [ ] Inject traced command runners without changing `CliCommandRunner`'s existing
+- [x] Inject traced command runners without changing `CliCommandRunner`'s existing
   signature. Use registered command names and parsed platform values; do not scan
   untrusted raw arguments for trace labels. Preserve test constructors and defaults.
-- [ ] Make every CLI exit gateway finish tracing before `exitProcess`. Include
+- [x] Make every CLI exit gateway finish tracing before `exitProcess`. Include
   mapped failures and informational exits. MCP gets one invocation per tool call,
   with coroutine context propagated through timeout handling in `ToolScope`.
-- [ ] Extend actual JAR tests with tracing on/off. Assert identical stdout, exit
+- [x] Extend actual JAR tests with tracing on/off. Assert identical stdout, exit
   codes, and ordinary error text except the explicitly specified trace diagnostic.
   Check an invalid wait still creates no device components, a trace path failure
   does not change a normal result, MCP output remains JSON-RPC, and tool names
   equal the existing `EXPECTED_TOOLS` set.
-- [ ] Run `./gradlew :app:test --tests '*TraceActivationTest' --tests '*MainDispatchTest' --tests '*VisionTestCliTest' --tests '*WaitValidationCliTest' --tests '*CliErrorHandlerTest' --tests '*ToolDslTest'`,
+- [x] Run `./gradlew :app:test --tests '*TraceActivationTest' --tests '*MainDispatchTest' --tests '*VisionTestCliTest' --tests '*WaitValidationCliTest' --tests '*CliErrorHandlerTest' --tests '*ToolDslTest'`,
   then `./gradlew :app:e2eTest --tests '*PerformanceTraceE2ETest' --tests '*McpStdioE2ETest'`.
   Expect new flag tests to fail before wiring and all checks to pass afterward.
   Commit as `feat(performance): expose CLI and MCP tracing lifecycle`.

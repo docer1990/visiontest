@@ -85,7 +85,13 @@ class HttpTraceTest {
             val events = mutableListOf<TraceEvent>()
             val trace = TraceRecorder(emit = { events.add(it); Unit })
             val client = AutomationClient(server.hostName, server.port, trace)
-            val bodies = listOf("not json", "[]", "null", """{"result":{"success":"false"}}""")
+            val bodies = listOf(
+                "not json", "[]", "null", """{"result":{"success":"false"}}""",
+                "{result:{success:true}}",
+                "{'result':{'success':true}}",
+                """{/* comment */"result":{"success":true}}""",
+                """{"result":{"success":true}} trailing""",
+            )
             bodies.forEach { body ->
                 server.enqueue(MockResponse().setBody(body))
                 trace.invocation("find_element", "android") { assertEquals(body, client.findElement(text = "secret")) }

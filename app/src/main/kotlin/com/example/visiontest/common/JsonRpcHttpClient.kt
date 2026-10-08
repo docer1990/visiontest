@@ -12,6 +12,12 @@ import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject as StructuredJsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.TimeoutException
@@ -251,15 +257,14 @@ abstract class JsonRpcHttpClient internal constructor(
 /** Best-effort structured classification never changes the raw returned response. */
 private fun responseOutcome(response: String): OperationOutcome {
     return try {
-        val body = JsonParser.parseString(response).takeIf { it.isJsonObject }?.asJsonObject
+        val body = Json.parseToJsonElement(response) as? StructuredJsonObject
         val error = body?.get("error")
         val result = body?.get("result")
         when {
-            error?.isJsonObject == true && !body.has("result") -> OperationOutcome.FAILURE
-            result?.isJsonObject == true && (error == null || error.isJsonNull) -> {
-                val success = result.asJsonObject.get("success")
-                    ?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
-                when (success?.asBoolean) {
+            error is StructuredJsonObject && !body.containsKey("result") -> OperationOutcome.FAILURE
+            result is StructuredJsonObject && (error == null || error == JsonNull) -> {
+                val success = (result["success"] as? JsonPrimitive)?.takeUnless { it.isString }?.booleanOrNull
+                when (success) {
                     true -> OperationOutcome.SUCCESS
                     false -> OperationOutcome.FAILURE
                     null -> OperationOutcome.UNKNOWN
@@ -267,7 +272,7 @@ private fun responseOutcome(response: String): OperationOutcome {
             }
             else -> OperationOutcome.UNKNOWN
         }
-    } catch (ignored: JsonParseException) {
+    } catch (ignored: SerializationException) {
         OperationOutcome.UNKNOWN
     }
 }

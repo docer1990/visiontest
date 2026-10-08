@@ -267,7 +267,7 @@ fun `tracing preserves body and request count`() = runTest {
   Expect missing trace spans at RED and preserved original responses at GREEN.
   Commit as `feat(performance): trace native transport and client waits`.
 
-### Task 5: Instrument shared operations, screenshots, and device work
+### Task 5A: Instrument shared operations and screenshots
 
 **Files:**
 - Modify: `app/src/main/kotlin/com/example/visiontest/tools/AndroidAutomationToolRegistrar.kt`
@@ -278,19 +278,17 @@ fun `tracing preserves body and request count`() = runTest {
 - Modify: `app/src/main/kotlin/com/example/visiontest/tools/IOSWaitToolRegistrar.kt`
 - Modify: `app/src/main/kotlin/com/example/visiontest/tools/AndroidStopToolRegistrar.kt`
 - Modify: `app/src/main/kotlin/com/example/visiontest/tools/ScreenshotSaver.kt`
-- Modify: `app/src/main/kotlin/com/example/visiontest/android/Android.kt`
-- Modify: `app/src/main/kotlin/com/example/visiontest/ios/IOSSimulator.kt`
-- Modify: `app/src/main/kotlin/com/example/visiontest/ios/ProcessExecutor.kt`
-- Modify: `app/src/main/kotlin/com/example/visiontest/ios/IOSManager.kt`
 - Modify: `app/src/main/kotlin/com/example/visiontest/cli/ComponentHolder.kt`
 - Modify: `app/src/main/kotlin/com/example/visiontest/ToolFactory.kt`
-- Modify: `app/src/main/kotlin/com/example/visiontest/Main.kt`
 - Create: `app/src/test/kotlin/com/example/visiontest/performance/OperationTraceTest.kt`
 - Modify: `app/src/test/kotlin/com/example/visiontest/tools/AndroidScreenshotToolTest.kt`
 - Modify: `app/src/test/kotlin/com/example/visiontest/tools/IOSScreenshotToolTest.kt`
-- Modify: `app/src/test/kotlin/com/example/visiontest/ios/ProcessExecutorTest.kt`
 
-**Review:** checkpoint. Complete host measurements require non-HTTP commands too.
+**Review:** checkpoint. Device instrumentation builds on these shared operation scopes.
+
+Task 5 is split into two sequential implementation checkpoints without changing
+the approved scope. Task 5A establishes operations and screenshots; Task 5B adds
+device and process boundaries.
 
 - [ ] Add an optional recorder to `ScreenshotSaver` and the other dependencies,
   passed from the production factories. Write the failure test first.
@@ -321,16 +319,47 @@ fun `invalid screenshot retains returned failure and records decoding failure`()
 - [ ] Record screenshot parsing, decoding, writing, and byte counts, preserving
   atomic replacement and cleanup behavior. Classify handled failures at their
   existing branches, never by searching the returned English string.
-- [ ] Instrument Android device discovery/library calls and `executeAdb`, plus
-  iOS discovery and `ProcessExecutor.execute`. Record a fixed family (`adb`,
-  `simctl`, `process_launch`) rather than executable arguments or output text.
-  Carry context into helper threads explicitly where measurements occur there.
-- [ ] Add success, subprocess failure/timeout, discovery cache-hit, screenshot I/O
-  failure, and detached-launch cases. Check no trace contains the synthetic secret
-  argument or output. Compare results and interaction counts with tracing disabled.
-- [ ] Run `./gradlew :app:test --tests '*OperationTraceTest' --tests '*ScreenshotToolTest' --tests '*ProcessExecutorTest' --tests '*AndroidValidationTest' --tests '*IOSSimulatorTest' --tests '*ToolRegistrarTest'`.
+- [ ] Add screenshot success and I/O failure cases and verify shared operation
+  spans across CLI/MCP consumers. Check no trace contains synthetic secret input
+  or output. Compare results and interaction counts with tracing disabled.
+- [ ] Run `./gradlew :app:test --tests '*OperationTraceTest' --tests '*ScreenshotToolTest' --tests '*ToolRegistrarTest'`.
   Expect absent stages at RED, then PASS with unchanged operation expectations.
-  Commit as `feat(performance): trace shared operations and device processes`.
+  Commit as `feat(performance): trace shared operations and screenshots`.
+
+### Task 5B: Instrument device and process work
+
+**Files:**
+- Modify: `app/src/main/kotlin/com/example/visiontest/android/Android.kt`
+- Modify: `app/src/main/kotlin/com/example/visiontest/ios/IOSSimulator.kt`
+- Modify: `app/src/main/kotlin/com/example/visiontest/ios/ProcessExecutor.kt`
+- Modify: `app/src/main/kotlin/com/example/visiontest/ios/IOSManager.kt`
+- Modify: `app/src/main/kotlin/com/example/visiontest/tools/AndroidAutomationToolRegistrar.kt`
+- Modify: `app/src/main/kotlin/com/example/visiontest/tools/IOSAutomationToolRegistrar.kt`
+- Modify: `app/src/main/kotlin/com/example/visiontest/cli/ComponentHolder.kt`
+- Modify: `app/src/main/kotlin/com/example/visiontest/ToolFactory.kt`
+- Modify: `app/src/main/kotlin/com/example/visiontest/Main.kt`
+- Modify: `app/src/test/kotlin/com/example/visiontest/performance/OperationTraceTest.kt`
+- Modify: `app/src/test/kotlin/com/example/visiontest/ios/ProcessExecutorTest.kt`
+- Modify: `docs/agentico/specs/performance-tracing.md`
+
+**Review:** checkpoint. This completes the host measurement boundaries before documentation.
+
+- [ ] Pass the optional recorder through production device factories and retain
+  existing public Kotlin and JVM constructors, including no-argument constructors.
+- [ ] Instrument Android device discovery/library calls and `executeAdb`, plus
+  iOS discovery and `ProcessExecutor.execute`. Record fixed stages `adb`, `simctl`,
+  and `process.launch`; never executable arguments, paths, or output text.
+  Carry context into helper threads explicitly where measurements occur there.
+- [ ] Measure detached server launch only around process creation, not daemon
+  lifetime, subsequent delays, or health polling. Preserve all existing requests,
+  timeout budgets, validation, cleanup, and result/exception behavior.
+- [ ] Add subprocess success, nonzero exit, timeout, discovery cache-hit, and
+  detached-launch tests. Check no trace contains synthetic secret arguments or
+  output. Compare results and interaction counts with tracing disabled.
+- [ ] Run `./gradlew :app:test --tests '*OperationTraceTest' --tests '*ProcessExecutorTest' --tests '*AndroidValidationTest' --tests '*IOSSimulatorTest' --tests '*ToolRegistrarTest'`,
+  plus recorder tests if timeout classification changes, detekt, and whitespace checks.
+  Observe missing stages at RED and preserved behavior at GREEN.
+  Commit as `feat(performance): trace device discovery and processes`.
 
 ### Task 6: Document, verify, and review host tracing
 

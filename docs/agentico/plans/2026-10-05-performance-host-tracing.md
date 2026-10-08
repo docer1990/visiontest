@@ -34,7 +34,7 @@ Internal APIs listed below are implementation contracts, not new public MCP tool
 
 **Review:** checkpoint. Every later task consumes the event and context contract.
 
-- [ ] Write deterministic tests before implementation. This test establishes the
+- [x] Write deterministic tests before implementation. This test establishes the
   duration API; include imports from `kotlin.test` and `kotlinx.coroutines.test`.
 
 ```kotlin
@@ -55,11 +55,11 @@ fun `nested spans share invocation and retain monotonic durations`() = runTest {
 }
 ```
 
-- [ ] Add tests with two overlapping `async` invocations, `withContext(Dispatchers.IO)`,
+- [x] Add tests with two overlapping `async` invocations, `withContext(Dispatchers.IO)`,
   nested errors, cancellation, disabled tracing, and unknown operation names.
   Assert distinct invocation IDs and correct parent IDs after suspension. Use
   deterministic clocks, not real-time latency assertions.
-- [ ] Define these internal interfaces and the complete typed schema from the design.
+- [x] Define these internal interfaces and the complete typed schema from the design.
 
 ```kotlin
 internal class TraceRecorder(
@@ -80,13 +80,13 @@ internal class TraceRecorder(
 `PROCESS_LAUNCH`. `TraceMetric` permits only the five metrics in the design.
 `TraceOutcome` and `OperationOutcome` use the design's vocabularies.
 
-- [ ] Store span context in a `CoroutineContext.Element`, restore parent scopes
+- [x] Store span context in a `CoroutineContext.Element`, restore parent scopes
   on exit, and emit failure records without replacing the original exception.
   Metric accumulation belongs to the active span and is concurrency-safe.
   Unknown operations serialize as `other`; no arbitrary tags or error strings.
-- [ ] Specify outcomes, completeness, byte boundaries, and clock domains in the
+- [x] Specify outcomes, completeness, byte boundaries, and clock domains in the
   behavioral contract. Initially mark native timings unavailable.
-- [ ] Run `./gradlew :app:test --tests '*TraceRecorderTest'`. Expect RED for missing
+- [x] Run `./gradlew :app:test --tests '*TraceRecorderTest'`. Expect RED for missing
   types first, then all cases passing. Commit only this task's files with message
   `feat(performance): add correlated host trace events`.
 
@@ -99,7 +99,7 @@ internal class TraceRecorder(
 
 **Review:** checkpoint. Entry-point lifecycle depends on bounded writes and close.
 
-- [ ] Define and test the persistence seam using a fake failing writer. The test
+- [x] Define and test the persistence seam using a fake failing writer. The test
   must not depend on filling a disk or timing a slow filesystem.
 
 ```kotlin
@@ -124,15 +124,15 @@ fun `writer failure is reported without escaping to the operation`() {
 }
 ```
 
-- [ ] Implement `JsonlTraceSink(writer: Writer, diagnostic: (String) -> Unit,
+- [x] Implement `JsonlTraceSink(writer: Writer, diagnostic: (String) -> Unit,
   capacity: Int = 4096)`, `offer(line: String): Boolean`, and
   `finish(timeoutMs: Long): TraceCloseResult`. Define `TraceCloseResult` with
   `complete: Boolean`, `written: Long`, and `dropped: Long`. Make close idempotent.
-- [ ] Add a path-opening factory that enforces the regular-file, append, symlink,
+- [x] Add a path-opening factory that enforces the regular-file, append, symlink,
   and nonblocking exclusive-lock policy. Hold the lock for the writer lifetime.
   Test lock conflict, directory target, missing parent, special-file rejection,
   queue saturation, incomplete shutdown, and independent processes/paths.
-- [ ] Use one daemon writer thread and reject new events after close. Drop on full
+- [x] Use one daemon writer thread and reject new events after close. Drop on full
   queue, increment the dropped count, and emit a fixed diagnostic once. Reserve
   orderly finalization for the terminal session record. Never await writes on an
   operation coroutine. An incomplete file remains inspectable, not certified complete.
@@ -140,10 +140,10 @@ fun `writer failure is reported without escaping to the operation`() {
   must close on interruption. For an injected noninterruptible writer, guarantee
   bounded caller return and suppression of new writes after expiry; an already
   admitted write cannot be retracted. Record this limit in the contract and tests.
-- [ ] Test that serialized events never contain synthetic input text, UI labels,
+- [x] Test that serialized events never contain synthetic input text, UI labels,
   paths, or exception messages supplied at nearby instrumented boundaries. Use
   the event serializer rather than accepting arbitrary production event maps.
-- [ ] Run `./gradlew :app:test --tests '*JsonlTraceSinkTest' --tests '*TraceRecorderTest'`.
+- [x] Run `./gradlew :app:test --tests '*JsonlTraceSinkTest' --tests '*TraceRecorderTest'`.
   Expect RED for the failing writer behavior before implementation, then PASS.
   Commit as `feat(performance): persist bounded local trace files`.
 

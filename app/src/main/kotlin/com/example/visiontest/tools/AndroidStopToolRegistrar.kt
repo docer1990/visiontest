@@ -1,5 +1,8 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
+
 import com.example.visiontest.CommandExecutionException
 import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
@@ -14,28 +17,32 @@ import kotlinx.coroutines.delay
  * `start_automation_server` set up. Idempotent — stopping a server that is not
  * running succeeds with an informational message.
  */
-class AndroidStopToolRegistrar(
+class AndroidStopToolRegistrar internal constructor(
     private val android: DeviceConfig,
     private val automationClient: AutomationClient,
+    private val trace: TraceRecorder,
     private val executeAdb: suspend (List<String>) -> String = { args ->
         executeAndroidAdb(android, args)
     },
 ) : ToolRegistrar {
+    constructor(
+        android: DeviceConfig,
+        automationClient: AutomationClient,
+        executeAdb: suspend (List<String>) -> String = { args -> executeAndroidAdb(android, args) },
+    ) : this(android, automationClient, TraceRecorder.Disabled, executeAdb)
 
     override fun registerTools(scope: ToolScope) {
         registerStopAutomationServer(scope)
     }
 
     // ==================== Extracted business logic ====================
-
-    internal suspend fun stopAutomationServer(): String {
+    internal suspend fun stopAutomationServer(): String = trace.span(TraceStage.OPERATION) {
         val wasRunning = automationClient.isServerRunning()
 
         android.executeShell("am force-stop ${AutomationConfig.AUTOMATION_SERVER_TEST_PACKAGE}")
         android.executeShell("am force-stop ${AutomationConfig.AUTOMATION_SERVER_PACKAGE}")
         removePortForward()
-
-        return if (wasRunning) {
+        return@span if (wasRunning) {
             confirmServerStopped()
         } else {
             "Automation server was not running. " +

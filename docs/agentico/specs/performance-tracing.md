@@ -1,7 +1,8 @@
 # Host performance tracing
 
 Status: the correlated recorder, local JSONL sink, CLI/MCP activation, and bounded
-session lifecycle, shared HTTP transport, and client polling are implemented. Further
+session lifecycle, shared HTTP transport, client polling, shared registrar operations,
+and screenshot processing are implemented. Further
 production measurement boundaries follow
 [the approved baseline design](2026-10-05-performance-baseline-design.md).
 
@@ -140,6 +141,35 @@ an interrupted delay. It excludes find requests and response parsing. No explici
 wait leaves this metric absent. Poll intervals, timeout budget, and result messages
 retain their existing behavior. Legacy wrapped command errors retain the fixed
 `other` category without inspecting exception messages.
+
+## Shared operations and screenshots
+
+Every shared registrar operation owns one `operation` span for both CLI dispatch
+and MCP tool handlers. Delegated interaction operations use this same boundary.
+The tool DSL retains only its invocation span; it does not duplicate the operation
+span. Public registrar constructors continue to disable tracing. Internal factory
+construction passes the session recorder to registrars and their screenshot savers.
+The CLI holder configures its derived registrars before publishing the constructed
+holder, preserving its original eight-argument constructor and eager construction.
+Existing validation order, health checks, RPC calls, return text, and exceptions
+remain unchanged.
+
+Boolean app-launch and status results, explicit selector validation failures, and
+missing server artifacts classify the operation at their existing result branches.
+Opaque forwarded responses and unclassified results remain unknown; transport or
+poll child classification does not implicitly classify an enclosing operation.
+
+`screenshot.parse` covers the existing envelope parsing and validation after the
+capture response returns. It reports handled malformed envelopes and backend
+failures as returned failures. `screenshot.decode` covers base64 decoding and records
+`decodedBytes` only for decoded data. Invalid base64 remains a returned failure.
+`screenshot.write` covers parent and temporary-file creation, file writing, replacing
+moves, and existing cleanup. The saver explicitly classifies the enclosing operation
+from its typed parse or persistence result. Atomic-move fallback, best-effort cleanup,
+handled I/O failures, and unexpected thrown exceptions retain their behavior.
+Screenshot spans serialize no response, image, target path, or exception prose.
+Response byte counts remain at the existing HTTP boundary rather than re-encoding
+the screenshot response solely for a duplicate metric.
 
 ## Local JSONL persistence
 

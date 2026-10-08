@@ -37,12 +37,22 @@ class ComponentHolder internal constructor(
 ) {
     internal var traceRecorder: TraceRecorder = TraceRecorder.Disabled
         private set
+    private fun configureTracing(recorder: TraceRecorder) {
+        if (recorder === TraceRecorder.Disabled) return
+        traceRecorder = recorder
+        androidStopRegistrar = AndroidStopToolRegistrar(android, automationClient, recorder)
+        androidWaitRegistrar = AndroidWaitToolRegistrar(automationClient, recorder)
+        iosWaitRegistrar = IOSWaitToolRegistrar(iosAutomationClient, recorder)
+    }
 
     // Derived from the clients above rather than injected: these registrars have no
     // other dependencies, and keeping them out of the constructor preserves its shape.
-    val androidStopRegistrar = AndroidStopToolRegistrar(android, automationClient)
-    val androidWaitRegistrar = AndroidWaitToolRegistrar(automationClient)
-    val iosWaitRegistrar = IOSWaitToolRegistrar(iosAutomationClient)
+    var androidStopRegistrar = AndroidStopToolRegistrar(android, automationClient)
+        private set
+    var androidWaitRegistrar = AndroidWaitToolRegistrar(automationClient)
+        private set
+    var iosWaitRegistrar = IOSWaitToolRegistrar(iosAutomationClient)
+        private set
 
     /** Returns `true` if the automation server for the given platform is reachable. */
     suspend fun isServerRunning(platform: Platform): Boolean = when (platform) {
@@ -87,11 +97,13 @@ class ComponentHolder internal constructor(
                 ios = ios,
                 automationClient = automationClient,
                 iosAutomationClient = iosAutomationClient,
-                androidDeviceRegistrar = AndroidDeviceToolRegistrar(android),
-                androidAutomationRegistrar = AndroidAutomationToolRegistrar(android, automationClient, discovery),
-                iosDeviceRegistrar = IOSDeviceToolRegistrar(ios),
-                iosAutomationRegistrar = IOSAutomationToolRegistrar(ios, iosAutomationClient, discovery, logger),
-            ).also { it.traceRecorder = recorder }
+                androidDeviceRegistrar = AndroidDeviceToolRegistrar(android, recorder),
+                androidAutomationRegistrar =
+                    AndroidAutomationToolRegistrar(android, automationClient, discovery, recorder),
+                iosDeviceRegistrar = IOSDeviceToolRegistrar(ios, recorder),
+                iosAutomationRegistrar =
+                    IOSAutomationToolRegistrar(ios, iosAutomationClient, discovery, logger, recorder),
+            ).also { it.configureTracing(recorder) }
         }
     }
 }

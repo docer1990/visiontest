@@ -32,13 +32,13 @@ class ToolFactory internal constructor(
     private val discovery = ToolDiscovery(logger)
 
     private val registrars: List<ToolRegistrar> = listOf(
-        AndroidDeviceToolRegistrar(android),
-        AndroidAutomationToolRegistrar(android, automationClient, discovery),
-        AndroidStopToolRegistrar(android, automationClient),
-        AndroidWaitToolRegistrar(automationClient),
-        IOSDeviceToolRegistrar(ios),
-        IOSAutomationToolRegistrar(ios, iosAutomationClient, discovery, logger),
-        IOSWaitToolRegistrar(iosAutomationClient)
+        AndroidDeviceToolRegistrar(android, recorder),
+        AndroidAutomationToolRegistrar(android, automationClient, discovery, recorder),
+        AndroidStopToolRegistrar(android, automationClient, recorder),
+        AndroidWaitToolRegistrar(automationClient, recorder),
+        IOSDeviceToolRegistrar(ios, recorder),
+        IOSAutomationToolRegistrar(ios, iosAutomationClient, discovery, logger, recorder),
+        IOSWaitToolRegistrar(iosAutomationClient, recorder)
     )
 
     fun registerAllTools(server: Server) = registerAllTools(server, TraceRecorder.Disabled)

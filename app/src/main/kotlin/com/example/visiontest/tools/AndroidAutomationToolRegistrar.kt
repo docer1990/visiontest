@@ -1,5 +1,9 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
+import com.example.visiontest.performance.OperationOutcome
+
 import com.example.visiontest.ServerNotRunningException
 import com.example.visiontest.android.AndroidElementSelectors
 import com.example.visiontest.android.Android
@@ -13,11 +17,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 
-class AndroidAutomationToolRegistrar(
+class AndroidAutomationToolRegistrar internal constructor(
     private val android: DeviceConfig,
     private val automationClient: AutomationClient,
-    private val discovery: ToolDiscovery
+    private val discovery: ToolDiscovery,
+    private val trace: TraceRecorder,
 ) : ToolRegistrar {
+    constructor(android: DeviceConfig, automationClient: AutomationClient, discovery: ToolDiscovery) :
+        this(android, automationClient, discovery, TraceRecorder.Disabled)
     private val interactionOperations = AndroidInteractionOperations(automationClient, ::requireServer)
 
     override fun registerTools(scope: ToolScope) {
@@ -44,41 +51,43 @@ class AndroidAutomationToolRegistrar(
     private suspend fun requireServer() {
         if (!automationClient.isServerRunning()) throw ServerNotRunningException("Automation server is not running. Use 'start_automation_server' first.")
     }
-
-    internal suspend fun installAutomationServer(): String {
+    private suspend fun operationFailure(message: String): String {
+        trace.operationOutcome(OperationOutcome.FAILURE)
+        return message
+    }
+    private suspend fun serverOperation(block: suspend () -> String): String = trace.span(TraceStage.OPERATION) {
+        requireServer()
+        block()
+    }
+    internal suspend fun installAutomationServer(): String = trace.span(TraceStage.OPERATION) {
         val device = android.getFirstAvailableDevice()
-
         val apkPath = discovery.findAutomationServerApk()
-            ?: return "Automation server APK not found. Re-run install.sh to download APKs, or set VISION_TEST_APK_PATH environment variable. To build from source: ./gradlew :automation-server:assembleDebug :automation-server:assembleDebugAndroidTest"
-
+            ?: return@span operationFailure("Automation server APK not found. Re-run install.sh to download APKs, or " +
+                "set VISION_TEST_APK_PATH environment variable. To build from source: " +
+                "./gradlew :automation-server:assembleDebug :automation-server:assembleDebugAndroidTest")
         val androidDevice = android as? Android
-            ?: return "Android device configuration not available"
-
+            ?: return@span operationFailure("Android device configuration not available")
         val resolvedMainApk = discovery.resolveMainApkPath(apkPath)
         if (resolvedMainApk != null) {
             androidDevice.executeAdb("install", "-r", resolvedMainApk)
         } else {
-            return "Main APK not found at the expected path derived from test APK: $apkPath. Ensure the main automation-server APK is built/installed (e.g., via :automation-server:assembleDebug), or re-run install.sh or set VISION_TEST_APK_PATH."
+            return@span operationFailure("Main APK not found at the expected path derived from test APK: $apkPath. " +
+                "Ensure the main automation-server APK is built/installed " +
+                "(e.g., via :automation-server:assembleDebug), or re-run install.sh or set VISION_TEST_APK_PATH.")
         }
-
         androidDevice.executeAdb("install", "-r", apkPath)
-
-        return "Automation server APKs installed successfully on device ${device.id}. Use 'start_automation_server' to start the server."
+        return@span "Automation server APKs installed successfully on device ${device.id}. Use " +
+            "'start_automation_server' to start the server."
     }
-
-    internal suspend fun startAutomationServer(): String {
+    internal suspend fun startAutomationServer(): String = trace.span(TraceStage.OPERATION) {
         val device = android.getFirstAvailableDevice()
         val androidDevice = android as? Android
-            ?: return "Android device configuration not available"
-
+            ?: return@span operationFailure("Android device configuration not available")
         val port = AutomationConfig.DEFAULT_PORT
-
         if (automationClient.isServerRunning()) {
-            return "Automation server is already running on localhost:$port"
+            return@span "Automation server is already running on localhost:$port"
         }
-
         androidDevice.executeAdb("forward", "tcp:$port", "tcp:$port")
-
         withContext(Dispatchers.IO) {
             val command = listOf(
                 "adb", "-s", device.id, "shell",
@@ -92,33 +101,29 @@ class AndroidAutomationToolRegistrar(
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                 .start()
         }
-
         var attempts = 0
         val maxAttempts = 10
         while (attempts < maxAttempts) {
             delay(500)
             if (automationClient.isServerRunning()) {
-                return "Automation server started successfully on device ${device.id}. Server is listening on localhost:$port"
+                return@span "Automation server started successfully on device ${device.id}. Server is " +
+                    "listening on localhost:$port"
             }
             attempts++
         }
-
-        return "Automation server may not have started properly. Check device logs with: adb logcat | grep AutomationServer"
+        return@span "Automation server may not have started properly. Check device logs with: " +
+            "adb logcat | grep AutomationServer"
     }
-
-    internal suspend fun automationServerStatus(): String {
+    internal suspend fun automationServerStatus(): String = trace.span(TraceStage.OPERATION) {
         val isRunning = automationClient.isServerRunning()
-        return if (isRunning) {
+        trace.operationOutcome(if (isRunning) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
+        return@span if (isRunning) {
             "Automation server is running and accessible at localhost:${AutomationConfig.DEFAULT_PORT}"
         } else {
             "Automation server is not running. Use 'start_automation_server' to start it."
         }
     }
-
-    internal suspend fun getUiHierarchy(): String {
-        requireServer()
-        return automationClient.getUiHierarchy()
-    }
+    internal suspend fun getUiHierarchy(): String = serverOperation { automationClient.getUiHierarchy() }
 
     internal suspend fun findElement(
         text: String?,
@@ -126,15 +131,15 @@ class AndroidAutomationToolRegistrar(
         resourceId: String?,
         className: String?,
         contentDescription: String?
-    ): String {
+    ): String = trace.span(TraceStage.OPERATION) {
         requireServer()
-
         if (text == null && textContains == null && resourceId == null &&
             className == null && contentDescription == null) {
-            return "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+            trace.operationOutcome(OperationOutcome.FAILURE)
+            return@span "Error: At least one selector required (text, textContains, resourceId, " +
+                "className, or contentDescription)"
         }
-
-        return automationClient.findElement(
+        return@span automationClient.findElement(
             text = text,
             textContains = textContains,
             resourceId = resourceId,
@@ -142,21 +147,12 @@ class AndroidAutomationToolRegistrar(
             contentDescription = contentDescription
         )
     }
-
-    internal suspend fun tapByCoordinates(x: Int, y: Int): String {
-        requireServer()
-        return automationClient.tapByCoordinates(x, y)
-    }
-
-    internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String {
-        requireServer()
-        return automationClient.swipe(startX, startY, endX, endY, steps)
-    }
-
-    internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String {
-        requireServer()
-        return automationClient.swipeByDirection(direction, distance, speed)
-    }
+    internal suspend fun tapByCoordinates(x: Int, y: Int): String =
+        serverOperation { automationClient.tapByCoordinates(x, y) }
+    internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String =
+        serverOperation { automationClient.swipe(startX, startY, endX, endY, steps) }
+    internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String =
+        serverOperation { automationClient.swipeByDirection(direction, distance, speed) }
 
     internal suspend fun swipeOnElement(
         direction: String,
@@ -166,15 +162,15 @@ class AndroidAutomationToolRegistrar(
         className: String?,
         contentDescription: String?,
         speed: String = "normal"
-    ): String {
+    ): String = trace.span(TraceStage.OPERATION) {
         requireServer()
-
         if (text == null && textContains == null && resourceId == null &&
             className == null && contentDescription == null) {
-            return "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+            trace.operationOutcome(OperationOutcome.FAILURE)
+            return@span "Error: At least one selector required (text, textContains, resourceId, " +
+                "className, or contentDescription)"
         }
-
-        return automationClient.swipeOnElement(
+        return@span automationClient.swipeOnElement(
             direction = direction,
             text = text,
             textContains = textContains,
@@ -184,67 +180,50 @@ class AndroidAutomationToolRegistrar(
             speed = speed
         )
     }
-
-    internal suspend fun tapOnElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
-        val timeout = validateElementTap(
-            selectorValues = listOf(
-                "text" to selectors.text, "textContains" to selectors.textContains,
-                "resourceId" to selectors.resourceId, "className" to selectors.className,
-                "contentDescription" to selectors.contentDescription,
-            ),
-            hasSelector = selectors.hasAnySelector(),
-            timeoutMs = timeoutMs,
-            defaultTimeoutMs = AutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
-            maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
-        )
-        requireServer()
-        return successfulElementTapResponse(automationClient.tapOnElement(selectors, timeout))
-    }
-
-    internal suspend fun pressBack(): String {
-        requireServer()
-        return automationClient.pressBack()
-    }
-
-    internal suspend fun pressHome(): String {
-        requireServer()
-        return automationClient.pressHome()
-    }
-
+    internal suspend fun tapOnElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
+        trace.span(TraceStage.OPERATION) {
+            val timeout = validateElementTap(
+                selectorValues = listOf(
+                    "text" to selectors.text, "textContains" to selectors.textContains,
+                    "resourceId" to selectors.resourceId, "className" to selectors.className,
+                    "contentDescription" to selectors.contentDescription,
+                ),
+                hasSelector = selectors.hasAnySelector(),
+                timeoutMs = timeoutMs,
+                defaultTimeoutMs = AutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
+                maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+            )
+            requireServer()
+            return@span successfulElementTapResponse(automationClient.tapOnElement(selectors, timeout))
+        }
+    internal suspend fun pressBack(): String = serverOperation { automationClient.pressBack() }
+    internal suspend fun pressHome(): String = serverOperation { automationClient.pressHome() }
     internal suspend fun pressKey(keyCode: Int?, action: String?): String =
-        interactionOperations.pressKey(keyCode, action)
-
-    internal suspend fun clearText(): String = interactionOperations.clearText()
+        trace.span(TraceStage.OPERATION) { interactionOperations.pressKey(keyCode, action) }
+    internal suspend fun clearText(): String = trace.span(TraceStage.OPERATION) { interactionOperations.clearText() }
 
     internal suspend fun longPress(
         x: Int?,
         y: Int?,
         selectors: AndroidElementSelectors,
         timeoutMs: Int?,
-    ): String = interactionOperations.longPress(x, y, selectors, timeoutMs)
+    ): String = trace.span(TraceStage.OPERATION) { interactionOperations.longPress(x, y, selectors, timeoutMs) }
 
     internal suspend fun doubleTap(
         x: Int?,
         y: Int?,
         selectors: AndroidElementSelectors,
         timeoutMs: Int?,
-    ): String = interactionOperations.doubleTap(x, y, selectors, timeoutMs)
+    ): String = trace.span(TraceStage.OPERATION) { interactionOperations.doubleTap(x, y, selectors, timeoutMs) }
 
     internal suspend fun inputText(
         text: String,
         selectors: AndroidElementSelectors? = null,
         timeoutMs: Int? = null,
-    ): String = interactionOperations.inputText(text, selectors, timeoutMs)
-
-    internal suspend fun getDeviceInfo(): String {
-        requireServer()
-        return automationClient.getDeviceInfo()
-    }
-
-    internal suspend fun getInteractiveElements(includeDisabled: Boolean = false): String {
-        requireServer()
-        return automationClient.getInteractiveElements(includeDisabled)
-    }
+    ): String = trace.span(TraceStage.OPERATION) { interactionOperations.inputText(text, selectors, timeoutMs) }
+    internal suspend fun getDeviceInfo(): String = serverOperation { automationClient.getDeviceInfo() }
+    internal suspend fun getInteractiveElements(includeDisabled: Boolean = false): String =
+        serverOperation { automationClient.getInteractiveElements(includeDisabled) }
 
     // ==================== MCP Tool Registrations ====================
 
@@ -657,12 +636,10 @@ class AndroidAutomationToolRegistrar(
         platformLabel = "Android",
         filePrefix = "android_screenshot",
         artifactLabel = "APK",
+        trace = trace,
     )
-
-    internal suspend fun captureScreenshot(outputPath: String?): String {
-        requireServer()
-        return screenshotSaver.capture(outputPath) { automationClient.screenshot() }
-    }
+    internal suspend fun captureScreenshot(outputPath: String?): String =
+        serverOperation { screenshotSaver.capture(outputPath) { automationClient.screenshot() } }
 
     internal fun resolveScreenshotPath(outputPath: String?): File =
         screenshotSaver.resolveScreenshotPath(outputPath)

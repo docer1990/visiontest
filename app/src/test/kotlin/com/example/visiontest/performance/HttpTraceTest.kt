@@ -85,20 +85,41 @@ class HttpTraceTest {
             val events = mutableListOf<TraceEvent>()
             val trace = TraceRecorder(emit = { events.add(it); Unit })
             val client = AutomationClient(server.hostName, server.port, trace)
+            val malformedPrimitives = listOf(
+                "TRUE", "FALSE", "undefined", "foo", "NaN", "01", "-01", "1e", "1e+", "+1", ".1", "1.", "NULL",
+            )
             val bodies = listOf(
                 "not json", "[]", "null", """{"result":{"success":"false"}}""",
                 "{result:{success:true}}",
                 "{'result':{'success':true}}",
                 """{/* comment */"result":{"success":true}}""",
                 """{"result":{"success":true}} trailing""",
-            )
+                """{"result":{"success":TRUE}}""",
+                """{"result":{"success":FALSE}}""",
+                "{\"result\":{\"success\":true},\"junk\":\"line\nbreak\"}",
+            ) + malformedPrimitives.map { token ->
+                "{\"result\":{\"success\":true},\"junk\":[{\"nested\":$token}]}"
+            }
             bodies.forEach { body ->
                 server.enqueue(MockResponse().setBody(body))
                 trace.invocation("find_element", "android") { assertEquals(body, client.findElement(text = "secret")) }
             }
             assertEquals(bodies.size, server.requestCount)
-            assertTrue(events.filter { it.stage == TraceStage.RESPONSE_PROCESS }
-                .all { it.operationOutcome == OperationOutcome.UNKNOWN })
+            assertEquals(
+                List(bodies.size) { OperationOutcome.UNKNOWN },
+                events.filter { it.stage == TraceStage.RESPONSE_PROCESS }.map { it.operationOutcome },
+            )
+            val validBody = """
+                {
+                    "result":{"success":true},
+                    "junk":[null,false,0,-0,1.25,-2.5,1e+2,1E-2,"line\nbreak","quote\"slash\\"]
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setBody(validBody))
+            trace.invocation("find_element", "android") { assertEquals(validBody, client.findElement(text = "secret")) }
+            val processing = events.last { it.stage == TraceStage.RESPONSE_PROCESS }
+            assertEquals(OperationOutcome.SUCCESS, processing.operationOutcome)
+            assertEquals(bodies.size + 1, server.requestCount)
         }
     }
 

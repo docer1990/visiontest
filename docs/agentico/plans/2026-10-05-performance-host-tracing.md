@@ -155,6 +155,8 @@ fun `writer failure is reported without escaping to the operation`() {
 - Modify: `app/src/main/kotlin/com/example/visiontest/cli/VisionTestCli.kt`
 - Modify: `app/src/main/kotlin/com/example/visiontest/cli/CliErrorHandler.kt`
 - Modify: `app/src/main/kotlin/com/example/visiontest/cli/ComponentHolder.kt`
+- Modify: `app/src/main/kotlin/com/example/visiontest/cli/PlatformOption.kt`
+- Modify: CLI command adapters under `app/src/main/kotlin/com/example/visiontest/cli/commands/` that call `runCliCommand` directly
 - Modify: `app/src/main/kotlin/com/example/visiontest/tools/ToolDsl.kt`
 - Modify: `app/src/main/kotlin/com/example/visiontest/ToolFactory.kt`
 - Create: `app/src/test/kotlin/com/example/visiontest/performance/TraceActivationTest.kt`

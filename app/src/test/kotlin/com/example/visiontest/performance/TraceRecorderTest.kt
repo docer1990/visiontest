@@ -449,4 +449,34 @@ class TraceRecorderTest {
             assertFalse(events.last().toJson().toString().contains("private"))
         }
     }
+    @Test
+    fun `seal freezes admission counts while original operations continue`() = runTest {
+        val events = mutableListOf<TraceEvent>()
+        val recorder = TraceRecorder(emit = { events.add(it); Unit })
+        recorder.invocation("init", null) { "first" }
+        var cutoff: TraceInvocationSnapshot? = null
+        assertEquals("active result", recorder.invocation("init", null) {
+            cutoff = recorder.seal()
+            "active result"
+        })
+        assertEquals(TraceInvocationSnapshot(2, 1), cutoff)
+        assertEquals(cutoff, recorder.seal())
+        assertEquals("late result", recorder.invocation("init", null) { "late result" })
+        val original = IllegalArgumentException("private")
+        assertSame(original, assertFailsWith<IllegalArgumentException> {
+            recorder.invocation("init", null) { throw original }
+        })
+        assertEquals(2, events.size)
+        assertEquals(cutoff, recorder.seal())
+    }
+
+    @Test
+    fun `disabled sealing and invocation never read clock`() = runTest {
+        var clockReads = 0
+        val recorder = TraceRecorder(nowNs = { clockReads++; 1L }, emit = {}, enabled = false)
+        assertEquals(TraceInvocationSnapshot(0, 0), recorder.seal())
+        assertEquals("result", recorder.invocation("init", null) { "result" })
+        assertEquals(0, clockReads)
+    }
+
 }

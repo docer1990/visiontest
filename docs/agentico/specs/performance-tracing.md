@@ -18,8 +18,13 @@ before entry-point routing. An orderly close writes `type: session.end`, `sessio
 `written`, `dropped`, `invocationsStarted`, `invocationsCompleted`, and `complete`.
 Written/dropped counts cover admitted nonterminal records. Completion requires a
 written terminal record, successful drain, zero drops, and matching started/completed
-invocations. A running MCP call prevents completion even when all completed spans
-have drained. Shutdown waits at most 1,000 ms, and repeated finish calls are idempotent.
+invocations. Before stopping sink acceptance, finish atomically seals tracing admission
+and freezes one coherent invocation-count snapshot. Both the footer and returned
+close result use that same snapshot. A call active at this cutoff makes the session
+incomplete even if it finishes during drain; late span rejection cannot turn that
+session into a complete trace. Calls after the cutoff still execute normally without
+starting a traced invocation. Shutdown waits at most 1,000 ms, and repeated finish
+calls preserve the original result and diagnostic.
 
 Each MCP tool handler starts exactly one invocation around its timed business
 handler. The coroutine context retains correlation across timeout and IO contexts;
@@ -150,7 +155,7 @@ terminal record alone does not prove that shutdown or cleanup succeeded.
 A completed invocation span describes that invocation's observed control flow;
 it does not alone establish trace completeness. Reports may call a persisted trace
 complete only after a terminal session record, zero dropped events, and matched
-invocation completions. The recorder does not supply file lifecycle or terminal
-records yet. Force-killed or failed writers can leave incomplete traces; consumers
+invocation completions at the sealed admission cutoff. `TraceRuntime` supplies the
+file lifecycle and terminal records. Force-killed or failed writers can leave incomplete traces; consumers
 must not fabricate missing span completions or equate completeness with operation
 success.

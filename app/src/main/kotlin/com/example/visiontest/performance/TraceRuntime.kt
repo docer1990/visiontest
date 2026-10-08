@@ -23,6 +23,19 @@ internal class TraceRuntime(
     val entryNs: Long,
     private val diagnostic: (String) -> Unit = System.err::println,
 ) {
+    private var openSink: (Path, (String) -> Unit) -> JsonlTraceSink? = { path, report ->
+        JsonlTraceSink.open(path, report)
+    }
+
+    internal constructor(
+        mode: String,
+        entryNs: Long,
+        diagnostic: (String) -> Unit,
+        openSink: (Path, (String) -> Unit) -> JsonlTraceSink?,
+    ) : this(mode, entryNs, diagnostic) {
+        this.openSink = openSink
+    }
+
     var recorder = TraceRecorder.Disabled
         private set
     private var sink: JsonlTraceSink? = null
@@ -35,7 +48,7 @@ internal class TraceRuntime(
     fun configure(path: Path?) {
         if (configured) return
         configured = true
-        val opened = path?.let { JsonlTraceSink.open(it, diagnostic) } ?: return
+        val opened = path?.let { openSink(it, diagnostic) } ?: return
         sink = opened
         recorder = TraceRecorder(emit = { opened.offer(it.toJson().toString()); Unit }, originNs = entryNs)
         opened.offer(buildJsonObject {
@@ -81,18 +94,19 @@ internal class TraceRuntime(
     @Synchronized
     fun finish(): TraceCloseResult {
         closed?.let { return it }
+        val snapshot = recorder.seal()
         val result = sink?.finish(MAX_DRAIN_MS) { drained ->
             buildJsonObject {
                 put("type", "session.end")
                 put("sessionId", recorder.sessionId)
                 put("written", drained.written)
                 put("dropped", drained.dropped)
-                put("invocationsStarted", recorder.invocationsStarted)
-                put("invocationsCompleted", recorder.invocationsCompleted)
-                put("complete", drained.complete && recorder.invocationsStarted == recorder.invocationsCompleted)
+                put("invocationsStarted", snapshot.started)
+                put("invocationsCompleted", snapshot.completed)
+                put("complete", drained.complete && snapshot.complete)
             }.toString()
         } ?: TraceCloseResult(true, 0, 0)
-        val matched = recorder.invocationsStarted == recorder.invocationsCompleted
+        val matched = snapshot.complete
         if (result.complete && !matched) {
             runCatching { diagnostic("VisionTest performance trace is unavailable or incomplete.") }
         }

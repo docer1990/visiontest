@@ -26,6 +26,12 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.io.StringWriter
+import java.io.Writer
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.async
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -141,6 +147,61 @@ class TraceActivationTest {
         val rows = Files.readAllLines(path).map { Json.parseToJsonElement(it).jsonObject }
         assertEquals(1, rows.count { it["stage"]?.jsonPrimitive?.content == "cli.prepare" })
         assertFalse(Files.readString(path).contains("private"))
+    }
+
+    @Test fun `finish freezes counts before drain while active invocation completes`() = runBlocking {
+        val output = StringWriter()
+        val flushing = CountDownLatch(1)
+        val releaseFlush = CountDownLatch(1)
+        val writer = object : Writer() {
+            override fun write(buffer: CharArray, offset: Int, count: Int) = output.write(buffer, offset, count)
+            override fun close() = Unit
+            override fun flush() {
+                flushing.countDown()
+                check(releaseFlush.await(5, TimeUnit.SECONDS))
+            }
+        }
+        val warnings = mutableListOf<String>()
+        val runtime = TraceRuntime("mcp", System.nanoTime(), warnings::add) { _, report ->
+            JsonlTraceSink(writer, report)
+        }
+        runtime.configure(directory.resolve("race.jsonl"))
+        val entered = CompletableDeferred<Unit>()
+        val releaseCall = CompletableDeferred<Unit>()
+        val call = async(Dispatchers.Default) {
+            runtime.recorder.invocation("ios_input_text", "ios") {
+                entered.complete(Unit)
+                releaseCall.await()
+                "original result"
+            }
+        }
+        entered.await()
+        val finished = CompletableFuture<TraceCloseResult>()
+        val finisher = Thread { finished.complete(runtime.finish()) }.apply { start() }
+        try {
+            assertTrue(flushing.await(5, TimeUnit.SECONDS))
+            // Finish has stopped sink acceptance; the invocation returns during its prefooter flush.
+            releaseCall.complete(Unit)
+            assertEquals("original result", call.await())
+            // Operations admitted after the tracing cutoff still run normally.
+            assertEquals("late result", runtime.recorder.invocation("ios_input_text", "ios") { "late result" })
+            releaseFlush.countDown()
+            val result = finished.get(5, TimeUnit.SECONDS)
+            assertFalse(result.complete)
+            assertEquals(result, runtime.finish())
+            val rows = output.toString().lineSequence().filter { it.isNotBlank() }
+                .map { Json.parseToJsonElement(it).jsonObject }.toList()
+            val footer = rows.last()
+            assertEquals("false", footer["complete"]!!.jsonPrimitive.content)
+            assertEquals("1", footer["invocationsStarted"]!!.jsonPrimitive.content)
+            assertEquals("0", footer["invocationsCompleted"]!!.jsonPrimitive.content)
+            assertEquals(0, rows.count { it["stage"]?.jsonPrimitive?.content == "invocation" })
+            assertEquals(listOf("VisionTest performance trace is unavailable or incomplete."), warnings)
+        } finally {
+            releaseCall.complete(Unit)
+            releaseFlush.countDown()
+            finisher.join(5_000)
+        }
     }
 
 }

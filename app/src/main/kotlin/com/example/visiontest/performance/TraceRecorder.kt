@@ -25,6 +25,11 @@ import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 
+/** Counts frozen at the atomic boundary that stops admission to a tracing session. */
+internal data class TraceInvocationSnapshot(val started: Long, val completed: Long) {
+    val complete: Boolean get() = started == completed
+}
+
 internal class TraceRecorder(
     private val nowNs: () -> Long = System::nanoTime,
     private val emit: (TraceEvent) -> Unit,
@@ -34,17 +39,25 @@ internal class TraceRecorder(
     val sessionId: String = newId()
     private val invocationSequence = AtomicLong()
     private val completed = AtomicLong()
-    val invocationsStarted: Long get() = invocationSequence.get()
-    val invocationsCompleted: Long get() = completed.get()
+    private val lifecycle = Any()
+    private var cutoff: TraceInvocationSnapshot? = null
+
+    fun seal(): TraceInvocationSnapshot = synchronized(lifecycle) {
+        cutoff ?: TraceInvocationSnapshot(invocationSequence.get(), completed.get()).also { cutoff = it }
+    }
 
     suspend fun <T> invocation(operation: String, platform: String?, block: suspend () -> T): T {
-        if (!enabled) return block()
-        val invocation = Invocation(newId(), invocationSequence.incrementAndGet(),
-            TraceNames.operation(operation), TraceNames.platform(platform))
+        val invocation = if (enabled) {
+            synchronized(lifecycle) {
+                if (cutoff != null) null else Invocation(newId(), invocationSequence.incrementAndGet(),
+                    TraceNames.operation(operation), TraceNames.platform(platform))
+            }
+        } else null
+        if (invocation == null) return block()
         return try {
             record(SpanContext(this, invocation, newId(), null), TraceStage.INVOCATION, block)
         } finally {
-            completed.incrementAndGet()
+            synchronized(lifecycle) { completed.incrementAndGet() }
         }
     }
 

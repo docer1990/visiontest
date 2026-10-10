@@ -1,6 +1,9 @@
 package com.example.visiontest.tools
 
 import com.example.visiontest.ServerNotRunningException
+import com.example.visiontest.performance.TraceEvent
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.discovery.ToolDiscovery
@@ -49,6 +52,28 @@ class AndroidScreenshotToolTest {
     fun tearDown() {
         mockServer.shutdown()
         tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun `traced screenshot retains one health and one capture request`() = runBlocking {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        val client = AutomationClient(host = mockServer.hostName, port = mockServer.port, trace = trace)
+        val traced = AndroidAutomationToolRegistrar(fakeDeviceConfig, client, ToolDiscovery(logger), trace)
+        enqueueHealthOk()
+        enqueueScreenshotResult(successBody(fixturePngBase64))
+        val target = File(tempDir, "private-traced.png")
+
+        val result = trace.invocation("android_screenshot", "android") { traced.captureScreenshot(target.path) }
+
+        assertEquals("Screenshot saved to ${target.absolutePath}", result)
+        assertTrue(fixturePngBytes.contentEquals(target.readBytes()))
+        assertEquals(2, mockServer.requestCount)
+        listOf(TraceStage.OPERATION, TraceStage.HEALTH, TraceStage.SCREENSHOT_PARSE,
+            TraceStage.SCREENSHOT_DECODE, TraceStage.SCREENSHOT_WRITE).forEach { stage ->
+            assertEquals(1, events.count { it.stage == stage })
+        }
+        assertFalse(events.any { it.toJson().toString().contains("private-traced") })
     }
 
     // --- resolveScreenshotPath ---

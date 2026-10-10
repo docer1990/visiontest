@@ -1,15 +1,19 @@
 package com.example.visiontest.tools
 
 import com.example.visiontest.common.DeviceConfig
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
+import com.example.visiontest.performance.OperationOutcome
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.put
-
-class AndroidDeviceToolRegistrar(
-    private val android: DeviceConfig
+class AndroidDeviceToolRegistrar internal constructor(
+    private val android: DeviceConfig,
+    private val trace: TraceRecorder,
 ) : ToolRegistrar {
+    constructor(android: DeviceConfig) : this(android, TraceRecorder.Disabled)
 
     companion object {
         private const val PROP_MODEL = "ro.product.model"
@@ -32,14 +36,13 @@ class AndroidDeviceToolRegistrar(
             availableDevice()
         }
     }
-
-    internal suspend fun availableDevice(json: Boolean = false): String {
+    internal suspend fun availableDevice(json: Boolean = false): String = trace.span(TraceStage.OPERATION) {
         val result = android.getFirstAvailableDevice()
         val deviceProps = android.executeShell("getprop", result.id)
         val modelName = ToolHelpers.extractProperty(deviceProps, PROP_MODEL)
         val androidVersion = ToolHelpers.extractProperty(deviceProps, PROP_ANDROID_VERSION)
         val sdkVersion = ToolHelpers.extractProperty(deviceProps, PROP_SDK_VERSION)
-        if (json) return buildJsonObject {
+        if (json) return@span buildJsonObject {
             put("id", result.id)
             put("name", result.name)
             put("type", result.type.name)
@@ -48,8 +51,7 @@ class AndroidDeviceToolRegistrar(
             put("osVersion", androidVersion.takeUnless { it == "Unknown" })
             put("sdkVersion", sdkVersion.takeUnless { it == "Unknown" })
         }.toString()
-
-        return """
+        return@span """
             |Device found:
             |Serial: ${result.id}
             |Model: $modelName
@@ -67,13 +69,12 @@ class AndroidDeviceToolRegistrar(
             listApps()
         }
     }
-
-    internal suspend fun listApps(json: Boolean = false): String {
+    internal suspend fun listApps(json: Boolean = false): String = trace.span(TraceStage.OPERATION) {
         val result = android.listApps()
-        if (json) return buildJsonObject {
+        if (json) return@span buildJsonObject {
             put("apps", buildJsonArray { result.forEach { add(it) } })
         }.toString()
-        return if (result.isEmpty()) {
+        return@span if (result.isEmpty()) {
             "No apps found on the device"
         } else {
             "Found these apps: ${result.joinToString(", ")}"
@@ -90,15 +91,15 @@ class AndroidDeviceToolRegistrar(
             infoApp(packageName)
         }
     }
-
-    internal suspend fun infoApp(packageName: String, json: Boolean = false): String {
-        val rawResult = android.getAppInfo(packageName)
-        if (json) return buildJsonObject {
-            put("id", packageName)
-            put("rawInfo", rawResult)
-        }.toString()
-        return ToolHelpers.formatAppInfo(rawResult, packageName)
-    }
+    internal suspend fun infoApp(packageName: String, json: Boolean = false): String =
+        trace.span(TraceStage.OPERATION) {
+            val rawResult = android.getAppInfo(packageName)
+            if (json) return@span buildJsonObject {
+                put("id", packageName)
+                put("rawInfo", rawResult)
+            }.toString()
+            return@span ToolHelpers.formatAppInfo(rawResult, packageName)
+        }
 
     private fun registerLaunchApp(scope: ToolScope) {
         scope.tool(
@@ -110,10 +111,10 @@ class AndroidDeviceToolRegistrar(
             launchApp(packageName)
         }
     }
-
-    internal suspend fun launchApp(packageName: String): String {
+    internal suspend fun launchApp(packageName: String): String = trace.span(TraceStage.OPERATION) {
         val result = android.launchApp(packageName)
-        return if (result) {
+        trace.operationOutcome(if (result) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
+        return@span if (result) {
             "Successfully launched the app: $packageName"
         } else {
             "Failed to launch the app: $packageName"

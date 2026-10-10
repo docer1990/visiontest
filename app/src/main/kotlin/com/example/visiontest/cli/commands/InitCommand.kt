@@ -3,6 +3,7 @@ package com.example.visiontest.cli.commands
 import com.example.visiontest.cli.CliExit
 import com.example.visiontest.cli.ExitCode
 import com.example.visiontest.cli.runCliCommand
+import com.example.visiontest.cli.CliCommandRunner
 import com.example.visiontest.config.VersionInfo
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.option
@@ -20,9 +21,11 @@ import kotlin.io.path.writeText
  *
  * Does NOT require `--platform` because this is not a device operation.
  */
-class InitCommand(
+class InitCommand @JvmOverloads constructor(
     private val workingDir: Path = Path.of(System.getProperty("user.dir")),
     private val resourceLoader: (String) -> String? = Companion::loadClasspathResource,
+    private val runner: CliCommandRunner = ::runCliCommand,
+    private val prepared: () -> Unit = {},
 ) : CliktCommand(name = "init", help = "Set up AI agent skill files in the current project") {
 
     companion object {
@@ -53,7 +56,7 @@ class InitCommand(
         .split(",")
         .required()
 
-    override fun run() = runCliCommand { writeSkillFiles(agents) }
+    override fun run() = runner { writeSkillFiles(agents) }
 
     /**
      * Validates [requestedAgents], writes a SKILL.md per agent under [workingDir], and
@@ -77,6 +80,7 @@ class InitCommand(
             )
         }
 
+        prepared()
         val instructions = resourceLoader(RESOURCE_PATH)
             ?: throw CliExit(
                 ExitCode.GenericFailure,

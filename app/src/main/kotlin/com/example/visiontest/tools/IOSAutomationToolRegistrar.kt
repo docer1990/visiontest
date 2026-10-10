@@ -1,5 +1,9 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
+import com.example.visiontest.performance.OperationOutcome
+
 import com.example.visiontest.ServerNotRunningException
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.config.IOSAutomationConfig
@@ -17,13 +21,22 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import org.slf4j.Logger
 import java.io.File
-
-class IOSAutomationToolRegistrar(
+class IOSAutomationToolRegistrar internal constructor(
     private val ios: DeviceConfig,
     private val iosAutomationClient: IOSAutomationClient,
     private val discovery: ToolDiscovery,
-    private val logger: Logger
+    private val logger: Logger,
+    private val trace: TraceRecorder,
+    private val launchProcess: (List<String>) -> Process = { command ->
+        ProcessBuilder(command).redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
+    },
 ) : ToolRegistrar {
+    constructor(
+        ios: DeviceConfig,
+        iosAutomationClient: IOSAutomationClient,
+        discovery: ToolDiscovery,
+        logger: Logger,
+    ) : this(ios, iosAutomationClient, discovery, logger, TraceRecorder.Disabled)
     private val interactionOperations = IOSInteractionOperations(iosAutomationClient, ::requireServer)
 
     @Volatile
@@ -100,10 +113,7 @@ class IOSAutomationToolRegistrar(
     ): ServerPollResult {
         withContext(Dispatchers.IO) {
             logger.info("Starting iOS automation server ($label): ${command.joinToString(" ")}")
-            val process = ProcessBuilder(command)
-                .redirectErrorStream(true)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                .start()
+            val process = trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) }
             iosXcodebuildProcess = process
         }
 
@@ -139,14 +149,19 @@ class IOSAutomationToolRegistrar(
     private suspend fun requireServer() {
         if (!iosAutomationClient.isServerRunning()) throw ServerNotRunningException("iOS automation server is not running. Use 'ios_start_automation_server' first.")
     }
-
-    internal suspend fun startAutomationServer(): String {
+    private suspend fun operationFailure(message: String): String {
+        trace.operationOutcome(OperationOutcome.FAILURE)
+        return message
+    }
+    private suspend fun serverOperation(block: suspend () -> String): String = trace.span(TraceStage.OPERATION) {
+        requireServer()
+        block()
+    }
+    internal suspend fun startAutomationServer(): String = trace.span(TraceStage.OPERATION) {
         val port = IOSAutomationConfig.DEFAULT_PORT
-
         if (iosAutomationClient.isServerRunning()) {
-            return "iOS automation server is already running on localhost:$port"
+            return@span "iOS automation server is already running on localhost:$port"
         }
-
         // Clean up any orphaned previous process
         iosXcodebuildProcess?.let { process ->
             if (process.isAlive) {
@@ -155,88 +170,64 @@ class IOSAutomationToolRegistrar(
             }
             iosXcodebuildProcess = null
         }
-
         // Discover launch path: pre-built bundle preferred, source build as fallback
         val xctestrunPath = discovery.findXctestrun()
         val projectPath = discovery.findXcodeProject()
-
         if (xctestrunPath == null && projectPath == null) {
-            return "Neither pre-built iOS test bundle nor Xcode source project found. " +
+            return@span operationFailure("Neither pre-built iOS test bundle nor Xcode source project found. " +
                 "To fix: re-run install.sh on macOS to download the pre-built bundle, " +
                 "or clone the VisionTest repository and set ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} " +
-                "to build from source."
+                "to build from source.")
         }
-
         val usingPrebuilt = xctestrunPath != null
         if (usingPrebuilt) {
             logger.info("Using pre-built iOS test bundle: $xctestrunPath")
         } else {
             logger.info("Using source build from Xcode project: $projectPath")
         }
-
         val device = ios.getFirstAvailableDevice()
         val simulatorName = device.name
-
         val command = buildXcodebuildCommand(xctestrunPath, projectPath, simulatorName)
         val maxAttempts = if (usingPrebuilt) 30 else 60
-
         val label = if (usingPrebuilt) "pre-built bundle" else "source build"
         val primaryResult = startAndPollServer(command, maxAttempts, port, label)
-
         if (primaryResult.earlyExitCode == null) {
-            return primaryResult.message
+            return@span primaryResult.message
         }
-
         // Primary attempt exited early — try source build fallback if available
         if (usingPrebuilt && projectPath != null) {
             logger.warn("Pre-built bundle failed (exit code ${primaryResult.earlyExitCode}), falling back to source build")
             val fallbackCommand = buildXcodebuildCommand(null, projectPath, simulatorName)
             val fallbackResult = startAndPollServer(fallbackCommand, 60, port, "source build fallback")
-            return fallbackResult.message
+            return@span fallbackResult.message
         }
-
-        return primaryResult.message
+        return@span primaryResult.message
     }
-
-    internal suspend fun automationServerStatus(): String {
+    internal suspend fun automationServerStatus(): String = trace.span(TraceStage.OPERATION) {
         val isRunning = iosAutomationClient.isServerRunning()
-        return if (isRunning) {
+        trace.operationOutcome(if (isRunning) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
+        return@span if (isRunning) {
             "iOS automation server is running and accessible at localhost:${IOSAutomationConfig.DEFAULT_PORT}"
         } else {
             "iOS automation server is not running. Use 'ios_start_automation_server' to start it."
         }
     }
-
-    internal suspend fun getUiHierarchy(bundleId: String? = null): String {
-        requireServer()
-        return iosAutomationClient.getUiHierarchy(bundleId)
-    }
-
-    internal suspend fun getInteractiveElements(includeDisabled: Boolean = false, bundleId: String? = null): String {
-        requireServer()
-        return iosAutomationClient.getInteractiveElements(includeDisabled, bundleId)
-    }
-
-    internal suspend fun tapByCoordinates(x: Int, y: Int): String {
-        requireServer()
-        return iosAutomationClient.tapByCoordinates(x, y)
-    }
-
-    internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String {
-        requireServer()
-        return iosAutomationClient.swipe(startX, startY, endX, endY, steps)
-    }
-
-    internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String {
-        requireServer()
-        return iosAutomationClient.swipeByDirection(direction, distance, speed)
-    }
+    internal suspend fun getUiHierarchy(bundleId: String? = null): String =
+        serverOperation { iosAutomationClient.getUiHierarchy(bundleId) }
+    internal suspend fun getInteractiveElements(includeDisabled: Boolean = false, bundleId: String? = null): String =
+        serverOperation { iosAutomationClient.getInteractiveElements(includeDisabled, bundleId) }
+    internal suspend fun tapByCoordinates(x: Int, y: Int): String =
+        serverOperation { iosAutomationClient.tapByCoordinates(x, y) }
+    internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String =
+        serverOperation { iosAutomationClient.swipe(startX, startY, endX, endY, steps) }
+    internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String =
+        serverOperation { iosAutomationClient.swipeByDirection(direction, distance, speed) }
 
     internal suspend fun swipeOnElement(
         direction: String,
         selectors: IOSElementSelectors,
         speed: String = "normal"
-    ): String {
+    ): String = trace.span(TraceStage.OPERATION) {
         require(direction.lowercase() in listOf("up", "down", "left", "right")) {
             "Invalid direction '$direction'. Must be: up, down, left, right"
         }
@@ -247,24 +238,24 @@ class IOSAutomationToolRegistrar(
             "At least one selector required (text, textContains, resourceId, className, or contentDescription)"
         }
         requireServer()
-        return iosAutomationClient.swipeOnElement(direction, selectors, speed)
+        return@span iosAutomationClient.swipeOnElement(direction, selectors, speed)
     }
-
-    internal suspend fun tapOnElement(selectors: IOSElementSelectors, timeoutMs: Int? = null): String {
-        val timeout = validateElementTap(
-            selectorValues = listOf(
-                "text" to selectors.text, "textContains" to selectors.textContains,
-                "resourceId" to selectors.identifier, "className" to selectors.elementType,
-                "contentDescription" to selectors.label, "bundleId" to selectors.bundleId,
-            ),
-            hasSelector = selectors.hasAnySelector(),
-            timeoutMs = timeoutMs,
-            defaultTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
-            maxTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
-        )
-        requireServer()
-        return successfulElementTapResponse(iosAutomationClient.tapOnElement(selectors, timeout))
-    }
+    internal suspend fun tapOnElement(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
+        trace.span(TraceStage.OPERATION) {
+            val timeout = validateElementTap(
+                selectorValues = listOf(
+                    "text" to selectors.text, "textContains" to selectors.textContains,
+                    "resourceId" to selectors.identifier, "className" to selectors.elementType,
+                    "contentDescription" to selectors.label, "bundleId" to selectors.bundleId,
+                ),
+                hasSelector = selectors.hasAnySelector(),
+                timeoutMs = timeoutMs,
+                defaultTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
+                maxTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+            )
+            requireServer()
+            return@span successfulElementTapResponse(iosAutomationClient.tapOnElement(selectors, timeout))
+        }
 
     internal suspend fun findElement(
         text: String?,
@@ -273,15 +264,15 @@ class IOSAutomationToolRegistrar(
         elementType: String?,
         label: String?,
         bundleId: String?
-    ): String {
+    ): String = trace.span(TraceStage.OPERATION) {
         requireServer()
-
         if (text == null && textContains == null && identifier == null &&
             elementType == null && label == null) {
-            return "Error: At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+            trace.operationOutcome(OperationOutcome.FAILURE)
+            return@span "Error: At least one selector required (text, textContains, resourceId, " +
+                "className, or contentDescription)"
         }
-
-        return iosAutomationClient.findElement(
+        return@span iosAutomationClient.findElement(
             text = text,
             textContains = textContains,
             identifier = identifier,
@@ -290,44 +281,35 @@ class IOSAutomationToolRegistrar(
             bundleId = bundleId
         )
     }
-
-    internal suspend fun getDeviceInfo(): String {
-        requireServer()
-        return iosAutomationClient.getDeviceInfo()
-    }
-
-    internal suspend fun pressHome(): String {
-        requireServer()
-        return iosAutomationClient.pressHome()
-    }
-
+    internal suspend fun getDeviceInfo(): String = serverOperation { iosAutomationClient.getDeviceInfo() }
+    internal suspend fun pressHome(): String = serverOperation { iosAutomationClient.pressHome() }
     internal suspend fun dismissKeyboard(bundleId: String? = null): String =
-        interactionOperations.dismissKeyboard(bundleId)
+        trace.span(TraceStage.OPERATION) { interactionOperations.dismissKeyboard(bundleId) }
 
     internal suspend fun handleAlert(
         action: String,
         buttonLabel: String? = null,
         bundleId: String? = null,
-    ): String = interactionOperations.handleAlert(action, buttonLabel, bundleId)
+    ): String = trace.span(TraceStage.OPERATION) { interactionOperations.handleAlert(action, buttonLabel, bundleId) }
 
     internal suspend fun longPress(
         x: Int?, y: Int?, selectors: IOSElementSelectors, timeoutMs: Int?,
-    ): String = interactionOperations.longPress(x, y, selectors, timeoutMs)
+    ): String = trace.span(TraceStage.OPERATION) { interactionOperations.longPress(x, y, selectors, timeoutMs) }
 
     internal suspend fun doubleTap(
         x: Int?, y: Int?, selectors: IOSElementSelectors, timeoutMs: Int?,
-    ): String = interactionOperations.doubleTap(x, y, selectors, timeoutMs)
+    ): String = trace.span(TraceStage.OPERATION) { interactionOperations.doubleTap(x, y, selectors, timeoutMs) }
 
     internal suspend fun inputText(
         text: String,
         bundleId: String? = null,
         selectors: IOSElementSelectors? = null,
         timeoutMs: Int? = null,
-    ): String = interactionOperations.inputText(text, bundleId, selectors, timeoutMs)
-
-    internal suspend fun stopAutomationServer(): String {
+    ): String =
+        trace.span(TraceStage.OPERATION) { interactionOperations.inputText(text, bundleId, selectors, timeoutMs) }
+    internal suspend fun stopAutomationServer(): String = trace.span(TraceStage.OPERATION) {
         val process = iosXcodebuildProcess
-        return if (process != null && process.isAlive) {
+        return@span if (process != null && process.isAlive) {
             process.destroyForcibly()
             iosXcodebuildProcess = null
             "iOS automation server stopped successfully."
@@ -652,12 +634,10 @@ class IOSAutomationToolRegistrar(
         platformLabel = "iOS",
         filePrefix = "ios_screenshot",
         artifactLabel = "bundle",
+        trace = trace,
     )
-
-    internal suspend fun captureScreenshot(outputPath: String?): String {
-        requireServer()
-        return screenshotSaver.capture(outputPath) { iosAutomationClient.screenshot() }
-    }
+    internal suspend fun captureScreenshot(outputPath: String?): String =
+        serverOperation { screenshotSaver.capture(outputPath) { iosAutomationClient.screenshot() } }
 
     internal fun resolveScreenshotPath(outputPath: String?): File =
         screenshotSaver.resolveScreenshotPath(outputPath)

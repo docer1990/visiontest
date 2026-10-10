@@ -1,5 +1,6 @@
 package com.example.visiontest.android
 
+import com.example.visiontest.performance.TraceRecorder
 import com.example.visiontest.common.JsonRpcHttpClient
 import com.example.visiontest.common.elementTapReadTimeoutMs
 import com.example.visiontest.config.AutomationConfig
@@ -13,10 +14,17 @@ import com.example.visiontest.config.AutomationConfig
  * @param host The host to connect to (default: localhost via ADB port forwarding)
  * @param port The port number (default: [AutomationConfig.DEFAULT_PORT])
  */
-class AutomationClient(
+class AutomationClient internal constructor(
     host: String = AutomationConfig.DEFAULT_HOST,
-    port: Int = AutomationConfig.DEFAULT_PORT
-) : JsonRpcHttpClient(host, port) {
+    port: Int = AutomationConfig.DEFAULT_PORT,
+    trace: TraceRecorder,
+) : JsonRpcHttpClient(host, port, trace) {
+    constructor() : this(AutomationConfig.DEFAULT_HOST, AutomationConfig.DEFAULT_PORT, TraceRecorder.Disabled)
+
+    constructor(
+        host: String = AutomationConfig.DEFAULT_HOST,
+        port: Int = AutomationConfig.DEFAULT_PORT,
+    ) : this(host, port, TraceRecorder.Disabled)
 
     /**
      * Gets the UI hierarchy from the device.

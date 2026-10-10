@@ -1,5 +1,8 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
+
 import com.example.visiontest.ServerNotRunningException
 import com.example.visiontest.android.AndroidElementSelectors
 import com.example.visiontest.android.AutomationClient
@@ -13,9 +16,11 @@ import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
  * ([com.example.visiontest.common.JsonRpcHttpClient.pollForElement]); this registrar
  * validates parameters and adapts MCP/CLI inputs to it.
  */
-class AndroidWaitToolRegistrar(
-    private val automationClient: AutomationClient
+class AndroidWaitToolRegistrar internal constructor(
+    private val automationClient: AutomationClient,
+    private val trace: TraceRecorder,
 ) : ToolRegistrar {
+    constructor(automationClient: AutomationClient) : this(automationClient, TraceRecorder.Disabled)
 
     override fun registerTools(scope: ToolScope) {
         registerWaitForElement(scope)
@@ -29,34 +34,34 @@ class AndroidWaitToolRegistrar(
             throw ServerNotRunningException("Automation server is not running. Use 'start_automation_server' first.")
         }
     }
-
-    internal suspend fun waitForElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
-        val timeout = resolveWaitTimeout(timeoutMs)
-        requireAnySelector(selectors)
-        requireServer()
-        return automationClient.pollForElement(
-            expectGone = false,
-            timeoutMs = timeout,
-            pollIntervalMs = AutomationConfig.WAIT_POLL_INTERVAL_MS,
-            selectorDescription = selectors.describe(),
-        ) {
-            findElement(selectors)
+    internal suspend fun waitForElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
+        trace.span(TraceStage.OPERATION) {
+            val timeout = resolveWaitTimeout(timeoutMs)
+            requireAnySelector(selectors)
+            requireServer()
+            return@span automationClient.pollForElement(
+                expectGone = false,
+                timeoutMs = timeout,
+                pollIntervalMs = AutomationConfig.WAIT_POLL_INTERVAL_MS,
+                selectorDescription = selectors.describe(),
+            ) {
+                findElement(selectors)
+            }
         }
-    }
-
-    internal suspend fun waitUntilGone(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
-        val timeout = resolveWaitTimeout(timeoutMs)
-        requireAnySelector(selectors)
-        requireServer()
-        return automationClient.pollForElement(
-            expectGone = true,
-            timeoutMs = timeout,
-            pollIntervalMs = AutomationConfig.WAIT_POLL_INTERVAL_MS,
-            selectorDescription = selectors.describe(),
-        ) {
-            findElement(selectors)
+    internal suspend fun waitUntilGone(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
+        trace.span(TraceStage.OPERATION) {
+            val timeout = resolveWaitTimeout(timeoutMs)
+            requireAnySelector(selectors)
+            requireServer()
+            return@span automationClient.pollForElement(
+                expectGone = true,
+                timeoutMs = timeout,
+                pollIntervalMs = AutomationConfig.WAIT_POLL_INTERVAL_MS,
+                selectorDescription = selectors.describe(),
+            ) {
+                findElement(selectors)
+            }
         }
-    }
 
     private suspend fun findElement(selectors: AndroidElementSelectors): String = automationClient.findElement(
         text = selectors.text,

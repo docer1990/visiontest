@@ -18,3 +18,4 @@ Technical Decisions (TDs) preserve the rationale for consequential architectural
 | [TD-012](TD-012-use-one-command-per-gesture-with-explicit-targeting.md) | Use one command per gesture with explicit targeting | Accepted |
 | [TD-013](TD-013-resolve-the-active-ios-app-through-xctest-accessibility.md) | Resolve the active iOS app through XCTest accessibility | Accepted |
 | [TD-014](TD-014-read-android-editability-from-the-selected-native-node.md) | Read Android editability from the selected native node | Accepted |
+| [TD-015](TD-015-isolate-local-performance-measurements-from-operation-results.md) | Isolate local performance measurements from operation results | Proposed |

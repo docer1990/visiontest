@@ -1,6 +1,15 @@
 package com.example.visiontest.android
 
+import com.example.visiontest.performance.OperationOutcome
+import com.example.visiontest.performance.TraceEvent
+import com.example.visiontest.performance.TraceMetric
+import com.example.visiontest.performance.TraceOutcome
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
 import com.example.visiontest.CommandExecutionException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -53,6 +62,93 @@ class AutomationClientWaitTest {
         ) {
             client.findElement(text = "Login")
         }
+    }
+
+    @Test
+    fun `traced appearance counts attempts and explicit waits`() = runBlocking {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        client = AutomationClient(server.hostName, server.port, trace)
+        server.enqueue(MockResponse().setBody(notFoundResponse))
+        server.enqueue(MockResponse().setBody(foundResponse))
+        val result = trace.invocation("wait_for_element", "android") {
+            poll(expectGone = false, timeoutMs = 5000)
+        }
+        assertEquals(foundResponse, result)
+        assertEquals(2, server.requestCount)
+        val polling = events.single { it.stage == TraceStage.POLL }
+        assertEquals(2L, polling.metrics[TraceMetric.POLL_COUNT])
+        assertTrue(polling.metrics.getValue(TraceMetric.WAIT_NS) >= 0L)
+        assertEquals(OperationOutcome.SUCCESS, polling.operationOutcome)
+        assertEquals(1, events.count { it.stage == TraceStage.POLL_WAIT })
+    }
+
+    @Test
+    fun `traced gone wait counts a failed find without treating it as absence`() = runBlocking {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        client = AutomationClient(server.hostName, server.port, trace)
+        server.enqueue(MockResponse().setBody(errorResponse))
+        trace.invocation("wait_until_gone", "android") {
+            assertFailsWith<CommandExecutionException> { poll(expectGone = true, timeoutMs = 5000) }
+        }
+        assertEquals(1, server.requestCount)
+        val polling = events.single { it.stage == TraceStage.POLL }
+        assertEquals(1L, polling.metrics[TraceMetric.POLL_COUNT])
+        assertEquals(TraceOutcome.THROWN, polling.outcome)
+    }
+
+    @Test
+    fun `traced malformed poll records processing failure`() = runBlocking {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        client = AutomationClient(server.hostName, server.port, trace)
+        server.enqueue(MockResponse().setBody("""{"result":{"found":"false"}}"""))
+        trace.invocation("wait_until_gone", "android") {
+            assertFailsWith<CommandExecutionException> { poll(expectGone = true, timeoutMs = 5000) }
+        }
+        assertEquals(1, server.requestCount)
+        assertEquals(1, events.count { it.stage == TraceStage.RESPONSE_PROCESS && it.outcome == TraceOutcome.THROWN })
+    }
+
+    @Test
+    fun `traced exhausted poll budget retains timeout without extra finds`() = runBlocking {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        client = AutomationClient(server.hostName, server.port, trace)
+        server.enqueue(MockResponse().setBody(notFoundResponse))
+        trace.invocation("wait_for_element", "android") {
+            assertFailsWith<TimeoutException> { poll(expectGone = false, timeoutMs = 0) }
+        }
+        val polling = events.single { it.stage == TraceStage.POLL }
+        assertEquals(TraceOutcome.TIMEOUT, polling.outcome)
+        assertEquals(1L, polling.metrics[TraceMetric.POLL_COUNT])
+        assertEquals(1, server.requestCount)
+        assertEquals(0, events.count { it.stage == TraceStage.POLL_WAIT })
+    }
+
+    @Test
+    fun `traced interrupted explicit wait accumulates wait time and preserves cancellation`() = runBlocking {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        client = AutomationClient(server.hostName, server.port, trace)
+        val findCalled = CompletableDeferred<Unit>()
+        val call = async {
+            trace.invocation("wait_for_element", "android") {
+                client.pollForElement(false, 5000, 1000, "secret-selector") {
+                    findCalled.complete(Unit)
+                    notFoundResponse
+                }
+            }
+        }
+        findCalled.await()
+        call.cancel()
+        assertFailsWith<CancellationException> { call.await() }
+        val polling = events.single { it.stage == TraceStage.POLL }
+        assertEquals(TraceOutcome.CANCELLED, polling.outcome)
+        assertEquals(1L, polling.metrics[TraceMetric.POLL_COUNT])
+        assertTrue(polling.metrics.getValue(TraceMetric.WAIT_NS) >= 0L)
+        assertEquals(TraceOutcome.CANCELLED, events.single { it.stage == TraceStage.POLL_WAIT }.outcome)
     }
 
     // --- waiting for appearance ---

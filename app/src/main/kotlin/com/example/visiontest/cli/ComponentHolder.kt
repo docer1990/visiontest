@@ -1,5 +1,6 @@
 package com.example.visiontest.cli
 
+import com.example.visiontest.performance.TraceRecorder
 import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.config.AppConfig
@@ -34,11 +35,21 @@ class ComponentHolder internal constructor(
     val iosDeviceRegistrar: IOSDeviceToolRegistrar,
     val iosAutomationRegistrar: IOSAutomationToolRegistrar,
 ) {
+    private fun configureTracing(recorder: TraceRecorder) {
+        if (recorder === TraceRecorder.Disabled) return
+        androidStopRegistrar = AndroidStopToolRegistrar(android, automationClient, recorder)
+        androidWaitRegistrar = AndroidWaitToolRegistrar(automationClient, recorder)
+        iosWaitRegistrar = IOSWaitToolRegistrar(iosAutomationClient, recorder)
+    }
+
     // Derived from the clients above rather than injected: these registrars have no
     // other dependencies, and keeping them out of the constructor preserves its shape.
-    val androidStopRegistrar = AndroidStopToolRegistrar(android, automationClient)
-    val androidWaitRegistrar = AndroidWaitToolRegistrar(automationClient)
-    val iosWaitRegistrar = IOSWaitToolRegistrar(iosAutomationClient)
+    var androidStopRegistrar = AndroidStopToolRegistrar(android, automationClient)
+        private set
+    var androidWaitRegistrar = AndroidWaitToolRegistrar(automationClient)
+        private set
+    var iosWaitRegistrar = IOSWaitToolRegistrar(iosAutomationClient)
+        private set
 
     /** Returns `true` if the automation server for the given platform is reachable. */
     suspend fun isServerRunning(platform: Platform): Boolean = when (platform) {
@@ -51,22 +62,26 @@ class ComponentHolder internal constructor(
          * Creates a [ComponentHolder] using [AppConfig.createDefault] with the standard
          * production wiring. Registers a shutdown hook to close device connections.
          */
-        fun createDefault(): ComponentHolder {
+        fun createDefault(): ComponentHolder = createDefault(TraceRecorder.Disabled)
+
+        internal fun createDefault(recorder: TraceRecorder): ComponentHolder {
             val config = AppConfig.createDefault()
             val logger = LoggerFactory.getLogger("VisionTest")
 
             val android = Android(
                 timeoutMillis = config.adbTimeoutMillis,
                 cacheValidityPeriod = config.deviceCacheValidityPeriod,
-                logger = LoggerFactory.getLogger(Android::class.java)
+                logger = LoggerFactory.getLogger(Android::class.java),
+                trace = recorder
             )
 
             val ios = IOSManager(
-                logger = LoggerFactory.getLogger(IOSManager::class.java)
+                logger = LoggerFactory.getLogger(IOSManager::class.java),
+                trace = recorder
             )
 
-            val automationClient = AutomationClient()
-            val iosAutomationClient = IOSAutomationClient()
+            val automationClient = AutomationClient(trace = recorder)
+            val iosAutomationClient = IOSAutomationClient(trace = recorder)
             val discovery = ToolDiscovery(logger)
 
             Runtime.getRuntime().addShutdownHook(Thread {
@@ -81,11 +96,13 @@ class ComponentHolder internal constructor(
                 ios = ios,
                 automationClient = automationClient,
                 iosAutomationClient = iosAutomationClient,
-                androidDeviceRegistrar = AndroidDeviceToolRegistrar(android),
-                androidAutomationRegistrar = AndroidAutomationToolRegistrar(android, automationClient, discovery),
-                iosDeviceRegistrar = IOSDeviceToolRegistrar(ios),
-                iosAutomationRegistrar = IOSAutomationToolRegistrar(ios, iosAutomationClient, discovery, logger),
-            )
+                androidDeviceRegistrar = AndroidDeviceToolRegistrar(android, recorder),
+                androidAutomationRegistrar =
+                    AndroidAutomationToolRegistrar(android, automationClient, discovery, recorder),
+                iosDeviceRegistrar = IOSDeviceToolRegistrar(ios, recorder),
+                iosAutomationRegistrar =
+                    IOSAutomationToolRegistrar(ios, iosAutomationClient, discovery, logger, recorder),
+            ).also { it.configureTracing(recorder) }
         }
     }
 }

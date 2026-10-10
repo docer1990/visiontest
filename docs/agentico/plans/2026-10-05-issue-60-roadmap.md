@@ -3,8 +3,8 @@
 **Goal:** Reduce latency and agent resources per correctly completed Android/iOS flow.
 
 **Status:** The user approved the delivery direction on 2026-10-05. Host tracing
-57A implementation tasks 1 through 5B are reviewed on the development branch;
-documentation and required gates pass; final review remains pending. Native timing,
+57A is implemented and reviewed on the development branch; documentation and
+required gates pass, including corrections from final review. Native timing,
 benchmark, and agent evaluation deliveries remain pending. This roadmap does not
 authorize a production model.
 
@@ -93,12 +93,12 @@ model installation, or native polling optimization belongs to the baseline.
 - [x] Inspect current CLI/MCP, HTTP, native dispatch, screenshot, and test boundaries.
 - [x] Obtain approval for baseline-first delivery and plain TDD.
 - [x] Record the design, architecture rationale, and four implementation plans.
-- [ ] Execute 57A in an isolated development branch and review it.
+- [x] Execute 57A in an isolated development branch and review it.
 - [ ] Execute 57B and verify installed-server compatibility.
 - [ ] Execute 57C and collect command baseline and overhead results.
 - [ ] Execute 57D with a real client and collect complete-flow results.
 - [ ] Freeze the evaluation policy before held-out model evaluation.
 
-57A completion remains pending final branch review. #57 and #60 remain open;
+57A implementation and final review are complete. #57 and #60 remain open;
 57B must verify installed-server compatibility before TD-015 can be accepted.
 Public product documentation accompanies the host implementation.

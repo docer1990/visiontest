@@ -2,8 +2,11 @@
 
 **Goal:** Reduce latency and agent resources per correctly completed Android/iOS flow.
 
-**Status:** Planning only. The user approved the delivery direction on 2026-10-05.
-This roadmap does not claim any issue is implemented or authorize a production model.
+**Status:** The user approved the delivery direction on 2026-10-05. Host tracing
+57A implementation tasks 1 through 5B are reviewed on the development branch;
+documentation and required gates pass; final review remains pending. Native timing,
+benchmark, and agent evaluation deliveries remain pending. This roadmap does not
+authorize a production model.
 
 **Source:** [Epic #60](https://github.com/docer1990/visiontest/issues/60), read with its
 linked issues on 2026-10-05. Repository baseline is `e40165c` on `main`.
@@ -96,5 +99,6 @@ model installation, or native polling optimization belongs to the baseline.
 - [ ] Execute 57D with a real client and collect complete-flow results.
 - [ ] Freeze the evaluation policy before held-out model evaluation.
 
-The current request is to prepare the implementation plan. Execution checkboxes
-remain open, and public product documentation changes accompany implementation.
+57A completion remains pending final branch review. #57 and #60 remain open;
+57B must verify installed-server compatibility before TD-015 can be accepted.
+Public product documentation accompanies the host implementation.

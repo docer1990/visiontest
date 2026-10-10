@@ -112,8 +112,8 @@ To record local host timings, place `--trace-performance trace.jsonl` before the
 command, for example `visiontest --trace-performance trace.jsonl get_device_info -p android`.
 For MCP, set `VISIONTEST_TRACE_PERFORMANCE=trace.jsonl` in the server environment.
 Tracing appends JSONL without changing command results or MCP stdout. CLI ignores
-that environment variable. See [host tracing](docs/agentico/specs/performance-tracing.md)
-for recorded boundaries and session completeness.
+that environment variable. See the [performance guide](docs/performance.md)
+for CLI/MCP examples, recorded boundaries, and session completeness.
 
 The same backend is available without an MCP client:
 
@@ -239,6 +239,7 @@ simulator host network.
 
 - [CLI contract](docs/agentico/specs/cli.md)
 - [JSON output](docs/cli-json.md)
+- [Local performance tracing](docs/performance.md)
 - [Element waits](docs/agentico/specs/element-waits.md)
 - [Element swipe](docs/agentico/specs/element-swipe.md)
 - [Missing interactions](docs/agentico/specs/missing-interactions.md)

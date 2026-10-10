@@ -51,7 +51,11 @@ access, before `component.init`, health checks, or backend work. Invalid input a
 unsupported platforms end it at validation failure without initializing components.
 `init` ends preparation after agent validation and before reading/writing skill files.
 Help/version end it at their informational gateway. See
-[host tracing](performance-tracing.md) for session completeness and privacy.
+[host tracing](performance-tracing.md) for session completeness and privacy, and
+the [performance guide](../../performance.md) for CLI/MCP measurement examples.
+Preparation can begin before its correlated invocation and MUST NOT be interpreted
+as parser CPU time. MCP startup components have no individual component spans.
+No native timing metadata is available in this host delivery.
 
 ### Requirement: The CLI exposes the current command set
 

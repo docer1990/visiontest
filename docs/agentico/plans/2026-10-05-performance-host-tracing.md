@@ -393,15 +393,33 @@ fun `process trace preserves output without recording it`() = runTest {
 
 **Review:** checkpoint. This is the final host delivery review before 57B/57C.
 
-- [ ] Document exact activation syntax, output isolation, file ownership, dropped
+- [x] Document exact activation syntax, output isolation, file ownership, dropped
   events, bounded draining, CLI preparation boundaries, and missing native data.
   Distributed agent instructions remain self-contained and recommend explicit
   tracing only for measurement, without changing ordinary command guidance.
-- [ ] Run `./gradlew :app:test`, `./gradlew :app:e2eTest`, `./gradlew build`, and
+- [x] Run `./gradlew :app:test`, `./gradlew :app:e2eTest`, `./gradlew build`, and
   `git diff --check`. Expect all tests and existing coverage/lint gates to pass.
   Do not add timing thresholds or weaken coverage to accommodate new branches.
-- [ ] Review requirements against the design and inspect disabled-path behavior.
+- [x] Review requirements against the design and inspect disabled-path behavior.
   Record actual check results and remaining native/benchmark gaps. Commit the
   documentation as `docs(performance): document local host tracing`.
 - [ ] Run branch review and resolve findings before the implementation PR. Mark
   57A complete only; #57 remains open for 57B, 57C, and 57D.
+
+
+Task 6 verification on 2026-10-10 used
+`./gradlew :app:test :app:e2eTest build --quiet` and exited 0. XML reports contain
+523 app unit tests, 12 packaged-JAR E2E tests, and 162 Android unit tests per
+Debug/Release variant, with zero failures, errors, or skips. The build also passed
+its existing coverage, detekt, and Android lint gates. Local documentation links
+resolve, distributed instructions contain no repository-relative links, and
+`git diff --check` passes. No Kotlin or native code changed in this task.
+
+The host contract and guide match the implemented activation, serialization,
+transport, registrar, process, and sink boundaries. Disabled paths retain existing
+behavior under the unit and packaged-JAR regressions; tracing adds no request,
+retry, or output framing. Native timings and installed-bundle compatibility (57B),
+command fixtures/benchmarks and tracing overhead (57C), and real agent usage/flow
+reports (57D) remain pending. Early parser failures and MCP startup component
+spans remain the documented host measurement gaps. TD-015 stays proposed.
+Final checkpoint review, whole-branch review, and 57A completion remain pending.

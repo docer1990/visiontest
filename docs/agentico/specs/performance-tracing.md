@@ -2,9 +2,11 @@
 
 Status: the correlated recorder, local JSONL sink, CLI/MCP activation, and bounded
 session lifecycle, shared HTTP transport, client polling, shared registrar operations,
-and screenshot processing are implemented. Further
-production measurement boundaries follow
+screenshot processing, and device/process boundaries are implemented. Native
+metadata and benchmark/agent measurements remain later deliveries under
 [the approved baseline design](2026-10-05-performance-baseline-design.md).
+See the [measurement guide](../../performance.md) for activation examples and
+interpretation.
 
 ## Activation and session lifecycle
 
@@ -65,8 +67,8 @@ generic attribute map is accepted by the recorder or serialized into events.
 Stages are `invocation`, `cli.prepare`, `component.init`, `operation`, `health`,
 `request.prepare`, `http.exchange`, `response.process`, `poll`, `poll.wait`,
 `screenshot.parse`, `screenshot.decode`, `screenshot.write`, `device.discovery`,
-`adb`, `simctl`, and `process.launch`. This vocabulary does not imply all boundaries
-are already instrumented.
+`adb`, `simctl`, and `process.launch`. These boundaries are instrumented where the
+corresponding work occurs; absence from an invocation does not imply zero work.
 
 ## Outcomes and failures
 
@@ -217,8 +219,8 @@ operation results. Independent files can have independent owners. Descriptors us
 to inspect the final byte remain open for the owner's lifetime, and local ownership
 checks prevent a conflicting open from releasing another sink's process lock.
 An existing unterminated final line receives a newline before the first new record;
-existing bytes are never truncated. Failed opening and normal shutdown release the
-sink's resources.
+existing bytes are never truncated. Existing file permissions are not changed.
+Failed opening and normal shutdown release the sink's resources.
 
 Shutdown rejects new offers, drains accepted records, flushes them, and waits for
 writer closure up to the caller's wait budget. The immutable, idempotent result reports

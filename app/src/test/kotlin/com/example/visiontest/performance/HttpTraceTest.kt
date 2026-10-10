@@ -43,6 +43,53 @@ class HttpTraceTest {
         }
     }
     @Test
+    fun `deeply nested responses return unchanged with and without tracing`() = runTest {
+        MockWebServer().use { server ->
+            val events = mutableListOf<TraceEvent>()
+            val trace = TraceRecorder(emit = { events.add(it); Unit })
+            val traced = AutomationClient(server.hostName, server.port, trace)
+            val disabled = AutomationClient(server.hostName, server.port)
+            val bodies = listOf(
+                "{\"result\":{\"success\":true},\"junk\":" + "[".repeat(20_000) + "0" + "]".repeat(20_000) + "}",
+                "{\"result\":{\"success\":false},\"junk\":"
+                    + "{\"value\":".repeat(20_000) + "0" + "}".repeat(20_000) + "}",
+            )
+            bodies.forEach { body ->
+                server.enqueue(MockResponse().setBody(body))
+                assertEquals(body, disabled.sendRequest("device.pressHome"))
+                server.enqueue(MockResponse().setBody(body))
+                trace.invocation("press_home", "android") {
+                    assertEquals(body, traced.sendRequest("device.pressHome"))
+                }
+            }
+            assertEquals(bodies.size * 2, server.requestCount)
+            assertEquals(List(bodies.size) { OperationOutcome.UNKNOWN },
+                events.filter { it.stage == TraceStage.RESPONSE_PROCESS }.map { it.operationOutcome })
+            assertTrue(events.all { it.outcome == TraceOutcome.RETURNED })
+            repeat(bodies.size * 2) {
+                assertEquals("{\"jsonrpc\":\"2.0\",\"method\":\"device.pressHome\",\"params\":{},\"id\":1}",
+                    server.takeRequest().body.readUtf8())
+            }
+        }
+    }
+
+    @Test
+    fun `quoted braces and escaped quotes do not limit classification`() = runTest {
+        MockWebServer().use { server ->
+            val events = mutableListOf<TraceEvent>()
+            val trace = TraceRecorder(emit = { events.add(it); Unit })
+            val client = AutomationClient(server.hostName, server.port, trace)
+            val quoted = "[{\\\"\\\\".repeat(1_000)
+            val body = "{\"result\":{\"success\":true},\"junk\":\"$quoted\"}"
+            server.enqueue(MockResponse().setBody(body))
+            trace.invocation("press_home", "android") { assertEquals(body, client.sendRequest("device.pressHome")) }
+            assertEquals(OperationOutcome.SUCCESS,
+                events.single { it.stage == TraceStage.RESPONSE_PROCESS }.operationOutcome)
+            assertEquals(1, server.requestCount)
+        }
+    }
+
+    @Test
     fun `transport stages count UTF8 bodies without exposing data`() = runTest {
         MockWebServer().use { server ->
             val body = """ {"jsonrpc":"2.0","id":23,"result":{"success":false,"error":"秘密-response"}} """

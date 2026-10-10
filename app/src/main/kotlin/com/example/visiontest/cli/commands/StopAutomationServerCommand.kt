@@ -12,7 +12,7 @@ import com.github.ajalt.clikt.core.CliktCommand
  * not running, so scripts can always call it during teardown. No `requireServerRunning`
  * pre-check — that would defeat the idempotency.
  */
-class StopAutomationServerCommand(
+class StopAutomationServerCommand @JvmOverloads constructor(
     private val components: Lazy<ComponentHolder>,
     private val runner: CliCommandRunner = ::runCliCommand,
 ) :

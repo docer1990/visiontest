@@ -21,7 +21,7 @@ import kotlin.io.path.writeText
  *
  * Does NOT require `--platform` because this is not a device operation.
  */
-class InitCommand(
+class InitCommand @JvmOverloads constructor(
     private val workingDir: Path = Path.of(System.getProperty("user.dir")),
     private val resourceLoader: (String) -> String? = Companion::loadClasspathResource,
     private val runner: CliCommandRunner = ::runCliCommand,

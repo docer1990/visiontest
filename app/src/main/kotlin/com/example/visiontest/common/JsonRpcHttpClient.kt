@@ -259,7 +259,7 @@ abstract class JsonRpcHttpClient internal constructor(
 /** Best-effort structured classification never changes the raw returned response. */
 private fun responseOutcome(response: String): OperationOutcome {
     return try {
-        val parsed = if (containsInvalidJsonControls(response)) null else Json.parseToJsonElement(response)
+        val parsed = parseTraceResponse(response)
         if (parsed == null || !hasValidJsonPrimitives(parsed)) return OperationOutcome.UNKNOWN
         val body = parsed as? StructuredJsonObject
         val error = body?.get("error")
@@ -281,6 +281,17 @@ private fun responseOutcome(response: String): OperationOutcome {
     }
 }
 
+private fun parseTraceResponse(response: String): JsonElement? {
+    return if (containsInvalidJsonControls(response) || exceedsTraceJsonDepth(response)) {
+        null
+    } else {
+        Json.parseToJsonElement(response)
+    }
+}
+
+// Bound parser recursion before building a tree; deeper bodies still return unchanged.
+private const val MAX_TRACE_JSON_DEPTH = 64
+
 private val jsonBooleanLiterals = setOf("true", "false")
 private val jsonNumberPattern = Regex("-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?")
 
@@ -298,6 +309,27 @@ private fun hasValidJsonPrimitives(root: JsonElement): Boolean {
         }
     }
     return true
+}
+
+/** Bound recursive parsing while ignoring brackets in strings, including escaped quotes. */
+private fun exceedsTraceJsonDepth(response: String): Boolean {
+    var depth = 0
+    var quoted = false
+    var escaped = false
+    for (character in response) {
+        if (escaped) {
+            escaped = false
+            continue
+        }
+        when (character) {
+            '\\' -> escaped = quoted
+            '"' -> quoted = !quoted
+            '{', '[' -> if (!quoted) depth++
+            '}', ']' -> if (!quoted) depth--
+        }
+        if (depth > MAX_TRACE_JSON_DEPTH) return true
+    }
+    return false
 }
 
 /** Raw string controls are invalid; escaped controls and formatting whitespace remain valid. */

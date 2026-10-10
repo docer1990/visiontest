@@ -110,6 +110,9 @@ received error body; they are not wire traffic, model tokens, or agent image usa
 `decodedBytes` counts decoded screenshot bytes. `pollCount` includes failed find
 attempts. `waitNs` accumulates actual explicit polling delays, including interrupted
 delays, and excludes requests and parsing. Unmeasured metrics remain absent.
+Best-effort HTTP response classification parses only bodies with at most 64 nested
+object/array levels. Deeper bodies report `operationOutcome: unknown` and still
+return unchanged; braces and brackets in strings do not count toward the limit.
 Backend errors and malformed polling results retain their failures and never
 become element absence. Screenshot failures retain existing atomic replacement
 and cleanup behavior. Android discovery cache hits add no ADB query. Detached

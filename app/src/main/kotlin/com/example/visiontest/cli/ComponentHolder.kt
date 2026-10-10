@@ -35,11 +35,8 @@ class ComponentHolder internal constructor(
     val iosDeviceRegistrar: IOSDeviceToolRegistrar,
     val iosAutomationRegistrar: IOSAutomationToolRegistrar,
 ) {
-    internal var traceRecorder: TraceRecorder = TraceRecorder.Disabled
-        private set
     private fun configureTracing(recorder: TraceRecorder) {
         if (recorder === TraceRecorder.Disabled) return
-        traceRecorder = recorder
         androidStopRegistrar = AndroidStopToolRegistrar(android, automationClient, recorder)
         androidWaitRegistrar = AndroidWaitToolRegistrar(automationClient, recorder)
         iosWaitRegistrar = IOSWaitToolRegistrar(iosAutomationClient, recorder)

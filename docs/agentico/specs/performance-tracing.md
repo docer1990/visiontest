@@ -130,7 +130,10 @@ counts received body bytes, including an HTTP error body when present. Neither i
 wire traffic. `response.process` covers UTF-8 response decoding and best-effort
 structured classification. A strict boolean `result.success` sets success/failure;
 an RPC error object without a result sets failure; other or malformed bodies stay
-unknown and return unchanged. Disabled tracing skips this extra classification.
+unknown and return unchanged. An iterative scan bounds object/array nesting at 64
+levels before tree parsing; deeper bodies remain unknown without recursive parsing.
+Braces and brackets inside JSON strings do not count toward this limit. Disabled
+tracing skips this extra classification.
 
 `health` preserves the existing boolean result and error handling, classifying true
 as success and false as failure. `poll` surrounds appearance/disappearance polling.

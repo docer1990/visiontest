@@ -10,7 +10,7 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.types.int
 
-class TapByCoordinatesCommand(
+class TapByCoordinatesCommand @JvmOverloads constructor(
     private val components: Lazy<ComponentHolder>,
     private val runner: CliCommandRunner = ::runCliCommand,
 ) :

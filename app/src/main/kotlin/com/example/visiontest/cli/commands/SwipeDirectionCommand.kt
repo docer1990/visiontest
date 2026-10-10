@@ -12,7 +12,7 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 
-class SwipeDirectionCommand(
+class SwipeDirectionCommand @JvmOverloads constructor(
     private val components: Lazy<ComponentHolder>,
     private val runner: CliCommandRunner = ::runCliCommand,
 ) :

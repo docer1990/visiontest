@@ -8,7 +8,7 @@ import com.example.visiontest.cli.runCliCommand
 import com.example.visiontest.cli.CliCommandRunner
 import com.github.ajalt.clikt.core.CliktCommand
 
-class PressBackCommand(
+class PressBackCommand @JvmOverloads constructor(
     private val components: Lazy<ComponentHolder>,
     private val runner: CliCommandRunner = ::runCliCommand,
 ) :

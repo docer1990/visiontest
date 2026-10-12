@@ -84,6 +84,29 @@ class AutomationClientWaitTest {
     }
 
     @Test
+    fun `explicit wait metric excludes span completion emission`() = runBlocking {
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = {
+            if (it.stage == TraceStage.POLL_WAIT) Thread.sleep(20)
+            events.add(it)
+            Unit
+        })
+        client = AutomationClient(server.hostName, server.port, trace)
+        var attempts = 0
+        val result = trace.invocation("wait_for_element", "android") {
+            client.pollForElement(false, 5000, 1, "text='Login'") {
+                if (++attempts == 1) notFoundResponse else foundResponse
+            }
+        }
+        assertEquals(foundResponse, result)
+        assertEquals(2, attempts)
+        val wait = events.single { it.stage == TraceStage.POLL_WAIT }
+        val polling = events.single { it.stage == TraceStage.POLL }
+        // The delay interval lies inside the span, before its synchronous emission.
+        assertTrue(polling.metrics.getValue(TraceMetric.WAIT_NS) <= wait.durationNs)
+    }
+
+    @Test
     fun `traced gone wait counts a failed find without treating it as absence`() = runBlocking {
         val events = mutableListOf<TraceEvent>()
         val trace = TraceRecorder(emit = { events.add(it); Unit })
@@ -130,7 +153,11 @@ class AutomationClientWaitTest {
     @Test
     fun `traced interrupted explicit wait accumulates wait time and preserves cancellation`() = runBlocking {
         val events = mutableListOf<TraceEvent>()
-        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        val trace = TraceRecorder(emit = {
+            if (it.stage == TraceStage.POLL_WAIT) Thread.sleep(20)
+            events.add(it)
+            Unit
+        })
         client = AutomationClient(server.hostName, server.port, trace)
         val findCalled = CompletableDeferred<Unit>()
         val call = async {
@@ -148,7 +175,9 @@ class AutomationClientWaitTest {
         assertEquals(TraceOutcome.CANCELLED, polling.outcome)
         assertEquals(1L, polling.metrics[TraceMetric.POLL_COUNT])
         assertTrue(polling.metrics.getValue(TraceMetric.WAIT_NS) >= 0L)
-        assertEquals(TraceOutcome.CANCELLED, events.single { it.stage == TraceStage.POLL_WAIT }.outcome)
+        val wait = events.single { it.stage == TraceStage.POLL_WAIT }
+        assertEquals(TraceOutcome.CANCELLED, wait.outcome)
+        assertTrue(polling.metrics.getValue(TraceMetric.WAIT_NS) <= wait.durationNs)
     }
 
     // --- waiting for appearance ---

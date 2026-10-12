@@ -184,11 +184,18 @@ abstract class JsonRpcHttpClient internal constructor(
 
     /** Cumulative actual time spent in explicit delay, including interrupted waits. */
     private suspend fun pollWait(pollIntervalMs: Long) {
-        val start = if (trace === TraceRecorder.Disabled) null else System.nanoTime()
+        var waitNs: Long? = null
         try {
-            trace.span(TraceStage.POLL_WAIT) { delay(pollIntervalMs) }
+            trace.span(TraceStage.POLL_WAIT) {
+                val start = if (trace === TraceRecorder.Disabled) null else System.nanoTime()
+                try {
+                    delay(pollIntervalMs)
+                } finally {
+                    if (start != null) waitNs = (System.nanoTime() - start).coerceAtLeast(0L)
+                }
+            }
         } finally {
-            if (start != null) trace.metric(TraceMetric.WAIT_NS, (System.nanoTime() - start).coerceAtLeast(0L))
+            waitNs?.let { trace.metric(TraceMetric.WAIT_NS, it) }
         }
     }
 

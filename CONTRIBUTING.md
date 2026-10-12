@@ -348,6 +348,40 @@ The Gradle `test` tasks run pure JVM unit tests (no device or emulator required)
 | `ios-automation-server/` | `JsonRpcModelsTests.swift` | JSON-RPC parsing, error factories, and codes |
 | `ios-automation-server/` | `AutomationServerUITest.swift` | Long-running XCUITest JSON-RPC server entry point |
 
+## Performance measurements
+
+Host tracing is opt in. Use the [performance guide](docs/performance.md) for CLI
+and MCP activation, schema interpretation, file ownership, and completeness.
+When running the source JAR, place the root flag before the command:
+
+```bash
+java -jar app/build/libs/visiontest.jar --trace-performance ./traces/source.jsonl get_device_info -p android --json
+```
+
+Use a separate path for each concurrent process. Compare only complete sessions
+under recorded fixture/version conditions; include failed and ambiguous attempts.
+Inclusive spans overlap, body bytes are not wire traffic or model usage, and native
+timings are unavailable in the host delivery. No benchmark or overhead result is
+claimed yet. Keep existing CLI health checks while measuring their costs.
+
+Tracing changes must preserve disabled behavior, public results, stdout framing,
+exit codes, validation order, request counts, and the fixed stderr diagnostic.
+Use deterministic clocks for recorder tests rather than timing thresholds. Existing
+recorder, sink, activation, HTTP, operation, process, and packaged-JAR tests cover
+correlation, privacy, failure isolation, and bounded shutdown. Run the full gates
+before a PR:
+
+```bash
+./gradlew :app:test
+./gradlew :app:e2eTest
+./gradlew build
+git diff --check
+```
+
+Keep coverage floors and lint/detekt baselines unchanged. Host-only tracing needs
+no Swift gate; native method changes also require the iOS tests and installed-bundle
+compatibility checks described in the repository instructions.
+
 ## Manual Testing
 
 ### Android

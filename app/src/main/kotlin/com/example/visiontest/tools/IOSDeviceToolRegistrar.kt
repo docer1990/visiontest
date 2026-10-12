@@ -1,15 +1,19 @@
 package com.example.visiontest.tools
 
 import com.example.visiontest.common.DeviceConfig
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
+import com.example.visiontest.performance.OperationOutcome
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.put
-
-class IOSDeviceToolRegistrar(
-    private val ios: DeviceConfig
+class IOSDeviceToolRegistrar internal constructor(
+    private val ios: DeviceConfig,
+    private val trace: TraceRecorder,
 ) : ToolRegistrar {
+    constructor(ios: DeviceConfig) : this(ios, TraceRecorder.Disabled)
 
     override fun registerTools(scope: ToolScope) {
         registerAvailableDevice(scope)
@@ -26,10 +30,9 @@ class IOSDeviceToolRegistrar(
             availableDevice()
         }
     }
-
-    internal suspend fun availableDevice(json: Boolean = false): String {
+    internal suspend fun availableDevice(json: Boolean = false): String = trace.span(TraceStage.OPERATION) {
         val device = ios.getFirstAvailableDevice()
-        if (json) return buildJsonObject {
+        if (json) return@span buildJsonObject {
             put("id", device.id)
             put("name", device.name)
             put("type", device.type.name)
@@ -37,8 +40,7 @@ class IOSDeviceToolRegistrar(
             put("osVersion", device.osVersion)
             put("modelName", device.modelName)
         }.toString()
-
-        return """
+        return@span """
             |iOS Device found:
             |ID: ${device.id}
             |Name: ${device.name}
@@ -57,13 +59,12 @@ class IOSDeviceToolRegistrar(
             listApps()
         }
     }
-
-    internal suspend fun listApps(json: Boolean = false): String {
+    internal suspend fun listApps(json: Boolean = false): String = trace.span(TraceStage.OPERATION) {
         val result = ios.listApps()
-        if (json) return buildJsonObject {
+        if (json) return@span buildJsonObject {
             put("apps", buildJsonArray { result.forEach { add(it) } })
         }.toString()
-        return if (result.isEmpty()) {
+        return@span if (result.isEmpty()) {
             "No apps found on the iOS device"
         } else {
             "Found these apps: ${result.joinToString(", ")}"
@@ -80,14 +81,13 @@ class IOSDeviceToolRegistrar(
             infoApp(bundleId)
         }
     }
-
-    internal suspend fun infoApp(bundleId: String, json: Boolean = false): String {
+    internal suspend fun infoApp(bundleId: String, json: Boolean = false): String = trace.span(TraceStage.OPERATION) {
         val rawResult = ios.getAppInfo(bundleId)
-        if (json) return buildJsonObject {
+        if (json) return@span buildJsonObject {
             put("id", bundleId)
             put("rawInfo", rawResult)
         }.toString()
-        return "App Information for $bundleId:\n$rawResult"
+        return@span "App Information for $bundleId:\n$rawResult"
     }
 
     private fun registerLaunchApp(scope: ToolScope) {
@@ -100,10 +100,10 @@ class IOSDeviceToolRegistrar(
             launchApp(bundleId)
         }
     }
-
-    internal suspend fun launchApp(bundleId: String): String {
+    internal suspend fun launchApp(bundleId: String): String = trace.span(TraceStage.OPERATION) {
         val result = ios.launchApp(bundleId)
-        return if (result) {
+        trace.operationOutcome(if (result) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
+        return@span if (result) {
             "Successfully launched the iOS app: $bundleId"
         } else {
             "Failed to launch the iOS app: $bundleId"

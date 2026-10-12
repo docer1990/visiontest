@@ -28,6 +28,35 @@ The JAR MUST start the MCP stdio server when invoked with no arguments or when i
 - **When** the entry point routes the invocation
 - **Then** it SHALL construct the CLI root command without starting MCP mode
 
+### Requirement: Host performance tracing is opt in and preserves CLI behavior
+
+The root parser MUST accept `--trace-performance PATH` before a subcommand,
+help, or version request. CLI mode MUST ignore `VISIONTEST_TRACE_PERFORMANCE`.
+Missing or blank explicit paths MUST exit 2 before creating device components.
+Nonblank paths MUST resolve absolutely against the working directory and normalize.
+The parser MUST NOT scan or remove options from typed command input; positional
+text containing `--trace-performance` remains valid command data.
+
+Tracing MUST preserve stdout, ordinary stderr diagnostics, exit codes, and normally
+returned operation failures. An unavailable trace file MUST add only the fixed
+stderr diagnostic `VisionTest performance trace is unavailable or incomplete.`.
+Every CLI exit gateway MUST complete its spans and drain tracing for at most
+1,000 ms before calling `exitProcess`, including mapped failures and informational
+help/version output where the trace option was parsed. Parse failures before trace
+configuration is available MAY produce no trace; this is a measurement gap.
+
+`cli.prepare` MUST measure entry, parser construction, parsing, and validation up to
+validated dispatch. Device commands end preparation at their first lazy component
+access, before `component.init`, health checks, or backend work. Invalid input and
+unsupported platforms end it at validation failure without initializing components.
+`init` ends preparation after agent validation and before reading/writing skill files.
+Help/version end it at their informational gateway. See
+[host tracing](performance-tracing.md) for session completeness and privacy, and
+the [performance guide](../../performance.md) for CLI/MCP measurement examples.
+Preparation can begin before its correlated invocation and MUST NOT be interpreted
+as parser CPU time. MCP startup components have no individual component spans.
+No native timing metadata is available in this host delivery.
+
 ### Requirement: The CLI exposes the current command set
 
 The CLI SHALL register these 29 subcommands and argument contracts:

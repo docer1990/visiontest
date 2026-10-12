@@ -1,15 +1,20 @@
 package com.example.visiontest.ios
 
+import com.example.visiontest.performance.TraceRecorder
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.common.MobileDevice
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class IOSManager(
-    private val logger: Logger = LoggerFactory.getLogger(IOSManager::class.java)
+class IOSManager internal constructor(
+    private val logger: Logger = LoggerFactory.getLogger(IOSManager::class.java),
+    private val trace: TraceRecorder,
 ) : DeviceConfig, AutoCloseable {
+    constructor(logger: Logger = LoggerFactory.getLogger(IOSManager::class.java)) :
+        this(logger, TraceRecorder.Disabled)
+    constructor() : this(trace = TraceRecorder.Disabled)
 
-    private val simulator: DeviceConfig = IOSSimulator()
+    private val simulator: DeviceConfig = IOSSimulator(trace = trace)
 
     override suspend fun listDevices(): List<MobileDevice> {
         return simulator.listDevices()

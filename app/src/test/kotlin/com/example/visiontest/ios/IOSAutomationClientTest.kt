@@ -1,5 +1,11 @@
 package com.example.visiontest.ios
 
+import com.example.visiontest.performance.OperationOutcome
+import com.example.visiontest.performance.TraceEvent
+import com.example.visiontest.performance.TraceMetric
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
+
 import com.example.visiontest.CommandExecutionException
 import com.example.visiontest.common.elementTapReadTimeoutMs
 import com.example.visiontest.config.IOSAutomationConfig
@@ -399,4 +405,23 @@ class IOSAutomationClientTest {
 
         assertFalse(deadClient.isServerRunning())
     }
+    @Test
+    fun `traced iOS gone wait records successful polling without exposing selectors`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"jsonrpc":"2.0","id":1,"result":{"found":false}}"""))
+        val events = mutableListOf<TraceEvent>()
+        val trace = TraceRecorder(emit = { events.add(it); Unit })
+        val tracedClient = IOSAutomationClient(server.hostName, server.port, trace)
+        val result = trace.invocation("ios_wait_until_gone", "ios") {
+            tracedClient.pollForElement(true, 5000, 100, "private-selector") {
+                tracedClient.findElement(text = "private-selector")
+            }
+        }
+        assertEquals("Element is no longer present (private-selector).", result)
+        val poll = events.single { it.stage == TraceStage.POLL }
+        assertEquals(OperationOutcome.SUCCESS, poll.operationOutcome)
+        assertEquals(1L, poll.metrics[TraceMetric.POLL_COUNT])
+        assertEquals(1, server.requestCount)
+        assertFalse(events.joinToString { it.toJson().toString() }.contains("private-selector"))
+    }
+
 }

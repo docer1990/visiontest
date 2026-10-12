@@ -21,9 +21,14 @@ data class CliResult(val exitCode: Int, val stdout: String?, val stderr: String?
  * This is the single exit-code gateway for every CLI subcommand.
  */
 fun runCliCommand(block: suspend () -> String): Nothing {
+    return runCliCommand(block) {}
+}
+
+internal fun runCliCommand(block: suspend () -> String, beforeExit: () -> Any?): Nothing {
     val result = executeCliCommand(block)
     if (result.stdout != null) println(result.stdout)
     if (result.stderr != null) System.err.println(result.stderr)
+    beforeExit()
     exitProcess(result.exitCode)
 }
 

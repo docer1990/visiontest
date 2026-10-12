@@ -1,5 +1,8 @@
 package com.example.visiontest.android
 
+import com.example.visiontest.performance.TraceRecorder
+import com.example.visiontest.performance.TraceStage
+import com.example.visiontest.performance.OperationOutcome
 import com.example.visiontest.AdbInitializationException
 import com.example.visiontest.AppInfoException
 import com.example.visiontest.AppListException
@@ -29,11 +32,27 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-class Android(
+internal class AndroidHostProcesses(
+    val startAdb: suspend () -> Unit = { StartAdbInteractor().execute() },
+    val launchAdb: (List<String>) -> Process = { command ->
+        ProcessBuilder(command).redirectErrorStream(true).start()
+    },
+)
+
+class Android internal constructor(
     private val timeoutMillis: Long = 5000L,
     private val cacheValidityPeriod: Long = 1000L,
     private val logger: Logger = LoggerFactory.getLogger(Android::class.java),
+    private val trace: TraceRecorder,
+    private val adb: com.malinskiy.adam.AndroidDebugBridgeClient = AndroidDebugBridgeClientFactory().build(),
+    private val hostProcesses: AndroidHostProcesses = AndroidHostProcesses(),
 ) : DeviceConfig, AutoCloseable {
+    constructor(
+        timeoutMillis: Long = 5000L,
+        cacheValidityPeriod: Long = 1000L,
+        logger: Logger = LoggerFactory.getLogger(Android::class.java),
+    ) : this(timeoutMillis, cacheValidityPeriod, logger, TraceRecorder.Disabled)
+    constructor() : this(trace = TraceRecorder.Disabled)
 
     companion object {
         // Android shell command error patterns
@@ -119,8 +138,6 @@ class Android(
         }
     }
 
-    private val adb = AndroidDebugBridgeClientFactory().build()
-
     // ADB is started lazily on first use rather than in the constructor: constructing
     // this class must stay cheap (and not require adb at all) so that iOS-only CLI
     // commands and MCP server startup work on machines without the Android toolchain.
@@ -136,8 +153,8 @@ class Android(
             try {
                 // Starting the adb server spawns a process and blocks on it — keep
                 // that off the caller's dispatcher.
-                withContext(Dispatchers.IO) {
-                    StartAdbInteractor().execute()
+                trace.span(TraceStage.ADB) {
+                    withContext(Dispatchers.IO) { hostProcesses.startAdb() }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -158,9 +175,9 @@ class Android(
     private var deviceListCache: List<MobileDevice>? = null
     private var lastDeviceListFetch: Long = 0
 
-    private suspend fun fetchDevices(): List<MobileDevice> {
+    private suspend fun fetchDevices(): List<MobileDevice> = trace.span(TraceStage.DEVICE_DISCOVERY) {
         ensureAdbStarted()
-        return deviceListCacheLock.withLock {
+        deviceListCacheLock.withLock {
             val currentTime = System.currentTimeMillis()
 
             // Use cache if valid
@@ -169,8 +186,8 @@ class Android(
             }
 
             // Cache invalid or missing - fetch new device list
-            val devices = withTimeout(timeoutMillis) {
-                adb.execute(ListDevicesRequest())
+            val devices = trace.span(TraceStage.ADB) {
+                withTimeout(timeoutMillis) { adb.execute(ListDevicesRequest()) }
             }
             val activeDevices = devices
                 .filter { it.state == DeviceState.DEVICE }
@@ -217,20 +234,23 @@ class Android(
 
         logger.debug("Executing command: '$command' on device: ${device.id}")
 
-        val response: ShellCommandResult = withTimeoutOrNull(timeoutMillis) {
-            adb.execute(ShellCommandRequest(command), device.id)
-        } ?: throw TimeoutException("Timeout executing command: $command")
+        return trace.span(TraceStage.ADB) {
+            val response: ShellCommandResult = withTimeoutOrNull(timeoutMillis) {
+                adb.execute(ShellCommandRequest(command), device.id)
+            } ?: throw TimeoutException("Timeout executing command: $command")
 
-        if (response.exitCode != 0) {
-            logger.warn("Error executing command: '$command', exit code: ${response.exitCode}")
-            logger.warn("Output error: ${response.errorOutput}")
-            throw CommandExecutionException(
-                "Error executing command: $command",
-                response.exitCode
-            )
+            if (response.exitCode != 0) {
+                logger.warn("Error executing command: '$command', exit code: ${response.exitCode}")
+                logger.warn("Output error: ${response.errorOutput}")
+                throw CommandExecutionException(
+                    "Error executing command: $command",
+                    response.exitCode
+                )
+            }
+
+            trace.operationOutcome(OperationOutcome.SUCCESS)
+            response.output.trim()
         }
-
-        return response.output.trim()
     }
 
     override suspend fun executeShell(command: String, deviceId: String?): String {
@@ -275,45 +295,46 @@ class Android(
 
         logger.debug("Executing ADB command: ${command.joinToString(" ")}")
 
-        return withContext(Dispatchers.IO) {
-            val process = ProcessBuilder(command)
-                .redirectErrorStream(true)
-                .start()
+        return trace.span(TraceStage.ADB) {
+            withContext(Dispatchers.IO) {
+                val process = hostProcesses.launchAdb(command)
 
-            // Drain output on a daemon thread so waitFor(timeout) is never blocked
-            // behind a full pipe buffer, and the timeout can actually fire. Appends are
-            // synchronized because the reader can outlive the timed join below (e.g. a
-            // forked adb server inheriting the pipe keeps the stream open after exit),
-            // and we must not read the StringBuilder while it is still being written.
-            val output = StringBuilder()
-            val readerThread = Thread {
-                process.inputStream.bufferedReader().useLines { lines ->
-                    lines.forEach { line ->
-                        synchronized(output) { output.append(line).append('\n') }
+                // Drain output on a daemon thread so waitFor(timeout) is never blocked
+                // behind a full pipe buffer, and the timeout can actually fire. Appends are
+                // synchronized because the reader can outlive the timed join below (e.g. a
+                // forked adb server inheriting the pipe keeps the stream open after exit),
+                // and we must not read the StringBuilder while it is still being written.
+                val output = StringBuilder()
+                val readerThread = Thread {
+                    process.inputStream.bufferedReader().useLines { lines ->
+                        lines.forEach { line ->
+                            synchronized(output) { output.append(line).append('\n') }
+                        }
                     }
+                }.apply { isDaemon = true; start() }
+
+                val completed = process.waitFor(ADB_COMMAND_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
+                if (!completed) {
+                    process.destroyForcibly()
+                    // Reap the killed process so it doesn't linger as a zombie on Unix
+                    process.waitFor(5, TimeUnit.SECONDS)
+                    readerThread.join(1000)
+                    throw TimeoutException(
+                        "ADB command timed out after ${ADB_COMMAND_TIMEOUT_MILLIS / 1000}s: ${args.joinToString(" ")}"
+                    )
                 }
-            }.apply { isDaemon = true; start() }
+                readerThread.join(5000)
 
-            val completed = process.waitFor(ADB_COMMAND_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)
-            if (!completed) {
-                process.destroyForcibly()
-                // Reap the killed process so it doesn't linger as a zombie on Unix
-                process.waitFor(5, TimeUnit.SECONDS)
-                readerThread.join(1000)
-                throw TimeoutException(
-                    "ADB command timed out after ${ADB_COMMAND_TIMEOUT_MILLIS / 1000}s: ${args.joinToString(" ")}"
-                )
+                val exitCode = process.exitValue()
+                val outputText = synchronized(output) { output.toString() }
+                if (exitCode != 0) {
+                    logger.warn("ADB command failed with exit code $exitCode: $outputText")
+                    throw CommandExecutionException("ADB command failed: ${args.joinToString(" ")}", exitCode)
+                }
+
+                trace.operationOutcome(OperationOutcome.SUCCESS)
+                outputText.trim()
             }
-            readerThread.join(5000)
-
-            val exitCode = process.exitValue()
-            val outputText = synchronized(output) { output.toString() }
-            if (exitCode != 0) {
-                logger.warn("ADB command failed with exit code $exitCode: $outputText")
-                throw CommandExecutionException("ADB command failed: ${args.joinToString(" ")}", exitCode)
-            }
-
-            outputText.trim()
         }
     }
 

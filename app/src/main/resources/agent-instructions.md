@@ -127,6 +127,33 @@ Capture Android logs with filtered `adb logcat` and iOS logs with the Xcode or
 simulator log stream when the UI and expected marker disagree. Repeat the same
 actions and assertions after a fix, then stop the automation server when done.
 
+## Measure host performance when requested
+
+Enable tracing explicitly only for performance measurement. For CLI measurement,
+put the root option before the command, for example:
+
+```bash
+visiontest --trace-performance ./traces/android.jsonl get_device_info -p android --json
+```
+
+For MCP measurement, set `VISIONTEST_TRACE_PERFORMANCE` to a local JSONL path in
+the server process environment before startup. Missing or blank values disable
+MCP tracing; CLI ignores this variable. Use a different path for each concurrent
+process. Tracing appends to a regular local file with exclusive ownership and
+preserves results, exit codes, and stdout/JSON-RPC framing. Failures can add only
+`VisionTest performance trace is unavailable or incomplete.` to stderr.
+
+The file contains session records and completed host spans. Check the terminal
+`session.end`, zero drops, matched invocation counts, and successful shutdown before
+using a session as complete; a footer alone cannot prove cleanup. The queue holds
+4096 records and shutdown waits at most 1,000 ms. Force kills, overflow, and writer
+failures can leave incomplete data. Do not infer success from a normal return;
+`operationOutcome` may be `failure` or `unknown`. Inclusive durations overlap, so
+do not sum parents and children. CLI preparation includes parsing and validation,
+not device work, and early parser errors may be untraced. Native timings are
+unavailable; missing data is not zero native work. Body byte counts are not tokens
+or agent image usage. Ordinary test execution uses the interface guidance above.
+
 ## Refresh these instructions
 
 `visiontest init` is separate from installing or upgrading the CLI. In each

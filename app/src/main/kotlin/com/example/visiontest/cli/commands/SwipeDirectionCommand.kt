@@ -5,13 +5,17 @@ import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
+import com.example.visiontest.cli.CliCommandRunner
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.choice
 
-class SwipeDirectionCommand(private val components: Lazy<ComponentHolder>) :
+class SwipeDirectionCommand @JvmOverloads constructor(
+    private val components: Lazy<ComponentHolder>,
+    private val runner: CliCommandRunner = ::runCliCommand,
+) :
     CliktCommand(name = "swipe_direction", help = "Swipe in a direction") {
 
     private val platform by platformOption()
@@ -22,7 +26,7 @@ class SwipeDirectionCommand(private val components: Lazy<ComponentHolder>) :
     private val speed by option("--speed", help = "Swipe speed")
         .choice("slow", "normal", "fast").default("normal")
 
-    override fun run() = runCliCommand {
+    override fun run() = runner {
         requireServerRunning { components.value.isServerRunning(platform) }
         when (platform) {
             Platform.Android -> components.value.androidAutomationRegistrar.swipeByDirection(direction, distance, speed)

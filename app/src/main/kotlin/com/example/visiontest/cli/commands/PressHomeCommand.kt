@@ -5,14 +5,18 @@ import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
+import com.example.visiontest.cli.CliCommandRunner
 import com.github.ajalt.clikt.core.CliktCommand
 
-class PressHomeCommand(private val components: Lazy<ComponentHolder>) :
+class PressHomeCommand @JvmOverloads constructor(
+    private val components: Lazy<ComponentHolder>,
+    private val runner: CliCommandRunner = ::runCliCommand,
+) :
     CliktCommand(name = "press_home", help = "Press the home button") {
 
     private val platform by platformOption()
 
-    override fun run() = runCliCommand {
+    override fun run() = runner {
         requireServerRunning { components.value.isServerRunning(platform) }
         when (platform) {
             Platform.Android -> components.value.androidAutomationRegistrar.pressHome()

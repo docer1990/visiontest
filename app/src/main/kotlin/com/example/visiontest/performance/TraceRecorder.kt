@@ -36,6 +36,7 @@ internal class TraceRecorder(
     private val emit: (TraceEvent) -> Unit,
     private val enabled: Boolean = true,
     val originNs: Long = if (enabled) nowNs() else 0L,
+    private val emitNative: (NativeTimingEvent) -> Unit = {},
 ) {
     val sessionId: String = newId()
     private val invocationSequence = AtomicLong()
@@ -63,7 +64,7 @@ internal class TraceRecorder(
     }
 
     suspend fun <T> span(stage: TraceStage, block: suspend () -> T): T {
-        val parent = activeContext() ?: return block()
+        val parent = activeContext(this) ?: return block()
         return record(SpanContext(this, parent.invocation, newId(), parent.spanId), stage, block)
     }
 
@@ -78,17 +79,22 @@ internal class TraceRecorder(
 
     suspend fun metric(name: TraceMetric, value: Long) {
         if (value < 0L) return
-        activeContext()?.metrics?.computeIfAbsent(name) { AtomicLong() }?.updateAndGet {
+        activeContext(this)?.metrics?.computeIfAbsent(name) { AtomicLong() }?.updateAndGet {
             if (Long.MAX_VALUE - it < value) Long.MAX_VALUE else it + value
         }
     }
 
     suspend fun operationOutcome(value: OperationOutcome) {
-        activeContext()?.operationOutcome?.set(value)
+        activeContext(this)?.operationOutcome?.set(value)
     }
 
-    private suspend fun activeContext(): SpanContext? =
-        coroutineContext[SpanContext]?.takeIf { enabled && it.recorder === this }
+    suspend fun nativeRequest(): NativeTimingRequest? = activeContext(this)?.let { context ->
+        NativeTimingRequest(encodeTraceRequest(context.invocation.id, context.spanId)) { value ->
+            val timing = decodeNativeTiming(value, context.invocation.id, context.spanId)
+            emitNative(NativeTimingEvent(sessionId, context.invocation.id, context.invocation.sequence,
+                context.spanId, context.invocation.platform, context.invocation.operation, timing))
+        }
+    }
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun <T> record(context: SpanContext, stage: TraceStage, block: suspend () -> T): T {
@@ -159,6 +165,9 @@ internal class TraceRecorder(
 
     companion object {
         val Disabled = TraceRecorder(nowNs = { 0L }, emit = {}, enabled = false)
+
+        private suspend fun activeContext(recorder: TraceRecorder): SpanContext? =
+            coroutineContext[SpanContext]?.takeIf { recorder.enabled && it.recorder === recorder }
 
         private fun newId(): String = UUID.randomUUID().toString().replace("-", "")
 

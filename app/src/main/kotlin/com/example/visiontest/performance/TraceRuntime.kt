@@ -50,7 +50,8 @@ internal class TraceRuntime(
         configured = true
         val opened = path?.let { openSink(it, diagnostic) } ?: return
         sink = opened
-        recorder = TraceRecorder(emit = { opened.offer(it.toJson().toString()); Unit }, originNs = entryNs)
+        recorder = TraceRecorder(emit = { opened.offer(it.toJson().toString()); Unit }, originNs = entryNs,
+            emitNative = { opened.offer(it.toJson().toString()); Unit })
         opened.offer(buildJsonObject {
             put("type", "session")
             put("schemaVersion", 1)

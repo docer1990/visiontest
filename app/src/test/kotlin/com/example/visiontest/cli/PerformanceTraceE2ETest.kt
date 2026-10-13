@@ -69,12 +69,20 @@ class PerformanceTraceE2ETest {
         assertEquals("VisionTest performance trace is unavailable or incomplete.\n" + plain.stderr, result.stderr)
     }
     @Test fun `literal trace flag in typed input is not treated as root option`() {
-        val args = arrayOf("input_text", "--platform", "android", "--", "--trace-performance")
+        val args = arrayOf("input_text", "--platform", "android",
+            "--target-resource-id", "fixture-input", "--timeout", "0", "--", "--trace-performance")
         val plain = run(*args)
         val path = directory.resolve("input.jsonl")
         val traced = run("--trace-performance", path.toString(), *args)
+        assertEquals(Output(2, "", "timeoutMs must be between 1 and 30000, got 0\n"), plain)
         assertEquals(plain, traced)
-        assertTrue(rows(path).any { it.get("stage")?.asString == "component.init" })
+        val events = rows(path)
+        val invocation = events.single { it.get("stage")?.asString == "invocation" }
+        assertEquals("input_text", invocation.get("operation").asString)
+        assertEquals("android", invocation.get("platform").asString)
+        assertTrue(events.any { it.get("stage")?.asString == "cli.prepare" })
+        assertFalse(events.any { it.get("stage")?.asString in setOf("component.init", "health", "http.exchange") })
+        assertTrue(events.last().get("complete").asBoolean)
         assertFalse(Files.readString(path).contains("--trace-performance"))
     }
 }

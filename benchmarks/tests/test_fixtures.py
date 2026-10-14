@@ -3,7 +3,7 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 from unittest.mock import patch
 
-from benchmarks.fixtures import resolve_argv, validate_fixture_identity, validate_target
+from benchmarks.fixtures import resolve_argv, selector_resource_id, validate_fixture_identity, validate_target
 from benchmarks.manifest import load_manifest
 from benchmarks.run import _run_setup
 
@@ -44,6 +44,11 @@ class FixtureTargetTest(unittest.TestCase):
         self.assertEqual("appear", resolved[-2])
         self.assertEqual("en", resolved[-1])
         self.assertNotIn("scenario=appear", resolved)
+
+    def test_selector_resource_ids_follow_platform_conventions(self):
+        identity = "com.example.visiontest.benchmark"
+        self.assertEqual(f"{identity}:id/done", selector_resource_id("android", identity, "done"))
+        self.assertEqual("done", selector_resource_id("ios", identity, "done"))
 
     def test_ambiguous_target_prevents_mutating_setup(self):
         with self.assertRaises(ValueError):

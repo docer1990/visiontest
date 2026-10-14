@@ -3,7 +3,7 @@ import os
 import unittest
 from pathlib import Path
 
-from benchmarks.fixtures import validate_fixture_identity
+from benchmarks.fixtures import selector_resource_id, validate_fixture_identity
 from benchmarks.manifest import load_manifest
 from benchmarks.run import _run_setup
 from benchmarks.execution import run_process
@@ -60,9 +60,12 @@ class FixtureSmokeTest(unittest.TestCase):
             raise AssertionError(f"VisionTest returned non-JSON inspection output: {result['stdout']}") from error
 
     def found(self, resource_id):
-        if self.manifest["platform"] == "android":
-            resource_id = f"{self.manifest['fixtureIdentity']}:id/{resource_id}"
+        resource_id = self.resource_id(resource_id)
         return self.command(["find_element", "--resource-id", resource_id, "--json"]).get("found")
+
+    @classmethod
+    def resource_id(cls, name):
+        return selector_resource_id(cls.manifest["platform"], cls.manifest["fixtureIdentity"], name)
 
     def test_reset_is_idempotent(self):
         self.reset("navigation")
@@ -85,9 +88,9 @@ class FixtureSmokeTest(unittest.TestCase):
 
     def test_delayed_appearance_and_disappearance(self):
         self.reset("appear")
-        self.command(["wait_for_element", "--resource-id", "done", "--timeout", "4000"], 10_000)
+        self.command(["wait_for_element", "--resource-id", self.resource_id("done"), "--timeout", "4000"], 10_000)
         self.reset("disappear")
-        self.command(["wait_until_gone", "--resource-id", "loading", "--timeout", "4000"], 10_000)
+        self.command(["wait_until_gone", "--resource-id", self.resource_id("loading"), "--timeout", "4000"], 10_000)
 
     def test_missing_target_is_absent(self):
         self.reset("missing")
@@ -97,7 +100,9 @@ class FixtureSmokeTest(unittest.TestCase):
         self.reset("ambiguous")
         result = self.command(["get_interactive_elements", "--json"])
         elements = result.get("elements", [])
-        matches = [element for element in elements if element.get("text") in {"Continue", "Continua"}]
+        matches = [element for element in elements
+                   if isinstance(element.get("text"), str)
+                   and element["text"].casefold() in {"continue", "continua"}]
         self.assertEqual(2, len(matches))
         self.assertEqual(2, len({element.get("resourceId") for element in matches}))
 

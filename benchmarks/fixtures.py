@@ -30,3 +30,11 @@ def validate_fixture_identity(platform: str, identity: str) -> None:
     expected = "com.example.visiontest.benchmark"
     if platform not in {"android", "ios"} or identity != expected:
         raise ValueError("fixture identity must be com.example.visiontest.benchmark")
+
+
+def selector_resource_id(platform: str, identity: str, name: str) -> str:
+    if platform not in {"android", "ios"}:
+        raise ValueError("platform must be android or ios")
+    if not isinstance(identity, str) or not identity or not isinstance(name, str) or not name:
+        raise ValueError("fixture identity and selector name are required")
+    return f"{identity}:id/{name}" if platform == "android" else name

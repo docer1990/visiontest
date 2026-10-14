@@ -34,9 +34,15 @@ payload size as actual model usage.
 
 ## Consequences
 
-- Existing servers can omit timing headers and still execute operations once.
+- Older installed servers can omit timing headers and still execute existing
+  operations once; the host records native timing as missing and never retries or
+  replays the operation. Collecting native spans requires rebuilding/updating the
+  relevant native artifact, but ordinary commands do not require an upgrade.
 - Trace writers need bounded buffering, explicit completeness, and failure isolation.
-- Native SDK internals can remain unmeasured; reports must name those gaps.
+- Native SDK internals can remain unmeasured; reports must name those gaps. Android
+  cannot isolate request queue delay or all UIAutomator synchronization. iOS cannot
+  expose all XCTest scheduling or SDK synchronization and freezes a timing snapshot
+  at the existing HTTP completion boundary.
 - Agent usage availability depends on the selected client's observable events.
 
 ## Alternatives Considered

@@ -4,6 +4,23 @@
 
 iOS bundle distribution packages a portable, prebuilt XCUITest server for fast startup on compatible Apple Silicon Macs while preserving source-build startup when the prebuilt artifact cannot be used.
 
+### Native timing compatibility
+
+An older installed XCUITest bundle continues to serve existing JSON-RPC commands
+when sent the optional `X-VisionTest-Trace` header. If it returns no timing
+header, the host records `native.timing.status: missing`; it does not retry or
+replay the operation. Existing commands do not require a bundle upgrade. To
+collect iOS native timings, install a bundle built from a revision with native
+timing support, or use the existing source-build path for that revision.
+
+The current server measures request/decode/operation/response encoding,
+receipt-to-main-thread queue delay, polling that exposes wait callbacks, and
+screenshot capture, PNG conversion, and base64 encoding. UI synchronization is
+measured only for explicit wrapped waits; XCTest and SDK-internal scheduling
+remain unavailable. Responses freeze the timing snapshot at the existing HTTP
+completion boundary, so work that outlives the main-thread wait can be listed as
+missing and cannot update that response afterward.
+
 ## Requirements
 
 ### Requirement: The release workflow builds and publishes a portable simulator bundle

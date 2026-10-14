@@ -2,8 +2,10 @@
 
 Status: the correlated recorder, local JSONL sink, CLI/MCP activation, and bounded
 session lifecycle, shared HTTP transport, client polling, shared registrar operations,
-screenshot processing, and device/process boundaries are implemented. Optional native metadata validation and import are implemented on the host.
-Native producer instrumentation and benchmark/agent measurements remain later deliveries under
+Screenshot processing and device/process boundaries are implemented. Optional
+native metadata validation and import are implemented on the host, and Android/iOS
+servers emit bounded request-owned native timing metadata.
+Command benchmarks and agent usage/outcome measurements remain later deliveries under
 [the approved baseline design](2026-10-05-performance-baseline-design.md).
 See the [measurement guide](../../performance.md) for activation examples and
 interpretation.
@@ -211,6 +213,31 @@ Trace sink failures cannot replace the result or throwable.
 Servers freeze the normal response body before encoding the timing header. Native
 request service duration excludes header encoding and socket writes. These producer
 boundaries are established by each platform's native instrumentation delivery.
+
+### Producer coverage and compatibility
+
+The Android and iOS servers accept the optional request header independently of
+the JSON-RPC method set. Older installed APK pairs and iOS bundles ignore that
+header and continue serving existing commands. A traced call to an older server
+produces `status: missing` with empty `spans` and `missingStages`; this means no
+native snapshot was returned, not that native work was zero. VisionTest never
+replays an operation to obtain timing data. Rebuild and install the Android APK
+pair, or update/rebuild the iOS test bundle, to collect native spans. No upgrade
+is required for ordinary commands.
+
+Android measures request/decode/operation/response encoding, and where exposed,
+UI idle waits, element polling, screenshot capture, PNG encoding, and base64
+encoding. It has no separately measurable request queue boundary, and Android
+UIAutomator can perform additional synchronization inside SDK calls; those
+boundaries remain unavailable. Poll attempts and waits are aggregated. iOS
+measures request/decode/operation/response encoding, receipt-to-main-thread queue
+delay, exposed polling waits, and screenshot capture/PNG/base64 stages. Its UI
+synchronization coverage is limited to explicit wrapped waits. XCTest scheduling
+and SDK internals remain unavailable. iOS freezes metadata when the HTTP response
+snapshot is taken; work still queued past the existing main-thread wait can be
+reported missing and cannot mutate that frozen snapshot. Both producers bound
+snapshots to 32 spans and the encoded header to 8,192 characters; omitted or
+unavailable stages stay missing rather than being assigned zero duration.
 
 ## Shared operations and screenshots
 

@@ -138,7 +138,7 @@ fun `native stage duration uses only its own clock`() {
 
 **Review:** checkpoint. Timeout and main-queue ownership affect native compatibility.
 
-- [ ] Define a Foundation-only recorder available to the unit and UI-test targets.
+- [x] Define a Foundation-only recorder available to the unit and UI-test targets.
   Mirror the v1 wire schema, not the JVM implementation. Test with an injected clock.
 
 ```swift
@@ -155,22 +155,24 @@ func testNativeDurationUsesInjectedMonotonicClock() throws {
 }
 ```
 
-- [ ] Define `NativeTiming` initializer as used above, generic
+- [x] Define `NativeTiming` initializer as used above, generic
   `measure<T>(_ stage: String, _ block: () throws -> T) rethrows -> T`,
   `snapshot() -> NativeTimingSnapshot`, and `encodeHeader() -> String?`.
   Snapshot values are immutable. Lock mutable recording state across the HTTP and
   main threads. Explicitly register helper/test files in the Xcode project.
-- [ ] Measure receipt-to-main-thread queue delay around `runOnMainThread`, decoding
+- [x] Measure receipt-to-main-thread queue delay around `runOnMainThread`, decoding
   where it actually occurs, bridge work, explicit waits/polls, and JSON encoding.
   Carry the context in the dispatched closure and through bridge helper arguments.
-- [ ] Split screenshot capture and encoding only where XCTest exposes the boundary.
+  Targeted input waits record selector polling and wait totals; element swipe records
+  its single immediate selector readiness check without adding a wait budget.
+- [x] Split screenshot capture and encoding only where XCTest exposes the boundary.
   Otherwise use `screenshot_capture_encode` and name unavailable sub-stages.
-- [ ] Test a queued request that outlives the existing HTTP wait. Return a frozen
+- [x] Test a queued request that outlives the existing HTTP wait. Return a frozen
   partial snapshot, mark unfinished spans missing, and ensure later completion
   cannot contaminate another request. Preserve existing action dispatch semantics.
-- [ ] Test unsupported/invalid request headers, concurrent request IDs, operation
+- [x] Test unsupported/invalid request headers, concurrent request IDs, operation
   failure, aggregate limits, and unchanged untraced response dictionaries.
-- [ ] Run `xcodebuild test -project ios-automation-server/IOSAutomationServer.xcodeproj -scheme IOSAutomationServer -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IOSAutomationServerTests`.
+- [x] Run `xcodebuild test -project ios-automation-server/IOSAutomationServer.xcodeproj -scheme IOSAutomationServer -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:IOSAutomationServerTests`.
   Expect RED for absent recorder behavior, then PASS. Exercise a traced read-only
   request through a running UI-test server and save only sanitized timing evidence.
   Commit as `feat(performance): measure iOS native automation stages`.
@@ -189,7 +191,7 @@ func testNativeDurationUsesInjectedMonotonicClock() throws {
 
 **Review:** checkpoint. Final native delivery review.
 
-- [ ] Document old APK/bundle host-only operation, explicit missing timing data,
+- [x] Document old APK/bundle host-only operation, explicit missing timing data,
   how to rebuild/update for native timing, and no replay after missing metadata.
   Do not require an upgrade for existing commands or add unsupported-method errors.
 - [ ] Run `./gradlew :app:test`, `./gradlew :app:e2eTest`, `./gradlew build`, the

@@ -145,13 +145,28 @@ shutdown limits waiting; it does not guarantee a complete trace under every fail
 
 ## Measurement limits
 
-This delivery measures host work and validates optional native timing headers.
-Native producers, command benchmark runs, launcher measurements, and agent usage
-adapters remain later #57 deliveries. Accepted native spans appear in separate
+This delivery measures host work and imports optional native timing headers from
+the current Android and iOS servers. Older installed APKs or bundles continue to
+serve existing commands and produce `native.timing` records with `status: missing`;
+the command is never replayed to recover absent metadata. Rebuild/install the
+Android APK pair or update/rebuild the iOS bundle to collect native spans. Command
+benchmark runs, launcher measurements, and agent usage adapters remain later #57
+deliveries. Accepted native spans appear in separate
 `native.timing` records using request-relative device offsets; never subtract these
 from host timestamps. Missing or rejected native data means unavailable, not zero
 native work or a measured one-way network latency. Existing additional CLI health
 checks are preserved for future #63 measurements.
+
+Native coverage follows platform boundaries. Android records request decoding,
+operation and response encoding, explicit wrapped UI-idle waits, supported polling,
+and screenshot capture/PNG/base64 work. It cannot separate request queue delay or
+all synchronization performed inside UIAutomator. iOS records request decoding,
+operation and response encoding, main-thread queue delay, exposed polling waits,
+and screenshot capture/PNG/base64 work. It cannot expose all XCTest scheduling or
+SDK synchronization, and it freezes the snapshot at the existing HTTP completion
+boundary. In either platform, `missingStages` means unmeasured, omitted, or
+unfinished work; it does not mean zero duration. These records remain bounded to
+32 spans and an 8,192-character response header.
 
 Use controlled fixtures and separate trace files for repeated measurements. Record
 the VisionTest version, platform, server bundle, fixture state, and tracing setting

@@ -150,9 +150,16 @@ using a session as complete; a footer alone cannot prove cleanup. The queue hold
 failures can leave incomplete data. Do not infer success from a normal return;
 `operationOutcome` may be `failure` or `unknown`. Inclusive durations overlap, so
 do not sum parents and children. CLI preparation includes parsing and validation,
-not device work, and early parser errors may be untraced. Native timings are
-unavailable; missing data is not zero native work. Body byte counts are not tokens
-or agent image usage. Ordinary test execution uses the interface guidance above.
+not device work, and early parser errors may be untraced. Native timings may be
+unavailable from older installed Android APKs or iOS bundles. Such servers continue
+to run existing commands; the trace records `status: missing` and VisionTest does
+not repeat the operation to retrieve timing data. Install a current Android APK
+pair or update/rebuild the iOS bundle to collect native spans. Missing stages mean
+unavailable or unfinished work, never zero work. Android cannot isolate request
+queue delay or all UIAutomator synchronization. iOS cannot expose all XCTest
+scheduling or SDK synchronization, and freezes its timing snapshot at the HTTP
+completion boundary. Body byte counts are not tokens or agent image usage.
+Ordinary test execution uses the interface guidance above.
 
 ## Refresh these instructions
 

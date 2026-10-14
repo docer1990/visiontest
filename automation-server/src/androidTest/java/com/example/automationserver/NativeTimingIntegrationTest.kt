@@ -81,9 +81,11 @@ class NativeTimingIntegrationTest {
             assertTrue(result["success"].asBoolean)
             val timingText = String(Base64.UrlSafe.decode(response.header!!))
             assertFalse(timingText.contains("pngBase64"))
-            val stages = JsonParser.parseString(timingText).asJsonObject["spans"].asJsonArray
+            val timing = JsonParser.parseString(timingText).asJsonObject
+            val stages = timing["spans"].asJsonArray
                 .map { it.asJsonObject["stage"].asString }
             assertTrue(stages.containsAll(listOf("ui_sync", "screenshot_capture", "png_encode", "base64_encode")))
+            assertFalse("ui_sync" in timing["missingStages"].asJsonArray.map { it.asString })
         }
     }
 

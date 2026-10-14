@@ -128,6 +128,7 @@ class NativeTimingRecorder(
         val duration = (offset(end) - started.start).coerceAtLeast(0L)
         spans.add(NativeTimingSpan(started.scope.id, started.parent, started.scope.stage,
             started.start, duration, outcome, started.scope.metrics.toMap()))
+        missing.remove(started.scope.stage)
     }
 
     private fun readClock(): Long? = runCatching { nowNs() }.getOrNull()

@@ -35,6 +35,13 @@ class NativeTimingRecorderTest {
         assertTrue("operation" in recorder.snapshot().missingStages)
     }
 
+    @Test fun `completed stage is not reported as missing`() {
+        val recorder = NativeTimingRecorder("a".repeat(32), "b".repeat(32))
+        recorder.measure("ui_sync") {}
+        assertTrue(recorder.snapshot().spans.any { it.stage == "ui_sync" })
+        assertFalse("ui_sync" in recorder.snapshot().missingStages)
+    }
+
     @Test fun `unfinished parent is omitted and completed child becomes root`() {
         val recorder = NativeTimingRecorder("a".repeat(32), "b".repeat(32))
         recorder.measure("request") {

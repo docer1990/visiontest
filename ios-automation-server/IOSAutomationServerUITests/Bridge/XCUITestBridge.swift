@@ -172,12 +172,17 @@ class XCUITestBridge {
     // MARK: - Screenshot
 
     /// Captures the current simulator display as a PNG and returns it base64-encoded.
-    func screenshot() -> ScreenshotResult {
-        let pngData = XCUIScreen.main.screenshot().pngRepresentation
+    func screenshot(timing: NativeTiming? = nil) -> ScreenshotResult {
+        let screenshot = timing?.measure("screenshot_capture") { XCUIScreen.main.screenshot() }
+            ?? XCUIScreen.main.screenshot()
+        let pngData = timing?.measure("png_encode") { screenshot.pngRepresentation }
+            ?? screenshot.pngRepresentation
         if pngData.isEmpty {
             return ScreenshotResult(success: false, pngBase64: nil, error: "Screenshot returned empty PNG data")
         }
-        let base64 = pngData.base64EncodedString()
+        timing?.addMetric("decodedBytes", value: UInt64(pngData.count))
+        let base64 = timing?.measure("base64_encode") { pngData.base64EncodedString() }
+            ?? pngData.base64EncodedString()
         return ScreenshotResult(success: true, pngBase64: base64, error: nil)
     }
 
@@ -297,7 +302,7 @@ class XCUITestBridge {
         }
     }
 
-    func tapOnElement(_ request: ElementTapRequest) -> OperationResult {
+    func tapOnElement(_ request: ElementTapRequest, timing: NativeTiming? = nil) -> OperationResult {
         var tappableElement: XCUIElement?
         return performElementTap(
             request: request,
@@ -324,7 +329,9 @@ class XCUITestBridge {
                 tappableElement = element
                 return .ready
             },
-            tap: { tappableElement?.tap() }
+            tap: { tappableElement?.tap() },
+            onPoll: { timing?.recordPollAttempt() },
+            onWait: { timing?.recordPollWait($0) }
         )
     }
 
@@ -412,12 +419,16 @@ class XCUITestBridge {
         )
     }
 
-    func dismissKeyboard(bundleId: String?) -> OperationResult {
+    func dismissKeyboard(bundleId: String?, timing: NativeTiming? = nil) -> OperationResult {
         let keyboard = interactionTarget(bundleId: bundleId).keyboards.firstMatch
         let wasVisible = keyboard.exists && keyboard.isHittable
         if wasVisible {
             keyboard.swipeDown()
-            _ = keyboard.waitForNonExistence(timeout: 2)
+            if let timing {
+                _ = timing.measure("ui_sync") { keyboard.waitForNonExistence(timeout: 2) }
+            } else {
+                _ = keyboard.waitForNonExistence(timeout: 2)
+            }
         }
         return verifyKeyboardDismissal(wasVisible: wasVisible, isVisible: keyboard.exists)
     }

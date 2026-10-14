@@ -21,6 +21,9 @@
 		A1000042 /* JsonRpcModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000031 /* JsonRpcModelsTests.swift */; };
 		A1000043 /* AutomationModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000032 /* AutomationModelsTests.swift */; };
 		A1000044 /* HelpersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000033 /* HelpersTests.swift */; };
+		A1000045 /* NativeTimingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000034 /* NativeTimingTests.swift */; };
+		A1000046 /* NativeTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000035 /* NativeTiming.swift */; };
+		A1000047 /* NativeTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000035 /* NativeTiming.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +60,8 @@
 		A2000031 /* JsonRpcModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JsonRpcModelsTests.swift; sourceTree = "<group>"; };
 		A2000032 /* AutomationModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationModelsTests.swift; sourceTree = "<group>"; };
 		A2000033 /* HelpersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpersTests.swift; sourceTree = "<group>"; };
+		A2000034 /* NativeTimingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTimingTests.swift; sourceTree = "<group>"; };
+		A2000035 /* NativeTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTiming.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -159,6 +164,7 @@
 				A2000031 /* JsonRpcModelsTests.swift */,
 				A2000032 /* AutomationModelsTests.swift */,
 				A2000033 /* HelpersTests.swift */,
+				A2000034 /* NativeTimingTests.swift */,
 			);
 			path = IOSAutomationServerTests;
 			sourceTree = "<group>";
@@ -167,6 +173,7 @@
 			isa = PBXGroup;
 			children = (
 				A2000030 /* Helpers.swift */,
+				A2000035 /* NativeTiming.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -279,6 +286,7 @@
 				A1000013 /* JsonRpcServer.swift in Sources */,
 				A1000014 /* XCUITestBridge.swift in Sources */,
 				A1000040 /* Helpers.swift in Sources */,
+				A1000046 /* NativeTiming.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -292,6 +300,8 @@
 				A1000042 /* JsonRpcModelsTests.swift in Sources */,
 				A1000043 /* AutomationModelsTests.swift in Sources */,
 				A1000044 /* HelpersTests.swift in Sources */,
+				A1000045 /* NativeTimingTests.swift in Sources */,
+				A1000047 /* NativeTiming.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

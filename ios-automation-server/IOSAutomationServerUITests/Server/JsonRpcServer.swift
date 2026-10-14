@@ -5,15 +5,15 @@ import Swifter
 /// Mirrors JsonRpcServerInstrumented.kt from the Android automation server.
 class JsonRpcServer {
 
-    private static let mainThreadOperationTimeout: TimeInterval = 35
-
     private let port: UInt16
     private let bridge: XCUITestBridge
     private let server: HttpServer
+    private let mainThreadOperationTimeout: TimeInterval
 
-    init(port: UInt16, bridge: XCUITestBridge) {
+    init(port: UInt16, bridge: XCUITestBridge, mainThreadOperationTimeout: TimeInterval = 35) {
         self.port = port
         self.bridge = bridge
+        self.mainThreadOperationTimeout = mainThreadOperationTimeout
         self.server = HttpServer()
         setupRoutes()
     }
@@ -37,20 +37,27 @@ class JsonRpcServer {
             }
 
             let bodyData = Data(request.body)
+            let traceHeader = request.headers.first { $0.key.caseInsensitiveCompare("X-VisionTest-Trace") == .orderedSame }?.value
+            let correlation = NativeTiming.parseRequestHeader(traceHeader)
+            let timing = correlation.map { NativeTiming(invocationId: $0.invocationId, requestSpanId: $0.requestSpanId) }
+            timing?.addMetric("requestBytes", value: UInt64(bodyData.count))
             // XCUITest APIs must be called on the main thread
             let response: [String: Any]
             do {
                 response = try self.runOnMainThread {
-                    self.handleRequest(bodyData)
+                    self.handleRequest(bodyData, timing: timing)
+                } onQueueWait: {
+                    timing?.recordQueueWait(startedAt: $0)
                 }
             } catch {
+                timing?.markRequestOutcome(error is MainThreadTimeoutError ? "timeout" : "thrown")
                 NSLog("JsonRpcServer: Main thread execution failed: \(error)")
                 response = JsonRpcResponse.error(
-                    .xcuiTestError("Main thread timeout after \(Int(Self.mainThreadOperationTimeout))s"),
+                    .xcuiTestError("Main thread timeout after \(Int(self.mainThreadOperationTimeout))s"),
                     id: nil
                 )
             }
-            return self.jsonResponse(response)
+            return self.jsonResponse(response, timing: timing)
         }
     }
 
@@ -70,8 +77,9 @@ class JsonRpcServer {
 
     // MARK: - JSON-RPC Dispatch
 
-    internal func handleRequest(_ data: Data) -> [String: Any] {
-        guard let request = JsonRpcRequest.parse(from: data) else {
+    internal func handleRequest(_ data: Data, timing: NativeTiming? = nil) -> [String: Any] {
+        let parsedRequest = timing?.measure("decode") { JsonRpcRequest.parse(from: data) } ?? JsonRpcRequest.parse(from: data)
+        guard let request = parsedRequest else {
             return JsonRpcResponse.error(.parseError("Failed to parse request"), id: nil)
         }
 
@@ -90,7 +98,14 @@ class JsonRpcServer {
         }
 
         do {
-            let result = try executeMethod(request.method, params: params)
+            let result: Any
+            if let timing {
+                result = try timing.measure("operation") {
+                    try executeMethod(request.method, params: params, timing: timing)
+                }
+            } else {
+                result = try executeMethod(request.method, params: params)
+            }
             return JsonRpcResponse.success(result: result, id: request.id)
         } catch is MethodNotFoundException {
             return JsonRpcResponse.error(.methodNotFound(request.method), id: request.id)
@@ -101,7 +116,7 @@ class JsonRpcServer {
         }
     }
 
-    private func executeMethod(_ method: String, params: [String: Any]?) throws -> Any {
+    private func executeMethod(_ method: String, params: [String: Any]?, timing: NativeTiming? = nil) throws -> Any {
         NSLog("JsonRpcServer: Executing method: \(method)")
 
         switch method {
@@ -117,7 +132,7 @@ class JsonRpcServer {
 
         // Screenshot
         case "ui.screenshot":
-            return bridge.screenshot().toDictionary()
+            return bridge.screenshot(timing: timing).toDictionary()
 
         // Device methods
         case "device.getInfo":
@@ -138,7 +153,7 @@ class JsonRpcServer {
 
         case "ui.tapOnElement":
             let request = try ElementTapRequest(params: params)
-            return bridge.tapOnElement(request).toDictionary()
+            return bridge.tapOnElement(request, timing: timing).toDictionary()
 
         case "ui.longPress":
             return bridge.longPress(try GestureRequest(params: params)).toDictionary()
@@ -148,7 +163,7 @@ class JsonRpcServer {
 
         case "ui.dismissKeyboard":
             let bundleId = try validatedBundleId(params)
-            return bridge.dismissKeyboard(bundleId: bundleId).toDictionary()
+            return bridge.dismissKeyboard(bundleId: bundleId, timing: timing).toDictionary()
 
         case "ui.handleAlert":
             return bridge.handleAlert(try HandleAlertRequest(params: params)).toDictionary()
@@ -248,28 +263,40 @@ class JsonRpcServer {
     /// Executes a block synchronously on the main thread.
     /// XCUITest APIs (XCUIDevice, XCUIElement, etc.) must be called from the main thread.
     /// - Throws: `MainThreadTimeoutError` if the block doesn't complete within the operation timeout.
-    private func runOnMainThread<T>(_ block: @escaping () -> T) throws -> T {
+    internal func runOnMainThread<T>(_ block: @escaping () -> T, onQueueWait: ((UInt64) -> Void)? = nil) throws -> T {
         if Thread.isMainThread {
             return block()
         }
         var result: T?
         let semaphore = DispatchSemaphore(value: 0)
+        let enqueuedAt = DispatchTime.now().uptimeNanoseconds
         DispatchQueue.main.async {
+            onQueueWait?(enqueuedAt)
             result = block()
             semaphore.signal()
         }
-        let timeout = semaphore.wait(timeout: .now() + Self.mainThreadOperationTimeout)
+        let timeout = semaphore.wait(timeout: .now() + mainThreadOperationTimeout)
         if timeout == .timedOut {
-            NSLog("JsonRpcServer: WARNING - runOnMainThread timed out after \(Int(Self.mainThreadOperationTimeout))s")
+            NSLog("JsonRpcServer: WARNING - runOnMainThread timed out after \(Int(mainThreadOperationTimeout))s")
             throw MainThreadTimeoutError()
         }
         return result!
     }
 
-    private func jsonResponse(_ dict: [String: Any]) -> HttpResponse {
+    private func jsonResponse(_ dict: [String: Any], timing: NativeTiming? = nil) -> HttpResponse {
         do {
-            let data = try JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])
-            return .raw(200, "OK", ["Content-Type": "application/json"]) { writer in
+            let data: Data
+            if let timing {
+                data = try timing.measure("response_encode") {
+                    try JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])
+                }
+            } else {
+                data = try JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])
+            }
+            timing?.addMetric("responseBytes", value: UInt64(data.count))
+            var headers = ["Content-Type": "application/json"]
+            if let timingHeader = timing?.encodeHeader() { headers["X-VisionTest-Timing"] = timingHeader }
+            return .raw(200, "OK", headers) { writer in
                 try writer.write(data)
             }
         } catch {

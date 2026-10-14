@@ -364,13 +364,17 @@ func performElementTap(
     now: () -> TimeInterval,
     wait: (TimeInterval) -> Void = { RunLoop.current.run(until: Date(timeIntervalSinceNow: $0)) },
     readiness: () -> ElementTapReadiness,
-    tap: () -> Void
+    tap: () -> Void,
+    onPoll: (() -> Void)? = nil,
+    onWait: ((TimeInterval) -> Void)? = nil
 ) -> OperationResult {
     let deadline = now() + Double(request.timeoutMs) / 1_000
     var observedBlockedElement = false
 
     while true {
-        switch readiness() {
+        let currentReadiness = readiness()
+        onPoll?()
+        switch currentReadiness {
         case .ready:
             guard now() <= deadline else { break }
             tap()
@@ -383,7 +387,10 @@ func performElementTap(
 
         let remaining = deadline - now()
         guard remaining > 0 else { break }
-        wait(min(0.5, remaining))
+        let waitDuration = min(0.5, remaining)
+        let waitStarted = now()
+        wait(waitDuration)
+        onWait?(max(0, now() - waitStarted))
         guard now() <= deadline else { break }
     }
 

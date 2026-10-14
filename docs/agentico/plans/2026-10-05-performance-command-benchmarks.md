@@ -175,21 +175,21 @@ class ExecutionTest(unittest.TestCase):
 
 **Review:** checkpoint. Real measurements and agent cases depend on deterministic reset.
 
-- [ ] Register Android fixture project `:benchmark-fixture` at
+- [x] Register Android fixture project `:benchmark-fixture` at
   `benchmarks/fixtures/android`, reusing the existing Android/Kotlin plugin
   versions and SDK configuration. Use platform widgets; add no UI dependency.
   Build an iOS UIKit fixture with the scheme `BenchmarkFixture`.
-- [ ] Implement package/bundle ID `com.example.visiontest.benchmark`. Startup
+- [x] Implement package/bundle ID `com.example.visiontest.benchmark`. Startup
   accepts a scenario and language (`en` or `it`) and resets all state. Scenarios
   are `navigation`, `appear`, `disappear`, `missing`, `ambiguous`, and `error`.
   Expose stable accessibility/resource identifiers `start`, `email`, `continue`,
   `loading`, `done`, and `error`. The ambiguous case has two separately identified
   controls with the same visible label. The error case never exposes `done`.
-- [ ] `continue` transitions navigation to `done`; timed appearance/disappearance
+- [x] `continue` transitions navigation to `done`; timed appearance/disappearance
   transitions occur after a fixed 750 ms fixture timer. Assert the resulting
   state after the measured command, with a separate verification budget. Do not
   assume a particular number of polls or benchmark the fixture timer as CPU work.
-- [ ] Define `validate_target(platform: str, selected: str, available: list[str]) -> None`
+- [x] Define `validate_target(platform: str, selected: str, available: list[str]) -> None`
   and reject more than one active target because current VisionTest selects the
   first available device. This runner guard does not implement issue #42.
 
@@ -204,15 +204,15 @@ class FixtureTargetTest(unittest.TestCase):
         validate_target("ios", "isolated-simulator", ["isolated-simulator"])
 ```
 
-- [ ] Require `target` and installed fixture identity, resolve only documented
+- [x] Require `target` and installed fixture identity, resolve only documented
   manifest tokens as complete argv values, and never use shell substitution.
   Setup uses existing adb/simctl install, terminate, and launch capabilities.
   Explicitly allow only documented benign setup exit codes; other failures
   produce `setup_failed` and skip the operation. Do not benchmark a user's app.
-- [ ] Fill both manifests with information, lookup, interaction, appearance,
+- [x] Fill both manifests with information, lookup, interaction, appearance,
   disappearance, inspection, and screenshot cases. Use current command schemas
   and MCP names, including iOS bundle scope. No dependence on #41, #42, #53, or #56.
-- [ ] Write opt-in device smoke tests in `test_fixture_smoke.py`, enabled by
+- [x] Write opt-in device smoke tests in `test_fixture_smoke.py`, enabled by
   `VISIONTEST_BENCHMARK_SMOKE=1` and a manifest path in `VISIONTEST_BENCHMARK_MANIFEST`.
   Assert reset idempotence, done/error exclusivity, delayed transitions, missing
   targets, and duplicated labels through existing VisionTest inspection APIs.

@@ -1,0 +1,573 @@
+{
+  "schemaVersion": 1,
+  "platform": "android",
+  "target": "REPLACE_WITH_SINGLE_ADB_SERIAL",
+  "fixtureIdentity": "com.example.visiontest.benchmark",
+  "fixtureArtifact": "benchmarks/fixtures/android/build/outputs/apk/debug/benchmark-fixture-debug.apk",
+  "fixtureRevision": "fixture-v1",
+  "cliPrefix": [
+    "java",
+    "-jar",
+    "app/build/libs/visiontest.jar"
+  ],
+  "mcpPrefix": [
+    "java",
+    "-jar",
+    "app/build/libs/visiontest.jar",
+    "serve"
+  ],
+  "environment": {
+    "build": {
+      "unavailableReason": "Record on the benchmark host before collection"
+    },
+    "nativeArtifactVersions": {
+      "unavailableReason": "Record on the benchmark host before collection"
+    },
+    "connectionType": {
+      "unavailableReason": "Record on the benchmark host before collection"
+    },
+    "targetOS": {
+      "unavailableReason": "Record on the benchmark host before collection"
+    },
+    "targetModel": {
+      "unavailableReason": "Record on the benchmark host before collection"
+    },
+    "JVM": {
+      "unavailableReason": "Record on the benchmark host before collection"
+    },
+    "hostOS": {
+      "unavailableReason": "Record on the benchmark host before collection"
+    }
+  },
+  "processEnvironment": {},
+  "cases": [
+    {
+      "id": "information",
+      "setup": [
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "install",
+          "-r",
+          "{fixtureArtifact}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "force-stop",
+          "{fixtureIdentity}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "start",
+          "-n",
+          "com.example.visiontest.benchmark/.MainActivity",
+          "--es",
+          "scenario",
+          "{scenario}",
+          "--es",
+          "language",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "get_device_info",
+        "--json",
+        "--platform",
+        "android"
+      ],
+      "mcpTool": "android_get_device_info",
+      "mcpArguments": {},
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "device_info",
+        "platform": "android"
+      },
+      "fixtureScenario": "navigation",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "lookup",
+      "setup": [
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "install",
+          "-r",
+          "{fixtureArtifact}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "force-stop",
+          "{fixtureIdentity}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "start",
+          "-n",
+          "com.example.visiontest.benchmark/.MainActivity",
+          "--es",
+          "scenario",
+          "{scenario}",
+          "--es",
+          "language",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "find_element",
+        "--json",
+        "--platform",
+        "android"
+      ],
+      "mcpTool": "find_element",
+      "mcpArguments": {
+        "resourceId": "com.example.visiontest.benchmark:id/start"
+      },
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "element_found",
+        "resourceId": "com.example.visiontest.benchmark:id/start",
+        "expectedFound": true
+      },
+      "fixtureScenario": "navigation",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "interaction",
+      "setup": [
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "install",
+          "-r",
+          "{fixtureArtifact}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "force-stop",
+          "{fixtureIdentity}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "start",
+          "-n",
+          "com.example.visiontest.benchmark/.MainActivity",
+          "--es",
+          "scenario",
+          "{scenario}",
+          "--es",
+          "language",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "tap_on_element",
+        "--resource-id",
+        "com.example.visiontest.benchmark:id/continue",
+        "--platform",
+        "android"
+      ],
+      "mcpTool": "tap_on_element",
+      "mcpArguments": {
+        "resourceId": "com.example.visiontest.benchmark:id/continue"
+      },
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "action_then_element",
+        "resourceId": "com.example.visiontest.benchmark:id/done",
+        "expectedFound": true,
+        "lookupTool": "find_element",
+        "lookupArguments": {
+          "resourceId": "com.example.visiontest.benchmark:id/done"
+        },
+        "verificationCliArgs": [
+          "find_element",
+          "--resource-id",
+          "com.example.visiontest.benchmark:id/done",
+          "--json",
+          "--platform",
+          "android"
+        ]
+      },
+      "fixtureScenario": "navigation",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "appearance",
+      "setup": [
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "install",
+          "-r",
+          "{fixtureArtifact}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "force-stop",
+          "{fixtureIdentity}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "start",
+          "-n",
+          "com.example.visiontest.benchmark/.MainActivity",
+          "--es",
+          "scenario",
+          "{scenario}",
+          "--es",
+          "language",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "wait_for_element",
+        "--resource-id",
+        "com.example.visiontest.benchmark:id/done",
+        "--timeout",
+        "4000",
+        "--platform",
+        "android"
+      ],
+      "mcpTool": "wait_for_element",
+      "mcpArguments": {
+        "resourceId": "com.example.visiontest.benchmark:id/done",
+        "timeoutMs": 4000
+      },
+      "timeoutMs": 10000,
+      "assertion": {
+        "kind": "wait_then_element",
+        "resourceId": "com.example.visiontest.benchmark:id/done",
+        "expectedFound": true,
+        "lookupTool": "find_element",
+        "lookupArguments": {
+          "resourceId": "com.example.visiontest.benchmark:id/done"
+        },
+        "verificationCliArgs": [
+          "find_element",
+          "--resource-id",
+          "com.example.visiontest.benchmark:id/done",
+          "--json",
+          "--platform",
+          "android"
+        ]
+      },
+      "fixtureScenario": "appear",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "disappearance",
+      "setup": [
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "install",
+          "-r",
+          "{fixtureArtifact}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "force-stop",
+          "{fixtureIdentity}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "start",
+          "-n",
+          "com.example.visiontest.benchmark/.MainActivity",
+          "--es",
+          "scenario",
+          "{scenario}",
+          "--es",
+          "language",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "wait_until_gone",
+        "--resource-id",
+        "com.example.visiontest.benchmark:id/loading",
+        "--timeout",
+        "4000",
+        "--platform",
+        "android"
+      ],
+      "mcpTool": "wait_until_gone",
+      "mcpArguments": {
+        "resourceId": "com.example.visiontest.benchmark:id/loading",
+        "timeoutMs": 4000
+      },
+      "timeoutMs": 10000,
+      "assertion": {
+        "kind": "wait_then_element",
+        "resourceId": "com.example.visiontest.benchmark:id/loading",
+        "expectedFound": false,
+        "lookupTool": "find_element",
+        "lookupArguments": {
+          "resourceId": "com.example.visiontest.benchmark:id/loading"
+        },
+        "verificationCliArgs": [
+          "find_element",
+          "--resource-id",
+          "com.example.visiontest.benchmark:id/loading",
+          "--json",
+          "--platform",
+          "android"
+        ]
+      },
+      "fixtureScenario": "disappear",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "inspection",
+      "setup": [
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "install",
+          "-r",
+          "{fixtureArtifact}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "force-stop",
+          "{fixtureIdentity}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "start",
+          "-n",
+          "com.example.visiontest.benchmark/.MainActivity",
+          "--es",
+          "scenario",
+          "{scenario}",
+          "--es",
+          "language",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "get_interactive_elements",
+        "--json",
+        "--platform",
+        "android"
+      ],
+      "mcpTool": "get_interactive_elements",
+      "mcpArguments": {},
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "interactive_elements",
+        "requiredResourceIds": [
+          "com.example.visiontest.benchmark:id/start",
+          "com.example.visiontest.benchmark:id/continue_primary",
+          "com.example.visiontest.benchmark:id/continue_secondary"
+        ]
+      },
+      "fixtureScenario": "ambiguous",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "screenshot",
+      "setup": [
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "install",
+          "-r",
+          "{fixtureArtifact}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "force-stop",
+          "{fixtureIdentity}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "start",
+          "-n",
+          "com.example.visiontest.benchmark/.MainActivity",
+          "--es",
+          "scenario",
+          "{scenario}",
+          "--es",
+          "language",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "screenshot",
+        "--platform",
+        "android"
+      ],
+      "mcpTool": "android_screenshot",
+      "mcpArguments": {},
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "screenshot_file"
+      },
+      "fixtureScenario": "navigation",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [],
+        []
+      ]
+    },
+    {
+      "id": "missing-target",
+      "setup": [
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "install",
+          "-r",
+          "{fixtureArtifact}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "force-stop",
+          "{fixtureIdentity}"
+        ],
+        [
+          "adb",
+          "-s",
+          "{target}",
+          "shell",
+          "am",
+          "start",
+          "-n",
+          "com.example.visiontest.benchmark/.MainActivity",
+          "--es",
+          "scenario",
+          "{scenario}",
+          "--es",
+          "language",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "find_element",
+        "--resource-id",
+        "com.example.visiontest.benchmark:id/email",
+        "--json",
+        "--platform",
+        "android"
+      ],
+      "mcpTool": "find_element",
+      "mcpArguments": {
+        "resourceId": "com.example.visiontest.benchmark:id/email"
+      },
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "element_found",
+        "resourceId": "com.example.visiontest.benchmark:id/email",
+        "expectedFound": false
+      },
+      "fixtureScenario": "missing",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [],
+        []
+      ]
+    }
+  ]
+}

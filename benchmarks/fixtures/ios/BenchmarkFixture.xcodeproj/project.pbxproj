@@ -1,0 +1,25 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1; classes = {}; objectVersion = 56;
+	objects = {
+		A10000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>";};
+		A10000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>";};
+		A10000000000000000000003 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = BenchmarkFixture.app; sourceTree = BUILT_PRODUCTS_DIR;};
+		A10000000000000000000004 = {isa = PBXBuildFile; fileRef = A10000000000000000000001;};
+		A10000000000000000000005 = {isa = PBXSourcesBuildPhase; files = (A10000000000000000000004,); runOnlyForDeploymentPostprocessing = 0;};
+		A10000000000000000000006 = {isa = PBXFrameworksBuildPhase; files = (); runOnlyForDeploymentPostprocessing = 0;};
+		A10000000000000000000007 = {isa = PBXResourcesBuildPhase; files = (); runOnlyForDeploymentPostprocessing = 0;};
+		A10000000000000000000008 = {isa = PBXGroup; children = (A10000000000000000000009, A1000000000000000000000A,); sourceTree = "<group>";};
+		A10000000000000000000009 = {isa = PBXGroup; path = BenchmarkFixture; children = (A10000000000000000000001, A10000000000000000000002,); sourceTree = "<group>";};
+		A1000000000000000000000A = {isa = PBXGroup; name = Products; children = (A10000000000000000000003,); sourceTree = "<group>";};
+		A1000000000000000000000B = {isa = PBXProject; attributes = {LastUpgradeCheck = 1600;}; buildConfigurationList = A1000000000000000000000C; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; mainGroup = A10000000000000000000008; productRefGroup = A1000000000000000000000A; targets = (A1000000000000000000000D,);};
+		A1000000000000000000000D = {isa = PBXNativeTarget; buildConfigurationList = A1000000000000000000000E; buildPhases = (A10000000000000000000005, A10000000000000000000006, A10000000000000000000007,); buildRules = (); dependencies = (); name = BenchmarkFixture; productName = BenchmarkFixture; productReference = A10000000000000000000003; productType = "com.apple.product-type.application";};
+		A1000000000000000000000C = {isa = XCConfigurationList; buildConfigurations = (A1000000000000000000000F, A10000000000000000000010,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
+		A1000000000000000000000E = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000011, A10000000000000000000012,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
+		A1000000000000000000000F = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos;}; name = Debug;};
+		A10000000000000000000010 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos;}; name = Release;};
+		A10000000000000000000011 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = BenchmarkFixture/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.example.visiontest.benchmark; PRODUCT_NAME = BenchmarkFixture; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; IPHONEOS_DEPLOYMENT_TARGET = 15.0;}; name = Debug;};
+		A10000000000000000000012 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = BenchmarkFixture/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.example.visiontest.benchmark; PRODUCT_NAME = BenchmarkFixture; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; IPHONEOS_DEPLOYMENT_TARGET = 15.0;}; name = Release;};
+	};
+	rootObject = A1000000000000000000000B;
+}

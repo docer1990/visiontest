@@ -4,6 +4,7 @@ import io
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from benchmarks.manifest import load_manifest
@@ -15,6 +16,8 @@ def valid_manifest():
         "schemaVersion": 1,
         "platform": "android",
         "target": "emulator-5554",
+        "fixtureIdentity": "com.example.visiontest.benchmark",
+        "fixtureArtifact": "fixture.apk",
         "fixtureRevision": "fixture-v1",
         "cliPrefix": ["visiontest"],
         "mcpPrefix": ["visiontest", "serve"],
@@ -27,7 +30,15 @@ def valid_manifest():
         },
         "cases": [{
             "id": "device-info",
-            "setup": [["adb", "shell", "am", "force-stop", "fixture"]],
+            "fixtureScenario": "navigation",
+            "fixtureLanguage": "en",
+            "setup": [
+                ["adb", "-s", "{target}", "install", "-r", "{fixtureArtifact}"],
+                ["adb", "-s", "{target}", "shell", "am", "force-stop", "{fixtureIdentity}"],
+                ["adb", "-s", "{target}", "shell", "am", "start", "-n",
+                 "com.example.visiontest.benchmark/.MainActivity",
+                 "--es", "scenario", "{scenario}", "--es", "language", "{language}"],
+            ],
             "cliArgs": ["device-info"],
             "mcpTool": "get_device_info",
             "mcpArguments": {},
@@ -74,6 +85,20 @@ class ManifestTest(unittest.TestCase):
         manifest["target"] = ["emulator-5554", "emulator-5556"]
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(ValueError):
+                load_manifest(self.write_manifest(directory, manifest))
+
+    def test_rejects_manifest_that_does_not_pin_fixture_identity(self):
+        manifest = valid_manifest()
+        manifest["fixtureIdentity"] = "com.example.user.app"
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "fixtureIdentity"):
+                load_manifest(self.write_manifest(directory, manifest))
+
+    def test_rejects_unknown_fixture_scenario(self):
+        manifest = valid_manifest()
+        manifest["cases"][0]["fixtureScenario"] = "arbitrary"
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "fixtureScenario"):
                 load_manifest(self.write_manifest(directory, manifest))
 
     def test_rejects_nonpositive_case_timeout(self):
@@ -133,6 +158,34 @@ class ManifestTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "processEnvironment"):
                 load_manifest(self.write_manifest(directory, manifest))
 
+    def test_rejects_setup_exit_code_allowlist_without_matching_setup(self):
+        manifest = valid_manifest()
+        manifest["cases"][0]["setupBenignExitCodes"] = [[3], []]
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "setupBenignExitCodes"):
+                load_manifest(self.write_manifest(directory, manifest))
+
+    def test_only_allows_documented_simulator_terminate_exit_code(self):
+        manifest = valid_manifest()
+        manifest["cases"][0]["setupBenignExitCodes"] = [[], [3], []]
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "benign"):
+                load_manifest(self.write_manifest(directory, manifest))
+
+    def test_rejects_setup_that_targets_another_application(self):
+        manifest = valid_manifest()
+        manifest["cases"][0]["setup"][1][-1] = "com.example.user.app"
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "fixture setup"):
+                load_manifest(self.write_manifest(directory, manifest))
+
+    def test_rejects_samples_without_fixture_install_and_launch(self):
+        manifest = valid_manifest()
+        manifest["cases"][0]["setup"] = []
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "install and launch"):
+                load_manifest(self.write_manifest(directory, manifest))
+
     def test_native_cold_requires_explicit_restart_before_creating_output(self):
         with tempfile.TemporaryDirectory() as directory:
             manifest_path = self.write_manifest(directory, valid_manifest())
@@ -159,11 +212,11 @@ class ManifestTest(unittest.TestCase):
             manifest = valid_manifest()
             manifest["cliPrefix"] = [sys.executable, "-c", "import sys; print('failed', file=sys.stderr); sys.exit(7)"]
             manifest["cases"][0]["cliArgs"] = ["ignored"]
-            manifest["cases"][0]["setup"] = []
             manifest_path = self.write_manifest(directory, manifest)
             output = Path(directory) / "fresh-run"
-            result = main(["commands", "--manifest", str(manifest_path), "--output", str(output),
-                           "--mode", "cli", "--samples", "1", "--warmup", "0"])
+            with patch("benchmarks.run._run_setup", return_value=(True, 0, None)):
+                result = main(["commands", "--manifest", str(manifest_path), "--output", str(output),
+                               "--mode", "cli", "--samples", "1", "--warmup", "0"])
             self.assertEqual(1, result)
             samples = [json.loads(line) for line in (output / "samples.jsonl").read_text().splitlines()]
             self.assertEqual("failed", samples[0]["status"])

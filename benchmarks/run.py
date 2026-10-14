@@ -10,6 +10,7 @@ from benchmarks.manifest import load_manifest
 from benchmarks.mcp import McpProtocolError, McpSession
 from benchmarks.results import summarize, write_samples
 from benchmarks.execution import run_process
+from benchmarks.fixtures import resolve_argv, validate_fixture_identity, validate_target
 
 
 def _parser():
@@ -107,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
                         setup_duration += native_ns
                     else:
                         native_ok, native_error = True, None
-                    setup_ok, setup_ns, setup_error = _run_setup(case, _environment_values(manifest))
+                    setup_ok, setup_ns, setup_error = _run_setup(case, manifest, _environment_values(manifest))
                     setup_duration += setup_ns
                     if not native_ok or not setup_ok:
                         sample = _sample(run_id, sample_id, case, args, tracing, is_warmup, sequence,
@@ -189,12 +190,55 @@ def _mcp_environment(manifest, trace_path):
     return environment
 
 
-def _run_setup(case, env):
+def _run_setup(case, manifest, env):
     started = time.perf_counter_ns()
-    for argv in case["setup"]:
+    try:
+        validate_fixture_identity(manifest["platform"], manifest["fixtureIdentity"])
+        target = manifest["target"]
+        if manifest["platform"] == "android":
+            devices = run_process(["adb", "devices"], case["timeoutMs"])
+            available = [line.split()[0] for line in devices["stdout"].splitlines()[1:]
+                         if len(line.split()) >= 2 and line.split()[1] == "device"]
+        else:
+            devices = run_process(["xcrun", "simctl", "list", "devices", "booted", "-j"], case["timeoutMs"])
+            data = json.loads(devices["stdout"])
+            available = [device["udid"] for devices_on_runtime in data.get("devices", {}).values()
+                         for device in devices_on_runtime if device.get("state") == "Booted"]
+        if devices["timed_out"] or devices["exit_code"] != 0:
+            return False, time.perf_counter_ns() - started, _process_error(devices)
+        validate_target(manifest["platform"], target, available)
+        artifact = Path(manifest["fixtureArtifact"]).resolve()
+        if not artifact.exists():
+            raise ValueError(f"benchmark fixture artifact is missing: {artifact}")
+        tokens = {"target": target, "fixtureArtifact": str(artifact),
+                  "fixtureIdentity": manifest["fixtureIdentity"],
+                  "scenario": case["fixtureScenario"], "language": case["fixtureLanguage"]}
+    except (ValueError, KeyError, json.JSONDecodeError) as error:
+        return False, time.perf_counter_ns() - started, str(error)
+    installed = False
+    for index, configured_argv in enumerate(case["setup"]):
+        try:
+            argv = resolve_argv(configured_argv, tokens)
+        except ValueError as error:
+            return False, time.perf_counter_ns() - started, str(error)
+        if Path(argv[0]).name in {"sh", "bash", "zsh", "cmd", "powershell"}:
+            return False, time.perf_counter_ns() - started, "shell setup commands are not allowed"
         result = run_process(argv, case["timeoutMs"], env)
-        if result["timed_out"] or result["exit_code"] != 0:
+        allowed = case.get("setupBenignExitCodes", [[] for _ in case["setup"]])[index]
+        if result["timed_out"] or result["exit_code"] not in [0, *allowed]:
             return False, time.perf_counter_ns() - started, _process_error(result)
+        if "install" in argv and not installed:
+            if manifest["platform"] == "android":
+                identity_check = ["adb", "-s", target, "shell", "pm", "path", manifest["fixtureIdentity"]]
+            else:
+                identity_check = ["xcrun", "simctl", "get_app_container", target,
+                                  manifest["fixtureIdentity"], "app"]
+            verified = run_process(identity_check, case["timeoutMs"])
+            if verified["timed_out"] or verified["exit_code"] != 0:
+                return False, time.perf_counter_ns() - started, "installed fixture identity could not be verified"
+            installed = True
+    if not installed:
+        return False, time.perf_counter_ns() - started, "setup must install the pinned benchmark fixture"
     return True, time.perf_counter_ns() - started, None
 
 

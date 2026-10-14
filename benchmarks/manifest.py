@@ -44,17 +44,50 @@ def _validate_environment(environment):
             raise ValueError(f"environment.{name} must have either value or unavailableReason")
 
 
-def _validate_case(case, index):
+def _validate_case(case, index, platform):
     label = f"cases[{index}]"
     if not isinstance(case, dict):
         raise ValueError(f"{label} must be an object")
     if not isinstance(case.get("id"), str) or not case["id"].strip():
         raise ValueError(f"{label}.id must be a nonempty string")
     setup = case.get("setup")
-    if not isinstance(setup, list):
-        raise ValueError(f"{label}.setup must be an array of argv arrays")
+    if not isinstance(setup, list) or not setup:
+        raise ValueError(f"{label}.setup must install and launch the benchmark fixture reset")
     for command_index, command in enumerate(setup):
         _argv(command, f"{label}.setup[{command_index}]")
+        if command[0].rsplit("/", 1)[-1] in {"sh", "bash", "zsh", "cmd", "powershell"}:
+            raise ValueError(f"{label}.setup[{command_index}] must not invoke a shell")
+    benign = case.get("setupBenignExitCodes", [[] for _ in setup])
+    if (not isinstance(benign, list) or len(benign) != len(setup)
+            or any(not isinstance(codes, list) or any(isinstance(code, bool) or not isinstance(code, int) or code < 0
+                                                       for code in codes) for codes in benign)):
+        raise ValueError(f"{label}.setupBenignExitCodes must match setup with nonnegative integer arrays")
+    for command, codes in zip(setup, benign):
+        documented_terminate = command[:3] == ["xcrun", "simctl", "terminate"] and codes == [3]
+        if codes and not documented_terminate:
+            raise ValueError(f"{label}.setupBenignExitCodes contains an undocumented benign exit code")
+    if setup:
+        if platform == "android":
+            expected_setup = [
+                ["adb", "-s", "{target}", "install", "-r", "{fixtureArtifact}"],
+                ["adb", "-s", "{target}", "shell", "am", "force-stop", "{fixtureIdentity}"],
+                ["adb", "-s", "{target}", "shell", "am", "start", "-n",
+                 "com.example.visiontest.benchmark/.MainActivity",
+                 "--es", "scenario", "{scenario}", "--es", "language", "{language}"],
+            ]
+        else:
+            expected_setup = [
+                ["xcrun", "simctl", "install", "{target}", "{fixtureArtifact}"],
+                ["xcrun", "simctl", "terminate", "{target}", "{fixtureIdentity}"],
+                ["xcrun", "simctl", "launch", "{target}", "{fixtureIdentity}", "scenario={scenario}",
+                 "language={language}"],
+            ]
+        if setup != expected_setup:
+            raise ValueError(f"{label}.setup must use the pinned benchmark fixture setup")
+        if case.get("fixtureScenario") not in {"navigation", "appear", "disappear", "missing", "ambiguous", "error"}:
+            raise ValueError(f"{label}.fixtureScenario is not supported")
+        if case.get("fixtureLanguage") not in {"en", "it"}:
+            raise ValueError(f"{label}.fixtureLanguage must be en or it")
     _argv(case.get("cliArgs"), f"{label}.cliArgs")
     mcp_tool = case.get("mcpTool")
     if not isinstance(mcp_tool, str) or not mcp_tool:
@@ -115,6 +148,10 @@ def load_manifest(path: Path) -> dict:
     target = manifest.get("target")
     if not isinstance(target, str) or not target.strip():
         raise ValueError("target must identify exactly one configured device")
+    if manifest.get("fixtureIdentity") != "com.example.visiontest.benchmark":
+        raise ValueError("fixtureIdentity must be com.example.visiontest.benchmark")
+    if not isinstance(manifest.get("fixtureArtifact"), str) or not manifest["fixtureArtifact"].strip():
+        raise ValueError("fixtureArtifact must identify the built benchmark fixture")
     if not isinstance(manifest.get("fixtureRevision"), str) or not manifest["fixtureRevision"].strip():
         raise ValueError("fixtureRevision must be a nonempty string")
     _argv(manifest.get("cliPrefix"), "cliPrefix")
@@ -131,7 +168,7 @@ def load_manifest(path: Path) -> dict:
         raise ValueError("cases must be a nonempty array")
     ids = set()
     for index, case in enumerate(cases):
-        _validate_case(case, index)
+        _validate_case(case, index, manifest["platform"])
         if case["id"] in ids:
             raise ValueError(f"duplicate case id: {case['id']}")
         ids.add(case["id"])

@@ -2,6 +2,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from benchmarks.execution import run_process
@@ -58,21 +59,31 @@ class ExecutionTest(unittest.TestCase):
             root = Path(directory)
             manifest = {
                 "schemaVersion": 1, "platform": "android", "target": "emulator",
+                "fixtureIdentity": "com.example.visiontest.benchmark", "fixtureArtifact": "fixture.apk",
                 "fixtureRevision": "test", "cliPrefix": [sys.executable, "-c",
                     "import json; print(json.dumps({'success': True, 'displayWidth': 10, 'displayHeight': 20, 'productName': 'test', 'sdkVersion': 35}))"],
                 "mcpPrefix": [sys.executable, "-c", "pass"],
                 "environment": {key: {"value": "test"} for key in (
                     "build", "nativeArtifactVersions", "connectionType", "targetOS",
                     "targetModel", "JVM", "hostOS")},
-                "cases": [{"id": "info", "setup": [], "cliArgs": ["ignored"], "mcpTool": "info",
+                "cases": [{"id": "info", "fixtureScenario": "navigation", "fixtureLanguage": "en",
+                    "setup": [
+                        ["adb", "-s", "{target}", "install", "-r", "{fixtureArtifact}"],
+                        ["adb", "-s", "{target}", "shell", "am", "force-stop", "{fixtureIdentity}"],
+                        ["adb", "-s", "{target}", "shell", "am", "start", "-n",
+                         "com.example.visiontest.benchmark/.MainActivity", "--es", "scenario", "{scenario}",
+                         "--es", "language", "{language}"],
+                    ], "cliArgs": ["ignored"], "mcpTool": "info",
                     "mcpArguments": {}, "timeoutMs": 2000,
                     "assertion": {"kind": "device_info", "platform": "android"}}],
             }
             manifest_path = root / "manifest.json"
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
             output = root / "run"
-            self.assertEqual(0, main(["commands", "--manifest", str(manifest_path),
-                "--output", str(output), "--mode", "cli", "--samples", "2", "--warmup", "0"]))
+            with patch("benchmarks.run._run_setup", return_value=(True, 0, None)):
+                result = main(["commands", "--manifest", str(manifest_path),
+                    "--output", str(output), "--mode", "cli", "--samples", "2", "--warmup", "0"])
+            self.assertEqual(0, result)
             samples = [json.loads(line) for line in (output / "samples.jsonl").read_text().splitlines()]
             self.assertEqual(["info-sample-1", "info-sample-2"], [sample["sample_id"] for sample in samples])
             self.assertEqual(["passed", "passed"], [sample["status"] for sample in samples])

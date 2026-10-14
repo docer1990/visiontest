@@ -1,7 +1,7 @@
 ---
 id: TD-015
 title: "Isolate local performance measurements from operation results"
-status: proposed
+status: accepted
 date: 2026-10-05
 supersedes: null
 superseded_by: null
@@ -22,8 +22,9 @@ Write opt-in host traces to local JSONL files and transport bounded native timin
 metadata in optional HTTP headers. Use external benchmark processes for launcher
 timing and separate agent adapters for observed usage and flow outcomes.
 
-The design direction is approved. Keep this decision proposed until implementation
-and compatibility verification establish the contracts below.
+The protocol, host recorder, Android and iOS producers, and old-server compatibility
+are implemented and verified. Native timing remains optional and does not alter
+operation results or retry operations when metadata is absent.
 
 ## Rationale
 

@@ -194,10 +194,10 @@ func testNativeDurationUsesInjectedMonotonicClock() throws {
 - [x] Document old APK/bundle host-only operation, explicit missing timing data,
   how to rebuild/update for native timing, and no replay after missing metadata.
   Do not require an upgrade for existing commands or add unsupported-method errors.
-- [ ] Run `./gradlew :app:test`, `./gradlew :app:e2eTest`, `./gradlew build`, the
+- [x] Run `./gradlew :app:test`, `./gradlew :app:e2eTest`, `./gradlew build`, the
   Swift gate from Task 3, and `git diff --check`. Keep Android instrumentation
   evidence from Task 2 and native smoke evidence distinct from unit coverage.
-- [ ] Review enabled/disabled responses and error paths against the original
+- [x] Review enabled/disabled responses and error paths against the original
   contracts. Mark TD-015 accepted once protocol and compatibility are implemented
   and verified; update the decision index in the same change.
 - [ ] Commit as `docs(performance): document native timing compatibility`, run

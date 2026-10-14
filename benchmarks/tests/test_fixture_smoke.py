@@ -41,7 +41,7 @@ class FixtureSmokeTest(unittest.TestCase):
         if cls.manifest["platform"] == "android":
             launch[launch.index("{scenario}")] = scenario
         else:
-            launch[launch.index("scenario={scenario}")] = f"scenario={scenario}"
+            launch[launch.index("{scenario}")] = scenario
         setup[-1] = launch
         case = dict(fixture_case, setup=setup, fixtureScenario=scenario)
         case["setupBenignExitCodes"] = fixture_case.get("setupBenignExitCodes", [[], [], []])

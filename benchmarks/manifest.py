@@ -79,8 +79,7 @@ def _validate_case(case, index, platform):
             expected_setup = [
                 ["xcrun", "simctl", "install", "{target}", "{fixtureArtifact}"],
                 ["xcrun", "simctl", "terminate", "{target}", "{fixtureIdentity}"],
-                ["xcrun", "simctl", "launch", "{target}", "{fixtureIdentity}", "scenario={scenario}",
-                 "language={language}"],
+                ["xcrun", "simctl", "launch", "{target}", "{fixtureIdentity}", "{scenario}", "{language}"],
             ]
         if setup != expected_setup:
             raise ValueError(f"{label}.setup must use the pinned benchmark fixture setup")

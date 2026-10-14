@@ -9,8 +9,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         let arguments = ProcessInfo.processInfo.arguments
-        let scenario = arguments.first { $0.hasPrefix("scenario=") }?.replacingOccurrences(of: "scenario=", with: "") ?? "navigation"
-        let language = arguments.first { $0.hasPrefix("language=") }?.replacingOccurrences(of: "language=", with: "") == "it" ? "it" : "en"
+        let scenarios = ["navigation", "appear", "disappear", "missing", "ambiguous", "error"]
+        let scenario = arguments.first { scenarios.contains($0) } ?? "navigation"
+        let language = arguments.first { $0 == "en" || $0 == "it" } ?? "en"
         let controller = FixtureViewController(scenario: scenario, language: language)
         window = UIWindow(frame: UIScreen.main.bounds)
         window?.rootViewController = controller

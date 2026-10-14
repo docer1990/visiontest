@@ -33,6 +33,18 @@ class FixtureTargetTest(unittest.TestCase):
         self.assertIn("continue_action", ids)
         self.assertNotIn('name="continue"', ids)
 
+    def test_ios_setup_resolves_scenario_and_language_only_as_complete_arguments(self):
+        root = Path(__file__).parents[1]
+        manifest = load_manifest(root / "manifests/ios.json")
+        case = next(case for case in manifest["cases"] if case["id"] == "appearance")
+        resolved = resolve_argv(case["setup"][2], {
+            "target": "sim-1", "fixtureIdentity": manifest["fixtureIdentity"],
+            "scenario": case["fixtureScenario"], "language": case["fixtureLanguage"],
+        })
+        self.assertEqual("appear", resolved[-2])
+        self.assertEqual("en", resolved[-1])
+        self.assertNotIn("scenario=appear", resolved)
+
     def test_ambiguous_target_prevents_mutating_setup(self):
         with self.assertRaises(ValueError):
             validate_target("android", "emulator-5554", ["emulator-5554", "emulator-5556"])

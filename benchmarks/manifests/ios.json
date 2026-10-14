@@ -64,8 +64,8 @@
           "launch",
           "{target}",
           "{fixtureIdentity}",
-          "scenario={scenario}",
-          "language={language}"
+          "{scenario}",
+          "{language}"
         ]
       ],
       "cliArgs": [
@@ -114,8 +114,8 @@
           "launch",
           "{target}",
           "{fixtureIdentity}",
-          "scenario={scenario}",
-          "language={language}"
+          "{scenario}",
+          "{language}"
         ]
       ],
       "cliArgs": [
@@ -170,8 +170,8 @@
           "launch",
           "{target}",
           "{fixtureIdentity}",
-          "scenario={scenario}",
-          "language={language}"
+          "{scenario}",
+          "{language}"
         ]
       ],
       "cliArgs": [
@@ -242,8 +242,8 @@
           "launch",
           "{target}",
           "{fixtureIdentity}",
-          "scenario={scenario}",
-          "language={language}"
+          "{scenario}",
+          "{language}"
         ]
       ],
       "cliArgs": [
@@ -317,8 +317,8 @@
           "launch",
           "{target}",
           "{fixtureIdentity}",
-          "scenario={scenario}",
-          "language={language}"
+          "{scenario}",
+          "{language}"
         ]
       ],
       "cliArgs": [
@@ -392,8 +392,8 @@
           "launch",
           "{target}",
           "{fixtureIdentity}",
-          "scenario={scenario}",
-          "language={language}"
+          "{scenario}",
+          "{language}"
         ]
       ],
       "cliArgs": [
@@ -450,8 +450,8 @@
           "launch",
           "{target}",
           "{fixtureIdentity}",
-          "scenario={scenario}",
-          "language={language}"
+          "{scenario}",
+          "{language}"
         ]
       ],
       "cliArgs": [
@@ -498,8 +498,8 @@
           "launch",
           "{target}",
           "{fixtureIdentity}",
-          "scenario={scenario}",
-          "language={language}"
+          "{scenario}",
+          "{language}"
         ]
       ],
       "cliArgs": [

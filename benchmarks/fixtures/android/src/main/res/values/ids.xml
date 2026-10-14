@@ -1,7 +1,7 @@
 <resources>
     <item name="start" type="id" />
     <item name="email" type="id" />
-    <item name="continue" type="id" />
+    <item name="continue_action" type="id" />
     <item name="continue_primary" type="id" />
     <item name="continue_secondary" type="id" />
     <item name="loading" type="id" />

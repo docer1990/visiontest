@@ -35,7 +35,7 @@ class MainActivity : Activity() {
             "navigation" -> {
                 val field = EditText(this).apply { id = R.id.email; contentDescription = "email"; hint = "Email" }
                 content.addView(field)
-                button(R.id.`continue`, text("continue")).also(content::addView)
+                button(R.id.continue_action, text("continue")).also(content::addView)
             }
             "appear" -> delayed(true)
             "disappear" -> delayed(false)
@@ -61,7 +61,7 @@ class MainActivity : Activity() {
         this.id = id
         text = value
         contentDescription = idName(id)
-        if (id == R.id.`continue`) setOnClickListener {
+        if (id == R.id.continue_action) setOnClickListener {
             content.removeAllViews()
             label(R.id.done, text("done")).also(content::addView)
         }
@@ -76,7 +76,7 @@ class MainActivity : Activity() {
     private fun idName(id: Int) = when (id) {
         R.id.start -> "start"
         R.id.email -> "email"
-        R.id.`continue` -> "continue"
+        R.id.continue_action -> "continue"
         R.id.continue_primary -> "continue_primary"
         R.id.continue_secondary -> "continue_secondary"
         R.id.loading -> "loading"

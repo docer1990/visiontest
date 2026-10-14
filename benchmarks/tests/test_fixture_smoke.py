@@ -76,8 +76,10 @@ class FixtureSmokeTest(unittest.TestCase):
         self.assertTrue(self.found("error"))
         self.assertFalse(self.found("done"))
         self.reset("navigation")
-        resource_id = "continue" if self.manifest["platform"] == "ios" else f"{self.manifest['fixtureIdentity']}:id/continue"
-        self.command(["tap_on_element", "--resource-id", resource_id])
+        if self.manifest["platform"] == "ios":
+            self.command(["tap_on_element", "--resource-id", "continue"])
+        else:
+            self.command(["tap_on_element", "--content-description", "continue"])
         self.assertTrue(self.found("done"))
         self.assertFalse(self.found("error"))
 

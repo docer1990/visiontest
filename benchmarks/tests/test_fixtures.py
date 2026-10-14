@@ -23,6 +23,16 @@ class FixtureTargetTest(unittest.TestCase):
             for case in ios["cases"] if case["id"] not in {"information", "screenshot"}
         ))
 
+    def test_android_continue_uses_accessibility_identifier_not_reserved_resource_name(self):
+        root = Path(__file__).parents[1]
+        manifest = load_manifest(root / "manifests/android.json")
+        interaction = next(case for case in manifest["cases"] if case["id"] == "interaction")
+        ids = (root / "fixtures/android/src/main/res/values/ids.xml").read_text(encoding="utf-8")
+        self.assertEqual("continue", interaction["mcpArguments"]["contentDescription"])
+        self.assertIn("--content-description", interaction["cliArgs"])
+        self.assertIn("continue_action", ids)
+        self.assertNotIn('name="continue"', ids)
+
     def test_ambiguous_target_prevents_mutating_setup(self):
         with self.assertRaises(ValueError):
             validate_target("android", "emulator-5554", ["emulator-5554", "emulator-5556"])

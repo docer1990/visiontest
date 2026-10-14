@@ -199,14 +199,14 @@
       ],
       "cliArgs": [
         "tap_on_element",
-        "--resource-id",
-        "com.example.visiontest.benchmark:id/continue",
+        "--content-description",
+        "continue",
         "--platform",
         "android"
       ],
       "mcpTool": "tap_on_element",
       "mcpArguments": {
-        "resourceId": "com.example.visiontest.benchmark:id/continue"
+        "contentDescription": "continue"
       },
       "timeoutMs": 8000,
       "assertion": {

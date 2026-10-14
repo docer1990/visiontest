@@ -109,7 +109,7 @@ class ResultsTest(unittest.TestCase):
 
 **Review:** checkpoint. Fixture comparisons need trustworthy external timing.
 
-- [ ] Define `run_process(argv: list[str], timeout_ms: int, env: dict[str, str] | None = None) -> dict`
+- [x] Define `run_process(argv: list[str], timeout_ms: int, env: dict[str, str] | None = None) -> dict`
   with `duration_ns`, `exit_code`, `stdout`, `stderr`, and `timed_out`. Keep output
   transient unless sanitized artifact capture is explicitly requested. Write this
   subprocess test first.
@@ -131,27 +131,27 @@ class ExecutionTest(unittest.TestCase):
         self.assertGreaterEqual(result["duration_ns"], 0)
 ```
 
-- [ ] Use `perf_counter_ns`, direct argv execution, concurrent pipe draining,
+- [x] Use `perf_counter_ns`, direct argv execution, concurrent pipe draining,
   and bounded termination/reaping of the owned process group on timeout. A timed
   out device action is uncertain and is never repeated within a sample. A later
   independent sample can start only after successful fixture reset.
-- [ ] Define `McpSession(argv: list[str], timeout_ms: int, env: dict[str, str] | None = None)`
+- [x] Define `McpSession(argv: list[str], timeout_ms: int, env: dict[str, str] | None = None)`
   as a context manager with `initialize() -> dict`, `list_tools() -> list[dict]`,
   and `call_tool(name: str, arguments: dict) -> dict`. Adapt the existing
   `McpStdioE2ETest` handshake and newline-delimited protocol. Verify negotiated
   protocol, drain stderr, route IDs, handle notifications, and paginate tool lists.
-- [ ] Measure MCP launch/initialization/discovery separately from calls. Warm
+- [x] Measure MCP launch/initialization/discovery separately from calls. Warm
   mode reuses one initialized process; host-cold creates one per sample and
   records startup separately. CLI always starts a fresh process. Native-cold
   performs explicitly configured native stop/start outside the timed operation.
-- [ ] Parse public outputs at the adapter boundary. Check JSON-RPC `error`, MCP
+- [x] Parse public outputs at the adapter boundary. Check JSON-RPC `error`, MCP
   `isError`, structured operation `success:false`, and assertion results separately
   from CLI exit code. Screenshot cases use an explicit output path and validate
   a newly produced PNG signature. Do not infer image consumption from that file.
-- [ ] Test malformed MCP messages, unmatched IDs, subprocess timeout, failed
+- [x] Test malformed MCP messages, unmatched IDs, subprocess timeout, failed
   initialization, stderr saturation, stdout framing, failed assertions, and
   unchanged ordered samples. Fake-MCP tests prove warm reuse by process identity.
-- [ ] Run `python3 -m unittest discover -s benchmarks/tests -p 'test_*.py'`.
+- [x] Run `python3 -m unittest discover -s benchmarks/tests -p 'test_*.py'`.
   Expect missing adapters at RED and PASS without attached devices at GREEN.
   Commit as `feat(benchmarks): measure CLI and persistent MCP execution`.
 

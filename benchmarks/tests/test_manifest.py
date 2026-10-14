@@ -1,6 +1,7 @@
 import json
 import contextlib
 import io
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -31,7 +32,7 @@ def valid_manifest():
             "mcpTool": "get_device_info",
             "mcpArguments": {},
             "timeoutMs": 1000,
-            "assertion": {"kind": "device_info"},
+            "assertion": {"kind": "device_info", "platform": "android"},
         }],
     }
 
@@ -96,6 +97,52 @@ class ManifestTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_manifest(self.write_manifest(directory, manifest))
 
+    def test_rejects_device_info_assertion_without_platform(self):
+        manifest = valid_manifest()
+        manifest["cases"][0]["assertion"] = {"kind": "device_info"}
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "platform"):
+                load_manifest(self.write_manifest(directory, manifest))
+
+    def test_rejects_invalid_interactive_resource_ids(self):
+        manifest = valid_manifest()
+        manifest["cases"][0]["assertion"] = {
+            "kind": "interactive_elements", "requiredResourceIds": []
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "requiredResourceIds"):
+                load_manifest(self.write_manifest(directory, manifest))
+
+    def test_rejects_stateful_action_without_fixture_reset(self):
+        manifest = valid_manifest()
+        case = manifest["cases"][0]
+        case["setup"] = []
+        case["assertion"] = {
+            "kind": "action_then_element", "resourceId": "done", "expectedFound": True,
+            "lookupTool": "find_element", "lookupArguments": {"resourceId": "done"},
+            "verificationCliArgs": ["find_element", "--resource-id", "done", "--json"],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "fixture reset"):
+                load_manifest(self.write_manifest(directory, manifest))
+
+    def test_rejects_non_string_process_environment_value(self):
+        manifest = valid_manifest()
+        manifest["processEnvironment"] = {"VISIONTEST_VALUE": 3}
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "processEnvironment"):
+                load_manifest(self.write_manifest(directory, manifest))
+
+    def test_native_cold_requires_explicit_restart_before_creating_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest_path = self.write_manifest(directory, valid_manifest())
+            output = Path(directory) / "run"
+            with contextlib.redirect_stderr(io.StringIO()):
+                result = main(["commands", "--manifest", str(manifest_path), "--output", str(output),
+                               "--mode", "cli", "--lifecycle", "native-cold"])
+            self.assertEqual(2, result)
+            self.assertFalse(output.exists())
+
     def test_rejects_existing_output_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             manifest_path = self.write_manifest(directory, valid_manifest())
@@ -107,15 +154,18 @@ class ManifestTest(unittest.TestCase):
                     "--mode", "cli",
                 ]))
 
-    def test_scaffold_writes_separate_run_files_before_adapter_failure(self):
+    def test_cli_failure_is_retained_in_run_files(self):
         with tempfile.TemporaryDirectory() as directory:
-            manifest_path = self.write_manifest(directory, valid_manifest())
+            manifest = valid_manifest()
+            manifest["cliPrefix"] = [sys.executable, "-c", "import sys; print('failed', file=sys.stderr); sys.exit(7)"]
+            manifest["cases"][0]["cliArgs"] = ["ignored"]
+            manifest["cases"][0]["setup"] = []
+            manifest_path = self.write_manifest(directory, manifest)
             output = Path(directory) / "fresh-run"
-            with contextlib.redirect_stderr(io.StringIO()):
-                result = main([
-                    "commands", "--manifest", str(manifest_path), "--output", str(output),
-                    "--mode", "cli", "--samples", "1", "--warmup", "0",
-                ])
+            result = main(["commands", "--manifest", str(manifest_path), "--output", str(output),
+                           "--mode", "cli", "--samples", "1", "--warmup", "0"])
             self.assertEqual(1, result)
-            self.assertEqual({"samples.jsonl", "environment.json", "summary.json"},
-                             {path.name for path in output.iterdir()})
+            samples = [json.loads(line) for line in (output / "samples.jsonl").read_text().splitlines()]
+            self.assertEqual("failed", samples[0]["status"])
+            self.assertIn("code 7", samples[0]["failure"])
+            self.assertTrue((output / "summary.json").exists())

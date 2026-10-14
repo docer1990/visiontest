@@ -68,6 +68,36 @@ def _validate_case(case, index):
     kind = assertion.get("kind") if isinstance(assertion, dict) else None
     if not isinstance(kind, str) or kind not in _ASSERTIONS:
         raise ValueError(f"{label}.assertion.kind is not supported")
+    required = {
+        "device_info": {"platform"},
+        "element_found": {"resourceId", "expectedFound"},
+        "action_then_element": {"resourceId", "expectedFound", "lookupTool", "lookupArguments", "verificationCliArgs"},
+        "wait_then_element": {"resourceId", "expectedFound", "lookupTool", "lookupArguments", "verificationCliArgs"},
+        "interactive_elements": {"requiredResourceIds"},
+        "screenshot_file": set(),
+    }[kind]
+    missing = required - assertion.keys()
+    if missing:
+        raise ValueError(f"{label}.assertion.{kind} is missing fields: {', '.join(sorted(missing))}")
+    if kind == "device_info" and assertion["platform"] not in {"android", "ios"}:
+        raise ValueError(f"{label}.assertion.platform must be android or ios")
+    if kind in {"element_found", "action_then_element", "wait_then_element"}:
+        if not isinstance(assertion["resourceId"], str) or not assertion["resourceId"]:
+            raise ValueError(f"{label}.assertion.resourceId must be a nonempty string")
+        if not isinstance(assertion["expectedFound"], bool):
+            raise ValueError(f"{label}.assertion.expectedFound must be a boolean")
+    if kind in {"action_then_element", "wait_then_element"}:
+        if not isinstance(assertion["lookupTool"], str) or not assertion["lookupTool"]:
+            raise ValueError(f"{label}.assertion.lookupTool must be a nonempty string")
+        if not isinstance(assertion["lookupArguments"], dict):
+            raise ValueError(f"{label}.assertion.lookupArguments must be an object")
+        _argv(assertion["verificationCliArgs"], f"{label}.assertion.verificationCliArgs")
+    if kind == "action_then_element" and not setup:
+        raise ValueError(f"{label}.setup must contain a fixture reset for action_then_element")
+    if kind == "interactive_elements":
+        resources = assertion["requiredResourceIds"]
+        if not isinstance(resources, list) or not resources or any(not isinstance(item, str) or not item for item in resources):
+            raise ValueError(f"{label}.assertion.requiredResourceIds must be a nonempty string array")
 
 
 def load_manifest(path: Path) -> dict:
@@ -90,6 +120,12 @@ def load_manifest(path: Path) -> dict:
     _argv(manifest.get("cliPrefix"), "cliPrefix")
     _argv(manifest.get("mcpPrefix"), "mcpPrefix")
     _validate_environment(manifest.get("environment"))
+    process_environment = manifest.get("processEnvironment", {})
+    if not isinstance(process_environment, dict) or any(
+        not isinstance(key, str) or not key or not isinstance(value, str)
+        for key, value in process_environment.items()
+    ):
+        raise ValueError("processEnvironment must map nonempty names to string values")
     cases = manifest.get("cases")
     if not isinstance(cases, list) or not cases:
         raise ValueError("cases must be a nonempty array")

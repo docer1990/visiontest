@@ -1,9 +1,8 @@
 # Command benchmark runner
 
-Status: the manifest validator and sample summary contract are implemented.
-CLI/MCP execution adapters, native fixtures, trace joining, and real baseline
-collection are subsequent plan tasks. An empty run directory from the current
-runner scaffold is not measurement evidence.
+Status: manifest validation, sample summaries, and CLI/persistent-MCP execution
+are implemented. Native fixtures, trace joining, and real baseline collection
+are subsequent plan tasks. An empty run directory is not measurement evidence.
 
 ## Manifest version 1
 
@@ -14,6 +13,9 @@ The local JSON manifest is configuration, not a trace. It pins `platform`
 select among multiple targets. The environment requires entries for `build`,
 `nativeArtifactVersions`, `connectionType`, `targetOS`, `targetModel`, `JVM`, and
 `hostOS`; each entry has either a `value` or an `unavailableReason`.
+Optional `processEnvironment` maps explicit child-process environment variable
+names to string values; those values are launch configuration, not environment
+metadata or timing trace content.
 
 Each case has a unique `id`, `setup` (argv arrays), `cliArgs`, `mcpTool`,
 `mcpArguments`, positive integer `timeoutMs`, and an assertion object whose
@@ -22,9 +24,33 @@ Each case has a unique `id`, `setup` (argv arrays), `cliArgs`, `mcpTool`,
 argument arrays and are never shell-expanded. Assertion inputs are structured
 configuration and are checked by the execution adapter; localized output text
 is not an assertion. Setup duration is kept separately from command duration.
-The plan has not yet fixed required assertion inputs for the five nontrivial
-assertion kinds; Task 2 must define and validate those fields before adapters use
-them.
+
+Assertion inputs are fixed and validated by the manifest loader:
+
+| Kind | Required fields | Check |
+| --- | --- | --- |
+| `device_info` | `platform` (`android` or `ios`) | Structured device result has `success: true` and platform-specific device metadata. |
+| `element_found` | `resourceId`, `expectedFound` | Structured `found` equals the expectation; a found element has the requested resource ID. |
+| `action_then_element`, `wait_then_element` | `resourceId`, `expectedFound`, `lookupTool`, `lookupArguments`, `verificationCliArgs` | Run the timed command once, then do an independent structured lookup outside the timed interval and compare it. `action_then_element` requires nonempty fixture-reset setup. |
+| `interactive_elements` | nonempty `requiredResourceIds` | Structured result succeeds and includes every listed resource ID. |
+| `screenshot_file` | none | The adapter supplies an explicit per-attempt output path, removes any prior file, and requires a fresh PNG signature. This proves file production only, not image consumption. |
+
+CLI runs always launch a fresh process. MCP initialization negotiates the pinned
+protocol, sends `notifications/initialized`, drains stderr, matches response
+IDs, skips server notifications while awaiting replies, and follows every
+`tools/list` cursor. Launch, initialization, and discovery durations are stored
+separately from `tools/call`. Warm MCP samples reuse the same initialized
+process; host-cold samples launch one process per attempt. Native-cold requires
+explicit `nativeLifecycle.stop` and `nativeLifecycle.start` argv arrays, which
+run outside the measured operation. A timed-out operation is recorded as
+uncertain and is never retried within its sample; each later sample runs fixture
+setup first and does not start if setup fails.
+
+The CLI adapter evaluates public JSON output where available. The MCP adapter
+parses structured content or the server's JSON text content and evaluates
+`isError` and operation `success` separately from transport status. Output
+streams remain transient; samples retain outcomes and failure details, not raw
+command output.
 
 ## Samples and summaries
 
@@ -72,6 +98,4 @@ The command interface is `python3 -m benchmarks.run commands --manifest PATH
 --lifecycle warm|host-cold|native-cold`. Sample counts and case timeouts must be
 positive; warmups are nonnegative. Output directories must not already exist.
 Exit status is 0 only when all requested assertions pass, 1 for sample or setup
-failures, and 2 for invalid configuration. The execution adapters are delivered
-separately; the current validator-only scaffold returns 1 after writing its empty
-run files.
+failures, and 2 for invalid configuration.

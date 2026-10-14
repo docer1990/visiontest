@@ -54,6 +54,19 @@ class AutomationServerUITest: XCTestCase {
         XCTAssertEqual(timing.snapshot().spans, frozen.spans)
     }
 
+    func testSwipeOnElementRecordsItsSelectorReadinessCheck() throws {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let bridge = XCUITestBridge(interactionTargetOverride: { _ in springboard })
+        let request = try ElementSwipeRequest(params: ["direction": "left", "resourceId": "missing"])
+        let timing = NativeTiming(invocationId: String(repeating: "a", count: 32),
+                                  requestSpanId: String(repeating: "b", count: 32))
+
+        let result = bridge.swipeOnElement(request, timing: timing)
+
+        XCTAssertFalse(result.success)
+        XCTAssertEqual(timing.snapshot().spans.first { $0.stage == "poll" }?.metrics["pollCount"], 1)
+    }
+
     func testAlertResultSurvivesDismissal() throws {
         let app = XCUIApplication(bundleIdentifier: "com.example.IOSAutomationServer")
         app.launchArguments = ["--review-alert"]

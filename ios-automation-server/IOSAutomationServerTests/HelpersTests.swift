@@ -129,6 +129,36 @@ final class HelpersTests: XCTestCase {
         XCTAssertEqual(typed, 1)
     }
 
+    func testTargetedInputAggregatesReadinessAndFocusPollsAndWaits() throws {
+        let request = try TargetedInputRequest(params: [
+            "text": "hello", "targetText": "Email", "timeoutMs": 1_500
+        ])
+        var clock: TimeInterval = 0
+        var readiness: [ElementTapReadiness] = [.absent, .ready]
+        var focusChecks = 0
+        let timing = NativeTiming(
+            invocationId: String(repeating: "a", count: 32),
+            requestSpanId: String(repeating: "b", count: 32),
+            nowNs: { UInt64(clock * 1_000_000_000) }
+        )
+
+        _ = performTargetedInput(
+            request: request,
+            now: { clock },
+            wait: { clock += $0 },
+            readiness: { readiness.removeFirst() },
+            tap: {},
+            hasFocus: { focusChecks += 1; return focusChecks > 1 },
+            typeText: {},
+            onPoll: { timing.recordPollAttempt() },
+            onWait: { timing.recordPollWait($0) }
+        )
+
+        let snapshot = timing.snapshot()
+        XCTAssertEqual(snapshot.spans.first { $0.stage == "poll" }?.metrics["pollCount"], 4)
+        XCTAssertEqual(snapshot.spans.first { $0.stage == "poll_wait" }?.metrics["waitNs"], 1_000_000_000)
+    }
+
     func testTargetedInputFailsWhenTypingExceedsOriginalDeadline() throws {
         let request = try TargetedInputRequest(params: [
             "text": "hello", "targetText": "Email", "timeoutMs": 1_000

@@ -408,7 +408,9 @@ func performTargetedInput(
     readiness: () -> ElementTapReadiness,
     tap: () -> Void,
     hasFocus: () -> Bool,
-    typeText: () -> Void
+    typeText: () -> Void,
+    onPoll: (() -> Void)? = nil,
+    onWait: ((TimeInterval) -> Void)? = nil
 ) -> OperationResult {
     guard let timeoutMs = request.timeoutMs else {
         typeText()
@@ -417,15 +419,24 @@ func performTargetedInput(
     let deadline = now() + Double(timeoutMs) / 1_000
     var observedBlocked = false
     while true {
-        switch readiness() {
+        let currentReadiness = readiness()
+        onPoll?()
+        switch currentReadiness {
         case .ready where now() <= deadline:
             tap()
-            while !hasFocus() {
+            var focused = hasFocus()
+            onPoll?()
+            while !focused {
                 let remaining = deadline - now()
                 guard remaining > 0 else {
                     return OperationResult(success: false, error: "Element did not acquire editable focus")
                 }
-                wait(min(0.5, remaining))
+                let waitDuration = min(0.5, remaining)
+                let waitStarted = now()
+                wait(waitDuration)
+                onWait?(max(0, now() - waitStarted))
+                focused = hasFocus()
+                onPoll?()
             }
             guard now() <= deadline else {
                 return OperationResult(success: false, error: "Element did not acquire editable focus")
@@ -448,7 +459,10 @@ func performTargetedInput(
             let status = observedBlocked ? "Element found but not actionable" : "Element not found"
             return OperationResult(success: false, error: "\(status) within \(timeoutMs)ms")
         }
-        wait(min(0.5, remaining))
+        let waitDuration = min(0.5, remaining)
+        let waitStarted = now()
+        wait(waitDuration)
+        onWait?(max(0, now() - waitStarted))
     }
 }
 

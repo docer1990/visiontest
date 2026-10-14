@@ -219,11 +219,11 @@ class JsonRpcServer {
 
         // Input text
         case "ui.inputText":
-            return bridge.inputText(try TargetedInputRequest(params: params)).toDictionary()
+            return bridge.inputText(try TargetedInputRequest(params: params), timing: timing).toDictionary()
 
         case "ui.swipeOnElement":
             let request = try ElementSwipeRequest(params: params)
-            return bridge.swipeOnElement(request).toDictionary()
+            return bridge.swipeOnElement(request, timing: timing).toDictionary()
 
         // Swipe by direction
         case "ui.swipeByDirection":

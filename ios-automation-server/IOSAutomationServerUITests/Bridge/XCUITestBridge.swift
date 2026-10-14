@@ -287,10 +287,12 @@ class XCUITestBridge {
         return element
     }
 
-    func swipeOnElement(_ request: ElementSwipeRequest) -> OperationResult {
+    func swipeOnElement(_ request: ElementSwipeRequest, timing: NativeTiming? = nil) -> OperationResult {
         let element = lookupElement(text: request.text, textContains: request.textContains,
                                     identifier: request.identifier, elementType: request.elementType,
                                     label: request.label, bundleId: request.bundleId)
+        // XCUITest exposes this as one immediate selector readiness check; the request has no wait budget.
+        timing?.recordPollAttempt()
         let screenFrame = CGRect(origin: .zero, size: getScreenSize())
         return performElementSwipe(
             frame: element?.frame,
@@ -388,7 +390,7 @@ class XCUITestBridge {
         }
     }
 
-    func inputText(_ request: TargetedInputRequest) -> OperationResult {
+    func inputText(_ request: TargetedInputRequest, timing: NativeTiming? = nil) -> OperationResult {
         guard let selectors = request.selectors, request.timeoutMs != nil else {
             return inputText(text: request.text, bundleId: request.bundleId)
         }
@@ -415,7 +417,9 @@ class XCUITestBridge {
                     .matching(NSPredicate(format: "hasKeyboardFocus == true")).firstMatch
                 return focused.exists && focused.frame == selectedElement.frame
             },
-            typeText: { selectedElement?.typeText(request.text) }
+            typeText: { selectedElement?.typeText(request.text) },
+            onPoll: { timing?.recordPollAttempt() },
+            onWait: { timing?.recordPollWait($0) }
         )
     }
 

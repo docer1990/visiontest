@@ -27,13 +27,13 @@ and the [design](../specs/2026-10-05-performance-baseline-design.md).
 
 **Review:** checkpoint. Both native implementations consume this protocol.
 
-- [ ] Define `decodeNativeTiming(value: String?, invocationId: String,
+- [x] Define `decodeNativeTiming(value: String?, invocationId: String,
   requestSpanId: String): NativeTimingResult` and
   `encodeTraceRequest(invocationId: String, requestSpanId: String): String`.
   `NativeTimingResult` has `status: NativeTimingStatus` and `spans: List<NativeSpan>`.
   Status is `AVAILABLE`, `MISSING`, `INVALID`, `MISMATCHED`, or `UNSUPPORTED`.
   `NativeSpan` uses the design's fields and a distinct native clock domain.
-- [ ] Begin with valid, missing, mismatched, and invalid metadata tests.
+- [x] Begin with valid, missing, mismatched, and invalid metadata tests.
 
 ```kotlin
 @Test
@@ -52,21 +52,21 @@ fun `metadata for another request is rejected without throwing`() {
 }
 ```
 
-- [ ] Validate before importing. Cap encoded size at 8 KiB and spans at 32;
+- [x] Validate before importing. Cap encoded size at 8 KiB and spans at 32;
   reject cycles, duplicate IDs, negative/overflowing durations, unknown stages,
   invalid metric types, and impossible parent intervals. Unknown protocol versions
   remain unsupported. Reject metadata without changing operation results.
-- [ ] Send headers only for enabled traced requests. Use host request-span IDs,
+- [x] Send headers only for enabled traced requests. Use host request-span IDs,
   not JSON-RPC IDs, for correlation. Keep health checks separate and omit native
   timing expectations for `/health` in version 1.
-- [ ] Test both platform clients against MockWebServer with absent and malformed
+- [x] Test both platform clients against MockWebServer with absent and malformed
   headers, normal/failed JSON-RPC bodies, connection loss, and concurrent requests.
   Assert exact original body and one dispatch. No support probe or fallback retry.
-- [ ] Document the exact native stage registry: `request`, `decode`, `queue_wait`,
+- [x] Document the exact native stage registry: `request`, `decode`, `queue_wait`,
   `operation`, `ui_sync`, `poll`, `poll_wait`, `screenshot_capture`, `png_encode`,
   `base64_encode`, `response_encode`, and `screenshot_capture_encode` for combined
   APIs. Map each to native records, not host `TraceStage` values with wrong clocks.
-- [ ] Run `./gradlew :app:test --tests '*NativeTimingCodecTest' --tests '*AutomationClientTest' --tests '*IOSAutomationClientTest'`.
+- [x] Run `./gradlew :app:test --tests '*NativeTimingCodecTest' --tests '*AutomationClientTest' --tests '*IOSAutomationClientTest'`.
   Expect missing codec/header behavior at RED and unchanged result contracts at GREEN.
   Commit as `feat(performance): validate optional native timing metadata`.
 
@@ -86,7 +86,7 @@ fun `metadata for another request is rejected without throwing`() {
 
 **Review:** checkpoint. Validate the protocol against Android before copying it to Swift.
 
-- [ ] Add a pure recorder with injectable monotonic clock, fixed stage names,
+- [x] Add a pure recorder with injectable monotonic clock, fixed stage names,
   bounded spans, and aggregate metrics. Test its clock and header round trip first.
 
 ```kotlin
@@ -100,26 +100,26 @@ fun `native stage duration uses only its own clock`() {
 }
 ```
 
-- [ ] Define `NativeTimingRecorder(invocationId: String, requestSpanId: String,
+- [x] Define `NativeTimingRecorder(invocationId: String, requestSpanId: String,
   nowNs: () -> Long = System::nanoTime)`, `fun <T> measure(stage: String, block: () -> T): T`,
   `snapshot(): NativeTimingSnapshot`, and `encodeHeader(): String?`. Snapshot
   contains immutable span values plus missing stages. Restrict strings to the
   documented registry. Add safe suspend scope support for Ktor boundaries.
-- [ ] Parse the optional header before JSON decoding. Pass request ownership
+- [x] Parse the optional header before JSON decoding. Pass request ownership
   through Ktor coroutine context or explicit method parameters; do not attach a
   mutable recorder to the shared bridge. Instrument explicit idle waits, native
   selector polling, screenshot capture, PNG/base64 encoding, and serialization.
-- [ ] Retain normal `call.respond` behavior when tracing is off. In traced mode,
+- [x] Retain normal `call.respond` behavior when tracing is off. In traced mode,
   measure the same configured serialization, then attach the header to the frozen
   response. Test semantic equality, content type, HTTP status, and result framing.
-- [ ] There is no assumed Android queue duration. Record `queue_wait` only if an
+- [x] There is no assumed Android queue duration. Record `queue_wait` only if an
   actual scheduling boundary is measurable. Report SDK-internal synchronization
   as unavailable where wrappers cannot expose it. Do not change idle/poll settings.
-- [ ] Test invalid headers, aggregate poll counts, duplicate concurrent RPC IDs,
+- [x] Test invalid headers, aggregate poll counts, duplicate concurrent RPC IDs,
   unsuccessful native operations, bounded metadata, and zero extra device calls.
   Add an instrumentation test that sends a traced read-only request to the real
   server and verifies IDs and timing header presence.
-- [ ] Run `./gradlew :automation-server:testDebugUnitTest`. Expect new recorder
+- [x] Run `./gradlew :automation-server:testDebugUnitTest`. Expect new recorder
   tests to fail before implementation, then PASS with existing interaction tests.
   On the isolated Android benchmark target run
   `./gradlew :automation-server:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.automationserver.NativeTimingIntegrationTest`.

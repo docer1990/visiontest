@@ -1,5 +1,6 @@
 package com.example.automationserver.uiautomator
 
+import com.example.automationserver.performance.NativeTimingRecorder
 import android.app.UiAutomation
 import android.graphics.Rect
 import android.os.Build
@@ -110,7 +111,7 @@ abstract class BaseUiAutomatorBridge {
             val device = getUiDevice()
             val uiAutomation = getUiAutomation()
 
-            device.waitForIdle()
+            NativeTimingRecorder.measureCurrent("ui_sync") { device.waitForIdle() }
 
             val outputStream = ByteArrayOutputStream()
             dumpHierarchyInternal(device, uiAutomation, outputStream)
@@ -277,7 +278,7 @@ abstract class BaseUiAutomatorBridge {
         return try {
             val device = getUiDevice()
             Log.d(TAG, "Waiting for idle before click at ($x, $y)")
-            device.waitForIdle(1000)
+            NativeTimingRecorder.measureCurrent("ui_sync") { device.waitForIdle(1000) }
             Log.d(TAG, "Performing click at ($x, $y)")
             val success = device.click(x, y)
             Log.d(TAG, "Click completed with success=$success")
@@ -366,7 +367,7 @@ abstract class BaseUiAutomatorBridge {
         return try {
             val device = getUiDevice()
             Log.d(TAG, "Typing text of length=${text.length}")
-            device.waitForIdle(1000)
+            NativeTimingRecorder.measureCurrent("ui_sync") { device.waitForIdle(1000) }
 
             val focusedNode = findFocusedNode()
             if (focusedNode != null) {
@@ -486,8 +487,8 @@ abstract class BaseUiAutomatorBridge {
     fun screenshot(): ScreenshotResult {
         var bitmap: android.graphics.Bitmap? = null
         return try {
-            getUiDevice().waitForIdle(1000)
-            bitmap = getUiAutomation().takeScreenshot()
+            NativeTimingRecorder.measureCurrent("ui_sync") { getUiDevice().waitForIdle(1000) }
+            bitmap = NativeTimingRecorder.measureCurrent("screenshot_capture") { getUiAutomation().takeScreenshot() }
             if (bitmap == null) {
                 return ScreenshotResult(
                     success = false,
@@ -496,7 +497,9 @@ abstract class BaseUiAutomatorBridge {
             }
             val outputStream = ByteArrayOutputStream()
             val compressed = outputStream.use { stream ->
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+                NativeTimingRecorder.measureCurrent("png_encode") {
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+                }
             }
             if (!compressed) {
                 return ScreenshotResult(
@@ -511,7 +514,9 @@ abstract class BaseUiAutomatorBridge {
                     error = "PNG compression produced empty output"
                 )
             }
-            val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+            val base64 = NativeTimingRecorder.measureCurrent("base64_encode") {
+                android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+            }
             ScreenshotResult(success = true, pngBase64 = base64)
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing screenshot", e)
@@ -755,7 +760,7 @@ abstract class BaseUiAutomatorBridge {
             val uiAutomation = getUiAutomation()
             val displayRect = getDisplayRect()
 
-            device.waitForIdle()
+            NativeTimingRecorder.measureCurrent("ui_sync") { device.waitForIdle() }
 
             val elements = mutableListOf<InteractiveElement>()
 

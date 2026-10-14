@@ -1,5 +1,7 @@
 package com.example.automationserver.uiautomator
 
+import com.example.automationserver.performance.NativeTimingRecorder
+
 data class ElementTapCandidate<T>(
     val element: T,
     val enabled: Boolean,
@@ -31,7 +33,9 @@ fun <T> waitAndTapElement(
     operation: ElementTapOperation<T>
 ): ElementTapWaitResult {
     try {
-        return runElementTapLoop(timeoutMs, elementDescription, clock, operation)
+        return NativeTimingRecorder.measureCurrent("poll") {
+            runElementTapLoop(timeoutMs, elementDescription, clock, operation)
+        }
     } catch (error: Exception) {
         return ElementTapWaitResult(success = false, error = error.message ?: "Unexpected element tap error")
     }
@@ -47,7 +51,7 @@ private fun <T> runElementTapLoop(
     var foundElement = false
     var result: ElementTapWaitResult? = null
     while (result == null) {
-        val candidate = operation.lookup()
+        val candidate = NativeTimingRecorder.pollAttempt { operation.lookup() }
         val elapsedMs = clock.nowMs() - startMs
         if (elapsedMs > timeoutMs) {
             result = timeoutResult(foundElement, timeoutMs, elementDescription)
@@ -59,7 +63,9 @@ private fun <T> runElementTapLoop(
             result = if (elapsedMs >= timeoutMs) {
                 timeoutResult(foundElement, timeoutMs, elementDescription)
             } else {
-                clock.sleepMs(minOf(ELEMENT_TAP_POLL_INTERVAL_MS, timeoutMs - elapsedMs))
+                NativeTimingRecorder.pollWait {
+                    clock.sleepMs(minOf(ELEMENT_TAP_POLL_INTERVAL_MS, timeoutMs - elapsedMs))
+                }
                 null
             }
         }

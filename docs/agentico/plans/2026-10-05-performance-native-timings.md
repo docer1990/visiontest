@@ -200,5 +200,5 @@ func testNativeDurationUsesInjectedMonotonicClock() throws {
 - [x] Review enabled/disabled responses and error paths against the original
   contracts. Mark TD-015 accepted once protocol and compatibility are implemented
   and verified; update the decision index in the same change.
-- [ ] Commit as `docs(performance): document native timing compatibility`, run
+- [x] Commit as `docs(performance): document native timing compatibility`, run
   branch review, and record remaining real benchmark and agent evaluation gates.

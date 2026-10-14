@@ -216,7 +216,7 @@ class FixtureTargetTest(unittest.TestCase):
   `VISIONTEST_BENCHMARK_SMOKE=1` and a manifest path in `VISIONTEST_BENCHMARK_MANIFEST`.
   Assert reset idempotence, done/error exclusivity, delayed transitions, missing
   targets, and duplicated labels through existing VisionTest inspection APIs.
-- [ ] Run Python unit tests, `./gradlew :benchmark-fixture:assembleDebug`, and
+- [x] Run Python unit tests, `./gradlew :benchmark-fixture:assembleDebug`, and
   `xcodebuild build -project benchmarks/fixtures/ios/BenchmarkFixture.xcodeproj -scheme BenchmarkFixture -destination 'platform=iOS Simulator,name=iPhone 17'`.
   Install on isolated targets and run the opt-in smoke tests for each manifest.
   Commit as `feat(benchmarks): add deterministic native fixture apps`.

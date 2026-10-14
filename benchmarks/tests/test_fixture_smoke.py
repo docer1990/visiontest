@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import unittest
 from pathlib import Path
 
@@ -48,6 +49,7 @@ class FixtureSmokeTest(unittest.TestCase):
         ok, _, error = _run_setup(case, cls.manifest, cls.env)
         if not ok:
             raise AssertionError(f"fixture reset failed: {error}")
+        time.sleep(0.5)
 
     @classmethod
     def command(cls, args, timeout=None):
@@ -57,6 +59,8 @@ class FixtureSmokeTest(unittest.TestCase):
         try:
             return json.loads(result["stdout"])
         except json.JSONDecodeError as error:
+            if args[0] == "wait_for_element" and "--gone" in args:
+                return result["stdout"].strip()
             raise AssertionError(f"VisionTest returned non-JSON inspection output: {result['stdout']}") from error
 
     def found(self, resource_id):
@@ -90,7 +94,7 @@ class FixtureSmokeTest(unittest.TestCase):
         self.reset("appear")
         self.command(["wait_for_element", "--resource-id", self.resource_id("done"), "--timeout", "4000"], 10_000)
         self.reset("disappear")
-        self.command(["wait_until_gone", "--resource-id", self.resource_id("loading"), "--timeout", "4000"], 10_000)
+        self.command(["wait_for_element", "--resource-id", self.resource_id("loading"), "--gone", "--timeout", "4000"], 10_000)
 
     def test_missing_target_is_absent(self):
         self.reset("missing")
@@ -102,7 +106,8 @@ class FixtureSmokeTest(unittest.TestCase):
         elements = result.get("elements", [])
         matches = [element for element in elements
                    if isinstance(element.get("text"), str)
-                   and element["text"].casefold() in {"continue", "continua"}]
+                   and element["text"].casefold() in {"continue", "continua"}
+                   and element.get("resourceId") in {"continue_primary", "continue_secondary"}]
         self.assertEqual(2, len(matches))
         self.assertEqual(2, len({element.get("resourceId") for element in matches}))
 

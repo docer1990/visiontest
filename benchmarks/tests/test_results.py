@@ -1,0 +1,74 @@
+import unittest
+import tempfile
+import json
+from pathlib import Path
+
+from benchmarks.results import summarize, write_samples
+
+
+class ResultsTest(unittest.TestCase):
+    def test_failures_remain_in_population(self):
+        samples = [
+            {"status": "passed", "duration_ns": 10},
+            {"status": "failed", "duration_ns": 90},
+            {"status": "timeout", "duration_ns": 100},
+            {"status": "setup_failed", "duration_ns": None},
+        ]
+        result = summarize(samples)
+        self.assertEqual(4, result["attempts"])
+        self.assertEqual(1, result["passed"])
+        self.assertEqual(1, result["setup_failed"])
+        self.assertEqual(90, result["all_timed"]["median_ns"])
+        self.assertEqual(100, result["all_timed"]["p95_ns"])
+        self.assertEqual(10, result["successful"]["median_ns"])
+
+    def test_warmups_have_a_separate_population(self):
+        result = summarize([
+            {"status": "passed", "duration_ns": 100, "warmup": True},
+            {"status": "passed", "duration_ns": 10, "warmup": False},
+        ])
+        self.assertEqual(2, result["attempts"])
+        self.assertEqual(1, result["measured"]["attempts"])
+        self.assertEqual(1, result["warmups"]["attempts"])
+        self.assertEqual(10, result["measured"]["successful"]["median_ns"])
+        self.assertEqual(100, result["warmups"]["successful"]["median_ns"])
+
+    def test_empty_populations_have_null_percentiles(self):
+        result = summarize([])
+        self.assertEqual(0, result["all_timed"]["count"])
+        self.assertIsNone(result["all_timed"]["median_ns"])
+        self.assertIsNone(result["all_timed"]["p95_ns"])
+
+    def test_setup_duration_is_not_operation_latency(self):
+        result = summarize([{
+            "status": "setup_failed",
+            "duration_ns": None,
+            "setup_duration_ns": 500,
+        }])
+        self.assertIsNone(result["all_timed"]["median_ns"])
+        self.assertEqual(500, result["setup_timed"]["median_ns"])
+
+    def test_setup_failure_cannot_be_counted_as_operation_time(self):
+        with self.assertRaises(ValueError):
+            summarize([{"status": "setup_failed", "duration_ns": 500}])
+
+    def test_summary_reports_operation_and_trace_outcomes(self):
+        result = summarize([{
+            "status": "failed",
+            "duration_ns": 15,
+            "operation_outcome": "failure",
+            "assertion_outcome": "failed",
+            "trace_complete": False,
+            "measurement_gaps": ["native_missing"],
+        }])
+        self.assertEqual({"failure": 1}, result["operation_outcomes"])
+        self.assertEqual({"failed": 1}, result["assertion_outcomes"])
+        self.assertEqual({"complete": 0, "incomplete": 1, "unavailable": 0}, result["trace_completeness"])
+        self.assertEqual({"native_missing": 1}, result["measurement_gaps"])
+
+    def test_jsonl_keeps_failed_sample_records(self):
+        sample = {"status": "timeout", "duration_ns": 40}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "samples.jsonl"
+            write_samples(path, [sample])
+            self.assertEqual(sample, json.loads(path.read_text(encoding="utf-8")))

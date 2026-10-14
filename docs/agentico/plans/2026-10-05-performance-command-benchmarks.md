@@ -52,11 +52,11 @@ Manifest args and fixture data are local benchmark configuration, not timing tra
 
 **Review:** checkpoint. All adapters and agent evaluation consume this schema.
 
-- [ ] Define `load_manifest(path: Path) -> dict`,
+- [x] Define `load_manifest(path: Path) -> dict`,
   `summarize(samples: list[dict]) -> dict`, and `main(argv: list[str] | None = None) -> int`.
   Reject unsupported schema versions, empty argv, invalid assertions, ambiguous
   target configuration, nonpositive timeouts, and existing output directories.
-- [ ] Add the summary regression test before implementation.
+- [x] Add the summary regression test before implementation.
 
 ```python
 import unittest
@@ -79,19 +79,19 @@ class ResultsTest(unittest.TestCase):
         self.assertEqual(10, result["successful"]["median_ns"])
 ```
 
-- [ ] Define sample fields `schema_version`, `run_id`, `sample_id`, `case_id`,
+- [x] Define sample fields `schema_version`, `run_id`, `sample_id`, `case_id`,
   `mode`, `lifecycle`, `tracing`, `status`, nullable `duration_ns`,
   `exit_code`, `operation_outcome`, `assertion_outcome`, `trace_complete`, and
   `measurement_gaps`. Traced samples also carry `session_id`, `invocation_id`,
   and `invocation_sequence` once attribution is validated. Status is `passed`,
   `failed`, `timeout`, or `setup_failed`.
   Warmups have an explicit flag and their own population. Keep their raw records.
-- [ ] Compute median conventionally and p95 by nearest rank, `ceil(0.95*n)-1`.
+- [x] Compute median conventionally and p95 by nearest rank, `ceil(0.95*n)-1`.
   Empty populations return null percentiles. Do not impute setup duration as
   operation duration. Record setup timing separately and preserve failed setup.
-- [ ] Write raw JSONL, environment JSON, and summary JSON to the fresh output
+- [x] Write raw JSONL, environment JSON, and summary JSON to the fresh output
   directory. Report unsuccessful samples even when a later process fails.
-- [ ] Run `python3 -m unittest discover -s benchmarks/tests -p 'test_*.py'`.
+- [x] Run `python3 -m unittest discover -s benchmarks/tests -p 'test_*.py'`.
   Expect missing modules at RED, then PASS. Commit as
   `feat(benchmarks): define manifests and complete sample reporting`.
 

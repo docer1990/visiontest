@@ -92,6 +92,48 @@ The `init` command MUST NOT define or require `--platform`, instantiate device c
 - **When** `visiontest init` runs without `--platform`
 - **Then** it SHALL perform project-local initialization normally
 
+## Usage guidance
+
+The embedded usage guidance MUST direct agents to use the CLI by default,
+including when MCP tools are available. MCP usage MUST require an explicit user
+request; CLI unavailability or failure MUST NOT trigger an automatic switch to
+MCP. CLI examples distinguish Android APK
+installation from iOS bundle setup. MCP guidance uses discovered tool schemas
+instead of treating CLI flags as tool arguments. Both workflows require checking
+operation results and the expected app state rather than assuming a successful
+call proves the app behavior. Visual claims require inspecting image evidence.
+Init itself does not configure an MCP connection.
+
+The guidance MUST prioritize targeted element queries for known selectors and
+filtered element discovery for unfamiliar screens. Built-in waiting and targeted
+interactions SHOULD replace manual polling and redundant lookup/wait/action
+sequences. Full hierarchy inspection and screenshots SHALL be reserved for
+information missing from narrower queries, visual checks, or user-requested
+evidence. Functional examples MUST NOT mandate routine before/after screenshots.
+Output reduction MUST preserve operation outcomes and errors and MUST NOT treat
+a partial view as proof of absence. Token and latency savings require measurement.
+
+When accessibility data identifies an offscreen target and its scrollable region,
+the guidance SHALL permit scrolling without a preliminary screenshot. It MUST
+distinguish tree presence from actionability and Android's visible-element
+filtering from iOS snapshot inclusion. Element swipes SHALL target the visible
+container; they MUST NOT be described as automatic scroll-until-found operations.
+Agents SHALL verify progress and bound repeated gestures.
+
+The guidance SHALL focus execution on the requested assertions and reuse verified
+session setup until a relevant change or failure invalidates it. A reused app
+build MUST contain the code under test. Intermediate checks MAY be omitted when
+a specific downstream assertion covers the same requirement; requested checks
+and test isolation MUST be preserved. Actions on one device SHALL be serialized.
+Retries SHALL follow new evidence or a corrective action. Failed prerequisites
+SHALL block dependent steps rather than produce misleading additional failures.
+
+The guidance MUST reuse a healthy, compatible automation server on the same
+target across consecutive tests and retries. Cleanup SHALL happen at the end
+of the requested batch or testing task, not after each test, and SHALL stop only
+a server started by the agent unless the user asks to leave it running.
+Servers already running before the session SHALL remain active.
+
 ## Verification
 
 - Production command and resource packaging: `app/src/main/kotlin/com/example/visiontest/cli/commands/InitCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/VisionTestCli.kt`, `app/src/main/resources/agent-instructions.md`

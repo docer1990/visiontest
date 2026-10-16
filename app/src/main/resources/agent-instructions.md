@@ -5,91 +5,206 @@ testing a code change. Work from a concrete user flow and its visible result.
 
 ## Choose the available interface
 
-When MCP tools are available, inspect their current names and input schemas,
-then use those tools directly. Trust the returned content and error status; some
-operation failures arrive as normal tool results. When the CLI is available, run
-`visiontest --help` for syntax and `visiontest --version` for the installed
-version. Device commands require `-p android` or `-p ios`.
+Use the VisionTest CLI by default, even when MCP tools are available. Use MCP
+only when explicitly requested. Troubleshoot CLI failures and report remaining
+blockers instead of switching to MCP automatically.
 
-If the CLI is missing and MCP is unavailable, install VisionTest using the
-project's installation guide or the official release installer:
+Check `visiontest --version` once per session. Use `visiontest --help` to discover
+commands and `visiontest <command> --help` only when its syntax is unknown.
+Reuse that information until the installed version changes. Device commands
+require `-p android` or `-p ios`. Running `visiontest` without arguments starts
+the MCP stdio server; it is not a CLI availability check.
+
+### Using MCP only when explicitly requested
+
+Read exposed tool names and schemas. Platform prefixes are not uniform;
+Android uses `get_interactive_elements` but `android_input_text`. Pass schema
+JSON arguments, not CLI flags. Element waits use `resourceId`, `bundleId`, and
+`timeoutMs`; disappearance uses `wait_until_gone` or `ios_wait_until_gone`.
+CLI `--json` is not an MCP argument. Check the MCP error status and content,
+including `error`, `result.found`, or `result.success` in returned JSON-RPC text.
+A normally returned tool result can still describe an operation failure.
+
+## Prepare the host
+
+For CLI use, if missing from PATH, check `~/.local/bin/visiontest` before installing.
+If absent, use the project's installation guide or the release installer:
 
 ```bash
 curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
 ```
 
-The installer needs Java 17 or newer. iOS automation requires macOS, full Xcode,
-and a compatible simulator runtime. The prebuilt XCUITest bundle is included
-only on macOS arm64. On other supported hosts, use a current source checkout and
-set `VISION_TEST_IOS_PROJECT_PATH` to its Xcode project when building from source.
-The app under test must be built and installed with that app project's toolchain.
+Installer PATH changes do not update the calling shell. Use
+`~/.local/bin/visiontest --version` to verify installation and use that path
+until PATH is updated. Installing the CLI or running `init` does not connect MCP.
+
+Use Java 17+ on both platforms. Android requires Platform Tools (`adb`) and an
+authorized device/emulator; iOS requires macOS, full Xcode, and a compatible
+simulator runtime. Prebuilt iOS
+bundles are available only on macOS arm64; for a source build set
+`VISION_TEST_IOS_PROJECT_PATH` to the current checkout's Xcode project.
+Build and install the app with its own toolchain. Reuse a build only when it
+contains the code under test; testing an old installation does not validate a fix.
 
 ## Define and run the test
 
-Before changing device state, identify the platform, app package or bundle ID,
-starting state, test data, reproduction actions, and visible success and failure
-markers. Infer them from the project when reliable; ask when a missing value
-would make the test ambiguous.
+Before changing device state, identify the platform, app ID, starting state,
+test data, actions, and expected markers. Infer reliable values from the project;
+ask only for missing information that makes the test ambiguous.
 
-Check the target with `available_device`. It describes the first available
-device; VisionTest currently has no CLI option to select another attached device.
-Ask the user to select or make the intended device the only available target
-before changing device state when the first one is unsuitable.
+Use a short sequence of actions and assertions for the requested behavior.
+For a targeted fix, reproduce it and verify the affected flow; expand testing
+when related changes or failures warrant it, or when the user requests a suite.
+Choose a specific final marker or value that distinguishes success from failure.
+Check intermediate states only when needed to choose the next action, preserve
+test isolation, or cover a separate requirement. Stop when the requested
+assertions have been evaluated; do not keep exploring a passing flow.
 
-Start the automation server, check its status, and launch the app:
+Check the target once with `available_device --json` and the platform option.
+There is no CLI device-selection option. If the first target is unsuitable,
+ask the user to select or isolate the intended device before changing its state.
+
+Check `automation_server_status` at session setup, start only if needed, and
+remember ownership. Reuse the server, app ID, device metadata, and known selectors
+across tests. Recheck setup after a target change, restart, disconnect, or relevant
+failure, not before every action. Group scenarios with compatible setup, while
+restoring any app state required for independent assertions. Serialize actions
+on the same device; parallel UI commands can invalidate each other's state.
+
+### Choose the smallest sufficient operation
+
+Use structured queries for functional checks. Commands in this table omit
+`visiontest` and the required platform option.
+
+| Need | Operation |
+| --- | --- |
+| Check one known element now | `find_element --resource-id ID --json` |
+| Await an expected result | `wait_for_element --text "Expected marker"`; add `--gone` for disappearance |
+| Tap a known control | `tap_on_element --resource-id ID`; it already waits for an actionable target |
+| Fill a known field | `input_text "value" --target-resource-id ID`; it waits, focuses, and enters text |
+| Discover controls on an unfamiliar screen | `get_interactive_elements --json` |
+| Reveal content in a known list or carousel | `swipe_on_element up --resource-id CONTAINER_ID` |
+| Scroll the main screen without a container selector | `swipe_direction up --distance medium` |
+| Inspect structure missing from the filtered list | `get_ui_hierarchy` |
+| Check appearance, inaccessible content, or requested visual evidence | `screenshot --output ./evidence.png`, then open the image |
+
+Do not precede every tap with a find or wait, or repeat a successful wait's lookup.
+Use targeted queries for expected markers; refresh the element list when a
+selector is unknown or fails, or the observed state differs from expectations.
+Use one bounded wait instead of manual polling or sleeps. Its timeout is a
+maximum, not a mandatory delay; lowering it needlessly can create retries.
+A successful interaction alone does not prove the expected app outcome.
+
+`--json` produces compact JSON without JSON-RPC framing. The element list omits
+uninformative containers and excludes disabled elements by default; request
+`--include-disabled` only when needed. On iOS, scope queries with `--bundle-id`.
+There are no native `--compact`, `--fields`, or `--limit` options.
+
+If a large element list is needed only to choose selectors and `jq` is available,
+reduce fields before the output reaches the model:
 
 ```bash
+set -o pipefail
+visiontest get_interactive_elements -p android --json | jq -c '
+  if .success == true then .elements |= map(
+    {resourceId,text,contentDescription,className,value,isEnabled}
+    | with_entries(select(.value != null and .value != "")))
+  else . end'
+```
+
+This retains all elements and outcome/error fields but omits geometry and
+interaction flags. Keep those fields when needed. Filtering reduces model input,
+not native work or CLI startup. Do not truncate with `head` or suppress errors.
+
+These examples show first use. Skip completed setup and known-selector discovery.
+Adapt app IDs, selectors, and markers; check each result before continuing.
+
+### Android CLI example
+
+Install the APK pair before first use and after a server upgrade.
+
+```bash
+visiontest available_device -p android --json
 visiontest install_automation_server -p android
 visiontest start_automation_server -p android
 visiontest automation_server_status -p android
 visiontest launch_app -p android com.example.app
+visiontest get_interactive_elements -p android --json
+visiontest tap_on_element -p android --resource-id com.example.app:id/login
+visiontest wait_for_element -p android --text "Home" --timeout 10000
 ```
 
-Install the Android server APK pair before its first start on a device, and
-repeat the install after a new server release. Use `-p ios` and the app's bundle
-ID for iOS. Run the installer again to download and install an updated prebuilt
-XCUITest bundle, or build from the configured source project. A method-not-found
-error from a native server usually indicates a version mismatch with the JAR.
-Upgrade the native APK or bundle and restart the server before retrying.
+### iOS CLI example
 
-If no iOS simulator is booted, list available simulators with
-`xcrun simctl list devices available`, boot the intended simulator with
-`xcrun simctl boot <UDID>`, then wait for it with
-`xcrun simctl bootstatus <UDID> -b` before starting the iOS server. If there is
-no suitable simulator, create or install a simulator runtime in Xcode first.
+`install_automation_server` is Android-only (exit 5 on iOS). Use the host-installed
+XCUITest bundle or configured source project for iOS.
 
-Capture and open an initial screenshot. Inspect
-`get_interactive_elements --json`, then choose a stable selector for the
-intended control. On iOS, add `--bundle-id` to scope inspection and lookup to
-the app. On Flutter, visible labels often appear in `contentDescription`.
-Refresh the hierarchy and selectors after navigation or any layout change.
-
-Prefer `tap_on_element` for a uniquely identified control and
-`wait_for_element` for a visible success marker. It does not scroll the screen.
-If lookup says `found: false`, refresh the inspection, scroll with a deliberate
-gesture, inspect again, and retry only after the target appears. Bound repeated
-scrolling and stop when the screen no longer changes. Use `--gone` to wait for a
-transient element to disappear. Do not use a successful command or tap as the
-assertion: inspect the result fields and compare the observed screen or state
-with the expected marker.
-
-For an Android field that must be replaced, inspect it, focus it with empty
-targeted input, clear it, then enter the new value:
+If needed, select a simulator from `xcrun simctl list devices available`, run
+`xcrun simctl boot <UDID>` and `xcrun simctl bootstatus <UDID> -b` before server
+startup. Install a suitable runtime in Xcode if none is available.
 
 ```bash
-visiontest input_text -p android "" --target-resource-id "com.example:id/search"
-visiontest clear_text -p android
-visiontest input_text -p android "coffee" --target-resource-id "com.example:id/search"
-visiontest press_key -p android enter
-visiontest wait_for_element -p android --text "Search results"
+visiontest available_device -p ios --json
+visiontest start_automation_server -p ios
+visiontest automation_server_status -p ios
+visiontest launch_app -p ios com.example.app
+visiontest get_interactive_elements -p ios --bundle-id com.example.app --json
+visiontest tap_on_element -p ios --bundle-id com.example.app --resource-id login
+visiontest wait_for_element -p ios --bundle-id com.example.app --text "Home" --timeout 10000
 ```
 
-`clear_text` only clears the focused Android field. iOS targeted `input_text`
-types into the selected field but does not promise to replace its current value;
-there is no generic iOS `clear_text` command. Do not claim an iOS value was
-replaced unless you observe that result. On iOS, use `handle_alert accept` or
-`dismiss` and an exact `--button-label` when the choice matters. Use
-`dismiss_keyboard` when a visible iOS keyboard blocks the next control.
+### Choose targets and verify the result
+
+Prefer `tap_on_element` for a uniquely identified control, using a stable
+resource ID or accessibility identifier over coordinates. It does not scroll the screen.
+On Flutter, visible labels often appear in `contentDescription`.
+
+### Reveal an offscreen target
+
+When accessibility data identifies the target and scrollable region, scroll
+without a preliminary screenshot. Tree presence or `found: true` does not prove
+visibility or actionability. Android filters by visibility and screen bounds;
+iOS can include offscreen elements and does not report hittability. Absence
+from this filtered list does not prove absence from the app.
+
+Target the visible container with `swipe_on_element`, not the offscreen child.
+It resolves and swipes the container in one native operation. For the main screen
+without a container selector, `swipe_direction` calculates coordinates. Directions
+describe finger motion: `up` reveals content below, `down` content above, and
+`left`/`right` horizontal content. Use coordinate `swipe` only when necessary.
+
+For example, reveal a lower row in an identified iOS list:
+
+```bash
+visiontest swipe_on_element -p ios up --resource-id settings-list --bundle-id com.example.app
+visiontest find_element -p ios --resource-id notifications --bundle-id com.example.app --json
+```
+
+Assess progress from current contents and `bounds`; retain Android `isScrollable`
+when identifying containers. The optional `jq` projection omits these fields.
+Each command performs one gesture, not scroll-until-found; `swipe_on_element`
+has no `--timeout`. Bound attempts and stop on failure or unchanged contents and
+bounds. Inspect an unknown container/direction; use screenshots only if needed
+to resolve ambiguity. Swipe success alone does not prove the target was revealed.
+
+### Enter text and handle platform controls
+
+Android targeted input focuses and sets the field's value. Empty input clears
+it; it is not focus-only. Verify the field directly when its value is itself
+under test; otherwise a specific downstream result can verify the input flow.
+
+```bash
+visiontest input_text -p android "coffee" --target-resource-id "com.example:id/search"
+visiontest press_key -p android enter
+visiontest wait_for_element -p android --text "Results for coffee"
+```
+
+`clear_text` clears only the focused Android field. iOS targeted input types
+without promising replacement; there is no generic iOS `clear_text` command.
+Verify any claimed replacement. For iOS alerts use `handle_alert accept|dismiss`
+with exact `--button-label` when the choice matters, and `dismiss_keyboard` when
+the keyboard blocks a control. `press_key` and `press_back` are Android-only;
+use the app's visible submit/back control on iOS.
 
 ## Selectors and outcomes
 
@@ -112,20 +227,44 @@ editable. These interactions do not auto-scroll.
 
 The six CLI inspection commands `available_device`, `get_interactive_elements`,
 `get_device_info`, `find_element`, `list_apps`, and `info_app` support `--json`.
-They print one JSON object without JSON-RPC framing. Check `found`, `success`,
-and `error`: an operation may return exit 0 with `found: false` or `success:
-false`. Other interaction commands return text; check both that result and its
-error status. Exit codes 1 through 5 mean generic failure, invalid arguments,
+They print one JSON object without JSON-RPC framing. Check for a top-level
+`error` first, then `found` or `success` when present. For example,
+`{"found":false}` means the lookup succeeded but the target is absent;
+`{"error":{"code":-32601,"message":"Unknown method"}}` is an operation failure.
+Both can exit 0. Interaction commands do not support `--json`; their text can
+include JSON-RPC content. Check that content as well as the exit status.
+Exit codes 1 through 5 mean generic failure, invalid arguments,
 server unreachable, device unavailable, and unsupported platform respectively.
 
-When a command saves a screenshot, open the PNG with an image-viewing tool
-available in the current agent session. Compare the image with the expected
-state or reference before making a visual claim. A saved path alone is not visual
-verification. Keep useful screenshots and relevant logs with the reproduction.
+Capture screenshots for visual assertions, content missing from the accessible
+hierarchy, unresolved ambiguity, or evidence requested by the user. Do not take
+routine before/after screenshots for functional tests. Open any captured PNG
+with the session's image-viewing tool before making a visual claim; a saved path
+is not verification. Element presence alone cannot prove layout or appearance.
 
-Capture Android logs with filtered `adb logcat` and iOS logs with the Xcode or
-simulator log stream when the UI and expected marker disagree. Repeat the same
-actions and assertions after a fix, then stop the automation server when done.
+## Recover only when there is new evidence
+
+After an interaction timeout, inspect the expected result before retrying;
+the action may already have happened. If a target is missing, inspect its state
+or container and retry only after correcting the cause. Do not repeat identical
+failed commands or cycle through screenshots, restarts, and longer timeouts
+without evidence. Stop a scenario at a failed prerequisite; downstream steps
+are blocked, not additional app failures. Continue independent scenarios when
+their starting state can be restored.
+
+For connection failures, check device and server status before restarting.
+Method-not-found usually means a native/JAR version mismatch: update the Android
+APK pair or iOS bundle/source build, then restart. Capture filtered Android
+`adb logcat` or iOS Xcode/simulator logs only when needed to explain a failure.
+
+After a fix, repeat the failed flow and affected assertions. Keep the server
+running across the requested batch, including individual failures. At task end,
+stop only a server you started with `visiontest stop_automation_server -p android`
+or `-p ios`,
+unless asked to leave it running. Use MCP cleanup only if the user selected MCP.
+Report the platform/app, checks, expected versus observed results, and relevant
+evidence paths concisely. Distinguish passed, failed, and blocked checks; avoid
+repeating raw outputs already inspected.
 
 ## Measure host performance when requested
 
@@ -136,23 +275,18 @@ put the root option before the command, for example:
 visiontest --trace-performance ./traces/android.jsonl get_device_info -p android --json
 ```
 
-For MCP measurement, set `VISIONTEST_TRACE_PERFORMANCE` to a local JSONL path in
-the server process environment before startup. Missing or blank values disable
-MCP tracing; CLI ignores this variable. Use a different path for each concurrent
-process. Tracing appends to a regular local file with exclusive ownership and
-preserves results, exit codes, and stdout/JSON-RPC framing. Failures can add only
-`VisionTest performance trace is unavailable or incomplete.` to stderr.
+For explicitly requested MCP measurement, set `VISIONTEST_TRACE_PERFORMANCE`
+in the server environment before startup; CLI ignores it. Use a separate local
+JSONL path per concurrent process. Tracing preserves operation results and output.
+Treat unavailable/incomplete trace warnings, dropped records, or missing shutdown
+as measurement gaps. Check `session.end`, zero drops, matched invocation counts,
+and successful shutdown before treating a session as complete.
 
-The file contains session records and completed host spans. Check the terminal
-`session.end`, zero drops, matched invocation counts, and successful shutdown before
-using a session as complete; a footer alone cannot prove cleanup. The queue holds
-4096 records and shutdown waits at most 1,000 ms. Force kills, overflow, and writer
-failures can leave incomplete data. Do not infer success from a normal return;
-`operationOutcome` may be `failure` or `unknown`. Inclusive durations overlap, so
-do not sum parents and children. CLI preparation includes parsing and validation,
-not device work, and early parser errors may be untraced. Native timings are
-unavailable; missing data is not zero native work. Body byte counts are not tokens
-or agent image usage. Ordinary test execution uses the interface guidance above.
+`operationOutcome` can be `failure` or `unknown` after a normal return. Inclusive
+spans overlap; do not sum parents and children. Native timings are unavailable,
+and body byte counts are not model tokens. Compare the same test flow using
+agent token usage and elapsed time to assess savings; do not infer them from
+smaller output alone.
 
 ## Refresh these instructions
 

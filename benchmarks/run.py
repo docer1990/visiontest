@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import sys
 import time
@@ -8,7 +9,9 @@ from pathlib import Path
 from benchmarks.cli import run_cli
 from benchmarks.manifest import load_manifest
 from benchmarks.mcp import McpProtocolError, McpSession
-from benchmarks.results import summarize, write_samples
+from benchmarks.results import write_samples
+from benchmarks.report import build_report
+from benchmarks.traces import join_trace
 from benchmarks.execution import run_process
 from benchmarks.fixtures import resolve_argv, validate_fixture_identity, validate_target
 
@@ -36,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.samples <= 0 or args.warmup < 0:
         print("samples must be positive and warmup nonnegative", file=sys.stderr)
         return 2
+    run_id = str(uuid.uuid4())
+    args.output = Path(str(args.output).replace('{run_id}', run_id))
     try:
         manifest = load_manifest(args.manifest)
         if args.lifecycle == "native-cold" and not _valid_native_lifecycle(manifest.get("nativeLifecycle")):
@@ -48,9 +53,10 @@ def main(argv: list[str] | None = None) -> int:
     samples = []
     samples_path = args.output / "samples.jsonl"
     write_samples(samples_path, samples)
-    run_id = str(uuid.uuid4())
     environment = {
         "schema_version": 1,
+        "manifest_sha256": hashlib.sha256(args.manifest.read_bytes()).hexdigest(),
+        "selected_case_ids": [case['id'] for case in manifest['cases']],
         "platform": manifest["platform"],
         "target": manifest["target"],
         "fixture_revision": manifest["fixtureRevision"],
@@ -68,14 +74,15 @@ def main(argv: list[str] | None = None) -> int:
     failed = False
     sequence = 0
     for case in manifest["cases"]:
-        attempts = [(True, index) for index in range(args.warmup)] + [(False, index) for index in range(args.samples)]
+        attempts = _attempts(args.warmup, args.samples, args.tracing)
+        trace_jobs = {}
         warm_sessions = {}
         warm_session_errors = {}
         warm_timings = {}
         warm_timing_emitted = set()
         if args.mode == "mcp" and args.lifecycle in {"warm", "native-cold"}:
-            states = {_tracing_for(args.tracing, index) for _, index in attempts}
-            for state in states:
+            states = {state for _, _, state, _ in attempts}
+            for state in sorted(states):
                 session_trace = args.output / "traces" / f"{case['id']}-mcp-{state}.jsonl" if state == "on" else None
                 if session_trace is not None:
                     session_trace.parent.mkdir(parents=True, exist_ok=True)
@@ -91,10 +98,14 @@ def main(argv: list[str] | None = None) -> int:
                 except Exception as error:
                     warm_session_errors[state] = str(error)
         try:
-            for attempt_index, (is_warmup, index) in enumerate(attempts):
+            for is_warmup, index, tracing, pair_order in attempts:
                 sequence += 1
                 sample_id = f"{case['id']}-{'warmup' if is_warmup else 'sample'}-{index + 1}"
-                tracing = _tracing_for(args.tracing, index)
+                if args.tracing == 'paired':
+                    sample_id += '-' + tracing
+                result = None
+                process_duration = None
+                calls = []
                 trace_path = args.output / "traces" / f"{sample_id}.jsonl" if tracing == "on" else None
                 setup_duration = 0
                 if tracing in warm_session_errors:
@@ -118,6 +129,8 @@ def main(argv: list[str] | None = None) -> int:
                         (args.output / "artifacts").mkdir(parents=True, exist_ok=True)
                         result = run_cli(manifest["cliPrefix"], case, env=_environment_values(manifest),
                                          output_dir=args.output / "artifacts", trace_path=trace_path)
+                        process_duration = result['duration_ns']
+                        calls = [{'sample_id': sample_id, 'operation': case['cliArgs'][0], 'measured': True}]
                         status = _operation_status(result)
                         sample = _sample(run_id, sample_id, case, args, tracing, is_warmup, sequence,
                                          status=status, duration_ns=result["duration_ns"],
@@ -131,6 +144,7 @@ def main(argv: list[str] | None = None) -> int:
                             if args.lifecycle == "host-cold":
                                 if trace_path is not None:
                                     trace_path.parent.mkdir(parents=True, exist_ok=True)
+                                process_started = time.perf_counter_ns()
                                 with McpSession(manifest["mcpPrefix"], case["timeoutMs"],
                                                 _mcp_environment(manifest, trace_path)) as session:
                                     session.initialize()
@@ -139,12 +153,19 @@ def main(argv: list[str] | None = None) -> int:
                                     prepared = True
                                     timings = dict(session.timings)
                                     result = session.run_case(case, output_dir=args.output / "artifacts")
+                                    calls = _dispatches(session, 0, sample_id)
+                                process_duration = time.perf_counter_ns() - process_started
                             else:
                                 session = warm_sessions[tracing]
                                 timings = warm_timings[tracing] if tracing not in warm_timing_emitted else {}
                                 warm_timing_emitted.add(tracing)
                                 (args.output / "artifacts").mkdir(parents=True, exist_ok=True)
+                                prepared = True
+                                first_call = len(session.calls)
                                 result = session.run_case(case, output_dir=args.output / "artifacts")
+                                calls = _dispatches(session, first_call, sample_id)
+                                trace_path = (args.output / 'traces' / f"{case['id']}-mcp-{tracing}.jsonl"
+                                              if tracing == 'on' else None)
                             sample = _sample(run_id, sample_id, case, args, tracing, is_warmup, sequence,
                                              status=_operation_status(result), duration_ns=result["duration_ns"],
                                              exit_code=result["exit_code"], operation_outcome=result["operation_outcome"],
@@ -160,15 +181,30 @@ def main(argv: list[str] | None = None) -> int:
                                              assertion_outcome="failed" if prepared else "not_run",
                                              setup_duration_ns=setup_duration,
                                              error=str(error))
+                sample['fixture_revision'] = manifest['fixtureRevision']
+                sample['process_duration_ns'] = process_duration
+                sample['operation_duration_ns'] = result['duration_ns'] if result and args.mode == 'mcp' else None
+                if args.tracing == 'paired':
+                    sample['pair_id'] = f"{case['id']}-{'warmup' if is_warmup else 'sample'}-{index + 1}"
+                    sample['pair_order'] = pair_order
+                if trace_path is not None and calls:
+                    sample['trace_file'] = str(trace_path.relative_to(args.output))
+                    sample['trace_dispatches'] = calls
+                    trace_jobs.setdefault(trace_path, []).extend(calls)
                 samples.append(sample)
                 failed |= sample["status"] != "passed" and not is_warmup
                 write_samples(samples_path, samples)
-                (args.output / "summary.json").write_text(
-                    json.dumps(summarize(samples), indent=2, sort_keys=True) + "\n", encoding="utf-8"
-                )
+                _write_summary(args.output, samples)
         finally:
             for session in warm_sessions.values():
                 session.__exit__(None, None, None)
+            for path, calls in trace_jobs.items():
+                joined = join_trace(path, calls)
+                for sample in samples:
+                    if sample['sample_id'] in joined:
+                        sample.update(joined[sample['sample_id']])
+            write_samples(samples_path, samples)
+            _write_summary(args.output, samples)
     return 1 if failed else 0
 
 
@@ -185,8 +221,7 @@ def _environment_values(manifest):
 
 def _mcp_environment(manifest, trace_path):
     environment = _environment_values(manifest)
-    if trace_path is not None:
-        environment["VISIONTEST_TRACE_PERFORMANCE"] = str(trace_path)
+    environment["VISIONTEST_TRACE_PERFORMANCE"] = str(trace_path) if trace_path is not None else ''
     return environment
 
 
@@ -297,10 +332,24 @@ def _process_error(result):
     return None
 
 
-def _tracing_for(tracing, index):
-    if tracing == "paired":
-        return "off" if index % 2 == 0 else "on"
-    return tracing
+def _attempts(warmups, samples, tracing):
+    attempts = []
+    for warmup, count in ((True, warmups), (False, samples)):
+        for index in range(count):
+            states = (('off', 'on') if index % 2 == 0 else ('on', 'off')) if tracing == 'paired' else (tracing,)
+            attempts.extend((warmup, index, state, order + 1) for order, state in enumerate(states))
+    return attempts
+
+
+def _dispatches(session, first, sample_id):
+    return [{'sample_id': sample_id, 'operation': operation, 'measured': index == first,
+             'dispatch_sequence': index + 1}
+            for index, operation in enumerate(session.calls) if index >= first]
+
+
+def _write_summary(output, samples):
+    (output / 'summary.json').write_text(
+        json.dumps(build_report(samples), indent=2, sort_keys=True) + '\n', encoding='utf-8')
 
 
 if __name__ == "__main__":

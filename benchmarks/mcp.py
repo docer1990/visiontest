@@ -30,6 +30,7 @@ class McpSession:
         self._stderr_parts = []
         self._stderr_lock = threading.Lock()
         self._next_id = 1
+        self.calls = []
         self.timings = {"launch_ns": None, "initialize_ns": None, "discovery_ns": None}
 
     @property
@@ -63,10 +64,13 @@ class McpSession:
 
     def __exit__(self, exc_type, exc, traceback):
         if self.process is not None and self.process.poll() is None:
-            _terminate_group(self.process)
+            try:
+                self.process.stdin.close()
+            except (BrokenPipeError, OSError):
+                pass
         if self.process is not None:
             try:
-                self.process.wait(timeout=1)
+                self.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 _terminate_group(self.process)
         self._stdout_thread.join(timeout=1)
@@ -191,6 +195,8 @@ class McpSession:
         request_id = self._next_id
         self._next_id += 1
         self._send({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params})
+        if method == 'tools/call':
+            self.calls.append(params['name'])
         response = self._read_response()
         while "method" in response and "id" not in response:
             response = self._read_response()

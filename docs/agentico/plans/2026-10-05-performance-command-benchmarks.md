@@ -244,7 +244,7 @@ sample data. Commit sanitized baseline evidence and its provenance together.
 
 **Review:** checkpoint. Final command benchmark delivery and dependency for 57D.
 
-- [ ] Implement `union_duration(intervals: list[tuple[int, int]]) -> int` for
+- [x] Implement `union_duration(intervals: list[tuple[int, int]]) -> int` for
   same-clock intervals. Verify that nesting does not inflate exclusive timing.
 
 ```python
@@ -257,16 +257,16 @@ class TraceIntervalsTest(unittest.TestCase):
         self.assertEqual(0, union_duration([]))
 ```
 
-- [ ] Give each traced CLI sample its own file. For a persistent MCP session,
+- [x] Give each traced CLI sample its own file. For a persistent MCP session,
   send only one operation at a time and map dispatched calls to the recorder's
   invocation sequences after session finalization. Require exactly one invocation
   per call; gaps or unexpected invocations invalidate attribution. Do not match
   arbitrary host/device timestamps or change public results to expose trace IDs.
-- [ ] Join validated spans to samples by invocation and session IDs. Ignore unrelated
+- [x] Join validated spans to samples by invocation and session IDs. Ignore unrelated
   startup/setup spans in operation totals. Report missing native metadata,
   incomplete sessions, dropped events, or unsupported stages as gaps. Cross-clock
   service differences are labeled estimates and are never self-time intervals.
-- [ ] Implement paired tracing-on/off trials with alternating order and the same
+- [x] Implement paired tracing-on/off trials with alternating order and the same
   setup/fixture revision. Preserve each raw sample and report overhead for total
   process time and operation time separately. Record teardown/drain time within
   external CLI timing, including the writer's bounded drain cost.
@@ -282,3 +282,12 @@ class TraceIntervalsTest(unittest.TestCase):
   `./gradlew build`, the fixture build/smoke gates, and `git diff --check`.
   Commit harness/report changes as `feat(benchmarks): report HTTP baseline and tracing overhead`.
   Run final branch review. #57 remains open until agent evaluation is collected.
+
+
+Task 4 implementation status: trace joining, same-clock union accounting, grouped
+reports and alternating paired trials are implemented. Backend-unavailable CLI
+and MCP traces from the built JAR were consumed successfully as schema smoke;
+these are not device measurements. Real collection, fixture smoke on both
+platforms, evidence publication and final review remain unchecked above. See the
+[collection handoff](../../benchmarks/http-baseline.md) for exact commands and
+artifacts. Issue #57 remains open for command evidence and agent evaluation.

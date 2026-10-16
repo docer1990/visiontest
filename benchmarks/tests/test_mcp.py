@@ -1,6 +1,7 @@
 import sys
 import time
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -89,6 +90,25 @@ class McpTest(unittest.TestCase):
             result = session.run_case(case)
             self.assertTrue(result["timed_out"])
             self.assertEqual(2, session._next_id - 1)
+
+    def test_orderly_exit_sends_eof_before_terminating_server(self):
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / 'closed'
+            program = 'import sys,time,pathlib; sys.stdin.read(); time.sleep(.05); pathlib.Path(sys.argv[1]).write_text("EOF")'
+            with McpSession([sys.executable, '-c', program, str(marker)], 1000):
+                pass
+            self.assertTrue(marker.exists(), 'server never received orderly EOF')
+            self.assertEqual('EOF', marker.read_text())
+
+    def test_dispatch_ledger_counts_verification_calls_separately(self):
+        case = {'id': 'action', 'mcpTool': 'info', 'mcpArguments': {},
+                'assertion': {'kind': 'action_then_element', 'lookupTool': 'second',
+                              'lookupArguments': {}, 'resourceId': 'done', 'expectedFound': True}}
+        with McpSession(command(), 2000) as session:
+            session.initialize()
+            session.list_tools()
+            session.run_case(case)
+            self.assertEqual(['info', 'second'], getattr(session, 'calls', None))
 
     def test_newline_framing_and_call_error_are_preserved(self):
         with McpSession(command(), 2000) as session:

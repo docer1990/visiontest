@@ -240,6 +240,7 @@ simulator host network.
 - [CLI contract](docs/agentico/specs/cli.md)
 - [JSON output](docs/cli-json.md)
 - [Local performance tracing](docs/performance.md)
+- [Command benchmarks and baseline collection](docs/benchmarks/http-baseline.md)
 - [Element waits](docs/agentico/specs/element-waits.md)
 - [Element swipe](docs/agentico/specs/element-swipe.md)
 - [Missing interactions](docs/agentico/specs/missing-interactions.md)

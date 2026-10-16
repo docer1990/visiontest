@@ -6,10 +6,13 @@ from unittest.mock import patch
 from pathlib import Path
 
 from benchmarks.execution import run_process
-from benchmarks.run import main
+from benchmarks.run import main, _mcp_environment
 
 
 class ExecutionTest(unittest.TestCase):
+    def test_off_state_explicitly_disables_inherited_mcp_tracing(self):
+        self.assertEqual('', _mcp_environment({'processEnvironment': {'VISIONTEST_TRACE_PERFORMANCE': 'inherited'}}, None)['VISIONTEST_TRACE_PERFORMANCE'])
+
     def test_arguments_are_not_shell_expanded(self):
         value = "$(touch must-not-exist); 'quoted value'"
         result = run_process(
@@ -87,6 +90,64 @@ class ExecutionTest(unittest.TestCase):
             samples = [json.loads(line) for line in (output / "samples.jsonl").read_text().splitlines()]
             self.assertEqual(["info-sample-1", "info-sample-2"], [sample["sample_id"] for sample in samples])
             self.assertEqual(["passed", "passed"], [sample["status"] for sample in samples])
+
+
+class PairedRunnerTest(unittest.TestCase):
+    def test_every_pair_has_both_states_and_alternates_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = json.loads(Path('benchmarks/manifests/android.json').read_text())
+            manifest['cases'] = manifest['cases'][:1]
+            manifest['cliPrefix'] = [sys.executable, '-c',
+                "import json; print(json.dumps({'success': True, 'displayWidth': 10, 'displayHeight': 20, 'productName': 'test', 'sdkVersion': 35}))"]
+            path = root / 'manifest.json'; path.write_text(json.dumps(manifest))
+            output = root / 'run-{run_id}'
+            with patch('benchmarks.run._run_setup', return_value=(True, 0, None)):
+                code = main(['commands', '--manifest', str(path), '--output', str(output),
+                             '--mode', 'cli', '--samples', '2', '--warmup', '1', '--tracing', 'paired'])
+            self.assertEqual(0, code)
+            self.assertFalse(output.exists())
+            output = next(root.glob('run-*'))
+            environment = json.loads((output / 'environment.json').read_text())
+            self.assertEqual('run-' + environment['run_id'], output.name)
+            self.assertIn('manifest_sha256', environment)
+            samples = [json.loads(line) for line in (output / 'samples.jsonl').read_text().splitlines()]
+            self.assertEqual(6, len(samples))
+            measured = [sample for sample in samples if not sample['warmup']]
+            self.assertEqual(['off', 'on', 'on', 'off'], [sample['tracing'] for sample in measured])
+            self.assertEqual(measured[0]['pair_id'], measured[1]['pair_id'])
+            self.assertNotEqual(measured[0]['sample_id'], measured[1]['sample_id'])
+            self.assertEqual(measured[0]['duration_ns'], measured[0]['process_duration_ns'])
+            self.assertIsNone(measured[0]['operation_duration_ns'])
+            self.assertFalse(measured[1]['trace_complete'])
+            self.assertIn('overhead', json.loads((output / 'summary.json').read_text()))
+
+    def test_warm_mcp_trace_attributes_after_verification_and_finalization(self):
+        for lifecycle in ('warm', 'host-cold'):
+            with self.subTest(lifecycle=lifecycle), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                manifest = json.loads(Path('benchmarks/manifests/android.json').read_text())
+                manifest['cases'] = manifest['cases'][2:3]
+                case = manifest['cases'][0]
+                case['mcpTool'] = 'info'
+                case['assertion']['lookupTool'] = 'second'
+                manifest['mcpPrefix'] = [sys.executable, str(Path(__file__).with_name('fake_mcp.py')), 'trace']
+                path = root / 'manifest.json'; path.write_text(json.dumps(manifest))
+                output = root / 'run'
+                with patch('benchmarks.run._run_setup', return_value=(True, 0, None)):
+                    code = main(['commands', '--manifest', str(path), '--output', str(output),
+                                 '--mode', 'mcp', '--samples', '2', '--warmup', '0',
+                                 '--tracing', 'paired', '--lifecycle', lifecycle])
+                self.assertEqual(0, code)
+                samples = [json.loads(line) for line in (output / 'samples.jsonl').read_text().splitlines()]
+                traced = [sample for sample in samples if sample['tracing'] == 'on']
+                self.assertTrue(all(sample['trace_complete'] for sample in traced))
+                self.assertEqual([1, 3] if lifecycle == 'warm' else [1, 1],
+                                 [sample['invocation_sequence'] for sample in traced])
+                self.assertTrue(all(len(sample['trace_dispatches']) == 2 for sample in traced))
+                self.assertTrue(all(sample['operation_duration_ns'] is not None for sample in samples))
+                if lifecycle == 'host-cold':
+                    self.assertTrue(all(sample['process_duration_ns'] >= sample['operation_duration_ns'] for sample in samples))
 
 
 if __name__ == "__main__":

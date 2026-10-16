@@ -72,3 +72,12 @@ class ResultsTest(unittest.TestCase):
             path = Path(directory) / "samples.jsonl"
             write_samples(path, [sample])
             self.assertEqual(sample, json.loads(path.read_text(encoding="utf-8")))
+
+    def test_operation_and_process_boundaries_have_separate_populations(self):
+        result = summarize([{'status': 'passed', 'duration_ns': 100,
+                             'process_duration_ns': 100, 'operation_duration_ns': 10},
+                            {'status': 'timeout', 'duration_ns': 200,
+                             'process_duration_ns': 200, 'operation_duration_ns': 20}])
+        self.assertIn('process_timed', result)
+        self.assertEqual(150, result['process_timed']['median_ns'])
+        self.assertEqual(15, result['operation_timed']['median_ns'])

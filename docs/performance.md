@@ -150,8 +150,9 @@ the current Android and iOS servers. Older installed APKs or bundles continue to
 serve existing commands and produce `native.timing` records with `status: missing`;
 the command is never replayed to recover absent metadata. Rebuild/install the
 Android APK pair or update/rebuild the iOS bundle to collect native spans. Command
-benchmark runs, launcher measurements, and agent usage adapters remain later #57
-deliveries. Accepted native spans appear in separate
+benchmarks now have a Python runner with paired tracing trials and finalized
+host/native attribution. Real command baseline collection and agent usage
+adapters remain incomplete #57 deliveries. Accepted native spans appear in separate
 `native.timing` records using request-relative device offsets; never subtract these
 from host timestamps. Missing or rejected native data means unavailable, not zero
 native work or a measured one-way network latency. Existing additional CLI health
@@ -178,3 +179,21 @@ UI text, image data, response bodies, and exception prose.
 See the [behavioral contract](agentico/specs/performance-tracing.md) for exact
 schema and lifecycle requirements and the [contributor guide](../CONTRIBUTING.md)
 for verification practices.
+
+
+## Reproduce command measurements
+
+Use the isolated synthetic fixtures and platform manifest copies described in
+[the HTTP baseline collection guide](benchmarks/http-baseline.md). That guide
+contains exact smoke and paired CLI/MCP commands, metadata requirements, expected
+artifacts, and the current pending collection status. The runner uses only Python's
+standard library. Its reports preserve failed attempts, separate warmups and
+host lifecycles, and leave unavailable timing boundaries as gaps. They do not
+claim speedups or agent usage from command timings.
+
+Each tracing pair resets the same fixture revision before both attempts and
+alternates off/on order. CLI external process timing includes JVM startup and
+trace drain. CLI operation-only overhead is unavailable with tracing disabled;
+MCP tools/call overhead excludes verification and initialization. Per-sample
+process overhead is unavailable in persistent warm MCP. Full details are in the
+[benchmark behavioral contract](agentico/specs/performance-benchmarks.md).

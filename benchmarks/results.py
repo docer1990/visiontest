@@ -26,7 +26,14 @@ def _population(samples):
                 successful.append(duration)
         elif status == "setup_failed":
             continue
+    boundaries = {}
+    for boundary in ('operation', 'process'):
+        values = [sample.get(boundary + '_duration_ns') for sample in samples]
+        if any(value is not None and (type(value) is not int or value < 0) for value in values):
+            raise ValueError(boundary + '_duration_ns must be a nonnegative integer or null')
+        boundaries[boundary + '_timed'] = _percentiles([value for value in values if value is not None])
     return {
+        **boundaries,
         "attempts": len(samples),
         **counts,
         "all_timed": _percentiles(durations),

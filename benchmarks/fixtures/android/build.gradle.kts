@@ -9,7 +9,7 @@ android {
     defaultConfig {
         applicationId = "com.example.visiontest.benchmark"
         minSdk = 23
-        targetSdk = 28
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
     }

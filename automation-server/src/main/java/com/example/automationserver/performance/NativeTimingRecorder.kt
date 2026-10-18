@@ -30,8 +30,7 @@ class NativeTimingRecorder(
 ) {
     private val origin = readClock()
     private val spans = mutableListOf<NativeTimingSpan>()
-    // SDK sync and disjoint poll delays have no separately exposed continuous interval.
-    private val missing = linkedSetOf("queue_wait", "ui_sync", "poll_wait")
+    private val missing = STAGES.toMutableSet()
     private var admitted = 0
     private val active = mutableMapOf<String, String>()
 

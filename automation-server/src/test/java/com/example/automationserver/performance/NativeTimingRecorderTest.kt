@@ -37,9 +37,29 @@ class NativeTimingRecorderTest {
 
     @Test fun `completed stage is not reported as missing`() {
         val recorder = NativeTimingRecorder("a".repeat(32), "b".repeat(32))
-        recorder.measure("ui_sync") {}
-        assertTrue(recorder.snapshot().spans.any { it.stage == "ui_sync" })
-        assertFalse("ui_sync" in recorder.snapshot().missingStages)
+        listOf("ui_sync", "screenshot_capture", "png_encode", "base64_encode").forEach { stage ->
+            recorder.measure(stage) {}
+            assertTrue(recorder.snapshot().spans.any { it.stage == stage })
+            assertFalse(stage in recorder.snapshot().missingStages)
+        }
+    }
+
+    @Test fun `failed screenshot capture reports skipped encoding stages in header`() {
+        val recorder = NativeTimingRecorder("a".repeat(32), "b".repeat(32))
+        var captures = 0
+        val bitmap = recorder.measure("request") {
+            NativeTimingRecorder.measureCurrent("screenshot_capture") { captures++; null }
+        }
+        assertNull(bitmap)
+        assertEquals(1, captures)
+        val bytes = Base64.getUrlDecoder().decode(recorder.encodeHeader())
+        val header = JsonParser.parseString(String(bytes)).asJsonObject
+        val missing = header["missingStages"].asJsonArray.map { it.asString }.toSet()
+        assertTrue("png_encode" in missing, "Skipped PNG encoding must be reported missing")
+        assertTrue("base64_encode" in missing, "Skipped base64 encoding must be reported missing")
+        assertFalse("screenshot_capture" in missing)
+        assertEquals(setOf("request", "screenshot_capture"),
+            header["spans"].asJsonArray.map { it.asJsonObject["stage"].asString }.toSet())
     }
 
     @Test fun `unfinished parent is omitted and completed child becomes root`() {

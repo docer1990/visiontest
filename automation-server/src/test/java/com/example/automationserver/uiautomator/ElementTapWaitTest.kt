@@ -6,6 +6,24 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ElementTapWaitTest {
+    @Test
+    fun `native timing aggregates actual lookups and waits without extra calls`() {
+        var now = 0L
+        var calls = 0
+        val recorder = com.example.automationserver.performance.NativeTimingRecorder(
+            "a".repeat(32), "b".repeat(32),
+        ) { now * 1_000_000 }
+        val result = recorder.measure("operation") {
+            waitAndTapElement<String>(1_000, clock = ElementTapClock({ now }, { now += it }),
+                operation = ElementTapOperation(lookup = { calls++; null }, tap = { error("must not tap") }))
+        }
+        assertFalse(result.success)
+        assertEquals(3, calls)
+        val poll = recorder.snapshot().spans.single { it.stage == "poll" }
+        assertEquals(3L, poll.metrics["pollCount"])
+        assertEquals(1_000_000_000L, poll.metrics["waitNs"])
+    }
+
 
     @Test
     fun `taps the ready element after it was initially absent`() {

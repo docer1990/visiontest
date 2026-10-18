@@ -3,10 +3,9 @@
 **Goal:** Reduce latency and agent resources per correctly completed Android/iOS flow.
 
 **Status:** The user approved the delivery direction on 2026-10-05. Host tracing
-57A is implemented and reviewed on the development branch; documentation and
-required gates pass, including corrections from final review. Native timing,
-benchmark, and agent evaluation deliveries remain pending. This roadmap does not
-authorize a production model.
+57A was merged into `main` through PR #70 on 2026-10-12 (`c34acc8`). Native timing
+57B native timing metadata is implemented and reviewed. Command benchmarks and
+agent evaluation remain pending. This roadmap does not authorize a production model.
 
 **Source:** [Epic #60](https://github.com/docer1990/visiontest/issues/60), read with its
 linked issues on 2026-10-05. Repository baseline is `e40165c` on `main`.
@@ -89,16 +88,48 @@ model installation, or native polling optimization belongs to the baseline.
 
 ## Planning and execution status
 
+### Backlog audit, 2026-10-12
+
+The audit compared GitHub's open issues and merged PRs with `main` at `c34acc8`,
+before starting 57B. No open issue met all of its acceptance criteria, so none
+was closed. Closed foundations #38, #39, #40, #50, and #54 remain reusable.
+
+| Issue or delivery | Evidence and remaining work |
+| --- | --- |
+| #57, 57A | PR #70 merged host activation, correlation, JSONL output, and host stage instrumentation. |
+| #57, 57B–57D | Native metadata, command benchmark runner, and agent flow evaluation were absent. #57 remains open until their real measurement evidence exists. |
+| #48, #49, #51, #52, #53 | The scoped hierarchy, action, status, screenshot, and wait commands still lack their requested JSON output contracts. Existing inspection JSON does not complete these issues. |
+| #56 | No sequential `flow` command is registered. |
+| #61, #62, #63 | Compact inspection, selectable MCP profiles, and measured health-check consolidation are pending. CLI inspection still performs its preflight before the registrar. |
+| #64–#68 | No model evaluation harness, local engine, semantic operations, or versioned incremental observations are implemented. Their evaluation and representation dependencies remain. |
+| #41, #42, #47 | General app lifecycle operations, explicit device selection, and domain-scoped clients remain separate pending work. |
+| #43 | The heap-dump ignore rule, real CLI emulator smoke workflow, and documented macOS/Linux host support exist. Namespace migration, shell completions, and Homebrew distribution are still pending. |
+
+Baseline verification passed with 528 host tests, 162 Android unit tests, 99 Swift
+tests on iPhone 17, and the host E2E/build gates. Both native servers from the
+baseline accepted read-only requests with absent, valid, and invalid optional
+trace headers, returning ordinary JSON-RPC results without native timing headers.
+This establishes the old-server side of compatibility, not completion of 57B.
+
+57B verification passed with 176 Android unit tests, 4 API 37 Android
+instrumentation tests, 108 Swift unit tests, 3 focused iOS UI tests, 542 host
+tests, 12 host E2E tests, and the complete Gradle build. Read-only live iOS and
+Android requests produced correlated timing metadata; traced and untraced response
+bodies matched. Existing Android and iOS server artifacts returned normal results
+without timing headers, and the host recorded missing native timing without replay.
+
+### Delivery checklist
+
 - [x] Read #60 and its fifteen scoped issues.
 - [x] Inspect current CLI/MCP, HTTP, native dispatch, screenshot, and test boundaries.
 - [x] Obtain approval for baseline-first delivery and plain TDD.
 - [x] Record the design, architecture rationale, and four implementation plans.
 - [x] Execute 57A in an isolated development branch and review it.
-- [ ] Execute 57B and verify installed-server compatibility.
+- [x] Execute 57B and verify installed-server compatibility.
 - [ ] Execute 57C and collect command baseline and overhead results.
 - [ ] Execute 57D with a real client and collect complete-flow results.
 - [ ] Freeze the evaluation policy before held-out model evaluation.
 
-57A implementation and final review are complete. #57 and #60 remain open;
-57B must verify installed-server compatibility before TD-015 can be accepted.
-Public product documentation accompanies the host implementation.
+57A and 57B implementation and review are complete. #57 and #60 remain open
+because 57C command benchmarks and 57D agent-flow evaluation still need evidence.
+TD-015 is accepted for the implemented tracing and compatibility contract.

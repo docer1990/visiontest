@@ -4,6 +4,26 @@
 
 Android artifact distribution builds, publishes, verifies, installs, discovers, and deploys the paired main and instrumentation APKs required by the Android automation server.
 
+### Native timing compatibility
+
+An older installed main/test APK pair continues to handle the existing JSON-RPC
+commands when the host sends the optional `X-VisionTest-Trace` header. It returns
+the normal response without native metadata; the host records
+`native.timing.status: missing` and does not retry or replay the operation. This
+does not make an upgrade a prerequisite for normal commands. To collect Android
+native timing spans, rebuild and install both APKs using the existing installer
+or the standard `:automation-server:assembleDebug` and
+`:automation-server:assembleDebugAndroidTest` tasks, then install the main APK
+before the test APK (the normal `install_automation_server` operation performs
+this pair installation).
+
+The current server measures request/decode/operation/response encoding, explicit
+idle waits where wrapped, supported element polling, and screenshot capture plus
+PNG/base64 encoding. Queue delay is unavailable because there is no separately
+measurable queue boundary. Some UIAutomator synchronization occurs inside SDK
+calls and cannot be isolated. Poll counts and wait time are aggregated, and
+unavailable work remains listed in `missingStages`.
+
 ## Requirements
 
 ### Requirement: Tagged releases publish both Android APKs and checksums

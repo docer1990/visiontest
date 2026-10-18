@@ -2,6 +2,7 @@
 # Gradle
 # ===================================
 .gradle/
+.worktrees/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 

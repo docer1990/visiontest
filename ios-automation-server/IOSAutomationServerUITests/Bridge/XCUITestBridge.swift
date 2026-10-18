@@ -172,12 +172,17 @@ class XCUITestBridge {
     // MARK: - Screenshot
 
     /// Captures the current simulator display as a PNG and returns it base64-encoded.
-    func screenshot() -> ScreenshotResult {
-        let pngData = XCUIScreen.main.screenshot().pngRepresentation
+    func screenshot(timing: NativeTiming? = nil) -> ScreenshotResult {
+        let screenshot = timing?.measure("screenshot_capture") { XCUIScreen.main.screenshot() }
+            ?? XCUIScreen.main.screenshot()
+        let pngData = timing?.measure("png_encode") { screenshot.pngRepresentation }
+            ?? screenshot.pngRepresentation
         if pngData.isEmpty {
             return ScreenshotResult(success: false, pngBase64: nil, error: "Screenshot returned empty PNG data")
         }
-        let base64 = pngData.base64EncodedString()
+        timing?.addMetric("decodedBytes", value: UInt64(pngData.count))
+        let base64 = timing?.measure("base64_encode") { pngData.base64EncodedString() }
+            ?? pngData.base64EncodedString()
         return ScreenshotResult(success: true, pngBase64: base64, error: nil)
     }
 
@@ -282,10 +287,13 @@ class XCUITestBridge {
         return element
     }
 
-    func swipeOnElement(_ request: ElementSwipeRequest) -> OperationResult {
+    func swipeOnElement(_ request: ElementSwipeRequest, timing: NativeTiming? = nil) -> OperationResult {
+        timing?.beginPolling()
         let element = lookupElement(text: request.text, textContains: request.textContains,
                                     identifier: request.identifier, elementType: request.elementType,
                                     label: request.label, bundleId: request.bundleId)
+        timing?.recordPollAttempt()
+        timing?.endPolling()
         let screenFrame = CGRect(origin: .zero, size: getScreenSize())
         return performElementSwipe(
             frame: element?.frame,
@@ -297,7 +305,7 @@ class XCUITestBridge {
         }
     }
 
-    func tapOnElement(_ request: ElementTapRequest) -> OperationResult {
+    func tapOnElement(_ request: ElementTapRequest, timing: NativeTiming? = nil) -> OperationResult {
         var tappableElement: XCUIElement?
         return performElementTap(
             request: request,
@@ -324,7 +332,8 @@ class XCUITestBridge {
                 tappableElement = element
                 return .ready
             },
-            tap: { tappableElement?.tap() }
+            tap: { tappableElement?.tap() },
+            timing: timing
         )
     }
 
@@ -381,7 +390,7 @@ class XCUITestBridge {
         }
     }
 
-    func inputText(_ request: TargetedInputRequest) -> OperationResult {
+    func inputText(_ request: TargetedInputRequest, timing: NativeTiming? = nil) -> OperationResult {
         guard let selectors = request.selectors, request.timeoutMs != nil else {
             return inputText(text: request.text, bundleId: request.bundleId)
         }
@@ -408,16 +417,21 @@ class XCUITestBridge {
                     .matching(NSPredicate(format: "hasKeyboardFocus == true")).firstMatch
                 return focused.exists && focused.frame == selectedElement.frame
             },
-            typeText: { selectedElement?.typeText(request.text) }
+            typeText: { selectedElement?.typeText(request.text) },
+            timing: timing
         )
     }
 
-    func dismissKeyboard(bundleId: String?) -> OperationResult {
+    func dismissKeyboard(bundleId: String?, timing: NativeTiming? = nil) -> OperationResult {
         let keyboard = interactionTarget(bundleId: bundleId).keyboards.firstMatch
         let wasVisible = keyboard.exists && keyboard.isHittable
         if wasVisible {
             keyboard.swipeDown()
-            _ = keyboard.waitForNonExistence(timeout: 2)
+            if let timing {
+                _ = timing.measure("ui_sync") { keyboard.waitForNonExistence(timeout: 2) }
+            } else {
+                _ = keyboard.waitForNonExistence(timeout: 2)
+            }
         }
         return verifyKeyboardDismissal(wasVisible: wasVisible, isVisible: keyboard.exists)
     }

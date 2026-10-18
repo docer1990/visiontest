@@ -129,6 +129,104 @@ final class HelpersTests: XCTestCase {
         XCTAssertEqual(typed, 1)
     }
 
+    func testTargetedInputAggregatesReadinessAndFocusPollsAndWaits() throws {
+        let request = try TargetedInputRequest(params: [
+            "text": "hello", "targetText": "Email", "timeoutMs": 2_500
+        ])
+        var clock: TimeInterval = 0
+        var readiness: [ElementTapReadiness] = [.absent, .ready]
+        var focusChecks = 0
+        var taps = 0
+        var typed = 0
+        var waits: [TimeInterval] = []
+        let timing = NativeTiming(
+            invocationId: String(repeating: "a", count: 32),
+            requestSpanId: String(repeating: "b", count: 32),
+            nowNs: { UInt64(clock * 1_000_000_000) }
+        )
+
+        let result = performTargetedInput(
+            request: request,
+            now: { clock },
+            wait: { waits.append($0); clock += $0 },
+            readiness: { clock += 0.125; return readiness.removeFirst() },
+            tap: { taps += 1; clock += 0.125 },
+            hasFocus: { focusChecks += 1; clock += 0.125; return focusChecks > 1 },
+            typeText: { typed += 1; clock += 0.25 },
+            timing: timing
+        )
+        timing.measure("response_encode") { clock += 3 }
+
+        let snapshot = timing.snapshot()
+        let poll = try XCTUnwrap(snapshot.spans.first { $0.stage == "poll" })
+        XCTAssertTrue(result.success)
+        XCTAssertTrue(readiness.isEmpty)
+        XCTAssertEqual(focusChecks, 2)
+        XCTAssertEqual(taps, 1)
+        XCTAssertEqual(typed, 1)
+        XCTAssertEqual(waits, [0.5, 0.5])
+        XCTAssertEqual(poll.startOffsetNs, 0)
+        XCTAssertEqual(poll.durationNs, 1_625_000_000)
+        XCTAssertEqual(poll.metrics["pollCount"], 4)
+        XCTAssertEqual(poll.metrics["waitNs"], 1_000_000_000)
+        XCTAssertFalse(snapshot.spans.contains { $0.stage == "poll_wait" })
+    }
+
+    func testTapPollingStopsBeforeActionAndDelayedResponseEncoding() throws {
+        let request = try ElementTapRequest(params: ["text": "Continue", "timeoutMs": 2_000])
+        var clock: TimeInterval = 0
+        var checks = 0
+        var waits: [TimeInterval] = []
+        let timing = NativeTiming(invocationId: String(repeating: "a", count: 32),
+                                  requestSpanId: String(repeating: "b", count: 32),
+                                  nowNs: { UInt64(clock * 1_000_000_000) })
+        let result = performElementTap(
+            request: request, now: { clock },
+            wait: { waits.append($0); clock += $0 },
+            readiness: { checks += 1; clock += 0.125; return checks == 1 ? .absent : .ready },
+            tap: { clock += 0.25 },
+            timing: timing
+        )
+        timing.measure("response_encode") { clock += 3 }
+        let snapshot = timing.snapshot()
+        let poll = try XCTUnwrap(snapshot.spans.first { $0.stage == "poll" })
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(checks, 2)
+        XCTAssertEqual(waits, [0.5])
+        XCTAssertEqual(poll.startOffsetNs, 0)
+        XCTAssertEqual(poll.durationNs, 750_000_000)
+        XCTAssertEqual(poll.metrics["pollCount"], 2)
+        XCTAssertEqual(poll.metrics["waitNs"], 500_000_000)
+        XCTAssertFalse(snapshot.spans.contains { $0.stage == "poll_wait" })
+        XCTAssertTrue(snapshot.missingStages.contains("poll_wait"))
+    }
+
+    func testFreezingMidPollingOmitsUnfinishedSpanAndIgnoresLaterCompletion() throws {
+        let request = try ElementTapRequest(params: ["text": "Continue", "timeoutMs": 2_000])
+        var clock: TimeInterval = 0
+        var checks = 0
+        var frozen: NativeTimingSnapshot?
+        let timing = NativeTiming(invocationId: String(repeating: "a", count: 32),
+                                  requestSpanId: String(repeating: "b", count: 32),
+                                  nowNs: { UInt64(clock * 1_000_000_000) })
+        timing.measure("operation") {
+            _ = performElementTap(
+                request: request, now: { clock },
+                wait: { clock += $0; frozen = timing.snapshot() },
+                readiness: { checks += 1; clock += 0.125; return checks == 1 ? .absent : .ready },
+                tap: {},
+                timing: timing
+            )
+        }
+        let before = try XCTUnwrap(frozen)
+        XCTAssertFalse(before.spans.contains { $0.stage == "poll" })
+        XCTAssertTrue(before.missingStages.contains("poll"))
+        XCTAssertTrue(before.missingStages.contains("operation"))
+        XCTAssertEqual(timing.snapshot().spans, before.spans)
+        XCTAssertEqual(timing.snapshot().missingStages, before.missingStages)
+        XCTAssertEqual(checks, 2)
+    }
+
     func testTargetedInputFailsWhenTypingExceedsOriginalDeadline() throws {
         let request = try TargetedInputRequest(params: [
             "text": "hello", "targetText": "Email", "timeoutMs": 1_000

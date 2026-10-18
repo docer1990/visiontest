@@ -7,6 +7,20 @@ import com.example.visiontest.performance.TraceRecorder
 import com.example.visiontest.performance.TraceStage
 
 import com.example.visiontest.CommandExecutionException
+import com.example.visiontest.performance.NativeTimingEvent
+import com.example.visiontest.performance.NativeTimingStatus
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import okhttp3.mockwebserver.Dispatcher
+import okhttp3.mockwebserver.RecordedRequest
+import okhttp3.mockwebserver.SocketPolicy
+import java.io.IOException
+import java.util.Base64
+import java.util.Collections
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import com.example.visiontest.performance.TraceRuntime
+import java.nio.file.Files
 import com.example.visiontest.common.elementTapReadTimeoutMs
 import com.example.visiontest.config.IOSAutomationConfig
 import com.google.gson.JsonParser
@@ -39,6 +53,132 @@ class IOSAutomationClientTest {
     @AfterTest
     fun tearDown() {
         server.shutdown()
+    }
+
+    @Test
+    fun `native timing is omitted without an active invocation and for health`() = runBlocking {
+        val native = mutableListOf<NativeTimingEvent>()
+        val trace = TraceRecorder(emit = {}, emitNative = { native.add(it); Unit })
+        val traced = IOSAutomationClient(server.hostName, server.port, trace)
+        server.enqueue(MockResponse().setBody("original"))
+        assertEquals("original", traced.sendRequest("device.info"))
+        assertEquals(null, server.takeRequest().getHeader("X-VisionTest-Trace"))
+        server.enqueue(MockResponse().setBody("original"))
+        assertEquals("original", client.sendRequest("device.info"))
+        assertEquals(null, server.takeRequest().getHeader("X-VisionTest-Trace"))
+        server.enqueue(MockResponse().setBody("ok"))
+        assertTrue(trace.invocation("get_device_info", "ios") { traced.isServerRunning() })
+        val health = server.takeRequest()
+        assertEquals("/health", health.path)
+        assertEquals(null, health.getHeader("X-VisionTest-Trace"))
+        assertTrue(native.isEmpty())
+        assertEquals(3, server.requestCount)
+    }
+
+    @Test
+    fun `HTTP errors and connection loss keep their failures and are never replayed`() = runBlocking {
+        val native = mutableListOf<NativeTimingEvent>()
+        val trace = TraceRecorder(emit = {}, emitNative = { native.add(it); Unit })
+        val traced = IOSAutomationClient(server.hostName, server.port, trace)
+        server.enqueue(MockResponse().setResponseCode(503).setHeader("X-VisionTest-Timing", "!").setBody("original"))
+        val error = assertFailsWith<CommandExecutionException> {
+            trace.invocation("get_device_info", "ios") { traced.sendRequest("device.info") }
+        }
+        assertEquals("HTTP error: 503 - original", error.message)
+        assertEquals(NativeTimingStatus.INVALID, native.single().timing.status)
+        server.enqueue(MockResponse().setChunkedBody("x".repeat(1024), 64)
+            .setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY))
+        assertFailsWith<IOException> {
+            trace.invocation("get_device_info", "ios") { traced.sendRequest("device.info") }
+        }
+        assertEquals(NativeTimingStatus.MISSING, native.last().timing.status)
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `concurrent duplicate RPC IDs retain separate native request correlation`() = runBlocking {
+        val native = Collections.synchronizedList(mutableListOf<NativeTimingEvent>())
+        val trace = TraceRecorder(emit = {}, emitNative = { native.add(it); Unit })
+        val traced = IOSAutomationClient(server.hostName, server.port, trace)
+        val arrivals = CountDownLatch(2)
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val parts = request.getHeader("X-VisionTest-Trace")!!.split(';')
+                arrivals.countDown()
+                check(arrivals.await(5, TimeUnit.SECONDS))
+                val json = """{"version":1,"invocationId":"${parts[1]}","requestSpanId":"${parts[2]}",""" +
+                    """"spans":[{"spanId":"${"c".repeat(32)}","parentSpanId":null,"stage":"request",""" +
+                    """"startOffsetNs":0,"durationNs":10,"outcome":"returned","metrics":{"pollCount":2}}],""" +
+                    """"missingStages":["ui_sync"]}"""
+                val header = Base64.getUrlEncoder().withoutPadding().encodeToString(json.toByteArray())
+                return MockResponse().setHeader("X-VisionTest-Timing", header).setBody("original")
+            }
+        }
+        val results = (1..2).map {
+            async { trace.invocation("get_device_info", "ios") { traced.sendRequest("device.info", id = 7) } }
+        }.awaitAll()
+        assertEquals(listOf("original", "original"), results)
+        assertEquals(2, server.requestCount)
+        assertEquals(2, native.map { it.invocationId }.distinct().size)
+        assertEquals(2, native.map { it.requestSpanId }.distinct().size)
+        assertTrue(native.all { it.timing.status == NativeTimingStatus.AVAILABLE })
+        assertTrue(native.all { it.timing.spans.single().durationNs == 10L })
+        assertTrue(native.all { it.timing.missingStages.single().wireName == "ui_sync" })
+        val sent = (1..2).map { server.takeRequest().getHeader("X-VisionTest-Trace") }
+        assertEquals(sent.toSet(), native.map { "v1;${it.invocationId};${it.requestSpanId}" }.toSet())
+    }
+
+    @Test
+    fun `native sink failures cannot replace operation results`() = runBlocking {
+        val trace = TraceRecorder(emit = {}, emitNative = { error("broken sink") })
+        val traced = IOSAutomationClient(server.hostName, server.port, trace)
+        server.enqueue(MockResponse().setBody("original"))
+        assertEquals("original", trace.invocation("get_device_info", "ios") { traced.sendRequest("device.info") })
+        server.enqueue(MockResponse().setResponseCode(503).setBody("original"))
+        val error = assertFailsWith<CommandExecutionException> {
+            trace.invocation("get_device_info", "ios") { traced.sendRequest("device.info") }
+        }
+        assertEquals("HTTP error: 503 - original", error.message)
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `optional native metadata preserves exact RPC bodies with one dispatch`() = runBlocking {
+        val path = Files.createTempFile("native-client", ".jsonl")
+        try {
+            val runtime = TraceRuntime("mcp", System.nanoTime())
+            runtime.configure(path)
+            val traced = IOSAutomationClient(server.hostName, server.port, runtime.recorder)
+            val bodies = listOf("""{"jsonrpc":"2.0","result":{"success":true},"id":7}""",
+                """{"jsonrpc":"2.0","error":{"code":-1,"message":"original"},"id":7}""")
+            for (body in bodies) {
+                for (header in listOf(null, "!")) {
+                    val response = MockResponse().setBody(body)
+                    header?.let { response.setHeader("X-VisionTest-Timing", it) }
+                    server.enqueue(response)
+                    assertEquals(body, runtime.recorder.invocation("get_device_info", "ios") {
+                        traced.sendRequest("device.info", id = 7)
+                    })
+                    val request = server.takeRequest()
+                    assertEquals("/jsonrpc", request.path)
+                    assertEquals("""{"jsonrpc":"2.0","method":"device.info","params":{},"id":7}""",
+                        request.body.readUtf8())
+                    assertTrue(request.getHeader("X-VisionTest-Trace")
+                        ?.matches(Regex("v1;[0-9a-f]{32};[0-9a-f]{32}")) == true)
+                }
+            }
+            runtime.finish()
+            assertEquals(4, server.requestCount)
+            val events = Files.readAllLines(path).map { JsonParser.parseString(it).asJsonObject }
+            val native = events.filter { it["type"]?.asString == "native.timing" }
+            assertEquals(listOf("missing", "invalid", "missing", "invalid"), native.map { it["status"].asString })
+            val exchanges = events.filter { it["stage"]?.asString == "http.exchange" }
+            assertEquals(exchanges.map { it["spanId"].asString }.toSet(),
+                native.map { it["requestSpanId"].asString }.toSet())
+            assertTrue(native.all { it["clockDomain"].asString == "native.request" })
+        } finally {
+            Files.deleteIfExists(path)
+        }
     }
 
     @Test

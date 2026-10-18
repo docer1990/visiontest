@@ -13,6 +13,60 @@ import XCTest
 /// ```
 class AutomationServerUITest: XCTestCase {
 
+    func testTimingLeavesSuccessfulAndFailedJsonRpcDictionariesUnchanged() throws {
+        let server = JsonRpcServer(port: 0, bridge: XCUITestBridge())
+        for method in ["device.getInfo", "unknown.readOnly"] {
+            let body = try jsonRpcRequest(method: method, params: [:], id: 7)
+            let untraced = server.handleRequest(body)
+            let timing = NativeTiming(invocationId: String(repeating: "a", count: 32),
+                                      requestSpanId: String(repeating: "b", count: 32))
+            let traced = server.handleRequest(body, timing: timing)
+            XCTAssertEqual(NSDictionary(dictionary: traced), NSDictionary(dictionary: untraced))
+            XCTAssertNotNil(timing.encodeHeader())
+        }
+    }
+
+    func testQueuedOperationAfterTimeoutCannotChangeFrozenTimingSnapshot() throws {
+        let server = JsonRpcServer(port: 0, bridge: XCUITestBridge(), mainThreadOperationTimeout: 0.01)
+        let timing = NativeTiming(invocationId: String(repeating: "a", count: 32),
+                                  requestSpanId: String(repeating: "b", count: 32))
+        let timedOut = DispatchSemaphore(value: 0)
+        let lateClosure = expectation(description: "queued main-thread operation eventually runs")
+        DispatchQueue.global().async {
+            do {
+                _ = try server.runOnMainThread({
+                    timing.measure("operation") { lateClosure.fulfill() }
+                }, onQueueWait: { timing.recordQueueWait(startedAt: $0) })
+            } catch {
+                timing.markRequestOutcome(error is MainThreadTimeoutError ? "timeout" : "thrown")
+                _ = timing.measure("response_encode") { Data() }
+                _ = timing.encodeHeader()
+            }
+            timedOut.signal()
+        }
+
+        XCTAssertEqual(timedOut.wait(timeout: .now() + 1), .success)
+        let frozen = timing.snapshot()
+        XCTAssertEqual(frozen.spans.map(\.stage), ["request", "response_encode"])
+        XCTAssertEqual(frozen.spans.first?.outcome, "timeout")
+        XCTAssertTrue(frozen.missingStages.contains("operation"))
+        wait(for: [lateClosure], timeout: 1)
+        XCTAssertEqual(timing.snapshot().spans, frozen.spans)
+    }
+
+    func testSwipeOnElementRecordsItsSelectorReadinessCheck() throws {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let bridge = XCUITestBridge(interactionTargetOverride: { _ in springboard })
+        let request = try ElementSwipeRequest(params: ["direction": "left", "resourceId": "missing"])
+        let timing = NativeTiming(invocationId: String(repeating: "a", count: 32),
+                                  requestSpanId: String(repeating: "b", count: 32))
+
+        let result = bridge.swipeOnElement(request, timing: timing)
+
+        XCTAssertFalse(result.success)
+        XCTAssertEqual(timing.snapshot().spans.first { $0.stage == "poll" }?.metrics["pollCount"], 1)
+    }
+
     func testAlertResultSurvivesDismissal() throws {
         let app = XCUIApplication(bundleIdentifier: "com.example.IOSAutomationServer")
         app.launchArguments = ["--review-alert"]

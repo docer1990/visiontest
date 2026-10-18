@@ -105,15 +105,21 @@ abstract class JsonRpcHttpClient internal constructor(
 
     private suspend fun exchange(requestBytes: ByteArray, readTimeoutMs: Int): ByteArray {
         val connection = URL("http://$host:$port/jsonrpc").openConnection() as HttpURLConnection
+        val nativeRequest = trace.nativeRequest()
+        var timingHeader: String? = null
         try {
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "application/json")
+            nativeRequest?.let { connection.setRequestProperty("X-VisionTest-Trace", it.header) }
             connection.connectTimeout = REQUEST_TIMEOUT_MS
             connection.readTimeout = readTimeoutMs
             connection.doOutput = true
             connection.outputStream.use { it.write(requestBytes) }
             trace.metric(TraceMetric.REQUEST_BYTES, requestBytes.size.toLong())
             val responseCode = connection.responseCode
+            if (nativeRequest != null) timingHeader = runCatching {
+                connection.getHeaderField("X-VisionTest-Timing")
+            }.getOrNull()
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 val errorBytes = connection.errorStream?.use { it.readBytes() }
                 errorBytes?.let { trace.metric(TraceMetric.RESPONSE_BYTES, it.size.toLong()) }
@@ -125,6 +131,7 @@ abstract class JsonRpcHttpClient internal constructor(
             trace.metric(TraceMetric.RESPONSE_BYTES, responseBytes.size.toLong())
             return responseBytes
         } finally {
+            if (nativeRequest != null) nativeRequest.record(timingHeader)
             connection.disconnect()
         }
     }

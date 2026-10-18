@@ -12,6 +12,9 @@ import com.example.automationserver.uiautomator.OperationResult
 import com.example.automationserver.uiautomator.TargetedInputRequest
 import com.example.automationserver.uiautomator.dispatchAndroidInteractionMethod
 import com.example.automationserver.uiautomator.requireObjectParams
+import com.example.automationserver.performance.NativeTimingRecorder
+import com.google.gson.GsonBuilder
+import io.ktor.http.ContentType
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import io.ktor.serialization.gson.*
@@ -43,6 +46,7 @@ class JsonRpcServerInstrumented(
 
     private var server: ApplicationEngine? = null
     private val gson = Gson()
+    private val responseGson = GsonBuilder().setPrettyPrinting().create()
     private val uiAutomator = UiAutomatorBridgeInstrumented(uiDevice, instrumentation)
     private val interactionOperations = object : AndroidInteractionJsonRpcOperations {
         override fun pressKey(keyCode: Int): OperationResult = uiAutomator.pressKey(keyCode)
@@ -78,9 +82,7 @@ class JsonRpcServerInstrumented(
         // would expose unauthenticated UI automation to the device's Wi-Fi network.
         server = embeddedServer(Netty, port = port, host = "127.0.0.1") {
             install(ContentNegotiation) {
-                gson {
-                    setPrettyPrinting()
-                }
+                register(ContentType.Application.Json, GsonConverter(responseGson))
             }
 
             routing {
@@ -91,6 +93,11 @@ class JsonRpcServerInstrumented(
 
                 // JSON-RPC endpoint
                 post("/jsonrpc") {
+                    val recorder = NativeTimingRecorder.fromHeader(call.request.headers["X-VisionTest-Trace"])
+                    if (recorder != null) {
+                        respondTraced(call, recorder)
+                        return@post
+                    }
                     try {
                         val requestText = call.receiveText()
                         Log.d(TAG, "Received request: $requestText")
@@ -113,6 +120,28 @@ class JsonRpcServerInstrumented(
         Log.i(TAG, "JSON-RPC server started on port $port")
     }
 
+    private suspend fun respondTraced(call: ApplicationCall, recorder: NativeTimingRecorder) {
+        val body = recorder.measureSuspending("request") {
+            try {
+                val requestText = call.receiveText()
+                Log.d(TAG, "Received request: $requestText")
+                encodeResponse(handleRequest(requestText))
+            } catch (e: Exception) {
+                Log.e(TAG, "Error handling request", e)
+                encodeResponse(JsonRpcResponse(error = JsonRpcError.internalError(e.message), id = null))
+            }
+        }
+        recorder.encodeHeader()?.let { call.response.headers.append("X-VisionTest-Timing", it) }
+        call.respondBytes(body, ContentType.Application.Json)
+    }
+
+    private fun encodeResponse(response: JsonRpcResponse): ByteArray =
+        NativeTimingRecorder.measureCurrent("response_encode") {
+            responseGson.toJson(response).toByteArray(Charsets.UTF_8).also {
+                NativeTimingRecorder.metric("responseBytes", it.size.toLong())
+            }
+        }
+
     /**
      * Stops the JSON-RPC server.
      */
@@ -128,7 +157,9 @@ class JsonRpcServerInstrumented(
      */
     private fun handleRequest(requestText: String): JsonRpcResponse {
         val request = try {
-            gson.fromJson(requestText, JsonRpcRequest::class.java)
+            NativeTimingRecorder.measureCurrent("decode") {
+                gson.fromJson(requestText, JsonRpcRequest::class.java)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse JSON-RPC request", e)
             return JsonRpcResponse(error = JsonRpcError.parseError(e.message), id = null)
@@ -154,7 +185,7 @@ class JsonRpcServerInstrumented(
             } catch (e: IllegalArgumentException) {
                 throw InvalidParamsException(e.message ?: "Invalid parameters")
             }
-            val result = executeMethod(request.method, params)
+            val result = NativeTimingRecorder.measureCurrent("operation") { executeMethod(request.method, params) }
             JsonRpcResponse(result = result, id = request.id)
         } catch (e: MethodNotFoundException) {
             JsonRpcResponse(error = JsonRpcError.methodNotFound(request.method), id = request.id)

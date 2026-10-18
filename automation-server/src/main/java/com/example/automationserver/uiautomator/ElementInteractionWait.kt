@@ -1,5 +1,7 @@
 package com.example.automationserver.uiautomator
 
+import com.example.automationserver.performance.NativeTimingRecorder
+
 enum class ElementInteractionReadiness {
     BLOCKED,
     READY,
@@ -35,7 +37,7 @@ fun <T> waitForTargetAndInteract(
     var observedBlocked = false
     var result: ElementTapWaitResult? = null
     while (result == null) {
-        val candidate = lookup()
+        val candidate = NativeTimingRecorder.pollAttempt { lookup() }
         val now = clock.nowMs()
         if (candidate?.readiness == ElementInteractionReadiness.READY && now <= deadline) {
             interact(candidate.element)
@@ -45,7 +47,7 @@ fun <T> waitForTargetAndInteract(
             if (now >= deadline) {
                 result = targetTimeout(observedBlocked, timeoutMs, description)
             } else {
-                clock.sleepMs(minOf(INTERACTION_POLL_INTERVAL_MS, deadline - now))
+                NativeTimingRecorder.pollWait { clock.sleepMs(minOf(INTERACTION_POLL_INTERVAL_MS, deadline - now)) }
             }
         }
     }
@@ -62,7 +64,7 @@ fun <T> waitForTargetFocusAndInput(
     var observedBlocked = false
     var target: T? = null
     while (target == null) {
-        val candidate = operation.lookup()
+        val candidate = NativeTimingRecorder.pollAttempt { operation.lookup() }
         val now = clock.nowMs()
         if (candidate?.readiness == ElementInteractionReadiness.READY && now <= deadline) {
             target = candidate.element
@@ -71,12 +73,12 @@ fun <T> waitForTargetFocusAndInput(
             if (now >= deadline) {
                 return@runInteractionSafely targetTimeout(observedBlocked, timeoutMs, description)
             }
-            clock.sleepMs(minOf(INTERACTION_POLL_INTERVAL_MS, deadline - now))
+            NativeTimingRecorder.pollWait { clock.sleepMs(minOf(INTERACTION_POLL_INTERVAL_MS, deadline - now)) }
         }
     }
 
     operation.tap(target)
-    while (!operation.hasEditableFocus(target)) {
+    while (!NativeTimingRecorder.pollAttempt { operation.hasEditableFocus(target) }) {
         val now = clock.nowMs()
         if (now >= deadline) {
             return@runInteractionSafely ElementTapWaitResult(
@@ -84,7 +86,7 @@ fun <T> waitForTargetFocusAndInput(
                 error = "Element did not acquire editable focus within ${timeoutMs}ms: $description",
             )
         }
-        clock.sleepMs(minOf(INTERACTION_POLL_INTERVAL_MS, deadline - now))
+        NativeTimingRecorder.pollWait { clock.sleepMs(minOf(INTERACTION_POLL_INTERVAL_MS, deadline - now)) }
     }
     if (clock.nowMs() > deadline) {
         return@runInteractionSafely ElementTapWaitResult(
@@ -106,9 +108,9 @@ fun <T> waitForTargetFocusAndInput(
 }
 
 @Suppress("TooGenericExceptionCaught")
-private inline fun runInteractionSafely(operation: () -> ElementTapWaitResult): ElementTapWaitResult =
+private fun runInteractionSafely(operation: () -> ElementTapWaitResult): ElementTapWaitResult =
     try {
-        operation()
+        NativeTimingRecorder.measureCurrent("poll") { operation() }
     } catch (error: Exception) {
         ElementTapWaitResult(success = false, error = error.message ?: "Unexpected interaction error")
     }

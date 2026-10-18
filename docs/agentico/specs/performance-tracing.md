@@ -2,8 +2,10 @@
 
 Status: the correlated recorder, local JSONL sink, CLI/MCP activation, and bounded
 session lifecycle, shared HTTP transport, client polling, shared registrar operations,
-screenshot processing, and device/process boundaries are implemented. Native
-metadata and benchmark/agent measurements remain later deliveries under
+Screenshot processing and device/process boundaries are implemented. Optional
+native metadata validation and import are implemented on the host, and Android/iOS
+servers emit bounded request-owned native timing metadata.
+Command benchmarks and agent usage/outcome measurements remain later deliveries under
 [the approved baseline design](2026-10-05-performance-baseline-design.md).
 See the [measurement guide](../../performance.md) for activation examples and
 interpretation.
@@ -112,7 +114,7 @@ recording. There is no mutable global current invocation or plain thread-local.
 Host and device clocks are separate domains. Never subtract timestamps from
 different processes. Inclusive spans can overlap; self time requires the union of
 child intervals within the same clock domain. Parent and child durations must not
-be summed as independent work. Native timings are unavailable in this delivery;
+be summed as independent work. Native timings use request-relative device offsets;
 absence never means zero native work or one-way network latency.
 
 ## Shared transport and client waits
@@ -121,7 +123,8 @@ Default public client constructors disable tracing; internal constructors accept
 recorder. CLI component creation and MCP factory creation pass their session recorder
 to both platform clients. HTTP tracing sends the same body and JSON-RPC ID once,
 retains existing connect/read timeouts, and returns the original decoded response.
-It adds no headers, health probes, retries, or native metadata.
+Only an active traced RPC adds the optional timing request header described below.
+It adds no health probes or retries.
 
 `request.prepare` covers JSON serialization and UTF-8 request encoding.
 `http.exchange` covers connection setup, body writes, status handling, and body
@@ -146,6 +149,104 @@ an interrupted delay. It excludes find requests and response parsing. No explici
 wait leaves this metric absent. Poll intervals, timeout budget, and result messages
 retain their existing behavior. Legacy wrapped command errors retain the fixed
 `other` category without inspecting exception messages.
+
+## Native timing protocol version 1
+
+Only an RPC within an enabled, active host invocation sends `X-VisionTest-Trace`:
+`v1;<invocationId>;<requestSpanId>`. Both IDs are 32 lowercase hexadecimal
+characters. `requestSpanId` identifies that RPC's host `http.exchange` span;
+it is independent of the JSON-RPC ID. Concurrent calls with identical RPC IDs
+therefore remain independently correlated. Requests outside an invocation and
+all `/health` calls send no timing header and produce no native timing expectation.
+
+A supporting server returns `X-VisionTest-Timing`, base64url UTF-8 JSON (padding
+is optional). Version 1 has exactly these fields:
+
+```json
+{"version":1,"invocationId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","requestSpanId":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","spans":[{"spanId":"cccccccccccccccccccccccccccccccc","parentSpanId":null,"stage":"request","startOffsetNs":0,"durationNs":10,"outcome":"returned","metrics":{"pollCount":2}}],"missingStages":["ui_sync"]}
+```
+
+Each span requires `spanId`, nullable `parentSpanId`, `stage`, `startOffsetNs`,
+`durationNs`, and `outcome`; `metrics` is optional. Span IDs and nonnull parent
+IDs use the same lowercase hex grammar. Parents refer only to spans present in
+this native snapshot. A null parent means a native root, never the host request
+span. Multiple roots are permitted for partial snapshots; correlation with the
+host request is provided by the envelope. Children must fit within their parent's
+interval; IDs are unique and the parent graph must be acyclic.
+
+The fixed native stage registry is `request`, `decode`, `queue_wait`, `operation`,
+`ui_sync`, `poll`, `poll_wait`, `screenshot_capture`, `png_encode`, `base64_encode`,
+`response_encode`, and `screenshot_capture_encode`. These are native stages, not
+host `TraceStage` values. `missingStages` is a unique list from this same registry.
+Combined platform APIs use the combined stage and name unavailable sub-stages.
+Unavailable SDK internals and unfinished work appear as missing, never zero.
+Poll attempts and elapsed waits are aggregated within the completed polling
+boundary rather than creating unbounded spans. On iOS, a poll starts before the
+first readiness check and ends when readiness/focus polling finishes; later actions
+and response encoding do not extend it. Focus acquisition may include the tap
+needed to obtain focus. Android polling wrappers can include the eventual
+interaction. Aggregate `waitNs` measures disjoint explicit delays and does not
+create a contiguous `poll_wait` span; that stage stays missing unless its actual
+interval is measured. On iOS, freezing during polling omits the unfinished poll,
+including its partial metrics, and keeps `poll` missing. Late completion cannot
+change the frozen response.
+
+Offsets are relative to the native request's monotonic origin. Offsets, durations,
+and metrics are JSON integer numbers from zero through signed 64-bit maximum;
+strings, fractions, booleans, negative values, overflow, and intervals whose end
+overflows are invalid. Outcome values are `returned`, `thrown`, `timeout`, and
+`cancelled`. Metrics accept only `requestBytes`, `responseBytes`, `decodedBytes`,
+`pollCount`, and `waitNs`. Unknown fields, stages, outcomes, or metrics are rejected.
+The encoded header is at most 8,192 ASCII characters and contains at most 32 spans.
+Malformed UTF-8, malformed JSON, and JSON nested beyond 16 levels are rejected
+before import. Both correlation IDs must match the traced request.
+
+The host emits one `type: native.timing` record per traced RPC. It contains
+`sessionId`, `invocationId`, `invocationSequence`, `requestSpanId`, `platform`,
+`process` (the native platform), `operation`, `clockDomain: native.request`,
+`status`, `spans`, and `missingStages`. Native offsets are never translated onto
+the host clock. This separate envelope retains the host correlation while keeping
+native spans out of the host stage registry. Its bounded sink admission and failure
+isolation are the same as host records.
+
+Status is `available` for accepted metadata, `missing` when no response header
+exists (including connection loss before headers), `invalid` for malformed or
+out-of-bounds metadata, `mismatched` for valid IDs belonging to another request,
+and `unsupported` for an unknown numeric protocol version. Rejected metadata has
+empty span and missing-stage lists; rejection never imports partial data. Metadata
+is captured even on HTTP failures. The original response bytes, decoded body,
+exception behavior, dispatch count, and timeouts remain unchanged. A missing header
+from an older server needs no support probe, fallback retry, or server upgrade.
+Trace sink failures cannot replace the result or throwable.
+
+Servers freeze the normal response body before encoding the timing header. Native
+request service duration excludes header encoding and socket writes. These producer
+boundaries are established by each platform's native instrumentation delivery.
+
+### Producer coverage and compatibility
+
+The Android and iOS servers accept the optional request header independently of
+the JSON-RPC method set. Older installed APK pairs and iOS bundles ignore that
+header and continue serving existing commands. A traced call to an older server
+produces `status: missing` with empty `spans` and `missingStages`; this means no
+native snapshot was returned, not that native work was zero. VisionTest never
+replays an operation to obtain timing data. Rebuild and install the Android APK
+pair, or update/rebuild the iOS test bundle, to collect native spans. No upgrade
+is required for ordinary commands.
+
+Android measures request/decode/operation/response encoding, and where exposed,
+UI idle waits, element polling, screenshot capture, PNG encoding, and base64
+encoding. It has no separately measurable request queue boundary, and Android
+UIAutomator can perform additional synchronization inside SDK calls; those
+boundaries remain unavailable. Poll attempts and waits are aggregated. iOS
+measures request/decode/operation/response encoding, receipt-to-main-thread queue
+delay, exposed polling waits, and screenshot capture/PNG/base64 stages. Its UI
+synchronization coverage is limited to explicit wrapped waits. XCTest scheduling
+and SDK internals remain unavailable. iOS freezes metadata when the HTTP response
+snapshot is taken; work still queued past the existing main-thread wait can be
+reported missing and cannot mutate that frozen snapshot. Both producers bound
+snapshots to 32 spans and the encoded header to 8,192 characters; omitted or
+unavailable stages stay missing rather than being assigned zero duration.
 
 ## Shared operations and screenshots
 

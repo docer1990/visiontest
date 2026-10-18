@@ -360,9 +360,14 @@ java -jar app/build/libs/visiontest.jar --trace-performance ./traces/source.json
 
 Use a separate path for each concurrent process. Compare only complete sessions
 under recorded fixture/version conditions; include failed and ambiguous attempts.
-Inclusive spans overlap, body bytes are not wire traffic or model usage, and native
-timings are unavailable in the host delivery. No benchmark or overhead result is
-claimed yet. Keep existing CLI health checks while measuring their costs.
+Inclusive spans overlap, body bytes are not wire traffic or model usage, and
+`missingStages` identifies unavailable or unfinished native work. Current Android
+and iOS servers return bounded timing metadata; older installed APKs/bundles keep
+existing commands working and yield `status: missing` without replay. Android
+cannot isolate its request queue or all UIAutomator synchronization. iOS cannot
+isolate all XCTest scheduling/SDK synchronization and freezes timing at the
+existing HTTP completion boundary. No benchmark or overhead result is claimed
+yet. Keep existing CLI health checks while measuring their costs.
 
 Tracing changes must preserve disabled behavior, public results, stdout framing,
 exit codes, validation order, request counts, and the fixed stderr diagnostic.

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from benchmarks.mcp import McpProtocolError, McpSession
+from benchmarks.mcp import McpProtocolError, McpSession, _public_payload
 
 
 FAKE = Path(__file__).with_name("fake_mcp.py")
@@ -153,6 +153,63 @@ class McpTest(unittest.TestCase):
                     result = session.run_case(case)
                 self.assertEqual("success", result["operation_outcome"])
                 self.assertEqual("passed", result["assertion_outcome"])
+
+    def test_native_envelope_device_and_element_results_are_evaluated(self):
+        cases = [
+            ({"kind": "device_info", "platform": "ios"},
+             {"displayHeight": 874, "displayRotation": 0, "displayWidth": 402,
+              "osVersion": "26.5", "productName": "iPhone", "success": True}),
+            ({"kind": "element_found", "resourceId": "done", "expectedFound": True},
+             {"found": True, "resourceId": "done"}),
+        ]
+        for assertion, payload in cases:
+            for structured in (False, True):
+                with self.subTest(kind=assertion["kind"], structured=structured):
+                    envelope = {"id": 1, "jsonrpc": "2.0", "result": payload}
+                    response = ({"structuredContent": envelope} if structured else
+                                {"content": [{"type": "text", "text": json.dumps(envelope)}],
+                                 "isError": False, "_meta": {}})
+                    case = {"id": "native", "mcpTool": "native", "mcpArguments": {},
+                            "assertion": assertion}
+                    session = McpSession(command(), 2000)
+                    with patch.object(session, "call_tool", return_value=response):
+                        result = session.run_case(case)
+                    self.assertEqual("success", result["operation_outcome"])
+                    self.assertEqual("passed", result["assertion_outcome"])
+
+    def test_native_failures_and_malformed_envelopes_skip_action_verification(self):
+        envelopes = [
+            {"id": 1, "jsonrpc": "2.0", "result": {"success": False}},
+            {"id": 1, "jsonrpc": "2.0", "result": {"error": "native failed"}},
+            {"id": 1, "jsonrpc": "2.0", "error": {"code": -32000, "message": "native failed"}},
+            {"id": 1, "jsonrpc": "2.0", "error": {}, "result": {"success": True}},
+            {"id": 1, "jsonrpc": "2.0"},
+            {"jsonrpc": "2.0", "result": {"success": True}},
+            {"id": 1, "jsonrpc": "1.0", "result": {"success": True}},
+            {"id": 1, "jsonrpc": "2.0", "result": None},
+            {"id": 1, "jsonrpc": "2.0", "result": []},
+            {"id": 1, "jsonrpc": "2.0", "result": "invalid native result"},
+            {"id": 1, "jsonrpc": "2.0", "result": {}},
+        ]
+        for envelope in envelopes:
+            with self.subTest(envelope=envelope):
+                case = {"id": "action", "mcpTool": "action", "mcpArguments": {},
+                        "assertion": {"kind": "action_then_element", "lookupTool": "lookup",
+                                      "lookupArguments": {}, "resourceId": "done", "expectedFound": True}}
+                session = McpSession(command(), 2000)
+                with patch.object(session, "call_tool", side_effect=[
+                    {"content": [{"type": "text", "text": json.dumps(envelope)}]},
+                    {"structuredContent": {"found": True, "resourceId": "done"}},
+                ]) as call:
+                    result = session.run_case(case)
+                self.assertEqual("failed", result["operation_outcome"])
+                self.assertEqual("not_run", result["assertion_outcome"])
+                self.assertEqual(1, call.call_count)
+
+    def test_payload_normalization_does_not_unwrap_arbitrary_result_fields(self):
+        payload = {"result": {"success": True}, "found": False}
+        self.assertEqual(payload, _public_payload({"structuredContent": payload}))
+        self.assertEqual(payload, _public_payload({"content": [{"type": "text", "text": json.dumps(payload)}]}))
 
     def test_newline_framing_and_call_error_are_preserved(self):
         with McpSession(command(), 2000) as session:

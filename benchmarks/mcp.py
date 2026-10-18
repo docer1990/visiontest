@@ -257,7 +257,7 @@ class McpSession:
 def _public_payload(result):
     structured = result.get("structuredContent")
     if isinstance(structured, dict):
-        return structured
+        return _native_payload(structured)
     content = result.get("content")
     if not isinstance(content, list):
         return None
@@ -265,6 +265,15 @@ def _public_payload(result):
     if len(text_items) != 1 or not isinstance(text_items[0], str):
         return None
     try:
-        return json.loads(text_items[0])
+        return _native_payload(json.loads(text_items[0]))
     except json.JSONDecodeError:
         return text_items[0]
+
+
+def _native_payload(payload):
+    if not isinstance(payload, dict) or "jsonrpc" not in payload:
+        return payload
+    if payload.get("jsonrpc") != "2.0" or "id" not in payload or "error" in payload:
+        return None
+    native_result = payload.get("result")
+    return native_result if isinstance(native_result, dict) and native_result else None

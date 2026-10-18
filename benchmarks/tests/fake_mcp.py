@@ -69,6 +69,8 @@ for line in sys.stdin:
                                'parentSpanId': None, 'process': 'host', 'platform': 'android',
                                'operation': tool_name, 'stage': 'invocation', 'startOffsetNs': 0,
                                'durationNs': 1, 'outcome': 'returned', 'operationOutcome': 'unknown'})
+        if tool_name == "info" or (mode == "trace" and tool_name == "second"):
+            payload = {"jsonrpc": "2.0", "id": request_id, "result": payload}
         response = {"jsonrpc": "2.0", "id": request_id, "result": {
             "content": [{"type": "text", "text": json.dumps(payload)}]}}
         if mode.startswith("screenshot"):

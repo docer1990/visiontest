@@ -81,6 +81,10 @@ content before independent verification or file checks; an empty or malformed
 result cannot pass merely because the expected element or PNG already exists.
 Nonempty public text is accepted without interpreting localized wording, while
 MCP error flags and structured operation failures still reject the operation.
+Native JSON-RPC envelopes inside MCP content are unwrapped once before assertion
+evaluation. They require version `2.0`, an ID, a nonempty object result and no
+error field. Malformed envelopes and nested native operation failures reject the
+sample before verification. Ordinary payload fields named `result` are preserved.
 
 ## Samples and summaries
 

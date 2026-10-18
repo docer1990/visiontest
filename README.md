@@ -223,6 +223,21 @@ the installed JAR. Upgrade the CLI first to get the latest instructions. The
 shared skill source is
 [agent-instructions.md](app/src/main/resources/agent-instructions.md).
 
+The skill includes separate Android and iOS CLI examples, MCP tool discovery,
+selector guidance, and checks for operation outcomes. It prioritizes targeted
+element queries and built-in waits, using screenshots for visual checks or missing
+UI information. It also documents optional output filtering with `jq`. Agents use
+the CLI by default, even when MCP tools are available. MCP requires an explicit
+user request and is never an automatic fallback for CLI failures. `init` writes
+instructions; it does not configure an MCP connection.
+Consecutive tests reuse the automation server. At the end of the testing task,
+the agent stops only a server it started, unless asked to leave it running.
+For offscreen targets, the skill guides agents to swipe within a visible list
+or carousel using accessibility data, then verify progress without requiring
+a screenshot before each gesture.
+The workflow reuses verified setup, focuses on the requested assertions, and
+avoids redundant intermediate checks and retries without new evidence.
+
 ## Configuration
 
 | Variable | Default | Purpose |

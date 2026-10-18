@@ -165,7 +165,14 @@ all synchronization performed inside UIAutomator. iOS records request decoding,
 operation and response encoding, main-thread queue delay, exposed polling waits,
 and screenshot capture/PNG/base64 work. It cannot expose all XCTest scheduling or
 SDK synchronization, and it freezes the snapshot at the existing HTTP completion
-boundary. In either platform, `missingStages` means unmeasured, omitted, or
+boundary. iOS polls include the first readiness check and finish at the actual
+polling boundary, before later actions and response encoding. Their `waitNs` adds
+elapsed explicit delays; these disjoint delays do not create a contiguous
+`poll_wait` interval, so that stage stays missing. iOS focus polling includes the
+tap needed to acquire focus and ends before typing. On iOS, freezing during polling
+omits the unfinished poll and its partial metrics, even if the operation later
+finishes. Android polling wrappers can include the eventual interaction.
+In either platform, `missingStages` means unmeasured, omitted, or
 unfinished work; it does not mean zero duration. These records remain bounded to
 32 spans and an 8,192-character response header.
 

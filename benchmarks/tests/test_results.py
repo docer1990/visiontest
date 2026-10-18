@@ -1,6 +1,10 @@
 import unittest
 import tempfile
 import json
+import signal
+import subprocess
+import sys
+from unittest.mock import Mock, patch
 from pathlib import Path
 
 from benchmarks.results import summarize, write_samples
@@ -72,6 +76,89 @@ class ResultsTest(unittest.TestCase):
             path = Path(directory) / "samples.jsonl"
             write_samples(path, [sample])
             self.assertEqual(sample, json.loads(path.read_text(encoding="utf-8")))
+
+    def test_successful_update_publishes_all_samples_in_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "samples.jsonl"
+            samples = [{"status": "passed", "duration_ns": 10}]
+            write_samples(path, samples)
+            samples.append({"status": "failed", "duration_ns": 20})
+            write_samples(path, samples)
+            self.assertEqual(samples, [json.loads(line) for line in path.read_text().splitlines()])
+            self.assertEqual([path], list(Path(directory).iterdir()))
+
+    def test_write_failure_preserves_existing_samples(self):
+        create_temporary_file = tempfile.NamedTemporaryFile
+
+        def failing_output(*args, **kwargs):
+            output = create_temporary_file(*args, **kwargs)
+            output.write = Mock(side_effect=OSError("write failed"))
+            return output
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "samples.jsonl"
+            write_samples(path, [{"status": "passed", "duration_ns": 10}])
+            previous = path.read_bytes()
+            with patch("benchmarks.results.tempfile.NamedTemporaryFile", side_effect=failing_output):
+                with self.assertRaisesRegex(OSError, "write failed"):
+                    write_samples(path, [{"status": "failed"}])
+            self.assertEqual(previous, path.read_bytes())
+            self.assertEqual([path], list(Path(directory).iterdir()))
+
+    def test_serialization_failure_preserves_existing_samples(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "samples.jsonl"
+            write_samples(path, [{"status": "passed", "duration_ns": 10}])
+            previous = path.read_bytes()
+            with self.assertRaises(TypeError):
+                write_samples(path, [{"status": "failed"}, {"unsupported": object()}])
+            self.assertEqual(previous, path.read_bytes())
+            self.assertEqual([path], list(Path(directory).iterdir()))
+
+    def test_replace_failure_preserves_existing_samples(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "samples.jsonl"
+            write_samples(path, [{"status": "passed", "duration_ns": 10}])
+            previous = path.read_bytes()
+            with patch.object(Path, "replace", side_effect=OSError("replacement failed")):
+                with self.assertRaisesRegex(OSError, "replacement failed"):
+                    write_samples(path, [{"status": "failed"}])
+            self.assertEqual(previous, path.read_bytes())
+            self.assertEqual([path], list(Path(directory).iterdir()))
+
+    @unittest.skipUnless(sys.platform != "win32", "POSIX termination signals")
+    def test_interrupted_update_preserves_existing_samples(self):
+        for interruption in (signal.SIGTERM, signal.SIGKILL):
+            with self.subTest(signal=interruption), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "samples.jsonl"
+                write_samples(path, [{"status": "passed", "duration_ns": 10}])
+                previous = path.read_bytes()
+                script = """
+import sys
+from pathlib import Path
+from benchmarks.results import write_samples
+
+class PausedSample(dict):
+    def items(self):
+        print("serializing", flush=True)
+        sys.stdin.read(1)
+        return super().items()
+
+write_samples(Path(sys.argv[1]), [PausedSample(status="failed")])
+"""
+                with subprocess.Popen([sys.executable, "-c", script, str(path)],
+                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE, text=True) as child:
+                    try:
+                        self.assertEqual("serializing\n", child.stdout.readline())
+                        child.send_signal(interruption)
+                        child.communicate(timeout=5)
+                        self.assertEqual(-interruption, child.returncode)
+                        self.assertEqual(previous, path.read_bytes())
+                    finally:
+                        if child.poll() is None:
+                            child.kill()
+                            child.communicate(timeout=5)
 
     def test_operation_and_process_boundaries_have_separate_populations(self):
         result = summarize([{'status': 'passed', 'duration_ns': 100,

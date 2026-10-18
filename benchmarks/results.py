@@ -1,5 +1,6 @@
 import json
 import math
+import tempfile
 from pathlib import Path
 
 
@@ -107,8 +108,22 @@ def _counts(samples, field):
 
 
 def write_samples(path: Path, samples: list[dict]) -> None:
-    """Rewrite JSONL from the accumulated records, including unsuccessful attempts."""
-    with Path(path).open("w", encoding="utf-8", newline="\n") as output:
-        for sample in samples:
-            output.write(json.dumps(sample, sort_keys=True, separators=(",", ":")))
-            output.write("\n")
+    """Atomically replace JSONL after serializing every accumulated attempt."""
+    path = Path(path)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", newline="\n", dir=path.parent,
+            prefix=f".{path.name}.", suffix=".tmp", delete=False,
+        ) as output:
+            temporary_path = Path(output.name)
+            for sample in samples:
+                output.write(json.dumps(sample, sort_keys=True, separators=(",", ":")))
+                output.write("\n")
+        temporary_path.replace(path)
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                pass

@@ -60,6 +60,40 @@ class ExecutionTest(unittest.TestCase):
             self.assertEqual("failed", result["assertion_outcome"])
             self.assertFalse(path.exists())
 
+    def test_cli_unusable_action_output_cannot_pass_an_already_settled_fixture(self):
+        for kind in ("action_then_element", "wait_then_element"):
+            for stdout in ("", " \n\t", "{}", "null", "[]", "false", "0", '"done"'):
+                with self.subTest(kind=kind, stdout=stdout), tempfile.TemporaryDirectory() as directory:
+                    marker = Path(directory) / "verified"
+                    case = {"id": "action", "cliArgs": [], "timeoutMs": 2000,
+                            "assertion": {"kind": kind, "resourceId": "done", "expectedFound": True,
+                                          "verificationCliArgs": ["--verify"]}}
+                    prefix = [sys.executable, "-c",
+                              "import json, pathlib, sys; "
+                              "verify = '--verify' in sys.argv; "
+                              "pathlib.Path(sys.argv[1]).touch() if verify else None; "
+                              "sys.stdout.write('{\"found\":true,\"resourceId\":\"done\"}' if verify else json.loads(sys.argv[2]))",
+                              str(marker), json.dumps(stdout)]
+                    result = run_cli(prefix, case)
+                    self.assertEqual("failed", result["operation_outcome"])
+                    self.assertEqual("not_run", result["assertion_outcome"])
+                    self.assertFalse(marker.exists())
+
+    def test_cli_unusable_screenshot_output_cannot_pass_a_fresh_png(self):
+        for stdout in ("", " \n\t", "{}", "null", "[]", "false", "0", '"done"'):
+            with self.subTest(stdout=stdout), tempfile.TemporaryDirectory() as directory:
+                case = {"id": "screenshot", "cliArgs": [], "timeoutMs": 2000,
+                        "assertion": {"kind": "screenshot_file"}}
+                prefix = [sys.executable, "-c",
+                          "import json, pathlib, sys; "
+                          "path = pathlib.Path(sys.argv[sys.argv.index('--output') + 1]); "
+                          "path.write_bytes(bytes([137,80,78,71,13,10,26,10])); sys.stdout.write(json.loads(sys.argv[1]))",
+                          json.dumps(stdout)]
+                result = run_cli(prefix, case, output_dir=Path(directory))
+                self.assertTrue((Path(directory) / "capture.png").exists())
+                self.assertEqual("failed", result["operation_outcome"])
+                self.assertEqual("not_run", result["assertion_outcome"])
+
     def test_off_state_explicitly_disables_inherited_mcp_tracing(self):
         self.assertEqual('', _mcp_environment({'processEnvironment': {'VISIONTEST_TRACE_PERFORMANCE': 'inherited'}}, None)['VISIONTEST_TRACE_PERFORMANCE'])
 

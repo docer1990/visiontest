@@ -8,17 +8,16 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 def parse_cli_output(stdout: str, exit_code: int | None, kind: str) -> dict:
     if exit_code is None or exit_code != 0:
         return {"operation_outcome": "failed", "assertion_outcome": "not_run", "payload": None}
+    accepts_text = kind in {"action_then_element", "wait_then_element", "screenshot_file"}
     try:
         payload = json.loads(stdout)
     except (TypeError, json.JSONDecodeError):
-        if kind in {"action_then_element", "wait_then_element", "screenshot_file"}:
+        if accepts_text and isinstance(stdout, str) and stdout.strip():
             return {"operation_outcome": "success", "assertion_outcome": "not_run", "payload": None}
         return {"operation_outcome": "failed", "assertion_outcome": "not_run", "payload": None}
     if isinstance(payload, dict) and ("error" in payload or payload.get("success") is False):
         return {"operation_outcome": "failed", "assertion_outcome": "not_run", "payload": payload}
-    if kind in {"action_then_element", "wait_then_element", "screenshot_file"}:
-        return {"operation_outcome": "success", "assertion_outcome": "not_run", "payload": payload}
-    if not isinstance(payload, dict):
+    if not isinstance(payload, dict) or (accepts_text and not payload):
         return {"operation_outcome": "failed", "assertion_outcome": "not_run", "payload": payload}
     return {"operation_outcome": "success", "assertion_outcome": "not_run", "payload": payload}
 

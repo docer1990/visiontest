@@ -26,6 +26,32 @@ class AssertionsTest(unittest.TestCase):
         result = parse_cli_output('{"success":false}', 0, "action_then_element")
         self.assertEqual("failed", result["operation_outcome"])
 
+    def test_cli_verification_commands_require_usable_nonempty_output(self):
+        for kind in ("action_then_element", "wait_then_element", "screenshot_file"):
+            for stdout in ("", " \n\t", "{}", "null", "[]", "[{}]", "true", "false", "0", '""', '"done"'):
+                with self.subTest(kind=kind, stdout=stdout):
+                    result = parse_cli_output(stdout, 0, kind)
+                    self.assertEqual("failed", result["operation_outcome"])
+                    self.assertEqual("not_run", result["assertion_outcome"])
+
+    def test_cli_verification_commands_accept_public_text_and_objects(self):
+        for kind, stdout in (
+            ("action_then_element", '{"success":true}'),
+            ("action_then_element", '{"result":{"success":true}}'),
+            ("action_then_element", "Tapped element"),
+            ("wait_then_element", '{"found":true,"resourceId":"done"}'),
+            ("wait_then_element", "Element is no longer present (resourceId='loading')."),
+            ("screenshot_file", "Screenshot saved to /tmp/capture.png"),
+        ):
+            with self.subTest(kind=kind, stdout=stdout):
+                self.assertEqual("success", parse_cli_output(stdout, 0, kind)["operation_outcome"])
+
+    def test_cli_verification_commands_preserve_structured_operation_failures(self):
+        for kind in ("action_then_element", "wait_then_element", "screenshot_file"):
+            for stdout in ('{"success":false}', '{"error":{"message":"unavailable"}}'):
+                with self.subTest(kind=kind, stdout=stdout):
+                    self.assertEqual("failed", parse_cli_output(stdout, 0, kind)["operation_outcome"])
+
     def test_screenshot_requires_fresh_png_signature(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "capture.png"

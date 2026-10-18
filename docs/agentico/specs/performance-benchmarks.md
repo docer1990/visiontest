@@ -211,3 +211,30 @@ warmups and thirty measured samples per state/configuration, preserving host-col
 and warm groups. Native-cold is eligible only after its explicit restart policy
 succeeds. Hardware/version omissions and unavailable platforms keep collection
 incomplete; they are not replaced with synthetic results.
+
+## Manual CI execution
+
+A dedicated command benchmark workflow runs only through `workflow_dispatch`.
+PR, push, release and schedule events do not start it. Its optional `ref` input
+accepts a branch, commit or PR head ref such as `refs/pull/123/head`; a blank
+input uses the dispatched workflow ref. Resolve that input once and check out
+the same immutable SHA in every measurement job.
+
+The eight platform/mode/lifecycle configurations use separate hosted runners,
+with one benchmark process per machine and paired tracing states in the same
+job. CI builds and starts the current native artifacts, verifies fixture smoke,
+and records actual target, source, artifact and runner identity. Native server
+processes are owned and reaped on exit. A sibling failure does not cancel other
+measurement jobs. CI and local latency baselines remain separate populations.
+
+Each job preserves its evidence, including setup failures and partial samples,
+and publishes a readable Markdown report. The final report identifies missing
+configurations, unsuccessful attempts, unavailable measurements and incomplete
+traces. It separates warmups and measured samples, CLI process and MCP operation
+boundaries, and incompatible platforms or source SHAs. Reports include median,
+p95, paired tracing overhead and available host/native contributors. A manual
+run does not imply a PR-versus-main comparison or agent resource evaluation.
+
+The workflow must reach the default branch before GitHub exposes manual dispatch.
+Adding it locally neither dispatches a remote run nor completes the outstanding
+command or agent baseline evidence.

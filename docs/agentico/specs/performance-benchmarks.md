@@ -81,7 +81,7 @@ content before independent verification or file checks; an empty or malformed
 result cannot pass merely because the expected element or PNG already exists.
 Nonempty public text is accepted without interpreting localized wording, while
 MCP error flags and structured operation failures still reject the operation.
-Native JSON-RPC envelopes inside MCP content are unwrapped once before assertion
+Native JSON-RPC envelopes in CLI JSON output or inside MCP content are unwrapped once before assertion
 evaluation. They require version `2.0`, an ID, a nonempty object result and no
 error field. Malformed envelopes and nested native operation failures reject the
 sample before verification. Ordinary payload fields named `result` are preserved.
@@ -226,6 +226,10 @@ job. CI builds and starts the current native artifacts, verifies fixture smoke,
 and records actual target, source, artifact and runner identity. Native server
 processes are owned and reaped on exit. A sibling failure does not cancel other
 measurement jobs. CI and local latency baselines remain separate populations.
+
+Local subprocess execution also terminates and reaps its owned process group and
+closes its pipes before propagating an interruption or other exceptional exit,
+including interruptions during timeout cleanup. It does not replay device work.
 
 Each job preserves its evidence, including setup failures and partial samples,
 and publishes a readable Markdown report. The final report identifies missing

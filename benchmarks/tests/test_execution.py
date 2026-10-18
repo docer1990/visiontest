@@ -1,4 +1,7 @@
 import json
+import os
+import signal
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -93,6 +96,70 @@ class ExecutionTest(unittest.TestCase):
                 self.assertTrue((Path(directory) / "capture.png").exists())
                 self.assertEqual("failed", result["operation_outcome"])
                 self.assertEqual("not_run", result["assertion_outcome"])
+
+    def test_cli_nested_failure_cannot_pass_an_already_settled_fixture(self):
+        case = {"cliArgs": ["tap"], "timeoutMs": 1000,
+                "assertion": {"kind": "action_then_element", "resourceId": "done",
+                              "expectedFound": True, "verificationCliArgs": ["lookup"]}}
+        failed = {"stdout": json.dumps({"jsonrpc": "2.0", "id": 1,
+                                       "result": {"success": False}}),
+                  "exit_code": 0, "timed_out": False}
+        verified = {"stdout": '{"found":true,"resourceId":"done"}',
+                    "exit_code": 0, "timed_out": False}
+        with patch("benchmarks.cli.run_process", side_effect=[failed, verified]) as execute:
+            result = run_cli(["fake"], case)
+        self.assertEqual("failed", result["operation_outcome"])
+        self.assertEqual("not_run", result["assertion_outcome"])
+        self.assertEqual(1, execute.call_count)
+
+    @unittest.skipUnless(os.name == "posix", "requires POSIX process groups")
+    def test_exceptional_exit_reaps_the_owned_process_and_closes_pipes(self):
+        original_popen = subprocess.Popen
+        for point in ("communicate", "timeout_drain", "timeout_termination", "other_error"):
+            with self.subTest(point=point):
+                owned = []
+                interruption = RuntimeError("read failed") if point == "other_error" else KeyboardInterrupt()
+
+                def launch(*args, **kwargs):
+                    process = original_popen(*args, **kwargs)
+                    owned.append(process)
+                    if point == "timeout_termination":
+                        original_wait = process.wait
+                        calls = 0
+
+                        def wait(*args, **kwargs):
+                            nonlocal calls
+                            calls += 1
+                            if calls == 1:
+                                raise interruption
+                            return original_wait(*args, **kwargs)
+
+                        process.wait = wait
+                        process.communicate = unittest.mock.Mock(side_effect=subprocess.TimeoutExpired(args[0], .01))
+                    else:
+                        effects = [interruption]
+                        if point == "timeout_drain":
+                            effects.insert(0, subprocess.TimeoutExpired(args[0], .01))
+                        process.communicate = unittest.mock.Mock(side_effect=effects)
+                    return process
+
+                try:
+                    with patch("benchmarks.execution.subprocess.Popen", side_effect=launch):
+                        with self.assertRaises(type(interruption)) as raised:
+                            run_process([sys.executable, "-c", "import time; time.sleep(30)"], 100)
+                    self.assertIs(interruption, raised.exception)
+                    process = owned[0]
+                    self.assertIsNotNone(process.poll())
+                    self.assertTrue(all(stream.closed for stream in (process.stdin, process.stdout, process.stderr)))
+                    with self.assertRaises(ProcessLookupError):
+                        os.killpg(process.pid, 0)
+                finally:
+                    for process in owned:
+                        if process.poll() is None:
+                            os.killpg(process.pid, signal.SIGKILL)
+                            process.wait(timeout=2)
+                        for stream in (process.stdin, process.stdout, process.stderr):
+                            stream.close()
 
     def test_off_state_explicitly_disables_inherited_mcp_tracing(self):
         self.assertEqual('', _mcp_environment({'processEnvironment': {'VISIONTEST_TRACE_PERFORMANCE': 'inherited'}}, None)['VISIONTEST_TRACE_PERFORMANCE'])

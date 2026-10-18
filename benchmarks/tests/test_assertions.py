@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 import os
@@ -51,6 +52,27 @@ class AssertionsTest(unittest.TestCase):
             for stdout in ('{"success":false}', '{"error":{"message":"unavailable"}}'):
                 with self.subTest(kind=kind, stdout=stdout):
                     self.assertEqual("failed", parse_cli_output(stdout, 0, kind)["operation_outcome"])
+
+    def test_cli_native_envelopes_are_validated_before_operation_checks(self):
+        invalid = [
+            {"jsonrpc": "2.0", "id": 1, "result": {"success": False}},
+            {"jsonrpc": "2.0", "id": 1, "result": {"error": "failed"}},
+            {"jsonrpc": "1.0", "id": 1, "result": {"success": True}},
+            {"jsonrpc": "2.0", "result": {"success": True}},
+            {"jsonrpc": "2.0", "id": 1, "result": {}},
+            {"jsonrpc": "2.0", "id": 1, "result": []},
+            {"jsonrpc": "2.0", "id": 1, "error": {}, "result": {"success": True}},
+        ]
+        for kind in ("action_then_element", "wait_then_element", "screenshot_file"):
+            for payload in invalid:
+                with self.subTest(kind=kind, payload=payload):
+                    result = parse_cli_output(json.dumps(payload), 0, kind)
+                    self.assertEqual("failed", result["operation_outcome"])
+                    self.assertEqual("not_run", result["assertion_outcome"])
+        payload = {"success": True, "result": {"ordinary": "field"}}
+        envelope = {"jsonrpc": "2.0", "id": 1, "result": payload}
+        self.assertEqual(payload, parse_cli_output(json.dumps(envelope), 0, "action_then_element")["payload"])
+        self.assertEqual(payload, parse_cli_output(json.dumps(payload), 0, "action_then_element")["payload"])
 
     def test_screenshot_requires_fresh_png_signature(self):
         with tempfile.TemporaryDirectory() as directory:

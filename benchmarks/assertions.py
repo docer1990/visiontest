@@ -15,6 +15,7 @@ def parse_cli_output(stdout: str, exit_code: int | None, kind: str) -> dict:
         if accepts_text and isinstance(stdout, str) and stdout.strip():
             return {"operation_outcome": "success", "assertion_outcome": "not_run", "payload": None}
         return {"operation_outcome": "failed", "assertion_outcome": "not_run", "payload": None}
+    payload = _native_payload(payload)
     if isinstance(payload, dict) and ("error" in payload or payload.get("success") is False):
         return {"operation_outcome": "failed", "assertion_outcome": "not_run", "payload": payload}
     if not isinstance(payload, dict) or (accepts_text and not payload):
@@ -68,3 +69,12 @@ def _fresh_png(path, started_ns):
         return file_path.stat().st_mtime_ns >= started_ns and file_path.read_bytes()[:8] == PNG_SIGNATURE
     except (OSError, TypeError):
         return False
+
+
+def _native_payload(payload):
+    if not isinstance(payload, dict) or "jsonrpc" not in payload:
+        return payload
+    if payload.get("jsonrpc") != "2.0" or "id" not in payload or "error" in payload:
+        return None
+    native_result = payload.get("result")
+    return native_result if isinstance(native_result, dict) and native_result else None

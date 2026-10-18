@@ -6,7 +6,7 @@ import threading
 import time
 from pathlib import Path
 
-from benchmarks.assertions import evaluate
+from benchmarks.assertions import evaluate, _native_payload
 from benchmarks.execution import _terminate_group
 
 
@@ -268,12 +268,3 @@ def _public_payload(result):
         return _native_payload(json.loads(text_items[0]))
     except json.JSONDecodeError:
         return text_items[0]
-
-
-def _native_payload(payload):
-    if not isinstance(payload, dict) or "jsonrpc" not in payload:
-        return payload
-    if payload.get("jsonrpc") != "2.0" or "id" not in payload or "error" in payload:
-        return None
-    native_result = payload.get("result")
-    return native_result if isinstance(native_result, dict) and native_result else None

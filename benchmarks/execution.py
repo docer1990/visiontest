@@ -1,6 +1,7 @@
 import os
 import signal
 import subprocess
+import threading
 import time
 
 
@@ -36,17 +37,34 @@ def run_process(argv: list[str], timeout_ms: int, env: dict[str, str] | None = N
         }
     timed_out = False
     try:
-        stdout, stderr = process.communicate(timeout=timeout_ms / 1000)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        _terminate_group(process)
         try:
-            stdout, stderr = process.communicate(timeout=2)
-        except subprocess.TimeoutExpired as error:
-            stdout = error.output or ""
-            stderr = error.stderr or ""
-            for stream in (process.stdin, process.stdout, process.stderr):
+            stdout, stderr = process.communicate(timeout=timeout_ms / 1000)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            _terminate_group(process)
+            try:
+                stdout, stderr = process.communicate(timeout=2)
+            except subprocess.TimeoutExpired as error:
+                stdout = error.output or ""
+                stderr = error.stderr or ""
+    except BaseException:
+        # Preserve the original interruption, including one during timeout cleanup.
+        # A second terminal SIGINT must not interrupt termination and reaping.
+        main_thread = threading.current_thread() is threading.main_thread()
+        if main_thread:
+            previous_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        try:
+            _terminate_group(process)
+        finally:
+            if main_thread:
+                signal.signal(signal.SIGINT, previous_sigint)
+        raise
+    finally:
+        for stream in (process.stdin, process.stdout, process.stderr):
+            try:
                 stream.close()
+            except OSError:
+                pass
     if isinstance(stdout, bytes):
         stdout = stdout.decode("utf-8", errors="replace")
     if isinstance(stderr, bytes):
@@ -70,7 +88,7 @@ def _terminate_group(process: subprocess.Popen) -> None:
                 return
             process.terminate()
     except (ProcessLookupError, PermissionError):
-        return
+        pass
     try:
         process.wait(timeout=0.5)
     except subprocess.TimeoutExpired:

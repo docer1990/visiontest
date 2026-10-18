@@ -202,3 +202,35 @@ func testNativeDurationUsesInjectedMonotonicClock() throws {
   and verified; update the decision index in the same change.
 - [x] Commit as `docs(performance): document native timing compatibility`, run
   branch review, and record remaining real benchmark and agent evaluation gates.
+
+
+## PR preparation verification, 2026-10-19
+
+Merged `origin/main` (`eaa6ac8`) without rewriting the native branch history.
+The distributable skill keeps main's CLI-first guidance and the native timing
+compatibility instructions; the conflict was documentation only.
+
+Final branch review found an iOS polling-boundary defect, fixed in `14c4161`:
+record completed readiness/focus polling intervals rather than extending them
+through response encoding or synthesizing a contiguous interval from disjoint
+waits. Unfinished polling remains missing when the HTTP snapshot freezes.
+Aggregate `pollCount` and `waitNs` remain metrics. The late-completion test now
+waits for the measured operation to finish. `5cb3e1d` scopes these exact interval
+guarantees to iOS and documents Android's existing wrapper boundaries.
+Re-review found no remaining blockers. Malformed traced JSON parsing twice in
+`JsonRpcServer.swift` remains a nonblocking deferred improvement.
+
+Final verification on the reviewed source passed:
+
+- `./gradlew :app:test :app:e2eTest build`: 132 tasks, 542 host unit tests,
+  12 E2E tests and 176 Android debug unit tests, with zero failures.
+- Swift unit gate: 111 tests, zero failures, on the explicitly selected iPhone 17
+  simulator with iOS 26.5. The two focused timing/helper classes passed 64 tests.
+- `git diff --check`: clean. No coverage floor or lint baseline changed.
+
+The first name-based Xcode destination attempt could not launch the host app
+and reported a UIScene lifecycle requirement; that attempt was stopped and is
+not a passing gate. The explicit iOS 26.5 unit gate passed. The host lifecycle
+was not changed, and this verification does not claim iOS 27 compatibility.
+Earlier Android instrumentation and iOS UI evidence remains separate from these
+unit gates. No benchmark or native automation server was restarted for this PR.

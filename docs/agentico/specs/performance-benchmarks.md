@@ -238,3 +238,44 @@ run does not imply a PR-versus-main comparison or agent resource evaluation.
 The workflow must reach the default branch before GitHub exposes manual dispatch.
 Adding it locally neither dispatches a remote run nor completes the outstanding
 command or agent baseline evidence.
+
+The lifecycle wrapper accepts exactly three arguments, platform (`android` or
+`ios`), mode (`cli` or `mcp`) and lifecycle (`warm` or `host-cold`). Invalid arity
+or values exit 2 before creating evidence or contacting a backend. The manifest
+pins all eight cases to 20,000 ms budgets. After building current artifacts and
+generating the CI manifest, each job starts one selected native server, checks
+health with bounded requests over at most 120 polls, then runs fixture smoke and
+five warmup/thirty measured tracing pairs per case. Failure prevents later
+phases and is never repaired by replaying startup or a measured dispatch.
+
+Android launches only
+`com.example.automationserver.AutomationServerTest#runAutomationServer` using
+`com.example.automationserver.test/com.example.automationserver.AutomationInstrumentationRunner`
+on port 9008. iOS launches only
+`IOSAutomationServerUITests/AutomationServerUITest/testRunAutomationServer` on
+port 9009 using the selected simulator UDID and current built test products.
+Exit/signal traps stop and reap the owned host process, remove Android forwarding
+and stop its instrumentation, or shut down the isolated iOS simulator. Cleanup
+failure changes an otherwise successful run into failure while preserving an
+existing nonzero collection exit code. Native-cold is excluded.
+
+The eight jobs use separate VMs with `fail-fast: false`, one benchmark process
+per host and a 120-minute job timeout. Android uses the existing API 36 x86_64
+emulator action on `ubuntu-latest`. iOS uses `macos-26`, selects Xcode first and
+resolves an isolated available iPhone 17 before boot. Moving runner labels do not
+pin hardware. Evidence records actual runner image/runtime versions, source SHA,
+fixture revision and artifact hashes where available rather than treating labels
+as fixed environments.
+
+Every job always uploads available logs, setup metadata, status, manifest,
+environment, samples, summary, traces and per-attempt PNGs under a name containing
+its configuration, run ID and run attempt. Setup/build failures can have no
+measurement output and retain their diagnostics and resolved SHA. Per-job
+Markdown reports and step summaries link to artifact downloads. The final report
+checks out the resolved SHA and downloads only measurement artifacts from the
+current run attempt, excluding prior attempts and combined reports. A partial
+job rerun reports missing current-attempt configurations instead of merging old
+evidence. All eight expected configurations and unavailable/failed jobs remain
+visible; report success never overrides a failed measurement job. A failed
+resolver prevents measurement and cannot supply a checkout SHA to the final
+report. No PR, release, push or schedule trigger is added.

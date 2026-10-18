@@ -67,6 +67,89 @@ git diff --check
 These tests validate behavior; their elapsed suite duration is not a device
 performance baseline.
 
+## Manual GitHub Actions collection
+
+The dedicated [Command Benchmarks workflow](../.github/workflows/command-benchmarks.yaml)
+starts only through `workflow_dispatch`. It must first exist on the repository's
+default branch for GitHub to expose manual dispatch. In GitHub, open **Actions →
+Command Benchmarks → Run workflow**, select the workflow branch, and optionally
+enter a source `ref`. Blank uses the selected workflow ref. A branch, SHA, or PR
+head ref is resolved once; every measurement job and the final report check out
+that immutable SHA with read-only repository permissions and no persisted Git
+credentials.
+
+With GitHub CLI authenticated for this repository, dispatch main or a PR head:
+
+```bash
+gh workflow run command-benchmarks.yaml -f ref=main
+gh workflow run command-benchmarks.yaml -f ref=refs/pull/123/head
+gh run list --workflow command-benchmarks.yaml
+gh run watch RUN_ID
+gh run download RUN_ID --dir test-output/downloaded-command-benchmarks
+```
+
+These commands start remote jobs when executed. Adding the workflow or running
+the fake-command tests does not dispatch it. The workflow does not alter PR or
+release checks. It does not automatically compare a PR against main.
+
+Eight separate hosted machines cover Android/iOS × CLI/MCP × warm/host-cold.
+Android uses an API 36 x86_64 emulator on `ubuntu-latest`; iOS uses an isolated
+iPhone 17 simulator on `macos-26`, with Xcode selected before simulator selection
+and boot. Every job builds its JAR, current native server and synthetic fixture,
+starts the selected server once, performs a bounded health check and fixture
+smoke, then runs all eight cases with 20-second case budgets, five warmup pairs
+and thirty measured pairs per case. This requests 560 attempts per configuration
+(80 warmup and 480 measured), or 4,480 attempts across the matrix. Native-cold is
+excluded. One benchmark process runs per host; separate jobs may run in parallel.
+
+The wrapper interface is exactly
+`bash .github/scripts/command-benchmarks.sh android|ios cli|mcp warm|host-cold`,
+with each choice supplied as one argument from an already built checkout and
+isolated target. It validates all three arguments before backend access. CI owns
+and reaps the instrumentation or xcodebuild process on success, failure and
+interrupt. Startup and uncertain operations are never replayed. Collection or
+cleanup failures fail the job. `fail-fast: false` lets sibling jobs finish, and
+each measurement job has a 120-minute limit. Full runs can take substantial time
+because fixture resets and validation lie outside operation latency. Eight jobs
+can consume up to 960 runner minutes before their limits, plus setup/report jobs;
+actual billing depends on the repository's hosted runner plan and runner type.
+
+Every job uploads a unique `command-benchmarks-data-<configuration>-<run>-<attempt>`
+artifact, even after setup/build failure. Its configuration directory contains
+available build, simulator, health, native and cleanup logs, a setup environment
+record with an Actions log link, job and lifecycle exit status, the generated
+manifest, a Markdown report, and any run directories containing `environment.json`,
+`samples.jsonl`, `summary.json`, traces and per-attempt PNGs. Failed setup may
+produce no manifest or samples. Job summaries link to the uploaded artifact.
+
+The final `command-benchmarks-report-<run>-<attempt>` artifact includes available
+raw evidence and a report listing all eight expected configurations, including
+missing or failed jobs. A successful report does not make failed measurement
+jobs successful. The final report downloads only measurement artifacts from the
+current run attempt. Rerunning only failed jobs therefore reports missing current
+attempt configurations instead of mixing evidence from earlier attempts; rerun
+the entire workflow to collect a new complete matrix.
+
+Runner labels are moving images, not fixed hardware. Actual image version, host,
+JVM, target OS/model, Xcode/runtime or Android image package versions, source SHA,
+fixture revision and built artifact hashes accompany the evidence where available.
+Keep these CI populations separate from the archived Mac baseline in
+[the baseline guide](../docs/benchmarks/http-baseline.md). Compare matching cases,
+platforms, modes, lifecycles, tracing states, source SHAs and environments; reports
+do not pool incompatible populations or claim agent resource measurements.
+
+The lifecycle tests use temporary directories and fake executables only:
+
+```bash
+python3 -B -m unittest benchmarks.tests.test_ci_lifecycle -q
+bash -n .github/scripts/command-benchmarks.sh
+```
+
+The optional workflow structure test uses `/usr/bin/ruby`'s YAML parser when
+available and otherwise skips. The harness and lifecycle tests need no Python
+packages or real device. Validate workflow YAML with an available YAML parser,
+and run `actionlint .github/workflows/command-benchmarks.yaml` when installed.
+
 ## Build native artifacts and fixtures
 
 Build the host JAR and Android server APK pair, then install the pair on the

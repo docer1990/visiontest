@@ -197,3 +197,40 @@ trace drain. CLI operation-only overhead is unavailable with tracing disabled;
 MCP tools/call overhead excludes verification and initialization. Per-sample
 process overhead is unavailable in persistent warm MCP. Full details are in the
 [benchmark behavioral contract](agentico/specs/performance-benchmarks.md).
+
+## Run the manual CI matrix
+
+The dedicated [Command Benchmarks workflow](../.github/workflows/command-benchmarks.yaml)
+supports manual dispatch only. Once the workflow exists on the default branch,
+use **Actions → Command Benchmarks → Run workflow** or run:
+
+```bash
+gh workflow run command-benchmarks.yaml -f ref=main
+gh workflow run command-benchmarks.yaml -f ref=refs/pull/123/head
+```
+
+The optional source ref accepts a branch, SHA or PR head ref; blank uses the
+dispatched workflow ref. A resolver pins it once for all eight Android/iOS,
+CLI/MCP and warm/host-cold jobs. Each hosted machine builds current artifacts,
+starts one native server and runs fixture smoke before five warmup and thirty
+measured tracing pairs for every case. Native-cold is excluded. Startup and
+uncertain operations are never replayed. Failed jobs retain partial evidence and
+do not cancel their siblings. Measurement failures still fail the workflow even
+when its final evidence report succeeds.
+
+Job summaries link to artifacts containing manifests, actual environment and
+artifact identity, logs, raw samples, summaries, traces and per-attempt PNGs.
+The final report lists every expected configuration and marks missing/failed
+evidence honestly. It downloads the current run attempt only; rerun the entire
+workflow for a complete fresh matrix. Moving `ubuntu-latest` and `macos-26`
+labels do not identify fixed hardware. Actual image/runtime versions are recorded
+where available. CI measurements remain separate from the archived Mac baseline
+and from other source/environment populations. Manual dispatch does not establish
+a main-versus-PR speedup or an agent token/image/cost evaluation.
+
+Eight measurement jobs each have a 120-minute limit and may run concurrently.
+Budget for fixture setup, smoke and build time as well as 4,480 requested attempts;
+these can consume up to 960 runner minutes plus resolver/report work. Hosted
+runner billing depends on the account and runner type. See the
+[benchmark guide](../benchmarks/README.md#manual-github-actions-collection) for
+the exact matrix, evidence layout, lifecycle wrapper and download commands.

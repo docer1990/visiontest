@@ -1,0 +1,226 @@
+name: Command Benchmarks
+
+'on':
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, SHA or refs/pull/123/head; blank uses the dispatched workflow ref'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  resolve:
+    name: Resolve source once
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+      - id: source
+        run: |
+          resolved_sha=$(git rev-parse HEAD)
+          echo "sha=$resolved_sha" >> "$GITHUB_OUTPUT"
+          echo "Tested source: $resolved_sha" >> "$GITHUB_STEP_SUMMARY"
+
+  benchmarks:
+    name: ${{ matrix.platform }} / ${{ matrix.mode }} / ${{ matrix.lifecycle }}
+    needs: resolve
+    runs-on: ${{ matrix.platform == 'android' && 'ubuntu-latest' || 'macos-26' }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [android, ios]
+        mode: [cli, mcp]
+        lifecycle: [warm, host-cold]
+    env:
+      EVIDENCE: test-output/ci-benchmarks/${{ matrix.platform }}-${{ matrix.mode }}-${{ matrix.lifecycle }}
+      CONFIGURATION: ${{ matrix.platform }}-${{ matrix.mode }}-${{ matrix.lifecycle }}
+      SOURCE_SHA: ${{ needs.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false
+      - name: Initialize evidence
+        if: always()
+        run: |
+          mkdir -p "$EVIDENCE"
+          python3 -B - <<'PY'
+          import json, os, platform
+          from pathlib import Path
+          keys = ('SOURCE_SHA', 'CONFIGURATION', 'ImageOS', 'ImageVersion', 'RUNNER_OS', 'RUNNER_ARCH', 'RUNNER_ENVIRONMENT', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT')
+          metadata = {key: os.environ.get(key, 'unavailable') for key in keys}
+          metadata['host'] = platform.platform()
+          metadata['actionsLogs'] = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+          Path(os.environ['EVIDENCE'], 'setup-environment.json').write_text(json.dumps(metadata, indent=2) + '\n')
+          PY
+      - name: Setup JDK 17
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - name: Setup Android SDK
+        if: matrix.platform == 'android'
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+      - name: Enable KVM
+        if: matrix.platform == 'android'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Build Android artifacts
+        if: matrix.platform == 'android'
+        run: |
+          set -o pipefail
+          bash ./gradlew :app:shadowJar :automation-server:assembleDebug :automation-server:assembleDebugAndroidTest :benchmark-fixture:assembleDebug --no-daemon 2>&1 | tee "$EVIDENCE/build.log"
+      - name: Select Xcode and isolated iPhone 17 before boot
+        if: matrix.platform == 'ios'
+        run: |
+          set -o pipefail
+          {
+            sudo xcode-select -switch /Applications/Xcode.app
+            xcodebuild -version
+            xcrun simctl list -j
+            target=$(python3 -B -m benchmarks.ci_manifest ios-target)
+            echo "IOS_TARGET=$target" >> "$GITHUB_ENV"
+            xcrun simctl boot "$target"
+            xcrun simctl bootstatus "$target" -b
+          } 2>&1 | tee "$EVIDENCE/simulator-setup.log"
+      - name: Build iOS artifacts
+        if: matrix.platform == 'ios'
+        run: |
+          set -o pipefail
+          {
+            bash ./gradlew :app:shadowJar --no-daemon
+            xcodebuild build-for-testing -project ios-automation-server/IOSAutomationServer.xcodeproj -scheme IOSAutomationServer -destination "platform=iOS Simulator,id=$IOS_TARGET" -derivedDataPath test-output/benchmark-native
+            xcodebuild build -project benchmarks/fixtures/ios/BenchmarkFixture.xcodeproj -scheme BenchmarkFixture -destination "platform=iOS Simulator,id=$IOS_TARGET" -derivedDataPath benchmarks/fixtures/ios/.derivedData
+          } 2>&1 | tee "$EVIDENCE/build.log"
+      - name: Android paired command collection
+        if: matrix.platform == 'android'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 36
+          arch: x86_64
+          target: default
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            bash -o pipefail -c 'adb shell getprop 2>&1 | tee "$EVIDENCE/android-runtime.log"'
+            bash -o pipefail -c 'sdkmanager --list_installed 2>&1 | tee "$EVIDENCE/android-packages.log"'
+            bash -o pipefail -c 'bash .github/scripts/command-benchmarks.sh android "$BENCHMARK_MODE" "$BENCHMARK_LIFECYCLE" 2>&1 | tee "$EVIDENCE/lifecycle.log"'
+        env:
+          BENCHMARK_MODE: ${{ matrix.mode }}
+          BENCHMARK_LIFECYCLE: ${{ matrix.lifecycle }}
+      - name: iOS paired command collection
+        if: matrix.platform == 'ios'
+        env:
+          BENCHMARK_MODE: ${{ matrix.mode }}
+          BENCHMARK_LIFECYCLE: ${{ matrix.lifecycle }}
+        run: |
+          set -o pipefail
+          bash .github/scripts/command-benchmarks.sh ios "$BENCHMARK_MODE" "$BENCHMARK_LIFECYCLE" 2>&1 | tee "$EVIDENCE/lifecycle.log"
+      - name: Preserve job status and render available evidence
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          mkdir -p "$EVIDENCE"
+          printf '%s\n' "$JOB_STATUS" > "$EVIDENCE/job-status.txt"
+          if [[ -f benchmarks/ci_report.py ]]; then
+            python3 -B -m benchmarks.ci_report --input-dir "$EVIDENCE" --output "$EVIDENCE/report.md" --expected-configurations 1
+          else
+            printf '# Command benchmark report\n\nCheckout failed. No measurement evidence is available.\n' > "$EVIDENCE/report.md"
+          fi
+          printf '\nResolved source SHA: `%s`. Job status before reporting: %s.\n' "$SOURCE_SHA" "$JOB_STATUS" >> "$EVIDENCE/report.md"
+      - name: Upload all available evidence
+        id: evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: command-benchmarks-data-${{ matrix.platform }}-${{ matrix.mode }}-${{ matrix.lifecycle }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-output/ci-benchmarks/
+          if-no-files-found: error
+      - name: Publish job summary
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
+        run: |
+          printf '## %s\n\n[Download evidence](%s)\n\n' "$CONFIGURATION" "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          cat "$EVIDENCE/report.md" >> "$GITHUB_STEP_SUMMARY"
+
+  report:
+    name: Report every expected configuration
+    needs: [resolve, benchmarks]
+    if: always() && needs.resolve.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false
+      - name: Download available measurement evidence
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: command-benchmarks-data-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-output/ci-benchmarks/
+          merge-multiple: true
+      - name: Render all eight expected configurations
+        if: always()
+        env:
+          MATRIX_RESULT: ${{ needs.benchmarks.result }}
+          DOWNLOAD_RESULT: ${{ steps.download.outcome }}
+          SOURCE_SHA: ${{ needs.resolve.outputs.sha }}
+        run: |
+          mkdir -p test-output/ci-benchmarks
+          python3 -B -m benchmarks.ci_report --input-dir test-output/ci-benchmarks --output test-output/ci-benchmarks/report.md --expected-configurations 8
+          {
+            printf '\n## CI job outcomes\n\nMatrix result: %s. Evidence download: %s.\n\n' "$MATRIX_RESULT" "$DOWNLOAD_RESULT"
+            printf 'Resolved source SHA: `%s`.\n\n' "$SOURCE_SHA"
+            for platform in android ios; do
+              for mode in cli mcp; do
+                for lifecycle in warm host-cold; do
+                  configuration="$platform-$mode-$lifecycle"
+                  status=test-output/ci-benchmarks/$configuration/job-status.txt
+                  if [[ -f "$status" ]]; then
+                    printf -- '- %s: %s\n' "$configuration" "$(cat "$status")"
+                  else
+                    printf -- '- %s: missing job evidence; outcome unavailable\n' "$configuration"
+                  fi
+                done
+              done
+            done
+          } >> test-output/ci-benchmarks/report.md
+      - name: Upload combined evidence and report
+        id: evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: command-benchmarks-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-output/ci-benchmarks/
+          if-no-files-found: error
+      - name: Publish combined summary
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
+        run: |
+          printf '[Download all available evidence](%s)\n\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          cat test-output/ci-benchmarks/report.md >> "$GITHUB_STEP_SUMMARY"

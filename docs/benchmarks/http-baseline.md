@@ -64,6 +64,10 @@ During earlier preparation, querying the transient iOS loading control while it 
 
 Native-cold was excluded. Branch review deferred native-cold restart ordering and a shared overall deadline for repeated MCP discovery cursors/notifications. Complete Android and MCP populations, the remaining host lifecycle configurations, and agent evaluation 57D are still pending. CI results must form a separate baseline from this Mac’s measurements.
 
+These are recorded outcomes from the pinned runner revisions above. Later CLI
+empty-output validation and atomic sample persistence safeguards do not rewrite
+or retroactively revalidate this archived evidence.
+
 ## Verification
 
 The runtime checkpoint passed 109 Python tests (104 passed, five device smoke tests skipped), 542 host unit tests, 12 host E2E tests, 176 Android debug unit tests, 108 Swift unit tests, the complete Gradle build, both native fixture builds, and five opt-in fixture smoke tests per platform. No coverage floor or lint baseline was relaxed.

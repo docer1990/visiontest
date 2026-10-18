@@ -181,14 +181,15 @@ host `TraceStage` values. `missingStages` is a unique list from this same regist
 Combined platform APIs use the combined stage and name unavailable sub-stages.
 Unavailable SDK internals and unfinished work appear as missing, never zero.
 Poll attempts and elapsed waits are aggregated within the completed polling
-boundary rather than creating unbounded spans. A poll starts before the first
-readiness check and ends when readiness/focus polling finishes; later actions and
-response encoding do not extend it. Focus acquisition may include the tap needed
-to obtain focus. Aggregate `waitNs` measures disjoint explicit delays and does not
+boundary rather than creating unbounded spans. On iOS, a poll starts before the
+first readiness check and ends when readiness/focus polling finishes; later actions
+and response encoding do not extend it. Focus acquisition may include the tap
+needed to obtain focus. Android polling wrappers can include the eventual
+interaction. Aggregate `waitNs` measures disjoint explicit delays and does not
 create a contiguous `poll_wait` span; that stage stays missing unless its actual
-interval is measured. Freezing during polling omits the unfinished poll, including
-its partial metrics, and keeps `poll` missing. Late completion cannot change the
-frozen response.
+interval is measured. On iOS, freezing during polling omits the unfinished poll,
+including its partial metrics, and keeps `poll` missing. Late completion cannot
+change the frozen response.
 
 Offsets are relative to the native request's monotonic origin. Offsets, durations,
 and metrics are JSON integer numbers from zero through signed 64-bit maximum;

@@ -63,9 +63,12 @@ final class NativeTiming {
     private let originNs: UInt64
     private var records: [NativeTimingSpan] = []
     private var requestMetrics: [String: UInt64] = [:]
-    private var pollStartOffsetNs: UInt64?
-    private var pollCount: UInt64 = 0
-    private var pollWaitNs: UInt64 = 0
+    private struct Polling {
+        let startOffsetNs: UInt64
+        var count: UInt64 = 0
+        var waitNs: UInt64 = 0
+    }
+    private var polling: Polling?
     private var requestOutcome = "returned"
     private var frozen: NativeTimingSnapshot?
 
@@ -122,17 +125,6 @@ final class NativeTiming {
         var spans = [NativeTimingSpan(spanId: requestSpanId, parentSpanId: nil, stage: "request",
                                       startOffsetNs: 0, durationNs: elapsed, outcome: requestOutcome, metrics: requestMetrics)]
         spans.append(contentsOf: records)
-        if pollCount > 0, spans.count < Self.maxSpans {
-            let start = pollStartOffsetNs ?? 0
-            spans.append(NativeTimingSpan(spanId: Self.randomId(), parentSpanId: requestSpanId, stage: "poll",
-                                          startOffsetNs: start, durationNs: elapsed >= start ? elapsed - start : 0,
-                                          outcome: "returned", metrics: ["pollCount": pollCount]))
-        }
-        if pollWaitNs > 0, spans.count < Self.maxSpans {
-            spans.append(NativeTimingSpan(spanId: Self.randomId(), parentSpanId: requestSpanId, stage: "poll_wait",
-                                          startOffsetNs: pollStartOffsetNs ?? 0, durationNs: pollWaitNs,
-                                          outcome: "returned", metrics: ["waitNs": pollWaitNs]))
-        }
         let measured = Set(spans.map(\.stage))
         let result = NativeTimingSnapshot(version: 1, invocationId: invocationId, requestSpanId: requestSpanId,
                                           spans: Array(spans.prefix(Self.maxSpans)),
@@ -151,11 +143,6 @@ final class NativeTiming {
         return encoded.utf8.count <= Self.maxHeaderBytes ? encoded : nil
     }
 
-    func elapsedNs(since startNs: UInt64) -> UInt64 {
-        let now = nowNs()
-        return now >= startNs ? min(now - startNs, Self.maxJSONInteger) : 0
-    }
-
     func recordQueueWait(startedAt startNs: UInt64) {
         let now = nowNs()
         append(stage: "queue_wait", spanId: Self.randomId(), start: Self.relative(startNs, origin: originNs),
@@ -170,24 +157,43 @@ final class NativeTiming {
         requestOutcome = outcome
     }
 
+    func beginPolling() {
+        lock.lock()
+        defer { lock.unlock() }
+        guard frozen == nil, polling == nil else { return }
+        polling = Polling(startOffsetNs: Self.relative(nowNs(), origin: originNs))
+    }
+
+    func endPolling() {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let polling else { return }
+        self.polling = nil
+        guard frozen == nil, records.count + 1 < Self.maxSpans else { return }
+        let end = Self.relative(nowNs(), origin: originNs)
+        var metrics = ["pollCount": polling.count]
+        if polling.waitNs > 0 { metrics["waitNs"] = polling.waitNs }
+        records.append(NativeTimingSpan(spanId: Self.randomId(), parentSpanId: requestSpanId, stage: "poll",
+                                        startOffsetNs: polling.startOffsetNs,
+                                        durationNs: end >= polling.startOffsetNs ? end - polling.startOffsetNs : 0,
+                                        outcome: "returned", metrics: metrics))
+    }
+
     func recordPollAttempt() {
         lock.lock()
         defer { lock.unlock() }
-        guard frozen == nil else { return }
-        if pollStartOffsetNs == nil { pollStartOffsetNs = Self.relative(nowNs(), origin: originNs) }
-        pollCount = min(pollCount + 1, Self.maxJSONInteger)
+        guard frozen == nil, let polling else { return }
+        self.polling?.count = min(polling.count + 1, Self.maxJSONInteger)
     }
 
     func recordPollWait(_ seconds: TimeInterval) {
         guard seconds.isFinite, seconds > 0 else { return }
-        let started = nowNs()
         let sample = UInt64(min(seconds * 1_000_000_000, Double(Self.maxJSONInteger)))
         lock.lock()
         defer { lock.unlock() }
-        guard frozen == nil else { return }
-        if pollStartOffsetNs == nil { pollStartOffsetNs = Self.relative(started, origin: originNs) }
-        let (sum, overflow) = pollWaitNs.addingReportingOverflow(sample)
-        pollWaitNs = overflow ? Self.maxJSONInteger : min(sum, Self.maxJSONInteger)
+        guard frozen == nil, let polling else { return }
+        let (sum, overflow) = polling.waitNs.addingReportingOverflow(sample)
+        self.polling?.waitNs = overflow ? Self.maxJSONInteger : min(sum, Self.maxJSONInteger)
     }
 
     static func parseRequestHeader(_ value: String?) -> (invocationId: String, requestSpanId: String)? {

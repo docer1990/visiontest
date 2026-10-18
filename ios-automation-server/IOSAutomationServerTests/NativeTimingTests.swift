@@ -58,16 +58,17 @@ final class NativeTimingTests: XCTestCase {
     func testPollAttemptsAndWaitsAreAggregated() throws {
         let timing = NativeTiming(invocationId: String(repeating: "a", count: 32),
                                   requestSpanId: String(repeating: "b", count: 32))
+        timing.beginPolling()
         timing.recordPollAttempt()
         timing.recordPollAttempt()
         timing.recordPollWait(0.001)
+        timing.endPolling()
         let snapshot = timing.snapshot()
         let poll = try XCTUnwrap(snapshot.spans.first { $0.stage == "poll" })
-        let wait = try XCTUnwrap(snapshot.spans.first { $0.stage == "poll_wait" })
         XCTAssertEqual(poll.metrics["pollCount"], 2)
-        XCTAssertGreaterThan(wait.metrics["waitNs"] ?? 0, 0)
+        XCTAssertEqual(poll.metrics["waitNs"], 1_000_000)
         XCTAssertEqual(snapshot.spans.filter { $0.stage == "poll" }.count, 1)
-        XCTAssertEqual(snapshot.spans.filter { $0.stage == "poll_wait" }.count, 1)
+        XCTAssertFalse(snapshot.spans.contains { $0.stage == "poll_wait" })
     }
 
     func testAggregateSpanLimitIsThirtyTwo() {
@@ -93,25 +94,53 @@ final class NativeTimingTests: XCTestCase {
         XCTAssertEqual(secondEnvelope["requestSpanId"] as? String, String(repeating: "d", count: 32))
     }
 
+    func testOverlappingPollingKeepsMetricsIndependentAfterOneRequestFreezes() throws {
+        var now: UInt64 = 0
+        let first = NativeTiming(invocationId: String(repeating: "a", count: 32),
+                                 requestSpanId: String(repeating: "b", count: 32), nowNs: { now })
+        let second = NativeTiming(invocationId: String(repeating: "c", count: 32),
+                                  requestSpanId: String(repeating: "d", count: 32), nowNs: { now })
+        first.beginPolling()
+        first.recordPollAttempt()
+        first.recordPollWait(0.001)
+        second.beginPolling()
+        second.recordPollAttempt()
+        second.recordPollAttempt()
+        second.recordPollWait(0.002)
+        now = 3_000_000
+        let frozen = first.snapshot()
+        second.endPolling()
+        first.recordPollAttempt()
+        first.recordPollWait(0.003)
+        first.endPolling()
+
+        XCTAssertEqual(first.snapshot().spans, frozen.spans)
+        XCTAssertTrue(frozen.missingStages.contains("poll"))
+        let poll = try XCTUnwrap(second.snapshot().spans.first { $0.stage == "poll" })
+        XCTAssertEqual(poll.metrics, ["pollCount": 2, "waitNs": 2_000_000])
+        XCTAssertEqual(poll.durationNs, 3_000_000)
+    }
+
     func testCompletionAfterSnapshotCannotMutateFrozenResponse() throws {
         let timing = NativeTiming(invocationId: String(repeating: "a", count: 32),
                                   requestSpanId: String(repeating: "b", count: 32))
         let entered = DispatchSemaphore(value: 0)
         let release = DispatchSemaphore(value: 0)
+        let finished = expectation(description: "late operation finished")
         DispatchQueue.global().async {
             timing.measure("operation") {
                 entered.signal()
                 release.wait()
             }
+            finished.fulfill()
         }
         XCTAssertEqual(entered.wait(timeout: .now() + 2), .success)
         let before = timing.snapshot()
         release.signal()
-        let finished = expectation(description: "late operation finished")
-        DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) { finished.fulfill() }
         wait(for: [finished], timeout: 1)
         XCTAssertEqual(before.spans.count, 1)
-        XCTAssertEqual(timing.snapshot().spans.count, 1)
+        XCTAssertEqual(timing.snapshot().spans, before.spans)
+        XCTAssertEqual(timing.snapshot().missingStages, before.missingStages)
     }
 
     private func decodedHeader(_ header: String?) throws -> [String: Any] {

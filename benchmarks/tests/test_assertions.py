@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import os
 from pathlib import Path
 
 from benchmarks.assertions import evaluate, parse_cli_output
@@ -31,6 +32,23 @@ class AssertionsTest(unittest.TestCase):
             started_ns = path.stat().st_mtime_ns if path.exists() else 0
             path.write_bytes(b"not a png")
             result = evaluate("screenshot_file", {}, {}, screenshot_path=path, started_ns=started_ns)
+            self.assertEqual("failed", result["assertion_outcome"])
+
+    def test_screenshot_rejects_stale_file_without_structured_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "capture.png"
+            path.write_bytes(b"\x89PNG\r\n\x1a\n")
+            os.utime(path, ns=(1, 1))
+            result = evaluate("screenshot_file", None, {}, screenshot_path=path, started_ns=2)
+            self.assertEqual("failed", result["assertion_outcome"])
+
+    def test_screenshot_error_payload_cannot_pass_with_a_fresh_png(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "capture.png"
+            path.write_bytes(b"\x89PNG\r\n\x1a\n")
+            result = evaluate("screenshot_file", {"success": False}, {},
+                              screenshot_path=path, started_ns=0)
+            self.assertEqual("failed", result["operation_outcome"])
             self.assertEqual("failed", result["assertion_outcome"])
 
 

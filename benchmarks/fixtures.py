@@ -1,4 +1,9 @@
 import re
+import json
+import math
+import time
+
+from benchmarks.execution import run_process
 
 
 _TOKEN = re.compile(r"^\{([a-z][A-Za-z0-9]*)\}$")
@@ -38,3 +43,52 @@ def selector_resource_id(platform: str, identity: str, name: str) -> str:
     if not isinstance(identity, str) or not identity or not isinstance(name, str) or not name:
         raise ValueError("fixture identity and selector name are required")
     return f"{identity}:id/{name}" if platform == "android" else name
+
+
+def wait_fixture_ready(case: dict, manifest: dict, env: dict) -> tuple[bool, str | None]:
+    platform = manifest["platform"]
+    identity = manifest["fixtureIdentity"]
+    scenario = case["fixtureScenario"]
+    checks = [("start", True)] + {
+        "navigation": [("email", True), ("continue_action" if platform == "android" else "continue", True)],
+        "appear": [("done", True)],
+        "disappear": [("loading", False)],
+        "missing": [("email", False)],
+        "ambiguous": [("continue_primary", True), ("continue_secondary", True)],
+        "error": [("error", True)],
+    }[scenario]
+    budget_ms = case["timeoutMs"]
+    deadline = time.monotonic() + budget_ms / 1000
+    probe_env = {**env, "VISIONTEST_TRACE_PERFORMANCE": ""}
+    while time.monotonic() < deadline:
+        ready = True
+        for name, expected in checks:
+            remaining_ms = math.ceil((deadline - time.monotonic()) * 1000)
+            if remaining_ms <= 0:
+                ready = False
+                break
+            resource_id = selector_resource_id(platform, identity, name)
+            argv = manifest["cliPrefix"] + ["find_element", "--resource-id", resource_id,
+                                           "--json", "--platform", platform]
+            if platform == "ios":
+                argv += ["--bundle-id", identity]
+            result = run_process(argv, timeout_ms=remaining_ms, env=probe_env)
+            if result["timed_out"] or result["exit_code"] != 0:
+                return False, f"fixture readiness probe failed for {name} (exit {result['exit_code']})"
+            try:
+                payload = json.loads(result["stdout"])
+            except (TypeError, json.JSONDecodeError):
+                return False, f"fixture readiness probe returned invalid JSON for {name}"
+            if (not isinstance(payload, dict) or type(payload.get("found")) is not bool
+                    or payload.get("success") is False or "error" in payload
+                    or (payload["found"] and payload.get("resourceId") != resource_id)):
+                return False, f"fixture readiness probe returned invalid result for {name}"
+            if payload["found"] is not expected:
+                ready = False
+                break
+        if ready and time.monotonic() <= deadline:
+            return True, None
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(0.1, remaining))
+    return False, f"fixture readiness for {scenario} timed out after {budget_ms} ms"

@@ -23,10 +23,14 @@ def parse_cli_output(stdout: str, exit_code: int | None, kind: str) -> dict:
     return {"operation_outcome": "success", "assertion_outcome": "not_run", "payload": payload}
 
 
-def evaluate(kind: str, payload: dict, assertion: dict, *, screenshot_path=None, started_ns=None) -> dict:
+def evaluate(kind: str, payload: dict | None, assertion: dict, *, screenshot_path=None, started_ns=None) -> dict:
     operation = "success"
     passed = False
-    if not isinstance(payload, dict) or payload.get("success") is False or "error" in payload:
+    if isinstance(payload, dict) and (payload.get("success") is False or "error" in payload):
+        operation = "failed"
+    elif kind == "screenshot_file":
+        passed = _fresh_png(screenshot_path, started_ns)
+    elif not isinstance(payload, dict):
         operation = "failed"
     elif kind == "device_info":
         passed = (
@@ -49,8 +53,6 @@ def evaluate(kind: str, payload: dict, assertion: dict, *, screenshot_path=None,
         if payload.get("success") is True and isinstance(elements, list):
             found = {item.get("resourceId") for item in elements if isinstance(item, dict)}
             passed = all(resource_id in found for resource_id in assertion["requiredResourceIds"])
-    elif kind == "screenshot_file":
-        passed = _fresh_png(screenshot_path, started_ns)
     else:
         operation = "failed"
     return {

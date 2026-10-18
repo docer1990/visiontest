@@ -138,6 +138,8 @@
       ],
       "cliArgs": [
         "find_element",
+        "--resource-id",
+        "com.example.visiontest.benchmark:id/start",
         "--json",
         "--platform",
         "android"
@@ -349,7 +351,8 @@
         ]
       ],
       "cliArgs": [
-        "wait_until_gone",
+        "wait_for_element",
+        "--gone",
         "--resource-id",
         "com.example.visiontest.benchmark:id/loading",
         "--timeout",

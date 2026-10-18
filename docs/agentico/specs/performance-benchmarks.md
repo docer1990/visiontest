@@ -47,6 +47,21 @@ run outside the measured operation. A timed-out operation is recorded as
 uncertain and is never retried within its sample; each later sample runs fixture
 setup first and does not start if setup fails.
 
+After launch, setup proves fixture readiness using structured CLI `find_element`
+probes with performance tracing disabled. It requires `start` to be present before
+checking the selected scenario: navigation requires `email` and the continue
+control; appearance requires `done`; disappearance requires `loading` absent;
+missing requires `email` absent; ambiguous requires both distinct continue IDs;
+error requires `error`. Platform resource IDs and iOS bundle scope apply to every
+probe. The readiness phase has one total `timeoutMs` budget, passes the remaining
+budget to each probe, and waits at most 100 ms between unsuccessful observations.
+A valid unexpected state may be observed again; a failed/timed-out process,
+malformed output, operation error, or invalid selector result fails setup
+immediately. Absence is accepted only from a boolean `found: false` result after
+the positive start observation. Failure or deadline expiry records `setup_failed`
+and skips the measured operation. Probe time and the 750 ms fixture transitions
+belong to setup duration; settling never replays the timed command.
+
 The CLI adapter evaluates public JSON output where available. The MCP adapter
 parses structured content or the server's JSON text content and evaluates
 `isError` and operation `success` separately from transport status. Output

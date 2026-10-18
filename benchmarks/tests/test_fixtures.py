@@ -6,9 +6,44 @@ from unittest.mock import patch
 from benchmarks.fixtures import resolve_argv, selector_resource_id, validate_fixture_identity, validate_target
 from benchmarks.manifest import load_manifest
 from benchmarks.run import _run_setup
+from benchmarks.tests import test_fixture_smoke
 
 
 class FixtureTargetTest(unittest.TestCase):
+    def test_duplicate_label_smoke_accepts_platform_qualified_identifiers(self):
+        identity = "com.example.visiontest.benchmark"
+        for platform in ("android", "ios"):
+            with self.subTest(platform=platform):
+                payload = {"elements": [
+                    {"text": "Continue", "resourceId": selector_resource_id(platform, identity, name)}
+                    for name in ("continue_primary", "continue_secondary")
+                ]}
+                smoke_class = test_fixture_smoke.FixtureSmokeTest
+                smoke = smoke_class("test_duplicate_visible_labels_have_distinct_inspection_ids")
+                with patch.object(smoke_class, "manifest", {"platform": platform, "fixtureIdentity": identity},
+                                  create=True), patch.object(smoke, "reset"), \
+                        patch.object(smoke, "command", return_value=payload):
+                    smoke.test_duplicate_visible_labels_have_distinct_inspection_ids()
+
+    def test_lookup_cli_selects_the_same_fixture_element_as_mcp(self):
+        root = Path(__file__).parents[1] / "manifests"
+        for platform in ("android", "ios"):
+            with self.subTest(platform=platform):
+                manifest = load_manifest(root / f"{platform}.json")
+                case = next(case for case in manifest["cases"] if case["id"] == "lookup")
+                args = case["cliArgs"]
+                self.assertIn("--resource-id", args)
+                self.assertEqual(case["mcpArguments"]["resourceId"], args[args.index("--resource-id") + 1])
+
+    def test_disappearance_cli_uses_the_public_gone_wait_command(self):
+        root = Path(__file__).parents[1] / "manifests"
+        for platform in ("android", "ios"):
+            with self.subTest(platform=platform):
+                manifest = load_manifest(root / f"{platform}.json")
+                case = next(case for case in manifest["cases"] if case["id"] == "disappearance")
+                self.assertEqual("wait_for_element", case["cliArgs"][0])
+                self.assertIn("--gone", case["cliArgs"])
+
     def test_platform_manifests_cover_fixture_command_categories(self):
         expected = {"information", "lookup", "interaction", "appearance", "disappearance",
                     "inspection", "screenshot", "missing-target"}
@@ -85,11 +120,28 @@ class FixtureTargetTest(unittest.TestCase):
             devices = {"duration_ns": 0, "exit_code": 0, "stdout": "List of devices attached\ndevice-1 device\n",
                        "stderr": "", "timed_out": False}
             success = {"duration_ns": 0, "exit_code": 0, "stdout": "", "stderr": "", "timed_out": False}
-            with patch("benchmarks.run.run_process", side_effect=[devices, success, success, success, success]) as run:
+            with patch("benchmarks.run.run_process", side_effect=[devices, success, success, success, success]) as run, \
+                    patch("benchmarks.run.wait_fixture_ready", return_value=(True, None), create=True):
                 ok, _, error = _run_setup(case, manifest, {})
             self.assertTrue(ok, error)
             self.assertIn("pm", run.call_args_list[2].args[0])
             self.assertEqual("{target}", case["setup"][0][2])
+
+    def test_readiness_failure_skips_the_measured_operation(self):
+        with TemporaryDirectory() as directory:
+            artifact = Path(directory) / "fixture.apk"
+            artifact.touch()
+            manifest = load_manifest(Path(__file__).parents[1] / "manifests/android.json")
+            manifest.update(target="device-1", fixtureArtifact=str(artifact))
+            devices = {"exit_code": 0, "stdout": "List of devices attached\ndevice-1 device\n",
+                       "stderr": "", "timed_out": False}
+            with patch("benchmarks.run.run_process", return_value=devices), \
+                    patch("benchmarks.run.wait_fixture_ready", return_value=(False, "fixture readiness expired"),
+                          create=True) as ready:
+                ok, _, error = _run_setup(manifest["cases"][0], manifest, {})
+            self.assertFalse(ok)
+            self.assertEqual("fixture readiness expired", error)
+            ready.assert_called_once()
 
     def test_ambiguous_active_devices_fail_before_install(self):
         with TemporaryDirectory() as directory:

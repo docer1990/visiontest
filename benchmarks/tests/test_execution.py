@@ -6,10 +6,36 @@ from unittest.mock import patch
 from pathlib import Path
 
 from benchmarks.execution import run_process
+from benchmarks.cli import run_cli
 from benchmarks.run import main, _mcp_environment
 
 
 class ExecutionTest(unittest.TestCase):
+    def test_cli_screenshot_text_success_is_verified_from_the_created_png(self):
+        with tempfile.TemporaryDirectory() as directory:
+            case = {"id": "screenshot", "cliArgs": [], "timeoutMs": 2000,
+                    "assertion": {"kind": "screenshot_file"}}
+            prefix = [sys.executable, "-c",
+                      "import pathlib, sys; "
+                      "path = pathlib.Path(sys.argv[sys.argv.index('--output') + 1]); "
+                      "path.write_bytes(b'\\x89PNG\\r\\n\\x1a\\n'); "
+                      "print('Screenshot saved to ' + str(path))"]
+            result = run_cli(prefix, case, output_dir=Path(directory))
+            self.assertEqual("success", result["operation_outcome"])
+            self.assertEqual("passed", result["assertion_outcome"])
+
+    def test_cli_screenshot_text_without_a_new_file_fails_assertion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            case = {"id": "screenshot", "cliArgs": [], "timeoutMs": 2000,
+                    "assertion": {"kind": "screenshot_file"}}
+            path = Path(directory) / "screenshot.png"
+            path.write_bytes(b"\x89PNG\r\n\x1a\n")
+            result = run_cli([sys.executable, "-c", "print('Screenshot failed')"],
+                             case, output_dir=Path(directory))
+            self.assertEqual("success", result["operation_outcome"])
+            self.assertEqual("failed", result["assertion_outcome"])
+            self.assertFalse(path.exists())
+
     def test_off_state_explicitly_disables_inherited_mcp_tracing(self):
         self.assertEqual('', _mcp_environment({'processEnvironment': {'VISIONTEST_TRACE_PERFORMANCE': 'inherited'}}, None)['VISIONTEST_TRACE_PERFORMANCE'])
 

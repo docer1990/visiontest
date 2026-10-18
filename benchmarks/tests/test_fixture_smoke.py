@@ -107,7 +107,9 @@ class FixtureSmokeTest(unittest.TestCase):
         matches = [element for element in elements
                    if isinstance(element.get("text"), str)
                    and element["text"].casefold() in {"continue", "continua"}
-                   and element.get("resourceId") in {"continue_primary", "continue_secondary"}]
+                   and element.get("resourceId") in {
+                       self.resource_id("continue_primary"), self.resource_id("continue_secondary")
+                   }]
         self.assertEqual(2, len(matches))
         self.assertEqual(2, len({element.get("resourceId") for element in matches}))
 

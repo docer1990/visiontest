@@ -13,7 +13,7 @@ from benchmarks.results import write_samples
 from benchmarks.report import build_report
 from benchmarks.traces import join_trace
 from benchmarks.execution import run_process
-from benchmarks.fixtures import resolve_argv, validate_fixture_identity, validate_target
+from benchmarks.fixtures import resolve_argv, validate_fixture_identity, validate_target, wait_fixture_ready
 
 
 def _parser():
@@ -274,7 +274,8 @@ def _run_setup(case, manifest, env):
             installed = True
     if not installed:
         return False, time.perf_counter_ns() - started, "setup must install the pinned benchmark fixture"
-    return True, time.perf_counter_ns() - started, None
+    ready, error = wait_fixture_ready(case, manifest, env)
+    return ready, time.perf_counter_ns() - started, error
 
 
 def _native_restart(config, env, timeout_ms):

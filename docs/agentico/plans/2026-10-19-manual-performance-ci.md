@@ -77,6 +77,15 @@ Validate Bash syntax, YAML parsing and actionlint if installed. Add focused fake
 - [x] Task 2: `906d5f8`, `bddc7af`; independent checkpoint passed (145 Python tests, five skipped). Collection completeness and attribution availability remain distinct.
 - [x] Task 3: `da676e2`; independent checkpoint passed (153 Python tests, five skipped). Wrapper and all twelve workflow shell blocks pass Bash syntax checks; workflow YAML parses. `actionlint` and `shellcheck` were not installed.
 
-The final Gradle gate `:app:test :app:e2eTest build` passed (226 tasks). Full branch review follows; no remote workflow has been dispatched.
+The final branch review found two blockers, fixed in `94a749f`: atomic sample
+persistence and rejection of empty/unusable CLI operation results. Re-review
+through `fe9c48a` found no remaining blockers. Archived evidence retains its
+original runner identity and is not retroactively revalidated.
+
+Final verification passed: 163 Python tests (158 passed, five device smoke tests
+skipped), `:app:test :app:e2eTest build` (226 tasks), Bash syntax and clean diff
+checks. No remote workflow has been dispatched. Native-cold restart ordering and
+a shared overall MCP discovery/notification deadline remain deferred;
+native-cold is excluded from this matrix.
 
 The user stopped the separate local baseline collection. One iOS CLI warm configuration completed 560 attempts, and a later configuration retained 49 attempts before interruption. CI implementation does not restart that local matrix or claim full baseline completion.

@@ -149,8 +149,10 @@ raw samples, traces, screenshots and provenance. These populations are not poole
 
 The [manual CI plan](2026-10-19-manual-performance-ci.md) is implemented with
 reproducible hosted collection and readable reports. Its checkpoints passed 153
-Python tests (five device smoke tests skipped) and the full Gradle gate. The
-workflow has not been dispatched remotely. Only explicit workflow dispatch is authorized;
+Python tests (five device smoke tests skipped) and the full Gradle gate. Final
+branch review corrections added atomic sample persistence and strict nonempty
+CLI result validation; the final suite passed 163 Python tests (five skipped)
+and the full Gradle gate. The workflow has not been dispatched remotely. Only explicit workflow dispatch is authorized;
 there are no automatic PR, push, release or schedule triggers. The local matrix
 must stay stopped. CI measurements form a separate baseline from this Mac.
 57C remains incomplete until the remaining configurations have real evidence;

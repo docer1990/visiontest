@@ -11,6 +11,30 @@ from benchmarks.run import main, _mcp_environment
 
 
 class ExecutionTest(unittest.TestCase):
+    def test_failed_warmup_sets_failure_exit_and_keeps_successful_measured_sample(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = root / "warmup-attempted"
+            manifest = json.loads(Path("benchmarks/manifests/android.json").read_text())
+            manifest["cases"] = manifest["cases"][:1]
+            manifest["cliPrefix"] = [sys.executable, "-c",
+                "import json, pathlib, sys; marker = pathlib.Path(sys.argv[1]); "
+                "passed = marker.exists(); marker.touch(); "
+                "print(json.dumps({'success': passed, 'displayWidth': 10, 'displayHeight': 20, "
+                "'productName': 'test', 'sdkVersion': 35}))", str(marker)]
+            manifest_path = root / "manifest.json"
+            manifest_path.write_text(json.dumps(manifest))
+            output = root / "run"
+            with patch("benchmarks.run._run_setup", return_value=(True, 0, None)):
+                result = main(["commands", "--manifest", str(manifest_path),
+                               "--output", str(output), "--mode", "cli",
+                               "--samples", "1", "--warmup", "1"])
+            samples = [json.loads(line) for line in (output / "samples.jsonl").read_text().splitlines()]
+            self.assertEqual(["failed", "passed"], [sample["status"] for sample in samples])
+            self.assertEqual([True, False], [sample["warmup"] for sample in samples])
+            self.assertEqual([1, 2], [sample["sample_sequence"] for sample in samples])
+            self.assertEqual(1, result)
+
     def test_cli_screenshot_text_success_is_verified_from_the_created_png(self):
         with tempfile.TemporaryDirectory() as directory:
             case = {"id": "screenshot", "cliArgs": [], "timeoutMs": 2000,

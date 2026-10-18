@@ -195,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
                     sample['trace_dispatches'] = calls
                     trace_jobs.setdefault(trace_path, []).extend(calls)
                 samples.append(sample)
-                failed |= sample["status"] != "passed" and not is_warmup
+                failed |= sample["status"] != "passed"
                 write_samples(samples_path, samples)
                 _write_summary(args.output, samples)
         finally:

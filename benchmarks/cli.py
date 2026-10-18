@@ -16,7 +16,7 @@ def run_cli(prefix: list[str], case: dict, *, env=None, output_dir: Path | None 
     if kind == "screenshot_file":
         if output_dir is None:
             raise ValueError("screenshot_file requires an output directory")
-        screenshot_path = output_dir / f"{case['id']}.png"
+        screenshot_path = output_dir / "capture.png"
         screenshot_path.unlink(missing_ok=True)
         argv.extend(["--output", str(screenshot_path)])
     started_wall_ns = time.time_ns()

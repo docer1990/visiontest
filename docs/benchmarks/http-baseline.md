@@ -105,8 +105,10 @@ Each run contains:
   populations retain their sample counts and gaps.
 - `traces/*.jsonl`: one file per traced CLI attempt/host-cold MCP process, or one
   file per warm traced MCP case session, finalized before attribution.
-- `artifacts/`: screenshot assertion files where applicable, containing only the
-  synthetic fixture. These are assertion artifacts, not proof of image consumption.
+- `artifacts/<sample_sequence>/capture.png`: separate screenshot files for each
+  attempt, containing only the synthetic fixture. Samples retain a relative
+  `screenshot_path`, including failed attempts; check status and file existence
+  before using it. These are assertion artifacts, not proof of image consumption.
 
 Share the applicable local manifests, each complete output directory, fixture
 smoke output, and build/version provenance. Review metadata, failure diagnostics,

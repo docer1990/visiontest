@@ -103,6 +103,7 @@ def main(argv: list[str] | None = None) -> int:
                 sample_id = f"{case['id']}-{'warmup' if is_warmup else 'sample'}-{index + 1}"
                 if args.tracing == 'paired':
                     sample_id += '-' + tracing
+                artifact_dir = args.output / "artifacts" / str(sequence)
                 result = None
                 process_duration = None
                 calls = []
@@ -126,9 +127,9 @@ def main(argv: list[str] | None = None) -> int:
                                          status="setup_failed", error=native_error or setup_error,
                                          setup_duration_ns=setup_duration)
                     elif args.mode == "cli":
-                        (args.output / "artifacts").mkdir(parents=True, exist_ok=True)
+                        artifact_dir.mkdir(parents=True, exist_ok=True)
                         result = run_cli(manifest["cliPrefix"], case, env=_environment_values(manifest),
-                                         output_dir=args.output / "artifacts", trace_path=trace_path)
+                                         output_dir=artifact_dir, trace_path=trace_path)
                         process_duration = result['duration_ns']
                         calls = [{'sample_id': sample_id, 'operation': case['cliArgs'][0], 'measured': True}]
                         status = _operation_status(result)
@@ -140,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
                     else:
                         prepared = False
                         try:
-                            (args.output / "artifacts").mkdir(parents=True, exist_ok=True)
+                            artifact_dir.mkdir(parents=True, exist_ok=True)
                             if args.lifecycle == "host-cold":
                                 if trace_path is not None:
                                     trace_path.parent.mkdir(parents=True, exist_ok=True)
@@ -152,17 +153,17 @@ def main(argv: list[str] | None = None) -> int:
                                     _require_tools(tools, case)
                                     prepared = True
                                     timings = dict(session.timings)
-                                    result = session.run_case(case, output_dir=args.output / "artifacts")
+                                    result = session.run_case(case, output_dir=artifact_dir)
                                     calls = _dispatches(session, 0, sample_id)
                                 process_duration = time.perf_counter_ns() - process_started
                             else:
                                 session = warm_sessions[tracing]
                                 timings = warm_timings[tracing] if tracing not in warm_timing_emitted else {}
                                 warm_timing_emitted.add(tracing)
-                                (args.output / "artifacts").mkdir(parents=True, exist_ok=True)
+                                artifact_dir.mkdir(parents=True, exist_ok=True)
                                 prepared = True
                                 first_call = len(session.calls)
-                                result = session.run_case(case, output_dir=args.output / "artifacts")
+                                result = session.run_case(case, output_dir=artifact_dir)
                                 calls = _dispatches(session, first_call, sample_id)
                                 trace_path = (args.output / 'traces' / f"{case['id']}-mcp-{tracing}.jsonl"
                                               if tracing == 'on' else None)
@@ -181,6 +182,8 @@ def main(argv: list[str] | None = None) -> int:
                                              assertion_outcome="failed" if prepared else "not_run",
                                              setup_duration_ns=setup_duration,
                                              error=str(error))
+                if result and result.get("screenshot_path"):
+                    sample["screenshot_path"] = str(Path(result["screenshot_path"]).relative_to(args.output))
                 sample['fixture_revision'] = manifest['fixtureRevision']
                 sample['process_duration_ns'] = process_duration
                 sample['operation_duration_ns'] = result['duration_ns'] if result and args.mode == 'mcp' else None

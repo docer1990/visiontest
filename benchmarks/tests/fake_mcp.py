@@ -71,7 +71,10 @@ for line in sys.stdin:
                                'durationNs': 1, 'outcome': 'returned', 'operationOutcome': 'unknown'})
         response = {"jsonrpc": "2.0", "id": request_id, "result": {
             "content": [{"type": "text", "text": json.dumps(payload)}]}}
-        if mode == "tool-error":
+        if mode.startswith("screenshot"):
+            Path(request["params"]["arguments"]["outputPath"]).write_bytes(bytes([137,80,78,71,13,10,26,10]))
+            response["result"] = {"content": [{"type": "text", "text": "Screenshot saved"}]}
+        if mode in {"tool-error", "screenshot-error"}:
             response["result"]["isError"] = True
     else:
         response = {"jsonrpc": "2.0", "id": request_id, "result": {}}

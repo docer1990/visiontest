@@ -59,6 +59,14 @@ class ManifestTest(unittest.TestCase):
             path = self.write_manifest(directory, valid_manifest())
             self.assertEqual("android", load_manifest(path)["platform"])
 
+    def test_rejects_case_ids_that_are_not_safe_path_components(self):
+        for case_id in ("/tmp/case", "../case", "a/b", "a\\b", ".", "..", "bad\0id"):
+            with self.subTest(case_id=case_id), tempfile.TemporaryDirectory() as directory:
+                manifest = valid_manifest()
+                manifest["cases"][0]["id"] = case_id
+                with self.assertRaisesRegex(ValueError, "id.*path component"):
+                    load_manifest(self.write_manifest(directory, manifest))
+
     def test_rejects_unsupported_schema_version(self):
         manifest = valid_manifest()
         manifest["schemaVersion"] = 2

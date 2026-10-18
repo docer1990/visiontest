@@ -124,7 +124,7 @@ class McpSession:
         if kind == "screenshot_file":
             if output_dir is None:
                 raise ValueError("screenshot_file requires an output directory")
-            screenshot_path = output_dir / f"{case['id']}.png"
+            screenshot_path = output_dir / "capture.png"
             screenshot_path.unlink(missing_ok=True)
             arguments["outputPath"] = str(screenshot_path)
         started_wall_ns = time.time_ns()
@@ -149,6 +149,8 @@ class McpSession:
         duration_ns = time.perf_counter_ns() - started
         operation_outcome = "failed" if result.get("isError") is True else "success"
         payload = _public_payload(result)
+        if not ((isinstance(payload, dict) and payload) or (isinstance(payload, str) and payload.strip())):
+            operation_outcome = "failed"
         if isinstance(payload, dict) and (payload.get("success") is False or "error" in payload):
             operation_outcome = "failed"
         assertion_outcome = "not_run"

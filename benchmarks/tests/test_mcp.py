@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from benchmarks.mcp import McpProtocolError, McpSession
 
@@ -109,6 +110,49 @@ class McpTest(unittest.TestCase):
             session.list_tools()
             session.run_case(case)
             self.assertEqual(['info', 'second'], getattr(session, 'calls', None))
+
+    def test_action_wait_and_screenshot_reject_unusable_operation_results(self):
+        malformed = [
+            {}, {"content": []}, {"content": None},
+            {"content": [{"type": "text", "text": ""}]},
+            {"content": [{"type": "text", "text": "   "}]},
+            {"content": [{"type": "text", "text": 7}]},
+            {"content": [{"type": "image", "data": "ignored"}]},
+            {"structuredContent": {}},
+            {"content": [{"type": "text", "text": "null"}]},
+            {"content": [{"type": "text", "text": "[]"}]},
+            {"structuredContent": {"success": False}},
+            {"structuredContent": {"error": "failed"}},
+            {"isError": True, "content": [{"type": "text", "text": "done"}]},
+        ]
+        for kind in ("action_then_element", "wait_then_element", "screenshot_file"):
+            for response in malformed:
+                with self.subTest(kind=kind, response=response), tempfile.TemporaryDirectory() as directory:
+                    case = {"id": "operation", "mcpTool": "operation", "mcpArguments": {},
+                            "assertion": {"kind": kind, "lookupTool": "lookup", "lookupArguments": {},
+                                          "resourceId": "done", "expectedFound": True}}
+                    session = McpSession(command(), 2000)
+                    verification = {"structuredContent": {"found": True, "resourceId": "done"}}
+                    with patch.object(session, "call_tool", side_effect=[response, verification]) as call:
+                        result = session.run_case(case, output_dir=Path(directory))
+                    self.assertEqual("failed", result["operation_outcome"])
+                    self.assertEqual("not_run", result["assertion_outcome"])
+                    self.assertEqual(1, call.call_count)
+
+    def test_action_and_wait_accept_nonempty_public_text_before_verification(self):
+        for kind in ("action_then_element", "wait_then_element"):
+            with self.subTest(kind=kind):
+                case = {"id": "operation", "mcpTool": "operation", "mcpArguments": {},
+                        "assertion": {"kind": kind, "lookupTool": "lookup", "lookupArguments": {},
+                                      "resourceId": "done", "expectedFound": True}}
+                session = McpSession(command(), 2000)
+                with patch.object(session, "call_tool", side_effect=[
+                    {"content": [{"type": "text", "text": "Operation completed"}]},
+                    {"structuredContent": {"found": True, "resourceId": "done"}},
+                ]):
+                    result = session.run_case(case)
+                self.assertEqual("success", result["operation_outcome"])
+                self.assertEqual("passed", result["assertion_outcome"])
 
     def test_newline_framing_and_call_error_are_preserved(self):
         with McpSession(command(), 2000) as session:

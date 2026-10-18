@@ -50,6 +50,8 @@ def _validate_case(case, index, platform):
         raise ValueError(f"{label} must be an object")
     if not isinstance(case.get("id"), str) or not case["id"].strip():
         raise ValueError(f"{label}.id must be a nonempty string")
+    if case["id"] in {".", ".."} or any(char in case["id"] for char in ("/", "\\", "\0")):
+        raise ValueError(f"{label}.id must be a safe individual path component")
     setup = case.get("setup")
     if not isinstance(setup, list) or not setup:
         raise ValueError(f"{label}.setup must install and launch the benchmark fixture reset")

@@ -28,7 +28,7 @@ class ExecutionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             case = {"id": "screenshot", "cliArgs": [], "timeoutMs": 2000,
                     "assertion": {"kind": "screenshot_file"}}
-            path = Path(directory) / "screenshot.png"
+            path = Path(directory) / "capture.png"
             path.write_bytes(b"\x89PNG\r\n\x1a\n")
             result = run_cli([sys.executable, "-c", "print('Screenshot failed')"],
                              case, output_dir=Path(directory))
@@ -119,6 +119,37 @@ class ExecutionTest(unittest.TestCase):
 
 
 class PairedRunnerTest(unittest.TestCase):
+    def test_paired_screenshot_attempts_retain_distinct_artifacts_including_failures(self):
+        for mode, lifecycle in (("cli", "warm"), ("mcp", "warm"), ("mcp", "host-cold")):
+            for fail in (False, True):
+                with self.subTest(mode=mode, lifecycle=lifecycle, fail=fail), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    manifest = json.loads(Path("benchmarks/manifests/android.json").read_text())
+                    case = next(case for case in manifest["cases"] if case["assertion"]["kind"] == "screenshot_file")
+                    manifest["cases"] = [case]
+                    case["mcpTool"] = "first"
+                    manifest["mcpPrefix"] = [sys.executable, str(Path(__file__).with_name("fake_mcp.py")),
+                                             "screenshot-error" if fail else "screenshot"]
+                    manifest["cliPrefix"] = [sys.executable, "-c",
+                        "import pathlib, sys; "
+                        "path = pathlib.Path(sys.argv[sys.argv.index('--output') + 1]); "
+                        "path.write_bytes(bytes([137,80,78,71,13,10,26,10])); "
+                        "print('Screenshot saved'); sys.exit(" + ("7" if fail else "0") + ")"]
+                    path = root / "manifest.json"
+                    path.write_text(json.dumps(manifest))
+                    output = root / "run"
+                    with patch("benchmarks.run._run_setup", return_value=(True, 0, None)):
+                        code = main(["commands", "--manifest", str(path), "--output", str(output),
+                                     "--mode", mode, "--samples", "1", "--warmup", "0",
+                                     "--tracing", "paired", "--lifecycle", lifecycle])
+                    self.assertEqual(1 if fail else 0, code)
+                    samples = [json.loads(line) for line in (output / "samples.jsonl").read_text().splitlines()]
+                    self.assertEqual(["failed" if fail else "passed"] * 2, [sample["status"] for sample in samples])
+                    references = [sample.get("screenshot_path") for sample in samples]
+                    self.assertEqual(["artifacts/1/capture.png", "artifacts/2/capture.png"], references)
+                    for reference in references:
+                        self.assertEqual(bytes([137,80,78,71,13,10,26,10]), (output / reference).read_bytes())
+
     def test_every_pair_has_both_states_and_alternates_order(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

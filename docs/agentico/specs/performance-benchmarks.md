@@ -18,7 +18,8 @@ Optional `processEnvironment` maps explicit child-process environment variable
 names to string values; those values are launch configuration, not environment
 metadata or timing trace content.
 
-Each case has a unique `id`, `setup` (argv arrays), `cliArgs`, `mcpTool`,
+Each case has a unique `id` that is a safe individual path component (no
+absolute paths, slash or backslash separators, NUL, `.`, or `..`), `setup` (argv arrays), `cliArgs`, `mcpTool`,
 `mcpArguments`, positive integer `timeoutMs`, and an assertion object whose
 `kind` is one of `device_info`, `element_found`, `action_then_element`,
 `wait_then_element`, `interactive_elements`, or `screenshot_file`. Commands are
@@ -66,7 +67,11 @@ The CLI adapter evaluates public JSON output where available. The MCP adapter
 parses structured content or the server's JSON text content and evaluates
 `isError` and operation `success` separately from transport status. Output
 streams remain transient; samples retain outcomes and failure details, not raw
-command output.
+command output. Action, wait, and screenshot calls require usable nonempty public
+content before independent verification or file checks; an empty or malformed
+result cannot pass merely because the expected element or PNG already exists.
+Nonempty public text is accepted without interpreting localized wording, while
+MCP error flags and structured operation failures still reject the operation.
 
 ## Samples and summaries
 
@@ -101,7 +106,13 @@ omitted until attribution has been validated. Warmups are explicitly marked and
 retained in raw JSONL while receiving a separate summary population.
 
 The runner writes `samples.jsonl`, `environment.json`, and `summary.json` into a
-new output directory. Every attempted sample, including failures and timeouts,
+new output directory. Screenshot attempts use
+`artifacts/<sample_sequence>/capture.png`, where `sample_sequence` is the generated
+run-wide numeric attempt sequence. Their samples retain `screenshot_path` relative
+to the run directory, including failed or timed-out calls that return an output
+path; the reference does not guarantee the file exists or passed validation.
+Separate warmups and paired tracing members never overwrite one another.
+Every attempted sample, including failures and timeouts,
 remains in raw output. A later process failure must not erase records already
 collected. Summaries retain all attempts, count each status, and report timed
 all-attempt and successful-command populations separately. Median is the

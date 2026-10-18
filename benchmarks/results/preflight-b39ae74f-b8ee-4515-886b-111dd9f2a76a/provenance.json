@@ -1,0 +1,14 @@
+{
+  "label": "ios-mcp-warm-preflight",
+  "output": "test-output/benchmarks/ios-mcp-warm-preflight-b39ae74f-b8ee-4515-886b-111dd9f2a76a",
+  "exit_code": 0,
+  "attempts": 16,
+  "expected": 16,
+  "invalid_samples": 0,
+  "valid": true,
+  "started_epoch": 1792358443.949364,
+  "duration_seconds": 47.903,
+  "local_collection_stopped_by_user": false,
+  "complete_configuration": false,
+  "interruption_gap": null
+}

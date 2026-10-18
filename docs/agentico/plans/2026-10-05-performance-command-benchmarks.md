@@ -284,10 +284,15 @@ class TraceIntervalsTest(unittest.TestCase):
   Run final branch review. #57 remains open until agent evaluation is collected.
 
 
-Task 4 implementation status: trace joining, same-clock union accounting, grouped
-reports and alternating paired trials are implemented. Backend-unavailable CLI
-and MCP traces from the built JAR were consumed successfully as schema smoke;
-these are not device measurements. Real collection, fixture smoke on both
-platforms, evidence publication and final review remain unchecked above. See the
-[collection handoff](../../benchmarks/http-baseline.md) for exact commands and
-artifacts. Issue #57 remains open for command evidence and agent evaluation.
+Task 4 implementation status, 2026-10-19: trace joining, same-clock union
+accounting, grouped reports and alternating paired trials are implemented.
+Both fixture smoke suites passed five tests; preflight passed 128 attempts across
+eight configurations. One full iOS CLI warm configuration passed 560 attempts.
+The user stopped collection after 49 persisted attempts of iOS CLI host-cold;
+the other configurations remain incomplete. Exact manifests, raw evidence and
+provenance are linked from the [partial baseline](../../benchmarks/http-baseline.md).
+The runtime checkpoint passed the Python, Gradle, native unit and fixture gates
+listed there. Keep the full-collection checklist open; do not resume local
+collection. The [manual CI plan](2026-10-19-manual-performance-ci.md) supplies the
+next collection path. Issue #57 remains open for command evidence and agent
+evaluation.

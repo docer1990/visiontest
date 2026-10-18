@@ -1,0 +1,15 @@
+{
+  "label": "ios-cli-warm-baseline",
+  "output": "test-output/benchmarks/ios-cli-warm-baseline-90d8c008-d4b0-4c0c-9669-8d0119dfbff6",
+  "exit_code": -2,
+  "attempts": 96,
+  "expected": 560,
+  "invalid_samples": 1,
+  "valid": false,
+  "started_epoch": 1792358735.634753,
+  "duration_seconds": 301.301,
+  "local_collection_stopped_by_user": false,
+  "complete_configuration": false,
+  "interruption_gap": "Collection was interrupted. An in-flight operation or setup may have no final sample; all persisted samples and traces are retained.",
+  "interruption_reason": "Diagnostic stop after an isolated warmup readiness timeout under the original per-case budget."
+}

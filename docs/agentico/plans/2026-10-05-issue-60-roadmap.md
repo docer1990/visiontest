@@ -6,7 +6,8 @@
 57A was merged into `main` through PR #70 on 2026-10-12 (`c34acc8`). Native timing
 57B native timing metadata is implemented and reviewed. The 57C command harness,
 native fixtures, trace attribution, and paired overhead reports are implemented;
-real baseline collection and agent evaluation remain pending. This roadmap does
+one of eight full command configurations has real baseline evidence. The rest
+of the command matrix and agent evaluation remain pending. This roadmap does
 not authorize a production model.
 
 **Source:** [Epic #60](https://github.com/docer1990/visiontest/issues/60), read with its
@@ -135,6 +136,23 @@ only; they are not command baseline evidence. The
 [collection guide](../../benchmarks/http-baseline.md) records the pending evidence,
 setup, commands, and artifacts needed to complete 57C. Do not start dependent 57D
 collection or close #57 based on the harness tests alone.
+
+### Partial collection and manual CI, 2026-10-19
+
+Both native fixture smoke suites passed five tests, and the eight-configuration
+preflight passed 128 attempts. One complete iOS CLI warm configuration passed
+560 attempts (80 warmups, 480 measured). The user stopped the following iOS CLI
+host-cold configuration after 49 persisted attempts. An earlier diagnostic run,
+including one setup timeout, is retained separately. The
+[partial baseline report](../../benchmarks/http-baseline.md) links exact manifests,
+raw samples, traces, screenshots and provenance. These populations are not pooled.
+
+The [manual CI plan](2026-10-19-manual-performance-ci.md) adds reproducible hosted
+collection and readable reports. Only explicit workflow dispatch is authorized;
+there are no automatic PR, push, release or schedule triggers. The local matrix
+must stay stopped. CI measurements form a separate baseline from this Mac.
+57C remains incomplete until the remaining configurations have real evidence;
+57D and issue closure remain pending.
 
 ### Delivery checklist
 

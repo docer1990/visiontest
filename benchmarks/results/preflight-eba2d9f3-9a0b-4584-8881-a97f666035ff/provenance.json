@@ -1,0 +1,14 @@
+{
+  "label": "android-mcp-host-cold-preflight",
+  "output": "test-output/benchmarks/android-mcp-host-cold-preflight-eba2d9f3-9a0b-4584-8881-a97f666035ff",
+  "exit_code": 0,
+  "attempts": 16,
+  "expected": 16,
+  "invalid_samples": 0,
+  "valid": true,
+  "started_epoch": 1792358678.46365,
+  "duration_seconds": 46.351,
+  "local_collection_stopped_by_user": false,
+  "complete_configuration": false,
+  "interruption_gap": null
+}

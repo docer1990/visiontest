@@ -1,0 +1,14 @@
+{
+  "label": "android-mcp-warm-preflight",
+  "output": "test-output/benchmarks/android-mcp-warm-preflight-d09ebe96-9434-45ae-98f5-c32340bd3add",
+  "exit_code": 0,
+  "attempts": 16,
+  "expected": 16,
+  "invalid_samples": 0,
+  "valid": true,
+  "started_epoch": 1792358633.4771252,
+  "duration_seconds": 44.986,
+  "local_collection_stopped_by_user": false,
+  "complete_configuration": false,
+  "interruption_gap": null
+}

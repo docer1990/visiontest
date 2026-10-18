@@ -1,0 +1,101 @@
+[
+  {
+    "path": "benchmarks/results/preflight-df7886c1-13e7-4858-8c18-2ebc289942f9",
+    "label": "ios-cli-warm-preflight",
+    "attempts": 16,
+    "passed": 16,
+    "warmups": 0,
+    "measured": 16,
+    "complete_configuration": false
+  },
+  {
+    "path": "benchmarks/results/preflight-1ae1f25c-0f45-4b23-b161-f42652d63f3b",
+    "label": "ios-cli-host-cold-preflight",
+    "attempts": 16,
+    "passed": 16,
+    "warmups": 0,
+    "measured": 16,
+    "complete_configuration": false
+  },
+  {
+    "path": "benchmarks/results/preflight-b39ae74f-b8ee-4515-886b-111dd9f2a76a",
+    "label": "ios-mcp-warm-preflight",
+    "attempts": 16,
+    "passed": 16,
+    "warmups": 0,
+    "measured": 16,
+    "complete_configuration": false
+  },
+  {
+    "path": "benchmarks/results/preflight-49f3d567-3e25-4ee7-9e21-166f8d8cac9e",
+    "label": "ios-mcp-host-cold-preflight",
+    "attempts": 16,
+    "passed": 16,
+    "warmups": 0,
+    "measured": 16,
+    "complete_configuration": false
+  },
+  {
+    "path": "benchmarks/results/preflight-d10d4038-091c-4bdb-b7be-652997fa2805",
+    "label": "android-cli-warm-preflight",
+    "attempts": 16,
+    "passed": 16,
+    "warmups": 0,
+    "measured": 16,
+    "complete_configuration": false
+  },
+  {
+    "path": "benchmarks/results/preflight-d6479225-3c7d-48ae-8bfd-e3bff45f6aa8",
+    "label": "android-cli-host-cold-preflight",
+    "attempts": 16,
+    "passed": 16,
+    "warmups": 0,
+    "measured": 16,
+    "complete_configuration": false
+  },
+  {
+    "path": "benchmarks/results/preflight-d09ebe96-9434-45ae-98f5-c32340bd3add",
+    "label": "android-mcp-warm-preflight",
+    "attempts": 16,
+    "passed": 16,
+    "warmups": 0,
+    "measured": 16,
+    "complete_configuration": false
+  },
+  {
+    "path": "benchmarks/results/preflight-eba2d9f3-9a0b-4584-8881-a97f666035ff",
+    "label": "android-mcp-host-cold-preflight",
+    "attempts": 16,
+    "passed": 16,
+    "warmups": 0,
+    "measured": 16,
+    "complete_configuration": false
+  },
+  {
+    "path": "benchmarks/results/baseline-90d8c008-d4b0-4c0c-9669-8d0119dfbff6",
+    "label": "ios-cli-warm-baseline",
+    "attempts": 96,
+    "passed": 95,
+    "warmups": 20,
+    "measured": 76,
+    "complete_configuration": false
+  },
+  {
+    "path": "benchmarks/results/baseline-a1b1b964-cc71-4ae1-8031-022dabf736c6",
+    "label": "ios-cli-warm-baseline",
+    "attempts": 560,
+    "passed": 560,
+    "warmups": 80,
+    "measured": 480,
+    "complete_configuration": true
+  },
+  {
+    "path": "benchmarks/results/baseline-e69ff743-dff3-46e1-807b-a624d3966dbc",
+    "label": "ios-cli-host-cold-baseline",
+    "attempts": 49,
+    "passed": 49,
+    "warmups": 10,
+    "measured": 39,
+    "complete_configuration": false
+  }
+]

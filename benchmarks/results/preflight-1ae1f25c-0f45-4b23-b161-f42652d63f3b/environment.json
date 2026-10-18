@@ -1,0 +1,68 @@
+{
+  "environment": {
+    "JVM": {
+      "value": "Amazon Corretto OpenJDK 17.0.18.9.1, arm64"
+    },
+    "build": {
+      "value": {
+        "commit": "49001928af9182a35e5dc8a9d7928163c26c6158",
+        "jarSha256": "08b963fbe5fcf0dfa519560e598bb46eaf4b7d11c5f55b816b69e0305c5e80c3",
+        "python": "3.14.7",
+        "runnerCommit": "add83438be310e75bb1f8ae1c49265fafa880cb3"
+      }
+    },
+    "connectionType": {
+      "value": "local iOS simulator, localhost HTTP port 9009"
+    },
+    "fixtureArtifact": {
+      "value": {
+        "binarySha256": "ff9a1bf6a8f1fd3f16d60ab5cafc612f5404bb9622c5bdf852e95ddc4068878b",
+        "contract": "fixture-v2-settled",
+        "revision": "2acd844dc17d11b3f41643a803a41e1042e5e80a"
+      }
+    },
+    "hostOS": {
+      "value": {
+        "concurrentTargets": "iPhone 17 simulator and Android API 37 emulator running; benchmark commands serialized",
+        "cpu": "Apple M4 Pro, 12 cores",
+        "memoryGB": 24,
+        "model": "MacBook Pro Mac16,8",
+        "os": "macOS 27.0.1 (26A434)"
+      }
+    },
+    "nativeArtifactVersions": {
+      "value": {
+        "build": "Debug, Xcode 27.1 (27A9275), iOS Simulator SDK 27.1",
+        "commit": "49001928af9182a35e5dc8a9d7928163c26c6158",
+        "testBundleSha256": "849e9b000f9ad29280c96db3000c280614d923dddda68d50243bf70e74da735c"
+      }
+    },
+    "targetModel": {
+      "value": "iPhone 17"
+    },
+    "targetOS": {
+      "value": "iOS 26.5 (simulator)"
+    }
+  },
+  "fixture_revision": "2acd844dc17d11b3f41643a803a41e1042e5e80a",
+  "lifecycle": "host-cold",
+  "manifest_sha256": "b303e67eacdd6f81198924cfa749f2acdf331e829a544493b612fe36e7fdfe84",
+  "mode": "cli",
+  "platform": "ios",
+  "requested_samples": 1,
+  "requested_warmups": 0,
+  "run_id": "1ae1f25c-0f45-4b23-b161-f42652d63f3b",
+  "schema_version": 1,
+  "selected_case_ids": [
+    "information",
+    "lookup",
+    "interaction",
+    "appearance",
+    "disappearance",
+    "inspection",
+    "screenshot",
+    "missing-target"
+  ],
+  "target": "8CF7A9E3-89C0-49D8-B144-2BC6AF3B38FC",
+  "tracing": "paired"
+}

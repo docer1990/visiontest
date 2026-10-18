@@ -1,0 +1,3126 @@
+{
+  "all_timed": {
+    "count": 16,
+    "median_ns": 54517187.5,
+    "p95_ns": 372041458
+  },
+  "assertion_outcomes": {
+    "passed": 16
+  },
+  "attempts": 16,
+  "failed": 0,
+  "groups": [
+    {
+      "case_id": "appearance",
+      "contributors": {
+        "host": {},
+        "native": {}
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 73329417,
+          "p95_ns": 73329417
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 73329417,
+            "p95_ns": 73329417
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 73329417,
+            "p95_ns": 73329417
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 340497041,
+            "p95_ns": 340497041
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 73329417,
+            "p95_ns": 73329417
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {},
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 73329417,
+          "p95_ns": 73329417
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 340497041,
+          "p95_ns": 340497041
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2986536208,
+          "p95_ns": 2986536208
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 73329417,
+          "p95_ns": 73329417
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 0,
+          "incomplete": 0,
+          "unavailable": 1
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "off"
+    },
+    {
+      "case_id": "appearance",
+      "contributors": {
+        "host": {
+          "health": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 10825375,
+              "p95_ns": 10825375
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 10825375,
+              "p95_ns": 10825375
+            }
+          },
+          "http.exchange": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 57570000,
+              "p95_ns": 57570000
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 57570000,
+              "p95_ns": 57570000
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 75332375,
+              "p95_ns": 75332375
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 1984167,
+              "p95_ns": 1984167
+            }
+          },
+          "poll": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 62522833,
+              "p95_ns": 62522833
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 1632458,
+              "p95_ns": 1632458
+            }
+          },
+          "request.prepare": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 2279500,
+              "p95_ns": 2279500
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2279500,
+              "p95_ns": 2279500
+            }
+          },
+          "response.process": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 1040875,
+              "p95_ns": 1040875
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 1040875,
+              "p95_ns": 1040875
+            }
+          }
+        },
+        "native": {
+          "decode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 63042,
+              "p95_ns": 63042
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 63042,
+              "p95_ns": 63042
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 52089958,
+              "p95_ns": 52089958
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 52089958,
+              "p95_ns": 52089958
+            }
+          },
+          "queue_wait": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 55000,
+              "p95_ns": 55000
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 55000,
+              "p95_ns": 55000
+            }
+          },
+          "request": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 52524208,
+              "p95_ns": 52524208
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 224375,
+              "p95_ns": 224375
+            }
+          },
+          "response_encode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 91833,
+              "p95_ns": 91833
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 91833,
+              "p95_ns": 91833
+            }
+          }
+        }
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 79697000,
+          "p95_ns": 79697000
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 79697000,
+            "p95_ns": 79697000
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 79697000,
+            "p95_ns": 79697000
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 385687625,
+            "p95_ns": 385687625
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 79697000,
+            "p95_ns": 79697000
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {
+          "native_stage_missing:base64_encode": 1,
+          "native_stage_missing:png_encode": 1,
+          "native_stage_missing:poll": 1,
+          "native_stage_missing:poll_wait": 1,
+          "native_stage_missing:screenshot_capture": 1,
+          "native_stage_missing:screenshot_capture_encode": 1,
+          "native_stage_missing:ui_sync": 1
+        },
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 79697000,
+          "p95_ns": 79697000
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 385687625,
+          "p95_ns": 385687625
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2701835042,
+          "p95_ns": 2701835042
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 79697000,
+          "p95_ns": 79697000
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 1,
+          "incomplete": 0,
+          "unavailable": 0
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "on"
+    },
+    {
+      "case_id": "disappearance",
+      "contributors": {
+        "host": {},
+        "native": {}
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 27145917,
+          "p95_ns": 27145917
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 27145917,
+            "p95_ns": 27145917
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 27145917,
+            "p95_ns": 27145917
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 266290959,
+            "p95_ns": 266290959
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 27145917,
+            "p95_ns": 27145917
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {},
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 27145917,
+          "p95_ns": 27145917
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 266290959,
+          "p95_ns": 266290959
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2647433625,
+          "p95_ns": 2647433625
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 27145917,
+          "p95_ns": 27145917
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 0,
+          "incomplete": 0,
+          "unavailable": 1
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "off"
+    },
+    {
+      "case_id": "disappearance",
+      "contributors": {
+        "host": {
+          "health": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 12186209,
+              "p95_ns": 12186209
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 12186209,
+              "p95_ns": 12186209
+            }
+          },
+          "http.exchange": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 14687792,
+              "p95_ns": 14687792
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 14687792,
+              "p95_ns": 14687792
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 34547166,
+              "p95_ns": 34547166
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2289541,
+              "p95_ns": 2289541
+            }
+          },
+          "poll": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 20071416,
+              "p95_ns": 20071416
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2061666,
+              "p95_ns": 2061666
+            }
+          },
+          "request.prepare": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 2431167,
+              "p95_ns": 2431167
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2431167,
+              "p95_ns": 2431167
+            }
+          },
+          "response.process": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 890791,
+              "p95_ns": 890791
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 890791,
+              "p95_ns": 890791
+            }
+          }
+        },
+        "native": {
+          "decode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 71291,
+              "p95_ns": 71291
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 71291,
+              "p95_ns": 71291
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 10567791,
+              "p95_ns": 10567791
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 10567791,
+              "p95_ns": 10567791
+            }
+          },
+          "queue_wait": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 24958,
+              "p95_ns": 24958
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 24958,
+              "p95_ns": 24958
+            }
+          },
+          "request": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 10885041,
+              "p95_ns": 10885041
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 177376,
+              "p95_ns": 177376
+            }
+          },
+          "response_encode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 43625,
+              "p95_ns": 43625
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 43625,
+              "p95_ns": 43625
+            }
+          }
+        }
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 38761375,
+          "p95_ns": 38761375
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 38761375,
+            "p95_ns": 38761375
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 38761375,
+            "p95_ns": 38761375
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 283994792,
+            "p95_ns": 283994792
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 38761375,
+            "p95_ns": 38761375
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {
+          "native_stage_missing:base64_encode": 1,
+          "native_stage_missing:png_encode": 1,
+          "native_stage_missing:poll": 1,
+          "native_stage_missing:poll_wait": 1,
+          "native_stage_missing:screenshot_capture": 1,
+          "native_stage_missing:screenshot_capture_encode": 1,
+          "native_stage_missing:ui_sync": 1
+        },
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 38761375,
+          "p95_ns": 38761375
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 283994792,
+          "p95_ns": 283994792
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2949893458,
+          "p95_ns": 2949893458
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 38761375,
+          "p95_ns": 38761375
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 1,
+          "incomplete": 0,
+          "unavailable": 0
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "on"
+    },
+    {
+      "case_id": "information",
+      "contributors": {
+        "host": {},
+        "native": {}
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 24259708,
+          "p95_ns": 24259708
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 24259708,
+            "p95_ns": 24259708
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 24259708,
+            "p95_ns": 24259708
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 243543375,
+            "p95_ns": 243543375
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 24259708,
+            "p95_ns": 24259708
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {},
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 24259708,
+          "p95_ns": 24259708
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 243543375,
+          "p95_ns": 243543375
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2611006125,
+          "p95_ns": 2611006125
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 24259708,
+          "p95_ns": 24259708
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 0,
+          "incomplete": 0,
+          "unavailable": 1
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "off"
+    },
+    {
+      "case_id": "information",
+      "contributors": {
+        "host": {
+          "health": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 10002084,
+              "p95_ns": 10002084
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 10002084,
+              "p95_ns": 10002084
+            }
+          },
+          "http.exchange": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 14167000,
+              "p95_ns": 14167000
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 14167000,
+              "p95_ns": 14167000
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 27907334,
+              "p95_ns": 27907334
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 1075126,
+              "p95_ns": 1075126
+            }
+          },
+          "request.prepare": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 2329208,
+              "p95_ns": 2329208
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2329208,
+              "p95_ns": 2329208
+            }
+          },
+          "response.process": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 333916,
+              "p95_ns": 333916
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 333916,
+              "p95_ns": 333916
+            }
+          }
+        },
+        "native": {
+          "decode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 51500,
+              "p95_ns": 51500
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 51500,
+              "p95_ns": 51500
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 7717709,
+              "p95_ns": 7717709
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 7717709,
+              "p95_ns": 7717709
+            }
+          },
+          "queue_wait": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 40459,
+              "p95_ns": 40459
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 40459,
+              "p95_ns": 40459
+            }
+          },
+          "request": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 8081625,
+              "p95_ns": 8081625
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 233499,
+              "p95_ns": 233499
+            }
+          },
+          "response_encode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 38458,
+              "p95_ns": 38458
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 38458,
+              "p95_ns": 38458
+            }
+          }
+        }
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 31919167,
+          "p95_ns": 31919167
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 31919167,
+            "p95_ns": 31919167
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 31919167,
+            "p95_ns": 31919167
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 266371792,
+            "p95_ns": 266371792
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 31919167,
+            "p95_ns": 31919167
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {
+          "native_stage_missing:base64_encode": 1,
+          "native_stage_missing:png_encode": 1,
+          "native_stage_missing:poll": 1,
+          "native_stage_missing:poll_wait": 1,
+          "native_stage_missing:screenshot_capture": 1,
+          "native_stage_missing:screenshot_capture_encode": 1,
+          "native_stage_missing:ui_sync": 1
+        },
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 31919167,
+          "p95_ns": 31919167
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 266371792,
+          "p95_ns": 266371792
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2635040666,
+          "p95_ns": 2635040666
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 31919167,
+          "p95_ns": 31919167
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 1,
+          "incomplete": 0,
+          "unavailable": 0
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "on"
+    },
+    {
+      "case_id": "inspection",
+      "contributors": {
+        "host": {},
+        "native": {}
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 36024417,
+          "p95_ns": 36024417
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 36024417,
+            "p95_ns": 36024417
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 36024417,
+            "p95_ns": 36024417
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 256751625,
+            "p95_ns": 256751625
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 36024417,
+            "p95_ns": 36024417
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {},
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 36024417,
+          "p95_ns": 36024417
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 256751625,
+          "p95_ns": 256751625
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2614011709,
+          "p95_ns": 2614011709
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 36024417,
+          "p95_ns": 36024417
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 0,
+          "incomplete": 0,
+          "unavailable": 1
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "off"
+    },
+    {
+      "case_id": "inspection",
+      "contributors": {
+        "host": {
+          "health": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 11353084,
+              "p95_ns": 11353084
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 11353084,
+              "p95_ns": 11353084
+            }
+          },
+          "http.exchange": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 21049625,
+              "p95_ns": 21049625
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 21049625,
+              "p95_ns": 21049625
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 36563292,
+              "p95_ns": 36563292
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 1213583,
+              "p95_ns": 1213583
+            }
+          },
+          "request.prepare": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 2316875,
+              "p95_ns": 2316875
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2316875,
+              "p95_ns": 2316875
+            }
+          },
+          "response.process": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 630125,
+              "p95_ns": 630125
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 630125,
+              "p95_ns": 630125
+            }
+          }
+        },
+        "native": {
+          "decode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 83250,
+              "p95_ns": 83250
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 83250,
+              "p95_ns": 83250
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 14374791,
+              "p95_ns": 14374791
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 14374791,
+              "p95_ns": 14374791
+            }
+          },
+          "queue_wait": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 55667,
+              "p95_ns": 55667
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 55667,
+              "p95_ns": 55667
+            }
+          },
+          "request": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 15043833,
+              "p95_ns": 15043833
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 263750,
+              "p95_ns": 263750
+            }
+          },
+          "response_encode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 266375,
+              "p95_ns": 266375
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 266375,
+              "p95_ns": 266375
+            }
+          }
+        }
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 40707625,
+          "p95_ns": 40707625
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 40707625,
+            "p95_ns": 40707625
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 40707625,
+            "p95_ns": 40707625
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 274585083,
+            "p95_ns": 274585083
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 40707625,
+            "p95_ns": 40707625
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {
+          "native_stage_missing:base64_encode": 1,
+          "native_stage_missing:png_encode": 1,
+          "native_stage_missing:poll": 1,
+          "native_stage_missing:poll_wait": 1,
+          "native_stage_missing:screenshot_capture": 1,
+          "native_stage_missing:screenshot_capture_encode": 1,
+          "native_stage_missing:ui_sync": 1
+        },
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 40707625,
+          "p95_ns": 40707625
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 274585083,
+          "p95_ns": 274585083
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2628822250,
+          "p95_ns": 2628822250
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 40707625,
+          "p95_ns": 40707625
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 1,
+          "incomplete": 0,
+          "unavailable": 0
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "on"
+    },
+    {
+      "case_id": "interaction",
+      "contributors": {
+        "host": {},
+        "native": {}
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 357997458,
+          "p95_ns": 357997458
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 357997458,
+            "p95_ns": 357997458
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 357997458,
+            "p95_ns": 357997458
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 645048750,
+            "p95_ns": 645048750
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 357997458,
+            "p95_ns": 357997458
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {},
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 357997458,
+          "p95_ns": 357997458
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 645048750,
+          "p95_ns": 645048750
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2633348166,
+          "p95_ns": 2633348166
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 357997458,
+          "p95_ns": 357997458
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 0,
+          "incomplete": 0,
+          "unavailable": 1
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "off"
+    },
+    {
+      "case_id": "interaction",
+      "contributors": {
+        "host": {
+          "health": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 9976750,
+              "p95_ns": 9976750
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 9976750,
+              "p95_ns": 9976750
+            }
+          },
+          "http.exchange": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 350859625,
+              "p95_ns": 350859625
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 350859625,
+              "p95_ns": 350859625
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 367298834,
+              "p95_ns": 367298834
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 3411876,
+              "p95_ns": 3411876
+            }
+          },
+          "request.prepare": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 2718833,
+              "p95_ns": 2718833
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2718833,
+              "p95_ns": 2718833
+            }
+          },
+          "response.process": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 331750,
+              "p95_ns": 331750
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 331750,
+              "p95_ns": 331750
+            }
+          }
+        },
+        "native": {
+          "decode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 42833,
+              "p95_ns": 42833
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 42833,
+              "p95_ns": 42833
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 340335959,
+              "p95_ns": 340335959
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 340335959,
+              "p95_ns": 340335959
+            }
+          },
+          "poll": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 309730792,
+              "p95_ns": 309730792
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 309730792,
+              "p95_ns": 309730792
+            }
+          },
+          "queue_wait": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 36625,
+              "p95_ns": 36625
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 36625,
+              "p95_ns": 36625
+            }
+          },
+          "request": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 340653625,
+              "p95_ns": 340653625
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 80833,
+              "p95_ns": 80833
+            }
+          },
+          "response_encode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 51375,
+              "p95_ns": 51375
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 51375,
+              "p95_ns": 51375
+            }
+          }
+        }
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 372041458,
+          "p95_ns": 372041458
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 372041458,
+            "p95_ns": 372041458
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 372041458,
+            "p95_ns": 372041458
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 685609167,
+            "p95_ns": 685609167
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 372041458,
+            "p95_ns": 372041458
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {
+          "native_stage_missing:base64_encode": 1,
+          "native_stage_missing:png_encode": 1,
+          "native_stage_missing:poll_wait": 1,
+          "native_stage_missing:screenshot_capture": 1,
+          "native_stage_missing:screenshot_capture_encode": 1,
+          "native_stage_missing:ui_sync": 1
+        },
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 372041458,
+          "p95_ns": 372041458
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 685609167,
+          "p95_ns": 685609167
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2580288125,
+          "p95_ns": 2580288125
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 372041458,
+          "p95_ns": 372041458
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 1,
+          "incomplete": 0,
+          "unavailable": 0
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "on"
+    },
+    {
+      "case_id": "lookup",
+      "contributors": {
+        "host": {},
+        "native": {}
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 68326750,
+          "p95_ns": 68326750
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 68326750,
+            "p95_ns": 68326750
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 68326750,
+            "p95_ns": 68326750
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 286645958,
+            "p95_ns": 286645958
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 68326750,
+            "p95_ns": 68326750
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {},
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 68326750,
+          "p95_ns": 68326750
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 286645958,
+          "p95_ns": 286645958
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2645225833,
+          "p95_ns": 2645225833
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 68326750,
+          "p95_ns": 68326750
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 0,
+          "incomplete": 0,
+          "unavailable": 1
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "off"
+    },
+    {
+      "case_id": "lookup",
+      "contributors": {
+        "host": {
+          "health": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 9967583,
+              "p95_ns": 9967583
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 9967583,
+              "p95_ns": 9967583
+            }
+          },
+          "http.exchange": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 54194542,
+              "p95_ns": 54194542
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 54194542,
+              "p95_ns": 54194542
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 67889209,
+              "p95_ns": 67889209
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 1089918,
+              "p95_ns": 1089918
+            }
+          },
+          "request.prepare": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 2278916,
+              "p95_ns": 2278916
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2278916,
+              "p95_ns": 2278916
+            }
+          },
+          "response.process": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 358250,
+              "p95_ns": 358250
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 358250,
+              "p95_ns": 358250
+            }
+          }
+        },
+        "native": {
+          "decode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 76750,
+              "p95_ns": 76750
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 76750,
+              "p95_ns": 76750
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 47310792,
+              "p95_ns": 47310792
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 47310792,
+              "p95_ns": 47310792
+            }
+          },
+          "queue_wait": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 52083,
+              "p95_ns": 52083
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 52083,
+              "p95_ns": 52083
+            }
+          },
+          "request": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 47797500,
+              "p95_ns": 47797500
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 263750,
+              "p95_ns": 263750
+            }
+          },
+          "response_encode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 94125,
+              "p95_ns": 94125
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 94125,
+              "p95_ns": 94125
+            }
+          }
+        }
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 71753292,
+          "p95_ns": 71753292
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 71753292,
+            "p95_ns": 71753292
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 71753292,
+            "p95_ns": 71753292
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 306168167,
+            "p95_ns": 306168167
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 71753292,
+            "p95_ns": 71753292
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {
+          "native_stage_missing:base64_encode": 1,
+          "native_stage_missing:png_encode": 1,
+          "native_stage_missing:poll": 1,
+          "native_stage_missing:poll_wait": 1,
+          "native_stage_missing:screenshot_capture": 1,
+          "native_stage_missing:screenshot_capture_encode": 1,
+          "native_stage_missing:ui_sync": 1
+        },
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 71753292,
+          "p95_ns": 71753292
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 306168167,
+          "p95_ns": 306168167
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2549033792,
+          "p95_ns": 2549033792
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 71753292,
+          "p95_ns": 71753292
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 1,
+          "incomplete": 0,
+          "unavailable": 0
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "on"
+    },
+    {
+      "case_id": "missing-target",
+      "contributors": {
+        "host": {},
+        "native": {}
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 29490167,
+          "p95_ns": 29490167
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 29490167,
+            "p95_ns": 29490167
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 29490167,
+            "p95_ns": 29490167
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 256509208,
+            "p95_ns": 256509208
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 29490167,
+            "p95_ns": 29490167
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {},
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 29490167,
+          "p95_ns": 29490167
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 256509208,
+          "p95_ns": 256509208
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2219926500,
+          "p95_ns": 2219926500
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 29490167,
+          "p95_ns": 29490167
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 0,
+          "incomplete": 0,
+          "unavailable": 1
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "off"
+    },
+    {
+      "case_id": "missing-target",
+      "contributors": {
+        "host": {
+          "health": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 10485875,
+              "p95_ns": 10485875
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 10485875,
+              "p95_ns": 10485875
+            }
+          },
+          "http.exchange": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 18627500,
+              "p95_ns": 18627500
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 18627500,
+              "p95_ns": 18627500
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 33252125,
+              "p95_ns": 33252125
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 1185042,
+              "p95_ns": 1185042
+            }
+          },
+          "request.prepare": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 2646958,
+              "p95_ns": 2646958
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2646958,
+              "p95_ns": 2646958
+            }
+          },
+          "response.process": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 306750,
+              "p95_ns": 306750
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 306750,
+              "p95_ns": 306750
+            }
+          }
+        },
+        "native": {
+          "decode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 63916,
+              "p95_ns": 63916
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 63916,
+              "p95_ns": 63916
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 11423208,
+              "p95_ns": 11423208
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 11423208,
+              "p95_ns": 11423208
+            }
+          },
+          "queue_wait": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 54292,
+              "p95_ns": 54292
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 54292,
+              "p95_ns": 54292
+            }
+          },
+          "request": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 11738792,
+              "p95_ns": 11738792
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 158585,
+              "p95_ns": 158585
+            }
+          },
+          "response_encode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 38791,
+              "p95_ns": 38791
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 38791,
+              "p95_ns": 38791
+            }
+          }
+        }
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 37658083,
+          "p95_ns": 37658083
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 37658083,
+            "p95_ns": 37658083
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 37658083,
+            "p95_ns": 37658083
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 276252958,
+            "p95_ns": 276252958
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 37658083,
+            "p95_ns": 37658083
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {
+          "native_stage_missing:base64_encode": 1,
+          "native_stage_missing:png_encode": 1,
+          "native_stage_missing:poll": 1,
+          "native_stage_missing:poll_wait": 1,
+          "native_stage_missing:screenshot_capture": 1,
+          "native_stage_missing:screenshot_capture_encode": 1,
+          "native_stage_missing:ui_sync": 1
+        },
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 37658083,
+          "p95_ns": 37658083
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 276252958,
+          "p95_ns": 276252958
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2263369375,
+          "p95_ns": 2263369375
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 37658083,
+          "p95_ns": 37658083
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 1,
+          "incomplete": 0,
+          "unavailable": 0
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "on"
+    },
+    {
+      "case_id": "screenshot",
+      "contributors": {
+        "host": {},
+        "native": {}
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 101490250,
+          "p95_ns": 101490250
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 101490250,
+            "p95_ns": 101490250
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 101490250,
+            "p95_ns": 101490250
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 323340667,
+            "p95_ns": 323340667
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 101490250,
+            "p95_ns": 101490250
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {},
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 101490250,
+          "p95_ns": 101490250
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 323340667,
+          "p95_ns": 323340667
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2595326375,
+          "p95_ns": 2595326375
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 101490250,
+          "p95_ns": 101490250
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 0,
+          "incomplete": 0,
+          "unavailable": 1
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "off"
+    },
+    {
+      "case_id": "screenshot",
+      "contributors": {
+        "host": {
+          "health": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 10209667,
+              "p95_ns": 10209667
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 10209667,
+              "p95_ns": 10209667
+            }
+          },
+          "http.exchange": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 84874708,
+              "p95_ns": 84874708
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 84874708,
+              "p95_ns": 84874708
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 112765792,
+              "p95_ns": 112765792
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2168208,
+              "p95_ns": 2168208
+            }
+          },
+          "request.prepare": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 2360291,
+              "p95_ns": 2360291
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2360291,
+              "p95_ns": 2360291
+            }
+          },
+          "response.process": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 6804542,
+              "p95_ns": 6804542
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 6804542,
+              "p95_ns": 6804542
+            }
+          },
+          "screenshot.decode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 851834,
+              "p95_ns": 851834
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 851834,
+              "p95_ns": 851834
+            }
+          },
+          "screenshot.parse": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 2937667,
+              "p95_ns": 2937667
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2937667,
+              "p95_ns": 2937667
+            }
+          },
+          "screenshot.write": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 2558875,
+              "p95_ns": 2558875
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 2558875,
+              "p95_ns": 2558875
+            }
+          }
+        },
+        "native": {
+          "base64_encode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 32084,
+              "p95_ns": 32084
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 32084,
+              "p95_ns": 32084
+            }
+          },
+          "decode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 53916,
+              "p95_ns": 53916
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 53916,
+              "p95_ns": 53916
+            }
+          },
+          "operation": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 76367500,
+              "p95_ns": 76367500
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 76367500,
+              "p95_ns": 76367500
+            }
+          },
+          "png_encode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 3500,
+              "p95_ns": 3500
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 3500,
+              "p95_ns": 3500
+            }
+          },
+          "queue_wait": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 47042,
+              "p95_ns": 47042
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 47042,
+              "p95_ns": 47042
+            }
+          },
+          "request": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 76977584,
+              "p95_ns": 76977584
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 185543,
+              "p95_ns": 185543
+            }
+          },
+          "response_encode": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 323583,
+              "p95_ns": 323583
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 323583,
+              "p95_ns": 323583
+            }
+          },
+          "screenshot_capture": {
+            "inclusive": {
+              "count": 1,
+              "median_ns": 75808583,
+              "p95_ns": 75808583
+            },
+            "self": {
+              "count": 1,
+              "median_ns": 75808583,
+              "p95_ns": 75808583
+            }
+          }
+        }
+      },
+      "lifecycle": "host-cold",
+      "mode": "mcp",
+      "summary": {
+        "all_timed": {
+          "count": 1,
+          "median_ns": 117005208,
+          "p95_ns": 117005208
+        },
+        "assertion_outcomes": {
+          "passed": 1
+        },
+        "attempts": 1,
+        "failed": 0,
+        "measured": {
+          "all_timed": {
+            "count": 1,
+            "median_ns": 117005208,
+            "p95_ns": 117005208
+          },
+          "attempts": 1,
+          "failed": 0,
+          "operation_timed": {
+            "count": 1,
+            "median_ns": 117005208,
+            "p95_ns": 117005208
+          },
+          "passed": 1,
+          "process_timed": {
+            "count": 1,
+            "median_ns": 350365875,
+            "p95_ns": 350365875
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 1,
+            "median_ns": 117005208,
+            "p95_ns": 117005208
+          },
+          "timeout": 0
+        },
+        "measurement_gaps": {
+          "native_stage_missing:poll": 1,
+          "native_stage_missing:poll_wait": 1,
+          "native_stage_missing:screenshot_capture_encode": 1,
+          "native_stage_missing:ui_sync": 1
+        },
+        "operation_outcomes": {
+          "success": 1
+        },
+        "operation_timed": {
+          "count": 1,
+          "median_ns": 117005208,
+          "p95_ns": 117005208
+        },
+        "passed": 1,
+        "process_timed": {
+          "count": 1,
+          "median_ns": 350365875,
+          "p95_ns": 350365875
+        },
+        "setup_failed": 0,
+        "setup_timed": {
+          "count": 1,
+          "median_ns": 2605565625,
+          "p95_ns": 2605565625
+        },
+        "successful": {
+          "count": 1,
+          "median_ns": 117005208,
+          "p95_ns": 117005208
+        },
+        "timeout": 0,
+        "trace_completeness": {
+          "complete": 1,
+          "incomplete": 0,
+          "unavailable": 0
+        },
+        "warmups": {
+          "all_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "attempts": 0,
+          "failed": 0,
+          "operation_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "passed": 0,
+          "process_timed": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "setup_failed": 0,
+          "successful": {
+            "count": 0,
+            "median_ns": null,
+            "p95_ns": null
+          },
+          "timeout": 0
+        }
+      },
+      "tracing": "on"
+    }
+  ],
+  "measured": {
+    "all_timed": {
+      "count": 16,
+      "median_ns": 54517187.5,
+      "p95_ns": 372041458
+    },
+    "attempts": 16,
+    "failed": 0,
+    "operation_timed": {
+      "count": 16,
+      "median_ns": 54517187.5,
+      "p95_ns": 372041458
+    },
+    "passed": 16,
+    "process_timed": {
+      "count": 16,
+      "median_ns": 285320375.0,
+      "p95_ns": 685609167
+    },
+    "setup_failed": 0,
+    "successful": {
+      "count": 16,
+      "median_ns": 54517187.5,
+      "p95_ns": 372041458
+    },
+    "timeout": 0
+  },
+  "measurement_gaps": {
+    "native_stage_missing:base64_encode": 7,
+    "native_stage_missing:png_encode": 7,
+    "native_stage_missing:poll": 7,
+    "native_stage_missing:poll_wait": 8,
+    "native_stage_missing:screenshot_capture": 7,
+    "native_stage_missing:screenshot_capture_encode": 8,
+    "native_stage_missing:ui_sync": 8
+  },
+  "operation_outcomes": {
+    "success": 16
+  },
+  "operation_timed": {
+    "count": 16,
+    "median_ns": 54517187.5,
+    "p95_ns": 372041458
+  },
+  "overhead": [
+    {
+      "attempted_pairs": 1,
+      "case_id": "appearance",
+      "lifecycle": "host-cold",
+      "measurement_gaps": [],
+      "mode": "mcp",
+      "operation": {
+        "count": 1,
+        "median_delta_ns": 6367583,
+        "median_percent": 8.68353146732368
+      },
+      "process": {
+        "count": 1,
+        "median_delta_ns": 45190584,
+        "median_percent": 13.271946172360423
+      },
+      "successful_pairs": 1
+    },
+    {
+      "attempted_pairs": 1,
+      "case_id": "disappearance",
+      "lifecycle": "host-cold",
+      "measurement_gaps": [],
+      "mode": "mcp",
+      "operation": {
+        "count": 1,
+        "median_delta_ns": 11615458,
+        "median_percent": 42.788968963546154
+      },
+      "process": {
+        "count": 1,
+        "median_delta_ns": 17703833,
+        "median_percent": 6.64830419571248
+      },
+      "successful_pairs": 1
+    },
+    {
+      "attempted_pairs": 1,
+      "case_id": "information",
+      "lifecycle": "host-cold",
+      "measurement_gaps": [],
+      "mode": "mcp",
+      "operation": {
+        "count": 1,
+        "median_delta_ns": 7659459,
+        "median_percent": 31.572758419021365
+      },
+      "process": {
+        "count": 1,
+        "median_delta_ns": 22828417,
+        "median_percent": 9.373450211897573
+      },
+      "successful_pairs": 1
+    },
+    {
+      "attempted_pairs": 1,
+      "case_id": "inspection",
+      "lifecycle": "host-cold",
+      "measurement_gaps": [],
+      "mode": "mcp",
+      "operation": {
+        "count": 1,
+        "median_delta_ns": 4683208,
+        "median_percent": 13.000093797492962
+      },
+      "process": {
+        "count": 1,
+        "median_delta_ns": 17833458,
+        "median_percent": 6.945801414109843
+      },
+      "successful_pairs": 1
+    },
+    {
+      "attempted_pairs": 1,
+      "case_id": "interaction",
+      "lifecycle": "host-cold",
+      "measurement_gaps": [],
+      "mode": "mcp",
+      "operation": {
+        "count": 1,
+        "median_delta_ns": 14044000,
+        "median_percent": 3.9229328829480123
+      },
+      "process": {
+        "count": 1,
+        "median_delta_ns": 40560417,
+        "median_percent": 6.287961491282636
+      },
+      "successful_pairs": 1
+    },
+    {
+      "attempted_pairs": 1,
+      "case_id": "lookup",
+      "lifecycle": "host-cold",
+      "measurement_gaps": [],
+      "mode": "mcp",
+      "operation": {
+        "count": 1,
+        "median_delta_ns": 3426542,
+        "median_percent": 5.014934853479787
+      },
+      "process": {
+        "count": 1,
+        "median_delta_ns": 19522209,
+        "median_percent": 6.810564899017344
+      },
+      "successful_pairs": 1
+    },
+    {
+      "attempted_pairs": 1,
+      "case_id": "missing-target",
+      "lifecycle": "host-cold",
+      "measurement_gaps": [],
+      "mode": "mcp",
+      "operation": {
+        "count": 1,
+        "median_delta_ns": 8167916,
+        "median_percent": 27.697082895461392
+      },
+      "process": {
+        "count": 1,
+        "median_delta_ns": 19743750,
+        "median_percent": 7.697092105948883
+      },
+      "successful_pairs": 1
+    },
+    {
+      "attempted_pairs": 1,
+      "case_id": "screenshot",
+      "lifecycle": "host-cold",
+      "measurement_gaps": [],
+      "mode": "mcp",
+      "operation": {
+        "count": 1,
+        "median_delta_ns": 15514958,
+        "median_percent": 15.287141375649385
+      },
+      "process": {
+        "count": 1,
+        "median_delta_ns": 27025208,
+        "median_percent": 8.358122178303047
+      },
+      "successful_pairs": 1
+    }
+  ],
+  "passed": 16,
+  "process_timed": {
+    "count": 16,
+    "median_ns": 285320375.0,
+    "p95_ns": 685609167
+  },
+  "setup_failed": 0,
+  "setup_timed": {
+    "count": 16,
+    "median_ns": 2621416979.5,
+    "p95_ns": 2986536208
+  },
+  "successful": {
+    "count": 16,
+    "median_ns": 54517187.5,
+    "p95_ns": 372041458
+  },
+  "timeout": 0,
+  "trace_completeness": {
+    "complete": 8,
+    "incomplete": 0,
+    "unavailable": 8
+  },
+  "warmups": {
+    "all_timed": {
+      "count": 0,
+      "median_ns": null,
+      "p95_ns": null
+    },
+    "attempts": 0,
+    "failed": 0,
+    "operation_timed": {
+      "count": 0,
+      "median_ns": null,
+      "p95_ns": null
+    },
+    "passed": 0,
+    "process_timed": {
+      "count": 0,
+      "median_ns": null,
+      "p95_ns": null
+    },
+    "setup_failed": 0,
+    "successful": {
+      "count": 0,
+      "median_ns": null,
+      "p95_ns": null
+    },
+    "timeout": 0
+  }
+}

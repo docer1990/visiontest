@@ -168,6 +168,9 @@ def _render_run(path, base):
     if not samples:
         gaps.append('No produced results: setup did not reach the runner; no latency evidence is available')
     failed = any(result.get(status, 0) for status in ('failed', 'setup_failed', 'timeout'))
+    # Missing/invalid records and inconsistent provenance affect collection.
+    # Structural boundary limitations and trace attribution have separate status.
+    collection_gaps = list(gaps)
     traces = result['trace_completeness']
     if traces['incomplete']:
         gaps.append('incomplete_traces')
@@ -177,8 +180,15 @@ def _render_run(path, base):
     gaps.extend(result['measurement_gaps'])
     for overhead in result['overhead']:
         gaps.extend(overhead['measurement_gaps'])
-    complete = bool(samples) and not gaps and not failed
+        collection_gaps.extend(gap for gap in overhead['measurement_gaps']
+                               if gap in ('pair_incomplete', 'pair_fixture_mismatch'))
+    complete = bool(samples) and not collection_gaps and not failed
+    traced = [sample for sample in samples if sample.get('tracing') == 'on']
+    attribution = ('incomplete' if any(sample.get('trace_complete') is not True for sample in traced)
+                   else 'complete' if traced else 'unavailable (tracing disabled)')
     lines.extend(['Collection status: ' + ('Requested attempts recorded and passed.' if complete else 'Incomplete; inspect counts and gaps below.'), '',
+                  f'Attribution status: {attribution}.', '',
+                  'Measurement status: ' + ('gaps reported; see Gaps below.' if gaps else 'no reported gaps.'), '',
                   _counts('Measured', result['measured'], expected), '',
                   _counts('Warmup', result['warmups'], expected_warmups), '',
                   'Latency populations are reported per case and tracing state below; failed and timed-out attempts remain in all timed populations.', ''])
@@ -242,7 +252,7 @@ def _render_report(input_dir, expected_configurations, link_base):
         run_count += 1
     lines.extend([f'Configurations: {len(configurations)} / {expected_configurations} expected (unique platform/mode/lifecycle).', '',
                   f'Missing configurations: {max(0, expected_configurations - len(configurations))}', '',
-                  f'Runs with requested attempts recorded and passed without reported gaps: {complete_runs}.', ''])
+                  f'Runs with requested attempts recorded and passed: {complete_runs}.', ''])
     if expected_configurations == 8:
         matrix = {(platform, mode, lifecycle) for platform in ('android', 'ios')
                   for mode in ('cli', 'mcp') for lifecycle in ('warm', 'host-cold')}

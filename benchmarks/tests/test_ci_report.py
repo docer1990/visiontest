@@ -248,3 +248,33 @@ class CiReportTest(unittest.TestCase):
         self.assertIn('environment metadata is invalid', result)
         self.assertIn('invalid_sample_line:2', result)
         self.assertIn('Measured attempts: 1 / 1 expected', result)
+
+    def test_complete_paired_cli_collection_retains_expected_boundary_gap(self):
+        self.run_data(samples=[self.sample(pair_id='pair', fixture_revision='f'),
+                               self.sample(pair_id='pair', fixture_revision='f', tracing='on',
+                                           process_duration_ns=15, trace_complete=True)], tracing='paired')
+        result = self.report.render_report(self.root)
+        self.assertIn('Collection status: Requested attempts recorded and passed.', result)
+        self.assertIn('Runs with requested attempts recorded and passed: 1.', result)
+        self.assertNotIn('Incomplete collection.', result)
+        self.assertIn('operation_boundary_unavailable', result)
+        self.assertIn('Measurement status: gaps reported; see Gaps below.', result)
+
+    def test_incomplete_trace_does_not_disguise_complete_collection(self):
+        self.run_data(samples=[self.sample(tracing='on', trace_complete=False,
+                                          measurement_gaps=['native_metadata_missing'])], tracing='on')
+        result = self.report.render_report(self.root)
+        self.assertIn('Collection status: Requested attempts recorded and passed.', result)
+        self.assertNotIn('Incomplete collection.', result)
+        self.assertIn('Attribution status: incomplete.', result)
+        self.assertIn('native_metadata_missing', result)
+        self.assertIn('incomplete_traces', result)
+
+    def test_fixture_mismatch_keeps_paired_collection_incomplete(self):
+        self.run_data(samples=[self.sample(pair_id='pair', fixture_revision='before'),
+                               self.sample(pair_id='pair', fixture_revision='after', tracing='on',
+                                           trace_complete=True)], tracing='paired')
+        result = self.report.render_report(self.root)
+        self.assertIn('Collection status: Incomplete;', result)
+        self.assertIn('Incomplete collection.', result)
+        self.assertIn('pair_fixture_mismatch', result)

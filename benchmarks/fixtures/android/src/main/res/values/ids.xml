@@ -1,4 +1,5 @@
 <resources>
+    <item name="fixture_ready" type="id" />
     <item name="start" type="id" />
     <item name="email" type="id" />
     <item name="continue_action" type="id" />

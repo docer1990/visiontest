@@ -46,6 +46,7 @@ class MainActivity : Activity() {
             "error" -> label(R.id.error, text("error")).also(content::addView)
             "missing" -> Unit
         }
+        if (scenario != "appear" && scenario != "disappear") markReady()
     }
 
     private fun delayed(appears: Boolean) {
@@ -54,7 +55,12 @@ class MainActivity : Activity() {
         handler.postDelayed({
             if (isFinishing || isDestroyed) return@postDelayed
             if (appears) label(R.id.done, text("done")).also(content::addView) else content.removeView(loading)
+            markReady()
         }, 750)
+    }
+
+    private fun markReady() {
+        label(R.id.fixture_ready, "Ready").also(content::addView)
     }
 
     private fun button(id: Int, value: String) = Button(this).apply {
@@ -75,6 +81,7 @@ class MainActivity : Activity() {
 
     private fun idName(id: Int) = when (id) {
         R.id.start -> "start"
+        R.id.fixture_ready -> "fixture_ready"
         R.id.email -> "email"
         R.id.continue_action -> "continue"
         R.id.continue_primary -> "continue_primary"

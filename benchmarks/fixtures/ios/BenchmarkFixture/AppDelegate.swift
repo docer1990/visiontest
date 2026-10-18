@@ -58,10 +58,16 @@ final class FixtureViewController: UIViewController {
                 self?.addLabel(id: "done", title: self?.text("done") ?? "Done")
             }
         case "appear":
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak self] in self?.addLabel(id: "done", title: self?.text("done") ?? "Done") }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak self] in
+                self?.addLabel(id: "done", title: self?.text("done") ?? "Done")
+                self?.markReady()
+            }
         case "disappear":
             let loading = addLabel(id: "loading", title: text("loading"))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { loading.removeFromSuperview() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { [weak self] in
+                loading.removeFromSuperview()
+                self?.markReady()
+            }
         case "ambiguous":
             addButton(id: "continue_primary", title: text("continue"))
             addButton(id: "continue_secondary", title: text("continue"))
@@ -70,6 +76,11 @@ final class FixtureViewController: UIViewController {
         case "missing": break
         default: break
         }
+        if scenario != "appear" && scenario != "disappear" { markReady() }
+    }
+
+    private func markReady() {
+        addLabel(id: "fixture_ready", title: "Ready")
     }
 
     @discardableResult private func addLabel(id: String, title: String) -> UILabel {

@@ -4,7 +4,7 @@
   "target": "REPLACE_WITH_SINGLE_ADB_SERIAL",
   "fixtureIdentity": "com.example.visiontest.benchmark",
   "fixtureArtifact": "benchmarks/fixtures/android/build/outputs/apk/debug/benchmark-fixture-debug.apk",
-  "fixtureRevision": "fixture-v1",
+  "fixtureRevision": "fixture-v2-settled",
   "cliPrefix": [
     "java",
     "-jar",

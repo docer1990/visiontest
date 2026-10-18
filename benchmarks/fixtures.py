@@ -49,7 +49,7 @@ def wait_fixture_ready(case: dict, manifest: dict, env: dict) -> tuple[bool, str
     platform = manifest["platform"]
     identity = manifest["fixtureIdentity"]
     scenario = case["fixtureScenario"]
-    checks = [("start", True)] + {
+    checks = [("fixture_ready", True), ("start", True)] + {
         "navigation": [("email", True), ("continue_action" if platform == "android" else "continue", True)],
         "appear": [("done", True)],
         "disappear": [("loading", False)],

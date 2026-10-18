@@ -4,7 +4,7 @@
   "target": "REPLACE_WITH_SINGLE_SIMULATOR_UDID",
   "fixtureIdentity": "com.example.visiontest.benchmark",
   "fixtureArtifact": "benchmarks/fixtures/ios/.derivedData/Build/Products/Debug-iphonesimulator/BenchmarkFixture.app",
-  "fixtureRevision": "fixture-v1",
+  "fixtureRevision": "fixture-v2-settled",
   "cliPrefix": [
     "java",
     "-jar",

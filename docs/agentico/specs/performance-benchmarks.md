@@ -49,8 +49,14 @@ uncertain and is never retried within its sample; each later sample runs fixture
 setup first and does not start if setup fails.
 
 After launch, setup proves fixture readiness using structured CLI `find_element`
-probes with performance tracing disabled. It requires `start` to be present before
-checking the selected scenario: navigation requires `email` and the continue
+probes with performance tracing disabled. The synthetic fixtures expose the stable
+`fixture_ready` label only after the selected scenario is rendered. Appearance
+adds this marker after adding `done`; disappearance adds it after removing
+`loading`, in the same 750 ms completion callback. Other scenarios add it after
+their initial controls. Setup polls only this positive marker until present,
+avoiding snapshots of controls while their delayed transition runs. It then
+requires `start` to be present before checking the selected scenario:
+navigation requires `email` and the continue
 control; appearance requires `done`; disappearance requires `loading` absent;
 missing requires `email` absent; ambiguous requires both distinct continue IDs;
 error requires `error`. Platform resource IDs and iOS bundle scope apply to every
@@ -62,6 +68,9 @@ immediately. Absence is accepted only from a boolean `found: false` result after
 the positive start observation. Failure or deadline expiry records `setup_failed`
 and skips the measured operation. Probe time and the 750 ms fixture transitions
 belong to setup duration; settling never replays the timed command.
+The marker requires the `fixture-v2-settled` fixture revision or later. Rebuild
+both native fixtures and update local manifest revisions before collecting;
+older fixtures lack the marker and fail readiness rather than supplying samples.
 
 The CLI adapter evaluates public JSON output where available. The MCP adapter
 parses structured content or the server's JSON text content and evaluates

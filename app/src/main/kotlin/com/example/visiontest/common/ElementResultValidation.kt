@@ -9,7 +9,11 @@ import kotlinx.serialization.json.intOrNull
 
 internal fun validateFindElementResponse(response: String, ios: Boolean) {
     val parsed = automationResult(response)
-    if (!parsed.isRpcError) validateFindElementResult(parsed.value, ios)
+    if (!parsed.isRpcError) {
+        validateFindElementResult(parsed.value, ios)
+        val error = parsed.value["error"] as? JsonPrimitive
+        if (error != null) throw CommandExecutionException(error.content)
+    }
 }
 
 internal fun validateFindElementResult(result: JsonObject, ios: Boolean) {

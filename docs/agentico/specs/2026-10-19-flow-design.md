@@ -66,7 +66,9 @@ SpringBoard default. Android rejects this flag during preflight. Preflight error
 Once execution starts, JSON mode writes exactly one complete report object and a
 newline, even on failure. Diagnostics go to stderr. The report includes schema
 version, platform, overall success and exit code, steps, failed-step id, skipped
-ids, final observations and failure evidence. Default output summarizes execution.
+ids, final observations and failure evidence. Default output summarizes execution
+and warns when an action effect is unknown, with advice to inspect the UI before
+retrying.
 
 ## Verification and delivery
 

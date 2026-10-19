@@ -125,7 +125,8 @@ within the submitted flow, including skipped steps. A validated backend failure 
 a confirmed failure; it does not promise that an action had no partial effect.
 When an action may have been dispatched and no valid result establishes its
 outcome, the report marks its effect as unknown. Readiness failures before dispatch
-are distinguishable from these uncertain outcomes. Inspect the current UI before
+are distinguishable from these uncertain outcomes. Default text output also warns
+that the action effect is unknown and advises inspection before retrying. Inspect the current UI before
 deciding how to recover; never assume that an uncertain action did not happen.
 
 ## Measured process savings

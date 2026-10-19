@@ -89,7 +89,7 @@ internal class FlowObservationCollector(
             }
             records += record
             if (record.status == "failed" && stopOnFailure) stopped = true
-            if (!stopped) {
+            if (!stopped && !stopOnFailure) {
                 stopped = try { deadline.remainingMillis(); false } catch (_: TimeoutException) { true }
             }
         }

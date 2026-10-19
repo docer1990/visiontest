@@ -63,6 +63,8 @@ class FlowExecutorTest {
             assertEquals(index + 1, calls)
             assertEquals("failed", report.steps[index].status)
             assertEquals("confirmed", report.steps[index].certainty)
+            assertFalse(report.text().contains("action effect is unknown"))
+            assertFalse(report.text().contains("Inspect the UI before retrying"))
             assertEquals((index + 1..2).map { "step-${it + 1}" }, report.skippedSteps)
         }
     }

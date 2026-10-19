@@ -9,6 +9,7 @@ import okhttp3.mockwebserver.SocketPolicy
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
 
 internal class FlowLostResponseScenario {
@@ -28,6 +29,8 @@ internal class FlowLostResponseScenario {
                 assertEquals(1, attempt.report.exitCode)
                 assertEquals("uncertain", attempt.report.steps.first().status)
                 assertEquals("unknown", attempt.report.steps.first().certainty)
+                assertTrue(attempt.report.text().contains("action effect is unknown"))
+                assertTrue(attempt.report.text().contains("Inspect the UI before retrying"))
                 assertEquals(listOf("step-2"), attempt.report.skippedSteps)
                 assertEquals(1, attempt.posts)
                 assertEquals(0, attempt.laterCalls)

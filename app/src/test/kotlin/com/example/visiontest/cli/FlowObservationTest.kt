@@ -1,5 +1,10 @@
 package com.example.visiontest.cli
 
+import com.example.visiontest.common.RequestDeadline
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.spyk
 import com.example.visiontest.ServerNotRunningException
 import com.example.visiontest.NoDeviceAvailableException
 import com.example.visiontest.cli.commands.FlowCommand
@@ -19,12 +24,39 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class FlowObservationTest {
     @TempDir lateinit var directory: Path
+
+    @Test
+    fun `expiry between final observations records a failure instead of successful skipped work`() = runBlocking {
+        for (platform in Platform.entries) {
+            val components = mockk<ComponentHolder>(relaxed = true)
+            coEvery { components.androidAutomationRegistrar.getUiHierarchy() } returns
+                """{"result":{"success":true,"hierarchy":"<hierarchy/>"}}"""
+            coEvery { components.iosAutomationRegistrar.getUiHierarchy(null) } returns
+                """{"result":{"success":true,"hierarchy":"<hierarchy/>"}}"""
+            val deadline = spyk(RequestDeadline(10000))
+            every { deadline.remainingMillis() } returnsMany listOf(1000L, 1000L) andThenThrows
+                TimeoutException("Flow execution deadline exceeded")
+            val collector = FlowObservationCollector(platform, lazy { components }, artifacts = directory)
+            val report = FlowObservationOptions(collector = collector,
+                observe = listOf("hierarchy", "screenshot", "interactive-elements"))
+                .finish(FlowReport(platform, true, 0, emptyList()), deadline)
+            assertFalse(report.success)
+            assertEquals(1, report.exitCode)
+            assertEquals(listOf("succeeded", "failed", "skipped"), report.observations.map { it.status })
+            assertEquals("TimeoutException", report.error?.type)
+            every { deadline.remainingMillis() } returnsMany listOf(1000L, 1000L) andThenThrows
+                TimeoutException("Flow execution deadline exceeded")
+            val evidence = collector.collect(listOf("hierarchy", "screenshot", "interactive-elements"), deadline)
+            assertEquals(listOf("succeeded", "skipped", "skipped"), evidence.map { it.status })
+        }
+    }
 
     @Test
     fun `evidence saves screenshots and XML and validates interactive elements on both platforms`() = runBlocking {

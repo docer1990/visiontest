@@ -49,6 +49,9 @@ internal data class FlowReport(
         append("${steps.count { it.status == "succeeded" }} completed, ${skippedSteps.size} skipped")
         failedStep?.let { append("; failed step $it") }
         error?.let { append(". ${it.message}") }
+        if (steps.any { it.status == "uncertain" }) {
+            append(". The action effect is unknown. Inspect the UI before retrying.")
+        }
         val paths = steps.mapNotNull { it.result?.get("path") as? JsonPrimitive } +
             (observations + evidence).mapNotNull { it.result?.get("path") as? JsonPrimitive }
         paths.forEach { append("\n${it.content}") }

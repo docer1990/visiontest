@@ -17,6 +17,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Base64
 
+internal data class ScreenshotResult(val success: Boolean, val message: String, val path: String? = null)
+
 /**
  * Shared screenshot pipeline for the Android and iOS automation tool registrars.
  *
@@ -48,16 +50,19 @@ internal class ScreenshotSaver(
      *
      * Returns a user-facing result string (success or a specific error message).
      */
-    suspend fun capture(outputPath: String?, fetchResponse: suspend () -> String): String {
+    suspend fun capture(outputPath: String?, fetchResponse: suspend () -> String): String =
+        captureResult(outputPath, fetchResponse).message
+
+    suspend fun captureResult(outputPath: String?, fetchResponse: suspend () -> String): ScreenshotResult {
         val response = fetchResponse()
         val parsed = trace.span(TraceStage.SCREENSHOT_PARSE) {
             parseScreenshot(response)
         }
         parsed.failure?.let {
             trace.operationOutcome(OperationOutcome.FAILURE)
-            return it
+            return ScreenshotResult(success = false, message = it)
         }
-        return writeScreenshot(resolveScreenshotPath(outputPath), checkNotNull(parsed.pngBase64))
+        return writeScreenshotResult(resolveScreenshotPath(outputPath), checkNotNull(parsed.pngBase64))
     }
     private data class ParsedScreenshot(val pngBase64: String? = null, val failure: String? = null)
     private suspend fun parseFailure(message: String): ParsedScreenshot {
@@ -169,7 +174,10 @@ internal class ScreenshotSaver(
      *
      * Returns a user-facing result string (success or a specific error message).
      */
-    suspend fun writeScreenshot(target: File, pngBase64: String): String = withContext(Dispatchers.IO) {
+    suspend fun writeScreenshot(target: File, pngBase64: String): String =
+        writeScreenshotResult(target, pngBase64).message
+
+    suspend fun writeScreenshotResult(target: File, pngBase64: String): ScreenshotResult = withContext(Dispatchers.IO) {
         var decodeFailure: String? = null
         val bytes = trace.span(TraceStage.SCREENSHOT_DECODE) {
             try {
@@ -185,19 +193,18 @@ internal class ScreenshotSaver(
             }
         } ?: run {
             trace.operationOutcome(OperationOutcome.FAILURE)
-            return@withContext checkNotNull(decodeFailure)
+            return@withContext ScreenshotResult(success = false, message = checkNotNull(decodeFailure))
         }
         val saved = writeScreenshotBytes(target, bytes)
         trace.operationOutcome(if (saved.success) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
-        saved.message
+        saved
     }
-    private data class SavedScreenshot(val message: String, val success: Boolean)
 
-    private suspend fun writeScreenshotBytes(target: File, bytes: ByteArray): SavedScreenshot =
+    private suspend fun writeScreenshotBytes(target: File, bytes: ByteArray): ScreenshotResult =
         trace.span(TraceStage.SCREENSHOT_WRITE) {
-            val failure: suspend (String) -> SavedScreenshot = { message ->
+            val failure: suspend (String) -> ScreenshotResult = { message ->
                 trace.operationOutcome(OperationOutcome.FAILURE)
-                SavedScreenshot(message, success = false)
+                ScreenshotResult(success = false, message = message)
             }
             val targetPath = target.toPath()
             val parentDir = target.parentFile
@@ -232,7 +239,7 @@ internal class ScreenshotSaver(
                     Files.move(tempFile, targetPath, StandardCopyOption.REPLACE_EXISTING)
                 }
                 trace.operationOutcome(OperationOutcome.SUCCESS)
-                SavedScreenshot("Screenshot saved to ${target.absolutePath}", success = true)
+                ScreenshotResult(success = true, message = "Screenshot saved to ${target.absolutePath}", path = target.absolutePath)
             } catch (e: IOException) {
                 runCatching { Files.deleteIfExists(tempFile) }
                 failure("Screenshot failed: unable to write PNG to ${target.absolutePath} (${e.message}).")

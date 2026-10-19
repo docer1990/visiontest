@@ -12,6 +12,8 @@ import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import kotlin.coroutines.coroutineContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -93,13 +95,38 @@ abstract class JsonRpcHttpClient internal constructor(
                 ).toByteArray(Charsets.UTF_8)
             }
             val responseBytes = trace.span(TraceStage.HTTP_EXCHANGE) {
-                exchange(requestBytes, readTimeoutMs)
+                val budget = coroutineContext[RequestDeadline]
+                if (budget == null) exchange(requestBytes, readTimeoutMs)
+                else budgetExchange(budget, method, requestBytes, readTimeoutMs)
             }
             trace.span(TraceStage.RESPONSE_PROCESS) {
                 val response = responseBytes.toString(Charsets.UTF_8)
                 if (trace !== TraceRecorder.Disabled) trace.operationOutcome(responseOutcome(response))
                 response
             }
+        }
+    }
+
+    private suspend fun budgetExchange(
+        budget: RequestDeadline, method: String, bytes: ByteArray, timeoutMs: Int,
+    ): ByteArray {
+        val nativeRequest = trace.nativeRequest()
+        var timingHeader: String? = null
+        try {
+            val response = budget.exchange("http://$host:$port/jsonrpc", bytes, method, timeoutMs,
+                nativeRequest?.let { mapOf("X-VisionTest-Trace" to it.header) }.orEmpty())
+            timingHeader = response.headers().firstValue("X-VisionTest-Timing").orElse(null)
+            trace.metric(TraceMetric.REQUEST_BYTES, bytes.size.toLong())
+            trace.metric(TraceMetric.RESPONSE_BYTES, response.body().size.toLong())
+            if (response.statusCode() != HttpURLConnection.HTTP_OK) {
+                throw CommandExecutionException(
+                    "HTTP error: ${response.statusCode()} - ${response.body().toString(Charsets.UTF_8)}",
+                    response.statusCode(),
+                )
+            }
+            return response.body()
+        } finally {
+            nativeRequest?.record(timingHeader)
         }
     }
 
@@ -257,6 +284,19 @@ abstract class JsonRpcHttpClient internal constructor(
      */
     suspend fun isServerRunning(): Boolean {
         return trace.span(TraceStage.HEALTH) {
+            val budget = coroutineContext[RequestDeadline]
+            if (budget != null) {
+                val running = try {
+                    budget.exchange("http://$host:$port/health", null, timeoutMs = HEALTH_TIMEOUT_MS)
+                        .statusCode() == HttpURLConnection.HTTP_OK
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    false
+                }
+                trace.operationOutcome(if (running) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
+                return@span running
+            }
             val running = withContext(Dispatchers.IO) {
                 val connection = try {
                     URL("http://$host:$port/health").openConnection() as HttpURLConnection

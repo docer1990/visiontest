@@ -58,7 +58,7 @@ class AndroidAutomationToolRegistrar internal constructor(
         trace.operationOutcome(OperationOutcome.FAILURE)
         return message
     }
-    private suspend fun serverOperation(block: suspend () -> String): String = trace.span(TraceStage.OPERATION) {
+    private suspend fun <T> serverOperation(block: suspend () -> T): T = trace.span(TraceStage.OPERATION) {
         requireServer()
         block()
     }
@@ -639,7 +639,10 @@ class AndroidAutomationToolRegistrar internal constructor(
         trace = trace,
     )
     internal suspend fun captureScreenshot(outputPath: String?): String =
-        serverOperation { screenshotSaver.capture(outputPath) { automationClient.screenshot() } }
+        captureScreenshotResult(outputPath).message
+
+    internal suspend fun captureScreenshotResult(outputPath: String?): ScreenshotResult =
+        serverOperation { screenshotSaver.captureResult(outputPath) { automationClient.screenshot() } }
 
     internal fun resolveScreenshotPath(outputPath: String?): File =
         screenshotSaver.resolveScreenshotPath(outputPath)

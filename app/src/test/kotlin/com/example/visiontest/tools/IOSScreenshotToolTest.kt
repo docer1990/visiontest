@@ -76,6 +76,44 @@ class IOSScreenshotToolTest {
         assertFalse(events.any { it.toJson().toString().contains("private-traced") })
     }
 
+    @Test
+    fun `structured capture returns absolute saved path`() = runBlocking {
+        enqueueHealthOk()
+        enqueueScreenshotResult(successBody(fixturePngBase64))
+        val target = File(tempDir, "structured.png")
+
+        val result = registrar.captureScreenshotResult(target.path)
+
+        assertTrue(result.success)
+        assertEquals(target.absolutePath, result.path)
+        assertEquals("Screenshot saved to ${target.absolutePath}", result.message)
+        assertContentEquals(fixturePngBytes, target.readBytes())
+        assertEquals(2, mockServer.requestCount)
+    }
+
+    @Test
+    fun `structured capture failure has no saved path`() = runBlocking {
+        enqueueHealthOk()
+        enqueueScreenshotResult("""{"success":false,"error":"capture failed"}""")
+        val target = File(tempDir, "structured.png")
+
+        val result = registrar.captureScreenshotResult(target.path)
+
+        assertFalse(result.success)
+        assertNull(result.path)
+        assertTrue(result.message.contains("capture failed"))
+        assertFalse(target.exists())
+    }
+
+    @Test
+    fun `structured capture requires running server`() = runBlocking {
+        mockServer.enqueue(MockResponse().setResponseCode(500))
+        assertFailsWith<ServerNotRunningException> {
+            registrar.captureScreenshotResult(File(tempDir, "structured.png").path)
+        }
+        assertEquals(1, mockServer.requestCount)
+    }
+
     // --- resolveScreenshotPath ---
 
     @Test

@@ -27,6 +27,8 @@ internal class FlowLostResponseScenario {
             attempts.forEach { attempt ->
                 assertFalse(attempt.report.success)
                 assertEquals(1, attempt.report.exitCode)
+                assertTrue(attempt.report.error?.type in setOf("IOException", "EOFException"),
+                    "Expected a lost-response I/O failure: ${attempt.report.error}")
                 assertEquals("uncertain", attempt.report.steps.first().status)
                 assertEquals("unknown", attempt.report.steps.first().certainty)
                 assertTrue(attempt.report.text().contains("action effect is unknown"))
@@ -39,7 +41,7 @@ internal class FlowLostResponseScenario {
     )
 
     private fun execute(platform: Platform): Attempt = MockWebServer().use { server ->
-        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
         server.start()
         val android = AutomationClient(server.hostName, server.port)
         val ios = IOSAutomationClient(server.hostName, server.port)
@@ -56,7 +58,7 @@ internal class FlowLostResponseScenario {
                 """{"result":{"success":true}}"""
             },
         )
-        val report = runBlocking { FlowExecutor().execute(platform, steps, stepTimeoutMs = 500) }
+        val report = runBlocking { FlowExecutor().execute(platform, steps) }
         assertEquals("POST", assertNotNull(server.takeRequest(1, TimeUnit.SECONDS)).method)
         Attempt(report, server.requestCount, laterCalls)
     }

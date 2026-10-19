@@ -1,5 +1,6 @@
 package com.example.visiontest.cli
 
+import com.example.visiontest.common.automationResult
 import com.example.visiontest.CommandExecutionException
 import com.example.visiontest.common.RequestDeadline
 import kotlinx.coroutines.Dispatchers

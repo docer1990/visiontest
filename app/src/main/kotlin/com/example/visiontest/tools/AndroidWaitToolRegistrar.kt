@@ -1,5 +1,8 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.common.RequestDeadline
+import com.example.visiontest.common.validateFindElementResponse
+import kotlin.coroutines.coroutineContext
 import com.example.visiontest.performance.TraceRecorder
 import com.example.visiontest.performance.TraceStage
 
@@ -56,7 +59,11 @@ class AndroidWaitToolRegistrar internal constructor(
                 pollIntervalMs = AutomationConfig.WAIT_POLL_INTERVAL_MS,
                 selectorDescription = selectors.describe(),
             ) {
-                findElement(selectors)
+                findElement(selectors).also { response ->
+                    if (coroutineContext[RequestDeadline] != null) {
+                        validateFindElementResponse(response, ios = false)
+                    }
+                }
             }
         }
 

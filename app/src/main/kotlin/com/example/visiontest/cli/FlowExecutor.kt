@@ -1,6 +1,8 @@
 package com.example.visiontest.cli
 
+import com.example.visiontest.common.automationResult
 import com.example.visiontest.CommandExecutionException
+import com.example.visiontest.common.AutomationResponse
 import com.example.visiontest.common.RequestDeadline
 import com.example.visiontest.common.strictJsonObject
 import kotlinx.coroutines.currentCoroutineContext

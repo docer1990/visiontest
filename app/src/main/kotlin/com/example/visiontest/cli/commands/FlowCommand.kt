@@ -24,15 +24,23 @@ internal class FlowCommand(
     private val file by option("--file", help = "Read commands from a UTF-8 file")
     private val stdin by option("--stdin", help = "Read commands from standard input").flag()
     private val json by option("--json", help = "Print a complete JSON execution report").flag()
-    private val stepTimeout by option("--step-timeout", help = "Per-step budget in milliseconds").int().default(35000)
-    private val timeout by option("--timeout", help = "Overall execution budget in milliseconds").int().default(120000)
+    private val stepTimeout by option("--step-timeout", help = "Per-step budget in milliseconds")
+        .int().default(DEFAULT_STEP_TIMEOUT_MS)
+    private val timeout by option("--timeout", help = "Overall execution budget in milliseconds")
+        .int().default(DEFAULT_TIMEOUT_MS)
+
+    private companion object {
+        const val DEFAULT_STEP_TIMEOUT_MS = 35000
+        const val DEFAULT_TIMEOUT_MS = 120000
+        const val MAX_TIMEOUT_MS = 3600000
+    }
 
     override fun run() = runner {
-        require(stepTimeout in 1..3600000) { "--step-timeout must be between 1 and 3600000" }
-        require(timeout in 1..3600000) { "--timeout must be between 1 and 3600000" }
+        require(stepTimeout in 1..MAX_TIMEOUT_MS) { "--step-timeout must be between 1 and 3600000" }
+        require(timeout in 1..MAX_TIMEOUT_MS) { "--timeout must be between 1 and 3600000" }
         val lines = FlowInput.read(steps, file, stdin, readStdin)
         val prepared = FlowPreparation.prepare(platform, lines, components)
-        val report = FlowExecutor().execute(platform, prepared)
+        val report = FlowExecutor().execute(platform, prepared, stepTimeout.toLong(), timeout.toLong())
         CliResult(report.exitCode, if (json) report.toJson().toString() else report.text(), report.error?.message)
     }
 }

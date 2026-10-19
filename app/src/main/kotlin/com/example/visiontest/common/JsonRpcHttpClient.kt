@@ -11,6 +11,7 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import kotlin.coroutines.coroutineContext
@@ -196,7 +197,13 @@ abstract class JsonRpcHttpClient internal constructor(
         selectorDescription: String,
         find: suspend () -> String,
     ): String = trace.span(TraceStage.POLL) {
-        pollUntilMatched(expectGone, timeoutMs, pollIntervalMs, selectorDescription, find)
+        if (coroutineContext[RequestDeadline] == null) {
+            pollUntilMatched(expectGone, timeoutMs, pollIntervalMs, selectorDescription, find)
+        } else {
+            withTimeoutOrNull(timeoutMs) {
+                pollUntilMatched(expectGone, timeoutMs, pollIntervalMs, selectorDescription, find)
+            } ?: throw TimeoutException("Element wait deadline exceeded after ${timeoutMs}ms ($selectorDescription)")
+        }
     }
 
     private suspend fun pollUntilMatched(

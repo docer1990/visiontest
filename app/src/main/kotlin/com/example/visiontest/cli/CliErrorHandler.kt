@@ -39,6 +39,7 @@ internal fun executeCliCommand(block: suspend () -> String): CliResult {
     return executeCliResultCommand { CliResult(ExitCode.Success.value, block(), null) }
 }
 
+@Suppress("TooGenericExceptionCaught") // Every command failure passes through the shared exit-code mapping.
 internal fun executeCliResultCommand(block: suspend () -> CliResult): CliResult = try {
     runBlocking { block() }
 } catch (error: Exception) {

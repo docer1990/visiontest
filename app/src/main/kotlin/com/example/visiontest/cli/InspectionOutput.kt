@@ -21,14 +21,23 @@ internal fun inspectionOutput(
 }
 
 private fun unwrapInspectionResult(response: String, command: InspectionCommand, platform: Platform): String {
+    val responseValue = automationResult(response)
+    val result = responseValue.value
+    if (!responseValue.isRpcError) {
+        validateInspectionResult(result, command, platform)
+    }
+    return result.toString()
+}
+
+internal data class AutomationResponse(val value: JsonObject, val isRpcError: Boolean)
+
+internal fun automationResult(response: String): AutomationResponse {
     val body = parseResponseObject(response)
     val error = body["error"]?.takeUnless { it == JsonNull }
-    return if (error != null) formatRpcError(body, error) else {
-        val result = body["result"] as? JsonObject
-            ?: throw CommandExecutionException("Automation response has no result object")
-        validateInspectionResult(result, command, platform)
-        result.toString()
-    }
+    return if (error != null) {
+        AutomationResponse(Json.parseToJsonElement(formatRpcError(body, error)) as JsonObject, true)
+    } else AutomationResponse(body["result"] as? JsonObject
+        ?: throw CommandExecutionException("Automation response has no result object"), false)
 }
 
 private fun parseResponseObject(response: String): JsonObject {

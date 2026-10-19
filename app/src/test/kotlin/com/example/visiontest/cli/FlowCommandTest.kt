@@ -31,4 +31,18 @@ class FlowCommandTest {
             assertFalse(components.isInitialized())
         }
     }
+    @Test
+    fun `invalid flow budgets fail preflight without stdout or device components`() {
+        for (option in listOf("--timeout", "--step-timeout")) for (value in listOf("0", "-1", "3600001")) {
+            val components = lazy<ComponentHolder> { error("components created") }
+            var result: CliResult? = null
+            FlowCommand(components, runner = { result = executeCliResultCommand(it) })
+                .parse(listOf("-p", "android", "--step", "press_home", option, value, "--json"))
+            assertEquals(2, result?.exitCode)
+            assertNull(result?.stdout)
+            assertNotNull(result?.stderr)
+            assertFalse(components.isInitialized())
+        }
+    }
+
 }

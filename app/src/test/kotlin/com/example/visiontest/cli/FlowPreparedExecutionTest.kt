@@ -78,6 +78,32 @@ class FlowPreparedExecutionTest {
     }
 
     @Test
+    fun `operation wait budget bounds a stalled find response before step timeout`() {
+        for (platform in Platform.entries) {
+            response("""{"found":true}""")
+            server.enqueue(MockResponse().setBody("OK"))
+            server.enqueue(MockResponse().setBody("OK"))
+            server.enqueue(MockResponse().setBody("""{"result":{"found":true}}""")
+                .setBodyDelay(2, TimeUnit.SECONDS))
+            // Consume the first sequence to warm the scoped HTTP client outside the measured wait.
+            val warm = FlowPreparation.prepare(platform, listOf("wait_for_element --text Warm"), components)
+            assertTrue(kotlinx.coroutines.runBlocking { FlowExecutor().execute(platform, warm) }.success)
+            request()
+            val steps = FlowPreparation.prepare(platform,
+                listOf("wait_for_element --text Done --timeout 100"), components)
+            val started = System.nanoTime()
+            val report = kotlinx.coroutines.runBlocking {
+                FlowExecutor().execute(platform, steps, stepTimeoutMs = 3000)
+            }
+            val elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+            assertFalse(report.success)
+            assertTrue(elapsed < 1000, "Operation wait took $elapsed ms")
+            assertEquals("confirmed", report.steps.single().certainty)
+            request()
+        }
+    }
+
+    @Test
     fun `executor uses one prepared component holder for ordered actions and waits`() {
         for (platform in Platform.entries) {
             response("""{"success":true}""")

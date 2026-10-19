@@ -157,9 +157,19 @@ abstract class JsonRpcHttpClient internal constructor(
         selectorDescription: String,
         find: suspend () -> String,
     ): String {
-        return trace.span(TraceStage.POLL) {
-            pollUntilMatched(expectGone, timeoutMs, pollIntervalMs, selectorDescription, find)
-        }
+        val response = pollForElementResult(expectGone, timeoutMs, pollIntervalMs, selectorDescription, find)
+        return if (expectGone) "Element is no longer present ($selectorDescription)." else response
+    }
+
+    /** Returns the validated matching find response for either appearance or disappearance. */
+    internal suspend fun pollForElementResult(
+        expectGone: Boolean,
+        timeoutMs: Long,
+        pollIntervalMs: Long,
+        selectorDescription: String,
+        find: suspend () -> String,
+    ): String = trace.span(TraceStage.POLL) {
+        pollUntilMatched(expectGone, timeoutMs, pollIntervalMs, selectorDescription, find)
     }
 
     private suspend fun pollUntilMatched(
@@ -176,7 +186,7 @@ abstract class JsonRpcHttpClient internal constructor(
             val found = trace.span(TraceStage.RESPONSE_PROCESS) { parseElementFound(response) }
             if (found != expectGone) {
                 trace.operationOutcome(OperationOutcome.SUCCESS)
-                return if (expectGone) "Element is no longer present ($selectorDescription)." else response
+                return response
             }
             val elapsedMs = (System.nanoTime() - startNanos) / NANOS_PER_MILLI
             if (elapsedMs + pollIntervalMs > timeoutMs) {

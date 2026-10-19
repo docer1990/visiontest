@@ -39,6 +39,49 @@ class IOSWaitToolRegistrarTest {
     }
 
     @Test
+    fun `structured disappearance returns matched response`() = runBlocking {
+        val response = """{"jsonrpc":"2.0","result":{"found":false},"id":9}"""
+        mockServer.enqueue(MockResponse().setBody("OK"))
+        mockServer.enqueue(MockResponse().setBody("""{"result":{"found":true}}"""))
+        mockServer.enqueue(MockResponse().setBody(response))
+
+        assertEquals(response, registrar.waitUntilGoneResult(IOSElementSelectors(text = "Loading")))
+        assertEquals(3, mockServer.requestCount)
+    }
+
+    @Test
+    fun `structured appearance returns matched response`() = runBlocking {
+        val response = """{"jsonrpc":"2.0","result":{"found":true,"text":"Login"},"id":8}"""
+        mockServer.enqueue(MockResponse().setBody("OK"))
+        mockServer.enqueue(MockResponse().setBody(response))
+
+        assertEquals(response, registrar.waitForElementResult(IOSElementSelectors(text = "Login")))
+    }
+
+    @Test
+    fun `structured disappearance rejects malformed responses`() = runBlocking {
+        for (response in listOf("not json", "{}", """{"result":{"found":"false"}}""",
+            """{"error":{"code":-32000,"message":"failed"}}""")) {
+            mockServer.enqueue(MockResponse().setBody("OK"))
+            mockServer.enqueue(MockResponse().setBody(response))
+            assertFailsWith<com.example.visiontest.CommandExecutionException> {
+                registrar.waitUntilGoneResult(IOSElementSelectors(text = "Loading"))
+            }
+        }
+    }
+
+    @Test
+    fun `structured waits validate before health check`() = runBlocking {
+        assertFailsWith<IllegalArgumentException> {
+            registrar.waitUntilGoneResult(IOSElementSelectors(text = "Loading"), timeoutMs = 0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            registrar.waitForElementResult(IOSElementSelectors(text = " "))
+        }
+        assertEquals(0, mockServer.requestCount)
+    }
+
+    @Test
     fun `waitForElement maps selectors to findElement params`() = runBlocking {
         mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
         mockServer.enqueue(

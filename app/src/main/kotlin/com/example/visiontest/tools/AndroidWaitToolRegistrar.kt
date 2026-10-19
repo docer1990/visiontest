@@ -35,26 +35,26 @@ class AndroidWaitToolRegistrar internal constructor(
         }
     }
     internal suspend fun waitForElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
+        waitForElementResult(selectors, timeoutMs)
+
+    internal suspend fun waitUntilGone(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
+        waitUntilGoneResult(selectors, timeoutMs)
+        return "Element is no longer present (${selectors.describe()})."
+    }
+
+    internal suspend fun waitForElementResult(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
+        waitResult(selectors, timeoutMs, expectGone = false)
+
+    internal suspend fun waitUntilGoneResult(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
+        waitResult(selectors, timeoutMs, expectGone = true)
+
+    private suspend fun waitResult(selectors: AndroidElementSelectors, timeoutMs: Int?, expectGone: Boolean): String =
         trace.span(TraceStage.OPERATION) {
             val timeout = resolveWaitTimeout(timeoutMs)
             requireAnySelector(selectors)
             requireServer()
-            return@span automationClient.pollForElement(
-                expectGone = false,
-                timeoutMs = timeout,
-                pollIntervalMs = AutomationConfig.WAIT_POLL_INTERVAL_MS,
-                selectorDescription = selectors.describe(),
-            ) {
-                findElement(selectors)
-            }
-        }
-    internal suspend fun waitUntilGone(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
-        trace.span(TraceStage.OPERATION) {
-            val timeout = resolveWaitTimeout(timeoutMs)
-            requireAnySelector(selectors)
-            requireServer()
-            return@span automationClient.pollForElement(
-                expectGone = true,
+            automationClient.pollForElementResult(
+                expectGone = expectGone,
                 timeoutMs = timeout,
                 pollIntervalMs = AutomationConfig.WAIT_POLL_INTERVAL_MS,
                 selectorDescription = selectors.describe(),

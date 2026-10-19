@@ -37,26 +37,26 @@ class IOSWaitToolRegistrar internal constructor(
         }
     }
     internal suspend fun waitForElement(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
+        waitForElementResult(selectors, timeoutMs)
+
+    internal suspend fun waitUntilGone(selectors: IOSElementSelectors, timeoutMs: Int? = null): String {
+        waitUntilGoneResult(selectors, timeoutMs)
+        return "Element is no longer present (${selectors.describe()})."
+    }
+
+    internal suspend fun waitForElementResult(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
+        waitResult(selectors, timeoutMs, expectGone = false)
+
+    internal suspend fun waitUntilGoneResult(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
+        waitResult(selectors, timeoutMs, expectGone = true)
+
+    private suspend fun waitResult(selectors: IOSElementSelectors, timeoutMs: Int?, expectGone: Boolean): String =
         trace.span(TraceStage.OPERATION) {
             val timeout = resolveWaitTimeout(timeoutMs)
             requireAnySelector(selectors)
             requireServer()
-            return@span iosAutomationClient.pollForElement(
-                expectGone = false,
-                timeoutMs = timeout,
-                pollIntervalMs = IOSAutomationConfig.WAIT_POLL_INTERVAL_MS,
-                selectorDescription = selectors.describe(),
-            ) {
-                findElement(selectors)
-            }
-        }
-    internal suspend fun waitUntilGone(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
-        trace.span(TraceStage.OPERATION) {
-            val timeout = resolveWaitTimeout(timeoutMs)
-            requireAnySelector(selectors)
-            requireServer()
-            return@span iosAutomationClient.pollForElement(
-                expectGone = true,
+            iosAutomationClient.pollForElementResult(
+                expectGone = expectGone,
                 timeoutMs = timeout,
                 pollIntervalMs = IOSAutomationConfig.WAIT_POLL_INTERVAL_MS,
                 selectorDescription = selectors.describe(),

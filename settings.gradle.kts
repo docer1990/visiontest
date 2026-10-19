@@ -22,3 +22,5 @@ plugins {
 rootProject.name = "VisionTest"
 include("app")
 include("automation-server")
+include(":benchmark-fixture")
+project(":benchmark-fixture").projectDir = file("benchmarks/fixtures/android")

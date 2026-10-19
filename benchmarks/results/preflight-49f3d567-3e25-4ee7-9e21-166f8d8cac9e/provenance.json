@@ -1,0 +1,14 @@
+{
+  "label": "ios-mcp-host-cold-preflight",
+  "output": "test-output/benchmarks/ios-mcp-host-cold-preflight-49f3d567-3e25-4ee7-9e21-166f8d8cac9e",
+  "exit_code": 0,
+  "attempts": 16,
+  "expected": 16,
+  "invalid_samples": 0,
+  "valid": true,
+  "started_epoch": 1792358491.852731,
+  "duration_seconds": 47.412,
+  "local_collection_stopped_by_user": false,
+  "complete_configuration": false,
+  "interruption_gap": null
+}

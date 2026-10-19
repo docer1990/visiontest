@@ -1,0 +1,79 @@
+{
+  "environment": {
+    "JVM": {
+      "value": "Amazon Corretto OpenJDK 17.0.18.9.1, arm64"
+    },
+    "build": {
+      "value": {
+        "commit": "49001928af9182a35e5dc8a9d7928163c26c6158",
+        "jarSha256": "08b963fbe5fcf0dfa519560e598bb46eaf4b7d11c5f55b816b69e0305c5e80c3",
+        "python": "3.14.7",
+        "runnerCommit": "4e366bbf1fd5b8890c716569ec4733fff43577e2"
+      }
+    },
+    "connectionType": {
+      "value": "local Android emulator, adb TCP forwarding localhost:9008"
+    },
+    "fixtureArtifact": {
+      "value": {
+        "binarySha256": "5e918f3926e2f44ac83796aed7fd4875bdeb20ea85ee5d23d9bcd99170aeb1b7",
+        "contract": "fixture-v2-settled",
+        "revision": "322db851ef51b642fd0fdf7eea77b547258ecd3e"
+      }
+    },
+    "hostOS": {
+      "value": {
+        "concurrentTargets": "iPhone 17 simulator and Android API 37 emulator running; benchmark commands serialized",
+        "cpu": "Apple M4 Pro, 12 cores",
+        "memoryGB": 24,
+        "model": "MacBook Pro Mac16,8",
+        "os": "macOS 27.0.1 (26A434)"
+      }
+    },
+    "nativeArtifactVersions": {
+      "value": {
+        "apks": {
+          "automation-server/build/outputs/apk/androidTest/debug/automation-server-debug-androidTest.apk": "6e7d8627679372f9914dfc1ab463f03c3afa43e49c4ca26d7c7b35433a13a444",
+          "automation-server/build/outputs/apk/debug/automation-server-debug.apk": "c6644375d14a92365772c9767c907a734ad09f740d3ca6de9020f6dca98f47bf"
+        },
+        "commit": "49001928af9182a35e5dc8a9d7928163c26c6158"
+      }
+    },
+    "targetModel": {
+      "value": {
+        "architecture": "arm64",
+        "avd": "Maestro_Pixel_9_Pro_API_37",
+        "displayPixels": "1280x2856",
+        "model": "sdk_gphone16k_arm64"
+      }
+    },
+    "targetOS": {
+      "value": {
+        "api": 37,
+        "fingerprint": "google/sdk_gphone16k_arm64/emu64a16k:17/CP31.260623.012/16064790:user/dev-keys",
+        "release": "17"
+      }
+    }
+  },
+  "fixture_revision": "322db851ef51b642fd0fdf7eea77b547258ecd3e",
+  "lifecycle": "warm",
+  "manifest_sha256": "69fbc39f87af6ecd65fd09abe46bb0e6fd72e9ba0080249f2e4151d8bb3c828f",
+  "mode": "mcp",
+  "platform": "android",
+  "requested_samples": 1,
+  "requested_warmups": 0,
+  "run_id": "d09ebe96-9434-45ae-98f5-c32340bd3add",
+  "schema_version": 1,
+  "selected_case_ids": [
+    "information",
+    "lookup",
+    "interaction",
+    "appearance",
+    "disappearance",
+    "inspection",
+    "screenshot",
+    "missing-target"
+  ],
+  "target": "emulator-5554",
+  "tracing": "paired"
+}

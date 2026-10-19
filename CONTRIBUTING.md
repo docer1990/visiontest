@@ -369,6 +369,22 @@ isolate all XCTest scheduling/SDK synchronization and freezes timing at the
 existing HTTP completion boundary. No benchmark or overhead result is claimed
 yet. Keep existing CLI health checks while measuring their costs.
 
+Command benchmarks use isolated native fixtures and a Python standard-library
+runner. Follow the [HTTP baseline collection guide](docs/benchmarks/http-baseline.md)
+for local manifest preparation, fixture smoke, paired CLI/MCP runs and evidence
+review. The runner reports real attempts and trace gaps; baseline device
+collection is still pending. Run its deterministic host tests with:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s benchmarks/tests -p 'test_*.py' -q
+```
+
+The five fixture smoke tests are opt-in and require the selected isolated target
+and a running native automation server. Keep local manifests and preliminary
+runs under ignored `test-output/`. Commit sanitized actual measurements with
+the generated run ID and environment/build provenance; synthetic test timing is
+not baseline evidence.
+
 Tracing changes must preserve disabled behavior, public results, stdout framing,
 exit codes, validation order, request counts, and the fixed stderr diagnostic.
 Use deterministic clocks for recorder tests rather than timing thresholds. Existing

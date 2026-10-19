@@ -1,0 +1,15 @@
+{
+  "label": "ios-cli-host-cold-baseline",
+  "output": "test-output/benchmarks/ios-cli-host-cold-baseline-e69ff743-dff3-46e1-807b-a624d3966dbc",
+  "exit_code": -2,
+  "attempts": 49,
+  "expected": 560,
+  "invalid_samples": 0,
+  "valid": false,
+  "started_epoch": 1792361026.01142,
+  "duration_seconds": 140.655,
+  "local_collection_stopped_by_user": true,
+  "complete_configuration": false,
+  "interruption_gap": "Collection was interrupted. An in-flight operation or setup may have no final sample; all persisted samples and traces are retained.",
+  "interruption_reason": "User requested stopping the local collection."
+}

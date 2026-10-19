@@ -1,0 +1,14 @@
+{
+  "label": "android-cli-host-cold-preflight",
+  "output": "test-output/benchmarks/android-cli-host-cold-preflight-d6479225-3c7d-48ae-8bfd-e3bff45f6aa8",
+  "exit_code": 0,
+  "attempts": 16,
+  "expected": 16,
+  "invalid_samples": 0,
+  "valid": true,
+  "started_epoch": 1792358586.694425,
+  "duration_seconds": 46.782,
+  "local_collection_stopped_by_user": false,
+  "complete_configuration": false,
+  "interruption_gap": null
+}

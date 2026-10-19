@@ -1,0 +1,1 @@
+"""Reproducible VisionTest command benchmarks."""

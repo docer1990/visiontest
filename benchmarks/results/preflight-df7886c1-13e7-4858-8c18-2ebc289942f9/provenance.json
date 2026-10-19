@@ -1,0 +1,14 @@
+{
+  "label": "ios-cli-warm-preflight",
+  "output": "test-output/benchmarks/ios-cli-warm-preflight-df7886c1-13e7-4858-8c18-2ebc289942f9",
+  "exit_code": 0,
+  "attempts": 16,
+  "expected": 16,
+  "invalid_samples": 0,
+  "valid": true,
+  "started_epoch": 1792357898.859633,
+  "duration_seconds": 50.023,
+  "local_collection_stopped_by_user": false,
+  "complete_configuration": false,
+  "interruption_gap": null
+}

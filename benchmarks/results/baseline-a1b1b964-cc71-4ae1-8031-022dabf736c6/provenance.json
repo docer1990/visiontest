@@ -1,0 +1,14 @@
+{
+  "label": "ios-cli-warm-baseline",
+  "output": "test-output/benchmarks/ios-cli-warm-baseline-a1b1b964-cc71-4ae1-8031-022dabf736c6",
+  "exit_code": 0,
+  "attempts": 560,
+  "expected": 560,
+  "invalid_samples": 0,
+  "valid": true,
+  "started_epoch": 1792359293.048278,
+  "duration_seconds": 1732.962,
+  "local_collection_stopped_by_user": false,
+  "complete_configuration": true,
+  "interruption_gap": null
+}

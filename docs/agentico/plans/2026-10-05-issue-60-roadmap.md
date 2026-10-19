@@ -4,8 +4,11 @@
 
 **Status:** The user approved the delivery direction on 2026-10-05. Host tracing
 57A was merged into `main` through PR #70 on 2026-10-12 (`c34acc8`). Native timing
-57B native timing metadata is implemented and reviewed. Command benchmarks and
-agent evaluation remain pending. This roadmap does not authorize a production model.
+57B native timing metadata is implemented and reviewed. The 57C command harness,
+native fixtures, trace attribution, and paired overhead reports are implemented;
+one of eight full command configurations has real baseline evidence. The rest
+of the command matrix and agent evaluation remain pending. This roadmap does
+not authorize a production model.
 
 **Source:** [Epic #60](https://github.com/docer1990/visiontest/issues/60), read with its
 linked issues on 2026-10-05. Repository baseline is `e40165c` on `main`.
@@ -117,6 +120,43 @@ tests, 12 host E2E tests, and the complete Gradle build. Read-only live iOS and
 Android requests produced correlated timing metadata; traced and untraced response
 bodies matched. Existing Android and iOS server artifacts returned normal results
 without timing headers, and the host recorded missing native timing without replay.
+
+### Command benchmark implementation, 2026-10-16
+
+The local `feat/issue-57-command-benchmarks` branch contains the runner and native
+fixtures from tasks 1–3, plus task 4 trace attribution and paired reports. Its
+implementation checkpoint passed with 86 Python tests (81 passed, five device
+smoke tests skipped), the Gradle unit/E2E/build gate, and a clean diff check.
+Both fixture apps build. The Android fixture now targets SDK 34, matching the
+automation server and fixing the full-build lint failure from SDK 28.
+
+Real fixture smoke and the Android/iOS CLI/MCP measurement matrix remain open.
+Backend-unavailable traces from the actual JAR checked CLI/MCP schema compatibility
+only; they are not command baseline evidence. The
+[collection guide](../../benchmarks/http-baseline.md) records the pending evidence,
+setup, commands, and artifacts needed to complete 57C. Do not start dependent 57D
+collection or close #57 based on the harness tests alone.
+
+### Partial collection and manual CI, 2026-10-19
+
+Both native fixture smoke suites passed five tests, and the eight-configuration
+preflight passed 128 attempts. One complete iOS CLI warm configuration passed
+560 attempts (80 warmups, 480 measured). The user stopped the following iOS CLI
+host-cold configuration after 49 persisted attempts. An earlier diagnostic run,
+including one setup timeout, is retained separately. The
+[partial baseline report](../../benchmarks/http-baseline.md) links exact manifests,
+raw samples, traces, screenshots and provenance. These populations are not pooled.
+
+The [manual CI plan](2026-10-19-manual-performance-ci.md) is implemented with
+reproducible hosted collection and readable reports. Its checkpoints passed 153
+Python tests (five device smoke tests skipped) and the full Gradle gate. Final
+branch review corrections added atomic sample persistence and strict nonempty
+CLI result validation; the final suite passed 163 Python tests (five skipped)
+and the full Gradle gate. The workflow has not been dispatched remotely. Only explicit workflow dispatch is authorized;
+there are no automatic PR, push, release or schedule triggers. The local matrix
+must stay stopped. CI measurements form a separate baseline from this Mac.
+57C remains incomplete until the remaining configurations have real evidence;
+57D and issue closure remain pending.
 
 ### Delivery checklist
 

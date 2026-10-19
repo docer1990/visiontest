@@ -52,11 +52,11 @@ Manifest args and fixture data are local benchmark configuration, not timing tra
 
 **Review:** checkpoint. All adapters and agent evaluation consume this schema.
 
-- [ ] Define `load_manifest(path: Path) -> dict`,
+- [x] Define `load_manifest(path: Path) -> dict`,
   `summarize(samples: list[dict]) -> dict`, and `main(argv: list[str] | None = None) -> int`.
   Reject unsupported schema versions, empty argv, invalid assertions, ambiguous
   target configuration, nonpositive timeouts, and existing output directories.
-- [ ] Add the summary regression test before implementation.
+- [x] Add the summary regression test before implementation.
 
 ```python
 import unittest
@@ -79,19 +79,19 @@ class ResultsTest(unittest.TestCase):
         self.assertEqual(10, result["successful"]["median_ns"])
 ```
 
-- [ ] Define sample fields `schema_version`, `run_id`, `sample_id`, `case_id`,
+- [x] Define sample fields `schema_version`, `run_id`, `sample_id`, `case_id`,
   `mode`, `lifecycle`, `tracing`, `status`, nullable `duration_ns`,
   `exit_code`, `operation_outcome`, `assertion_outcome`, `trace_complete`, and
   `measurement_gaps`. Traced samples also carry `session_id`, `invocation_id`,
   and `invocation_sequence` once attribution is validated. Status is `passed`,
   `failed`, `timeout`, or `setup_failed`.
   Warmups have an explicit flag and their own population. Keep their raw records.
-- [ ] Compute median conventionally and p95 by nearest rank, `ceil(0.95*n)-1`.
+- [x] Compute median conventionally and p95 by nearest rank, `ceil(0.95*n)-1`.
   Empty populations return null percentiles. Do not impute setup duration as
   operation duration. Record setup timing separately and preserve failed setup.
-- [ ] Write raw JSONL, environment JSON, and summary JSON to the fresh output
+- [x] Write raw JSONL, environment JSON, and summary JSON to the fresh output
   directory. Report unsuccessful samples even when a later process fails.
-- [ ] Run `python3 -m unittest discover -s benchmarks/tests -p 'test_*.py'`.
+- [x] Run `python3 -m unittest discover -s benchmarks/tests -p 'test_*.py'`.
   Expect missing modules at RED, then PASS. Commit as
   `feat(benchmarks): define manifests and complete sample reporting`.
 
@@ -109,7 +109,7 @@ class ResultsTest(unittest.TestCase):
 
 **Review:** checkpoint. Fixture comparisons need trustworthy external timing.
 
-- [ ] Define `run_process(argv: list[str], timeout_ms: int, env: dict[str, str] | None = None) -> dict`
+- [x] Define `run_process(argv: list[str], timeout_ms: int, env: dict[str, str] | None = None) -> dict`
   with `duration_ns`, `exit_code`, `stdout`, `stderr`, and `timed_out`. Keep output
   transient unless sanitized artifact capture is explicitly requested. Write this
   subprocess test first.
@@ -131,27 +131,27 @@ class ExecutionTest(unittest.TestCase):
         self.assertGreaterEqual(result["duration_ns"], 0)
 ```
 
-- [ ] Use `perf_counter_ns`, direct argv execution, concurrent pipe draining,
+- [x] Use `perf_counter_ns`, direct argv execution, concurrent pipe draining,
   and bounded termination/reaping of the owned process group on timeout. A timed
   out device action is uncertain and is never repeated within a sample. A later
   independent sample can start only after successful fixture reset.
-- [ ] Define `McpSession(argv: list[str], timeout_ms: int, env: dict[str, str] | None = None)`
+- [x] Define `McpSession(argv: list[str], timeout_ms: int, env: dict[str, str] | None = None)`
   as a context manager with `initialize() -> dict`, `list_tools() -> list[dict]`,
   and `call_tool(name: str, arguments: dict) -> dict`. Adapt the existing
   `McpStdioE2ETest` handshake and newline-delimited protocol. Verify negotiated
   protocol, drain stderr, route IDs, handle notifications, and paginate tool lists.
-- [ ] Measure MCP launch/initialization/discovery separately from calls. Warm
+- [x] Measure MCP launch/initialization/discovery separately from calls. Warm
   mode reuses one initialized process; host-cold creates one per sample and
   records startup separately. CLI always starts a fresh process. Native-cold
   performs explicitly configured native stop/start outside the timed operation.
-- [ ] Parse public outputs at the adapter boundary. Check JSON-RPC `error`, MCP
+- [x] Parse public outputs at the adapter boundary. Check JSON-RPC `error`, MCP
   `isError`, structured operation `success:false`, and assertion results separately
   from CLI exit code. Screenshot cases use an explicit output path and validate
   a newly produced PNG signature. Do not infer image consumption from that file.
-- [ ] Test malformed MCP messages, unmatched IDs, subprocess timeout, failed
+- [x] Test malformed MCP messages, unmatched IDs, subprocess timeout, failed
   initialization, stderr saturation, stdout framing, failed assertions, and
   unchanged ordered samples. Fake-MCP tests prove warm reuse by process identity.
-- [ ] Run `python3 -m unittest discover -s benchmarks/tests -p 'test_*.py'`.
+- [x] Run `python3 -m unittest discover -s benchmarks/tests -p 'test_*.py'`.
   Expect missing adapters at RED and PASS without attached devices at GREEN.
   Commit as `feat(benchmarks): measure CLI and persistent MCP execution`.
 
@@ -175,21 +175,21 @@ class ExecutionTest(unittest.TestCase):
 
 **Review:** checkpoint. Real measurements and agent cases depend on deterministic reset.
 
-- [ ] Register Android fixture project `:benchmark-fixture` at
+- [x] Register Android fixture project `:benchmark-fixture` at
   `benchmarks/fixtures/android`, reusing the existing Android/Kotlin plugin
   versions and SDK configuration. Use platform widgets; add no UI dependency.
   Build an iOS UIKit fixture with the scheme `BenchmarkFixture`.
-- [ ] Implement package/bundle ID `com.example.visiontest.benchmark`. Startup
+- [x] Implement package/bundle ID `com.example.visiontest.benchmark`. Startup
   accepts a scenario and language (`en` or `it`) and resets all state. Scenarios
   are `navigation`, `appear`, `disappear`, `missing`, `ambiguous`, and `error`.
   Expose stable accessibility/resource identifiers `start`, `email`, `continue`,
   `loading`, `done`, and `error`. The ambiguous case has two separately identified
   controls with the same visible label. The error case never exposes `done`.
-- [ ] `continue` transitions navigation to `done`; timed appearance/disappearance
+- [x] `continue` transitions navigation to `done`; timed appearance/disappearance
   transitions occur after a fixed 750 ms fixture timer. Assert the resulting
   state after the measured command, with a separate verification budget. Do not
   assume a particular number of polls or benchmark the fixture timer as CPU work.
-- [ ] Define `validate_target(platform: str, selected: str, available: list[str]) -> None`
+- [x] Define `validate_target(platform: str, selected: str, available: list[str]) -> None`
   and reject more than one active target because current VisionTest selects the
   first available device. This runner guard does not implement issue #42.
 
@@ -204,19 +204,19 @@ class FixtureTargetTest(unittest.TestCase):
         validate_target("ios", "isolated-simulator", ["isolated-simulator"])
 ```
 
-- [ ] Require `target` and installed fixture identity, resolve only documented
+- [x] Require `target` and installed fixture identity, resolve only documented
   manifest tokens as complete argv values, and never use shell substitution.
   Setup uses existing adb/simctl install, terminate, and launch capabilities.
   Explicitly allow only documented benign setup exit codes; other failures
   produce `setup_failed` and skip the operation. Do not benchmark a user's app.
-- [ ] Fill both manifests with information, lookup, interaction, appearance,
+- [x] Fill both manifests with information, lookup, interaction, appearance,
   disappearance, inspection, and screenshot cases. Use current command schemas
   and MCP names, including iOS bundle scope. No dependence on #41, #42, #53, or #56.
-- [ ] Write opt-in device smoke tests in `test_fixture_smoke.py`, enabled by
+- [x] Write opt-in device smoke tests in `test_fixture_smoke.py`, enabled by
   `VISIONTEST_BENCHMARK_SMOKE=1` and a manifest path in `VISIONTEST_BENCHMARK_MANIFEST`.
   Assert reset idempotence, done/error exclusivity, delayed transitions, missing
   targets, and duplicated labels through existing VisionTest inspection APIs.
-- [ ] Run Python unit tests, `./gradlew :benchmark-fixture:assembleDebug`, and
+- [x] Run Python unit tests, `./gradlew :benchmark-fixture:assembleDebug`, and
   `xcodebuild build -project benchmarks/fixtures/ios/BenchmarkFixture.xcodeproj -scheme BenchmarkFixture -destination 'platform=iOS Simulator,name=iPhone 17'`.
   Install on isolated targets and run the opt-in smoke tests for each manifest.
   Commit as `feat(benchmarks): add deterministic native fixture apps`.
@@ -244,7 +244,7 @@ sample data. Commit sanitized baseline evidence and its provenance together.
 
 **Review:** checkpoint. Final command benchmark delivery and dependency for 57D.
 
-- [ ] Implement `union_duration(intervals: list[tuple[int, int]]) -> int` for
+- [x] Implement `union_duration(intervals: list[tuple[int, int]]) -> int` for
   same-clock intervals. Verify that nesting does not inflate exclusive timing.
 
 ```python
@@ -257,16 +257,16 @@ class TraceIntervalsTest(unittest.TestCase):
         self.assertEqual(0, union_duration([]))
 ```
 
-- [ ] Give each traced CLI sample its own file. For a persistent MCP session,
+- [x] Give each traced CLI sample its own file. For a persistent MCP session,
   send only one operation at a time and map dispatched calls to the recorder's
   invocation sequences after session finalization. Require exactly one invocation
   per call; gaps or unexpected invocations invalidate attribution. Do not match
   arbitrary host/device timestamps or change public results to expose trace IDs.
-- [ ] Join validated spans to samples by invocation and session IDs. Ignore unrelated
+- [x] Join validated spans to samples by invocation and session IDs. Ignore unrelated
   startup/setup spans in operation totals. Report missing native metadata,
   incomplete sessions, dropped events, or unsupported stages as gaps. Cross-clock
   service differences are labeled estimates and are never self-time intervals.
-- [ ] Implement paired tracing-on/off trials with alternating order and the same
+- [x] Implement paired tracing-on/off trials with alternating order and the same
   setup/fixture revision. Preserve each raw sample and report overhead for total
   process time and operation time separately. Record teardown/drain time within
   external CLI timing, including the writer's bounded drain cost.
@@ -282,3 +282,17 @@ class TraceIntervalsTest(unittest.TestCase):
   `./gradlew build`, the fixture build/smoke gates, and `git diff --check`.
   Commit harness/report changes as `feat(benchmarks): report HTTP baseline and tracing overhead`.
   Run final branch review. #57 remains open until agent evaluation is collected.
+
+
+Task 4 implementation status, 2026-10-19: trace joining, same-clock union
+accounting, grouped reports and alternating paired trials are implemented.
+Both fixture smoke suites passed five tests; preflight passed 128 attempts across
+eight configurations. One full iOS CLI warm configuration passed 560 attempts.
+The user stopped collection after 49 persisted attempts of iOS CLI host-cold;
+the other configurations remain incomplete. Exact manifests, raw evidence and
+provenance are linked from the [partial baseline](../../benchmarks/http-baseline.md).
+The runtime checkpoint passed the Python, Gradle, native unit and fixture gates
+listed there. Keep the full-collection checklist open; do not resume local
+collection. The [manual CI plan](2026-10-19-manual-performance-ci.md) supplies the
+next collection path. Issue #57 remains open for command evidence and agent
+evaluation.

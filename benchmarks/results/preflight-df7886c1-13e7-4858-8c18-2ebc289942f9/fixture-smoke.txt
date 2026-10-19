@@ -1,0 +1,10 @@
+test_delayed_appearance_and_disappearance (benchmarks.tests.test_fixture_smoke.FixtureSmokeTest.test_delayed_appearance_and_disappearance) ... ok
+test_done_and_error_scenarios_are_exclusive (benchmarks.tests.test_fixture_smoke.FixtureSmokeTest.test_done_and_error_scenarios_are_exclusive) ... ok
+test_duplicate_visible_labels_have_distinct_inspection_ids (benchmarks.tests.test_fixture_smoke.FixtureSmokeTest.test_duplicate_visible_labels_have_distinct_inspection_ids) ... ok
+test_missing_target_is_absent (benchmarks.tests.test_fixture_smoke.FixtureSmokeTest.test_missing_target_is_absent) ... ok
+test_reset_is_idempotent (benchmarks.tests.test_fixture_smoke.FixtureSmokeTest.test_reset_is_idempotent) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 28.697s
+
+OK

@@ -1,0 +1,564 @@
+{
+  "schemaVersion": 1,
+  "platform": "ios",
+  "target": "8CF7A9E3-89C0-49D8-B144-2BC6AF3B38FC",
+  "fixtureIdentity": "com.example.visiontest.benchmark",
+  "fixtureArtifact": "benchmarks/fixtures/ios/.derivedData/Build/Products/Debug-iphonesimulator/BenchmarkFixture.app",
+  "fixtureRevision": "2acd844dc17d11b3f41643a803a41e1042e5e80a",
+  "cliPrefix": [
+    "java",
+    "-jar",
+    "app/build/libs/visiontest.jar"
+  ],
+  "mcpPrefix": [
+    "java",
+    "-jar",
+    "app/build/libs/visiontest.jar",
+    "serve"
+  ],
+  "environment": {
+    "build": {
+      "value": {
+        "commit": "49001928af9182a35e5dc8a9d7928163c26c6158",
+        "jarSha256": "08b963fbe5fcf0dfa519560e598bb46eaf4b7d11c5f55b816b69e0305c5e80c3",
+        "runnerCommit": "add83438be310e75bb1f8ae1c49265fafa880cb3",
+        "python": "3.14.7"
+      }
+    },
+    "nativeArtifactVersions": {
+      "value": {
+        "commit": "49001928af9182a35e5dc8a9d7928163c26c6158",
+        "testBundleSha256": "849e9b000f9ad29280c96db3000c280614d923dddda68d50243bf70e74da735c",
+        "build": "Debug, Xcode 27.1 (27A9275), iOS Simulator SDK 27.1"
+      }
+    },
+    "connectionType": {
+      "value": "local iOS simulator, localhost HTTP port 9009"
+    },
+    "targetOS": {
+      "value": "iOS 26.5 (simulator)"
+    },
+    "targetModel": {
+      "value": "iPhone 17"
+    },
+    "JVM": {
+      "value": "Amazon Corretto OpenJDK 17.0.18.9.1, arm64"
+    },
+    "hostOS": {
+      "value": {
+        "os": "macOS 27.0.1 (26A434)",
+        "model": "MacBook Pro Mac16,8",
+        "cpu": "Apple M4 Pro, 12 cores",
+        "memoryGB": 24,
+        "concurrentTargets": "iPhone 17 simulator and Android API 37 emulator running; benchmark commands serialized"
+      }
+    },
+    "fixtureArtifact": {
+      "value": {
+        "revision": "2acd844dc17d11b3f41643a803a41e1042e5e80a",
+        "binarySha256": "ff9a1bf6a8f1fd3f16d60ab5cafc612f5404bb9622c5bdf852e95ddc4068878b",
+        "contract": "fixture-v2-settled"
+      }
+    }
+  },
+  "processEnvironment": {
+    "VISIONTEST_TRACE_PERFORMANCE": ""
+  },
+  "cases": [
+    {
+      "id": "information",
+      "setup": [
+        [
+          "xcrun",
+          "simctl",
+          "install",
+          "{target}",
+          "{fixtureArtifact}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "terminate",
+          "{target}",
+          "{fixtureIdentity}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "launch",
+          "{target}",
+          "{fixtureIdentity}",
+          "{scenario}",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "get_device_info",
+        "--json",
+        "--platform",
+        "ios"
+      ],
+      "mcpTool": "ios_get_device_info",
+      "mcpArguments": {},
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "device_info",
+        "platform": "ios"
+      },
+      "fixtureScenario": "navigation",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [
+          3
+        ],
+        []
+      ]
+    },
+    {
+      "id": "lookup",
+      "setup": [
+        [
+          "xcrun",
+          "simctl",
+          "install",
+          "{target}",
+          "{fixtureArtifact}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "terminate",
+          "{target}",
+          "{fixtureIdentity}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "launch",
+          "{target}",
+          "{fixtureIdentity}",
+          "{scenario}",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "find_element",
+        "--resource-id",
+        "start",
+        "--json",
+        "--bundle-id",
+        "com.example.visiontest.benchmark",
+        "--platform",
+        "ios"
+      ],
+      "mcpTool": "ios_find_element",
+      "mcpArguments": {
+        "resourceId": "start",
+        "bundleId": "com.example.visiontest.benchmark"
+      },
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "element_found",
+        "resourceId": "start",
+        "expectedFound": true
+      },
+      "fixtureScenario": "navigation",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [
+          3
+        ],
+        []
+      ]
+    },
+    {
+      "id": "interaction",
+      "setup": [
+        [
+          "xcrun",
+          "simctl",
+          "install",
+          "{target}",
+          "{fixtureArtifact}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "terminate",
+          "{target}",
+          "{fixtureIdentity}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "launch",
+          "{target}",
+          "{fixtureIdentity}",
+          "{scenario}",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "tap_on_element",
+        "--resource-id",
+        "continue",
+        "--bundle-id",
+        "com.example.visiontest.benchmark",
+        "--platform",
+        "ios"
+      ],
+      "mcpTool": "ios_tap_on_element",
+      "mcpArguments": {
+        "resourceId": "continue",
+        "bundleId": "com.example.visiontest.benchmark"
+      },
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "action_then_element",
+        "resourceId": "done",
+        "expectedFound": true,
+        "lookupTool": "ios_find_element",
+        "lookupArguments": {
+          "resourceId": "done",
+          "bundleId": "com.example.visiontest.benchmark"
+        },
+        "verificationCliArgs": [
+          "find_element",
+          "--resource-id",
+          "done",
+          "--json",
+          "--bundle-id",
+          "com.example.visiontest.benchmark",
+          "--platform",
+          "ios"
+        ]
+      },
+      "fixtureScenario": "navigation",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [
+          3
+        ],
+        []
+      ]
+    },
+    {
+      "id": "appearance",
+      "setup": [
+        [
+          "xcrun",
+          "simctl",
+          "install",
+          "{target}",
+          "{fixtureArtifact}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "terminate",
+          "{target}",
+          "{fixtureIdentity}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "launch",
+          "{target}",
+          "{fixtureIdentity}",
+          "{scenario}",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "wait_for_element",
+        "--resource-id",
+        "done",
+        "--timeout",
+        "4000",
+        "--platform",
+        "ios",
+        "--bundle-id",
+        "com.example.visiontest.benchmark"
+      ],
+      "mcpTool": "ios_wait_for_element",
+      "mcpArguments": {
+        "resourceId": "done",
+        "timeoutMs": 4000,
+        "bundleId": "com.example.visiontest.benchmark"
+      },
+      "timeoutMs": 10000,
+      "assertion": {
+        "kind": "wait_then_element",
+        "resourceId": "done",
+        "expectedFound": true,
+        "lookupTool": "ios_find_element",
+        "lookupArguments": {
+          "resourceId": "done",
+          "bundleId": "com.example.visiontest.benchmark"
+        },
+        "verificationCliArgs": [
+          "find_element",
+          "--resource-id",
+          "done",
+          "--json",
+          "--bundle-id",
+          "com.example.visiontest.benchmark",
+          "--platform",
+          "ios"
+        ]
+      },
+      "fixtureScenario": "appear",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [
+          3
+        ],
+        []
+      ]
+    },
+    {
+      "id": "disappearance",
+      "setup": [
+        [
+          "xcrun",
+          "simctl",
+          "install",
+          "{target}",
+          "{fixtureArtifact}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "terminate",
+          "{target}",
+          "{fixtureIdentity}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "launch",
+          "{target}",
+          "{fixtureIdentity}",
+          "{scenario}",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "wait_for_element",
+        "--gone",
+        "--resource-id",
+        "loading",
+        "--timeout",
+        "4000",
+        "--platform",
+        "ios",
+        "--bundle-id",
+        "com.example.visiontest.benchmark"
+      ],
+      "mcpTool": "ios_wait_until_gone",
+      "mcpArguments": {
+        "resourceId": "loading",
+        "timeoutMs": 4000,
+        "bundleId": "com.example.visiontest.benchmark"
+      },
+      "timeoutMs": 10000,
+      "assertion": {
+        "kind": "wait_then_element",
+        "resourceId": "loading",
+        "expectedFound": false,
+        "lookupTool": "ios_find_element",
+        "lookupArguments": {
+          "resourceId": "loading",
+          "bundleId": "com.example.visiontest.benchmark"
+        },
+        "verificationCliArgs": [
+          "find_element",
+          "--resource-id",
+          "loading",
+          "--json",
+          "--bundle-id",
+          "com.example.visiontest.benchmark",
+          "--platform",
+          "ios"
+        ]
+      },
+      "fixtureScenario": "disappear",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [
+          3
+        ],
+        []
+      ]
+    },
+    {
+      "id": "inspection",
+      "setup": [
+        [
+          "xcrun",
+          "simctl",
+          "install",
+          "{target}",
+          "{fixtureArtifact}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "terminate",
+          "{target}",
+          "{fixtureIdentity}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "launch",
+          "{target}",
+          "{fixtureIdentity}",
+          "{scenario}",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "get_interactive_elements",
+        "--json",
+        "--bundle-id",
+        "com.example.visiontest.benchmark",
+        "--platform",
+        "ios"
+      ],
+      "mcpTool": "ios_get_interactive_elements",
+      "mcpArguments": {
+        "bundleId": "com.example.visiontest.benchmark"
+      },
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "interactive_elements",
+        "requiredResourceIds": [
+          "start",
+          "continue_primary",
+          "continue_secondary"
+        ]
+      },
+      "fixtureScenario": "ambiguous",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [
+          3
+        ],
+        []
+      ]
+    },
+    {
+      "id": "screenshot",
+      "setup": [
+        [
+          "xcrun",
+          "simctl",
+          "install",
+          "{target}",
+          "{fixtureArtifact}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "terminate",
+          "{target}",
+          "{fixtureIdentity}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "launch",
+          "{target}",
+          "{fixtureIdentity}",
+          "{scenario}",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "screenshot",
+        "--platform",
+        "ios"
+      ],
+      "mcpTool": "ios_screenshot",
+      "mcpArguments": {},
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "screenshot_file"
+      },
+      "fixtureScenario": "navigation",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [
+          3
+        ],
+        []
+      ]
+    },
+    {
+      "id": "missing-target",
+      "setup": [
+        [
+          "xcrun",
+          "simctl",
+          "install",
+          "{target}",
+          "{fixtureArtifact}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "terminate",
+          "{target}",
+          "{fixtureIdentity}"
+        ],
+        [
+          "xcrun",
+          "simctl",
+          "launch",
+          "{target}",
+          "{fixtureIdentity}",
+          "{scenario}",
+          "{language}"
+        ]
+      ],
+      "cliArgs": [
+        "find_element",
+        "--resource-id",
+        "email",
+        "--json",
+        "--bundle-id",
+        "com.example.visiontest.benchmark",
+        "--platform",
+        "ios"
+      ],
+      "mcpTool": "ios_find_element",
+      "mcpArguments": {
+        "resourceId": "email",
+        "bundleId": "com.example.visiontest.benchmark"
+      },
+      "timeoutMs": 8000,
+      "assertion": {
+        "kind": "element_found",
+        "resourceId": "email",
+        "expectedFound": false
+      },
+      "fixtureScenario": "missing",
+      "fixtureLanguage": "en",
+      "setupBenignExitCodes": [
+        [],
+        [
+          3
+        ],
+        []
+      ]
+    }
+  ]
+}

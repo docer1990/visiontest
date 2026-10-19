@@ -50,4 +50,3 @@ internal fun containsInvalidJsonControls(response: String): Boolean {
     }
     return false
 }
-

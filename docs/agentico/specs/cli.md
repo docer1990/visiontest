@@ -59,10 +59,11 @@ No native timing metadata is available in this host delivery.
 
 ### Requirement: The CLI exposes the current command set
 
-The CLI SHALL register these 29 subcommands and argument contracts:
+The CLI SHALL register these 30 subcommands and argument contracts:
 
 | Subcommand | Platform contract | Operation-specific inputs |
 |---|---|---|
+| `flow` | Android or iOS | Exactly one source: repeated `--step`, `--file`, or `--stdin`; optional `--bundle-id`, repeated `--observe` and `--on-failure`, `--evidence-timeout`, `--step-timeout`, `--timeout`, and `--json` |
 | `install_automation_server` | Android only | None |
 | `start_automation_server` | Android or iOS | None |
 | `stop_automation_server` | Android or iOS | None |

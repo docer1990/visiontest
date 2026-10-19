@@ -11,6 +11,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -20,14 +21,43 @@ class FlowCommandE2ETest {
     private data class Output(val code: Int, val stdout: String, val stderr: String)
 
     private fun run(args: List<String>, stdin: String = ""): Output {
-        val process = ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+        val builder = ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
             "-jar", System.getProperty("visiontest.jar"), "flow", *args.toTypedArray())
-            .directory(directory.toFile()).start()
-        process.outputStream.bufferedWriter().use { it.write(stdin) }
-        val stdout = process.inputStream.bufferedReader().readText()
-        val stderr = process.errorStream.bufferedReader().readText()
-        assertTrue(process.waitFor(20, TimeUnit.SECONDS))
-        return Output(process.exitValue(), stdout, stderr)
+        return runProcess(builder, stdin)
+    }
+
+    private fun runProcess(builder: ProcessBuilder, stdin: String = "", timeoutMillis: Long = 20_000): Output {
+        val captureDirectory = Files.createTempDirectory(directory, "process-")
+        val input = captureDirectory.resolve("stdin")
+        val stdout = captureDirectory.resolve("stdout")
+        val stderr = captureDirectory.resolve("stderr")
+        try {
+            Files.writeString(input, stdin)
+            val process = builder.directory(directory.toFile())
+                .redirectInput(input.toFile()).redirectOutput(stdout.toFile()).redirectError(stderr.toFile()).start()
+            try {
+                assertTrue(process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS), "flow subprocess timed out")
+                return Output(process.exitValue(), Files.readString(stdout), Files.readString(stderr))
+            } finally {
+                if (process.isAlive) {
+                    process.destroyForcibly()
+                    process.waitFor(1, TimeUnit.SECONDS)
+                }
+            }
+        } finally {
+            listOf(input, stdout, stderr, captureDirectory).forEach { Files.deleteIfExists(it) }
+        }
+    }
+
+    @Test
+    fun `subprocess deadline applies while output streams remain open`() {
+        val start = System.nanoTime()
+        val failure = assertFailsWith<AssertionError> {
+            runProcess(ProcessBuilder("/bin/sh", "-c", "printf out; printf err >&2; exec sleep 2"),
+                timeoutMillis = 100)
+        }
+        assertTrue(failure.message.orEmpty().contains("flow subprocess timed out"))
+        assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) < 1_500)
     }
 
     @Test

@@ -17,21 +17,32 @@ class FlowWaitResponseTest {
 
     @Test
     fun `lookup operation errors fail before presence interpretation or a second poll`() {
-        for (platform in Platform.entries) for (gone in listOf(false, true)) for (found in listOf(false, true)) {
-            FlowObservationFixture(platform).use { fixture ->
-                fixture.respond = {
-                    MockResponse().setBody("""{"result":{"found":$found,"error":"lookup failed"}}""")
-                }
-                val report = fixture.run("--step", waitStep(gone) + " --timeout 250", "--step", "press_home")
-                assertEquals("false", report.getValue("success").toString(), "$platform $gone $found")
-                assertEquals("1", report.getValue("exitCode").toString())
-                assertEquals("step-1", report.getValue("failedStep").jsonPrimitive.content)
-                assertEquals("skipped", report.getValue("steps").jsonArray[1].jsonObject
-                    .getValue("status").jsonPrimitive.content)
-                kotlin.test.assertTrue(report.getValue("error").jsonObject.getValue("message")
-                    .jsonPrimitive.content.contains("lookup failed"))
-                assertEquals(listOf("ui.findElement"), fixture.calls)
+        listOf(
+            Triple(Platform.Android, false, false),
+            Triple(Platform.Android, false, true),
+            Triple(Platform.Android, true, false),
+            Triple(Platform.Android, true, true),
+            Triple(Platform.Ios, false, false),
+            Triple(Platform.Ios, false, true),
+            Triple(Platform.Ios, true, false),
+            Triple(Platform.Ios, true, true),
+        ).forEach { (platform, gone, found) -> assertLookupError(platform, gone, found) }
+    }
+
+    private fun assertLookupError(platform: Platform, gone: Boolean, found: Boolean) {
+        FlowObservationFixture(platform).use { fixture ->
+            fixture.respond = {
+                MockResponse().setBody("""{"result":{"found":$found,"error":"lookup failed"}}""")
             }
+            val report = fixture.run("--step", waitStep(gone) + " --timeout 250", "--step", "press_home")
+            assertEquals("false", report.getValue("success").toString(), "$platform $gone $found")
+            assertEquals("1", report.getValue("exitCode").toString())
+            assertEquals("step-1", report.getValue("failedStep").jsonPrimitive.content)
+            assertEquals("skipped", report.getValue("steps").jsonArray[1].jsonObject
+                .getValue("status").jsonPrimitive.content)
+            kotlin.test.assertTrue(report.getValue("error").jsonObject.getValue("message")
+                .jsonPrimitive.content.contains("lookup failed"))
+            assertEquals(listOf("ui.findElement"), fixture.calls)
         }
     }
 

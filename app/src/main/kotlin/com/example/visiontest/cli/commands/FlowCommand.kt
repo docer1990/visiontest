@@ -24,6 +24,7 @@ internal class FlowCommand(
 ) : CliktCommand(name = "flow", help = "Execute a validated sequence of UI commands") {
     private val platform by platformOption()
     private val appScope by IosAppScopeOptions()
+    private val observe by option("--observe", help = "Final observation: screenshot, hierarchy, interactive-elements").multiple()
     private val onFailure by option("--on-failure", help = "Evidence kind: screenshot, hierarchy, interactive-elements").multiple()
     private val evidenceTimeout by option("--evidence-timeout", help = "Additional total evidence budget, default 5000 ms; 1..30000")
         .int().default(5000)
@@ -47,11 +48,11 @@ internal class FlowCommand(
         require(timeout in 1..MAX_TIMEOUT_MS) { "--timeout must be between 1 and 3600000" }
         appScope.validate(platform)
         require(evidenceTimeout in 1..30000) { "--evidence-timeout must be between 1 and 30000" }
-        require(onFailure.all { it in FlowObservationCollector.kinds }) { "Invalid failure evidence kind" }
+        require((onFailure + observe).all { it in FlowObservationCollector.kinds }) { "Invalid failure evidence kind" }
         val lines = FlowInput.read(steps, file, stdin, readStdin)
         val prepared = FlowPreparation.prepare(platform, lines, components)
         val report = FlowExecutor().execute(platform, prepared, stepTimeout.toLong(), timeout.toLong(),
-            FlowObservationCollector(platform, components, appScope.bundleId), onFailure, evidenceTimeout.toLong())
+            FlowObservationCollector(platform, components, appScope.bundleId), onFailure, evidenceTimeout.toLong(), observe)
         CliResult(report.exitCode, if (json) report.toJson().toString() else report.text(), report.error?.message)
     }
 }

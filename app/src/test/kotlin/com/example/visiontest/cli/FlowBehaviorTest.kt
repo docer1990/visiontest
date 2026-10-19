@@ -17,6 +17,7 @@ class FlowBehaviorTest {
             "Stop after an operation failure" to ::operationFailure,
             "Preserve uncertainty after a lost response" to { FlowLostResponseScenario().bindings() },
             "Collect bounded failure evidence" to { FlowEvidenceScenario().bindings() },
+            "Return the final screen state" to { FlowFinalStateScenario().bindings() },
         ),
     )
 

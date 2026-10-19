@@ -89,3 +89,35 @@ internal class FlowEvidenceScenario {
         },
     )
 }
+
+internal class FlowFinalStateScenario {
+    private var results = emptyList<JsonObject>()
+    fun bindings(): Map<String, () -> Unit> = mapOf(
+        "Given successful actions followed by an explicit element wait" to {},
+        "When the caller requests final interactive elements" to {
+            results = Platform.entries.map { platform ->
+                FlowObservationFixture(platform).use { fixture ->
+                    fixture.respond = { method -> MockResponse().setBody(when (method) {
+                        "ui.findElement" -> """{"result":{"found":true,"resourceId":"done"}}"""
+                        "ui.getInteractiveElements" -> """{"result":{"success":true,"count":1,"elements":[{"resourceId":"done"}]}}"""
+                        else -> """{"result":{"success":true}}"""
+                    }) }
+                    fixture.run("--step", "press_home", "--step", "wait_for_element --resource-id done",
+                        "--observe", "interactive-elements")
+                }
+            }
+        },
+        "Then the flow returns the elements with the completed action results" to {
+            results.forEach { result ->
+                assertEquals("true", result.getValue("success").toString())
+                assertEquals(listOf("succeeded", "succeeded"), result.getValue("steps").jsonArray.map {
+                    it.jsonObject.getValue("status").jsonPrimitive.content
+                })
+                val observation = result.getValue("observations").jsonArray.single().jsonObject
+                assertEquals("succeeded", observation.getValue("status").jsonPrimitive.content)
+                assertEquals("done", observation.getValue("result").jsonObject.getValue("elements").jsonArray
+                    .single().jsonObject.getValue("resourceId").jsonPrimitive.content)
+            }
+        },
+    )
+}

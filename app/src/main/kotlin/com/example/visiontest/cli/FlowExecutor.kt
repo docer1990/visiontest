@@ -26,6 +26,7 @@ internal class FlowExecutor {
         collector: FlowObservationCollector? = null,
         onFailure: List<String> = emptyList(),
         evidenceTimeoutMs: Long = 5000,
+        observe: List<String> = emptyList(),
     ): FlowReport {
         val overall = RequestDeadline(timeoutMs)
         val results = mutableListOf<FlowStepReport>()
@@ -65,10 +66,13 @@ internal class FlowExecutor {
                     if (uncertain) "unknown" else "confirmed", error = failure)
             }
         }
+        val observations = if (failure == null && observe.isNotEmpty()) {
+            requireNotNull(collector).collect(observe, overall, stopOnFailure = true)
+        } else FlowObservationCollector.skipped(observe)
         val evidence = if (failure != null && onFailure.isNotEmpty()) {
             requireNotNull(collector).collect(onFailure, RequestDeadline(evidenceTimeoutMs))
         } else FlowObservationCollector.skipped(onFailure)
-        return FlowReport(platform, failure == null, exitCode, results, failure, evidence = evidence)
+        return FlowReport(platform, failure == null, exitCode, results, failure, observations, evidence)
     }
 
     private fun evaluate(platform: Platform, step: FlowPreparedStep, raw: String): FlowOutcome {

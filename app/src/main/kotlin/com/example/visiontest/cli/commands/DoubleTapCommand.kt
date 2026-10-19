@@ -7,26 +7,28 @@ import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
-import com.github.ajalt.clikt.core.CliktCommand
+import com.example.visiontest.cli.PreparedCommand
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 
 class DoubleTapCommand(
     private val components: Lazy<ComponentHolder>,
-    private val runner: CliCommandRunner = ::runCliCommand,
-) : CliktCommand(name = "double_tap", help = "Double tap at coordinates or on a selected element") {
+    runner: CliCommandRunner = ::runCliCommand,
+) : PreparedCommand(runner = runner, name = "double_tap", help = "Double tap at coordinates or on a selected element") {
     private val platform by platformOption()
     private val target by InteractionTargetOptions()
 
-    override fun run() = runner {
+    override fun prepareExecution(): suspend () -> String {
         target.validate(platform)
-        requireServerRunning { components.value.isServerRunning(platform) }
-        when (platform) {
-            Platform.Android -> components.value.androidAutomationRegistrar.doubleTap(
-                target.x, target.y, target.androidSelectors(), target.timeout,
-            )
-            Platform.Ios -> components.value.iosAutomationRegistrar.doubleTap(
-                target.x, target.y, target.iosSelectors(target.bundleId), target.timeout,
-            )
+        return {
+            requireServerRunning { components.value.isServerRunning(platform) }
+            when (platform) {
+                Platform.Android -> components.value.androidAutomationRegistrar.doubleTap(
+                    target.x, target.y, target.androidSelectors(), target.timeout,
+                )
+                Platform.Ios -> components.value.iosAutomationRegistrar.doubleTap(
+                    target.x, target.y, target.iosSelectors(target.bundleId), target.timeout,
+                )
+            }
         }
     }
 }

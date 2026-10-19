@@ -181,21 +181,19 @@ class AndroidAutomationToolRegistrar internal constructor(
         )
     }
     internal suspend fun tapOnElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
-        trace.span(TraceStage.OPERATION) {
-            val timeout = validateElementTap(
-                selectorValues = listOf(
-                    "text" to selectors.text, "textContains" to selectors.textContains,
-                    "resourceId" to selectors.resourceId, "className" to selectors.className,
-                    "contentDescription" to selectors.contentDescription,
-                ),
-                hasSelector = selectors.hasAnySelector(),
-                timeoutMs = timeoutMs,
-                defaultTimeoutMs = AutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
-                maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
-            )
-            requireServer()
-            return@span successfulElementTapResponse(automationClient.tapOnElement(selectors, timeout))
-        }
+        tapOnElementResponse(selectors, timeoutMs, requireSuccess = true)
+
+    internal suspend fun tapOnElementResult(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
+        tapOnElementResponse(selectors, timeoutMs, requireSuccess = false)
+
+    private suspend fun tapOnElementResponse(
+        selectors: AndroidElementSelectors, timeoutMs: Int?, requireSuccess: Boolean,
+    ): String = trace.span(TraceStage.OPERATION) {
+        val timeout = validateElementTap(selectors, timeoutMs)
+        requireServer()
+        val response = automationClient.tapOnElement(selectors, timeout)
+        if (requireSuccess) successfulElementTapResponse(response) else response
+    }
     internal suspend fun pressBack(): String = serverOperation { automationClient.pressBack() }
     internal suspend fun pressHome(): String = serverOperation { automationClient.pressHome() }
     internal suspend fun pressKey(keyCode: Int?, action: String?): String =

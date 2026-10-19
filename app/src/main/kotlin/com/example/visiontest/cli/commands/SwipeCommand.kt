@@ -6,7 +6,7 @@ import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
-import com.github.ajalt.clikt.core.CliktCommand
+import com.example.visiontest.cli.PreparedCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
@@ -14,8 +14,8 @@ import com.github.ajalt.clikt.parameters.types.int
 
 class SwipeCommand(
     private val components: Lazy<ComponentHolder>,
-    private val runner: CliCommandRunner = ::runCliCommand,
-) : CliktCommand(name = "swipe", help = "Swipe between screen coordinates") {
+    runner: CliCommandRunner = ::runCliCommand,
+) : PreparedCommand(runner = runner, name = "swipe", help = "Swipe between screen coordinates") {
     private companion object {
         const val DEFAULT_STEPS = 20
     }
@@ -28,12 +28,14 @@ class SwipeCommand(
     private val steps by option("--steps", help = "Positive swipe steps (default $DEFAULT_STEPS)")
         .int().default(DEFAULT_STEPS)
 
-    override fun run() = runner {
+    override fun prepareExecution(): suspend () -> String {
         require(steps > 0) { "--steps must be positive" }
-        requireServerRunning { components.value.isServerRunning(platform) }
-        when (platform) {
-            Platform.Android -> components.value.androidAutomationRegistrar.swipe(startX, startY, endX, endY, steps)
-            Platform.Ios -> components.value.iosAutomationRegistrar.swipe(startX, startY, endX, endY, steps)
+        return {
+            requireServerRunning { components.value.isServerRunning(platform) }
+            when (platform) {
+                Platform.Android -> components.value.androidAutomationRegistrar.swipe(startX, startY, endX, endY, steps)
+                Platform.Ios -> components.value.iosAutomationRegistrar.swipe(startX, startY, endX, endY, steps)
+            }
         }
     }
 }

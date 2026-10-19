@@ -6,17 +6,19 @@ import com.example.visiontest.cli.androidOnlyPlatformOption
 import com.example.visiontest.cli.requireAndroid
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
-import com.github.ajalt.clikt.core.CliktCommand
+import com.example.visiontest.cli.PreparedCommand
 
 class ClearTextCommand(
     private val components: Lazy<ComponentHolder>,
-    private val runner: CliCommandRunner = ::runCliCommand,
-) : CliktCommand(name = "clear_text", help = "Clear the focused editable field (Android only)") {
+    runner: CliCommandRunner = ::runCliCommand,
+) : PreparedCommand(runner = runner, name = "clear_text", help = "Clear the focused editable field (Android only)") {
     private val platform by androidOnlyPlatformOption()
 
-    override fun run() = runner {
+    override fun prepareExecution(): suspend () -> String {
         requireAndroid(platform, "clear_text")
-        requireServerRunning { components.value.isServerRunning(platform) }
-        components.value.androidAutomationRegistrar.clearText()
+        return {
+            requireServerRunning { components.value.isServerRunning(platform) }
+            components.value.androidAutomationRegistrar.clearText()
+        }
     }
 }

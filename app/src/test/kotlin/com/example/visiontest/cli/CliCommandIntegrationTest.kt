@@ -26,7 +26,7 @@ import kotlin.test.*
 class CliCommandIntegrationTest {
 
     @Test
-    fun `root registers all twenty nine commands without duplicates`() {
+    fun `root registers all thirty commands without duplicates`() {
         val registered = VisionTestCli().registeredSubcommands().map { it.commandName }
         val expected = setOf(
             "install_automation_server", "start_automation_server", "stop_automation_server",
@@ -34,10 +34,10 @@ class CliCommandIntegrationTest {
             "screenshot", "wait_for_element", "find_element", "available_device", "tap_by_coordinates",
             "tap_on_element", "input_text", "swipe_direction", "swipe", "swipe_on_element", "press_back",
             "press_home", "launch_app", "list_apps", "info_app", "init", "press_key", "clear_text",
-            "long_press", "double_tap", "dismiss_keyboard", "handle_alert",
+            "long_press", "double_tap", "dismiss_keyboard", "handle_alert", "flow",
         )
         assertEquals(expected, registered.toSet())
-        assertEquals(29, registered.size)
+        assertEquals(30, registered.size)
     }
 
     private lateinit var androidMock: MockWebServer

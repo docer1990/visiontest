@@ -18,7 +18,9 @@ class FlowBehaviorTest {
             "Preserve uncertainty after a lost response" to { FlowLostResponseScenario().bindings() },
             "Collect bounded failure evidence" to { FlowEvidenceScenario().bindings() },
             "Return the final screen state" to { FlowFinalStateScenario().bindings() },
+            "Report final observation failure separately" to { FlowFinalFailureScenario().bindings() },
         ),
+        requireComplete = true,
     )
 
     private fun operationFailure(): Map<String, () -> Unit> {

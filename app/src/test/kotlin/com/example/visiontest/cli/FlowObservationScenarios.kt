@@ -27,6 +27,7 @@ import kotlin.test.assertNotNull
 internal class FlowObservationFixture(val platform: Platform) : AutoCloseable {
     val server = MockWebServer()
     val calls = mutableListOf<String>()
+    val requests = mutableListOf<JsonObject>()
     var respond: (String) -> MockResponse = { MockResponse().setBody("""{"result":{"success":true}}""") }
     val components: Lazy<ComponentHolder>
 
@@ -34,8 +35,9 @@ internal class FlowObservationFixture(val platform: Platform) : AutoCloseable {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 if (request.method == "GET") return MockResponse().setBody("OK")
-                val method = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
-                    .getValue("method").jsonPrimitive.content
+                val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+                synchronized(requests) { requests += body }
+                val method = body.getValue("method").jsonPrimitive.content
                 synchronized(calls) { calls += method }
                 return respond(method)
             }
@@ -99,7 +101,9 @@ internal class FlowFinalStateScenario {
                 FlowObservationFixture(platform).use { fixture ->
                     fixture.respond = { method -> MockResponse().setBody(when (method) {
                         "ui.findElement" -> """{"result":{"found":true,"resourceId":"done"}}"""
-                        "ui.getInteractiveElements" -> """{"result":{"success":true,"count":1,"elements":[{"resourceId":"done"}]}}"""
+                        "ui.getInteractiveElements" -> """
+                            {"result":{"success":true,"count":1,"elements":[{"resourceId":"done"}]}}
+                        """.trimIndent()
                         else -> """{"result":{"success":true}}"""
                     }) }
                     fixture.run("--step", "press_home", "--step", "wait_for_element --resource-id done",
@@ -117,6 +121,38 @@ internal class FlowFinalStateScenario {
                 assertEquals("succeeded", observation.getValue("status").jsonPrimitive.content)
                 assertEquals("done", observation.getValue("result").jsonObject.getValue("elements").jsonArray
                     .single().jsonObject.getValue("resourceId").jsonPrimitive.content)
+            }
+        },
+    )
+}
+
+internal class FlowFinalFailureScenario {
+    private var results = emptyList<JsonObject>()
+    fun bindings(): Map<String, () -> Unit> = mapOf(
+        "Given all actions succeed and a requested final observation fails" to {},
+        "When the caller receives the report" to {
+            results = Platform.entries.map { platform ->
+                FlowObservationFixture(platform).use { fixture ->
+                    fixture.respond = { method -> MockResponse().setBody(when (method) {
+                        "ui.getInteractiveElements" -> """
+                            {"result":{"success":false,"count":0,"elements":[],"error":"inspection blocked"}}
+                        """.trimIndent()
+                        else -> """{"result":{"success":true}}"""
+                    }) }
+                    fixture.run("--step", "press_home", "--observe", "interactive-elements", "--observe", "hierarchy")
+                }
+            }
+        },
+        "Then the flow fails while the completed actions remain successful" to {
+            results.forEach { result ->
+                assertEquals("false", result.getValue("success").toString())
+                assertEquals("1", result.getValue("exitCode").toString())
+                assertEquals("null", result.getValue("failedStep").toString())
+                assertEquals("succeeded", result.getValue("steps").jsonArray.single().jsonObject
+                    .getValue("status").jsonPrimitive.content)
+                assertEquals(listOf("failed", "skipped"), result.getValue("observations").jsonArray.map {
+                    it.jsonObject.getValue("status").jsonPrimitive.content
+                })
             }
         },
     )

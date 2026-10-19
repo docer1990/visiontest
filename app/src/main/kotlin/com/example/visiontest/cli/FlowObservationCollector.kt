@@ -23,7 +23,29 @@ internal data class FlowObservationReport(
     val status: String,
     val result: JsonObject? = null,
     val error: FlowError? = null,
+    val exitCode: Int = 1,
 )
+
+internal data class FlowObservationOptions(
+    val collector: FlowObservationCollector? = null,
+    val onFailure: List<String> = emptyList(),
+    val evidenceTimeoutMs: Long = 5000,
+    val observe: List<String> = emptyList(),
+) {
+    suspend fun finish(execution: FlowReport, overall: RequestDeadline): FlowReport {
+        val observations = if (execution.success && observe.isNotEmpty()) {
+            requireNotNull(collector).collect(observe, overall, stopOnFailure = true)
+        } else FlowObservationCollector.skipped(observe)
+        val failedObservation = observations.firstOrNull { it.status == "failed" }
+        val failure = execution.error ?: failedObservation?.error
+        val evidence = if (failure != null && onFailure.isNotEmpty()) {
+            requireNotNull(collector).collect(onFailure, RequestDeadline(evidenceTimeoutMs))
+        } else FlowObservationCollector.skipped(onFailure)
+        return execution.copy(success = failure == null, error = failure,
+            exitCode = if (execution.success) failedObservation?.exitCode ?: 0 else execution.exitCode,
+            observations = observations, evidence = evidence)
+    }
+}
 
 internal class FlowObservationCollector(
     private val platform: Platform,
@@ -60,8 +82,9 @@ internal class FlowObservationCollector(
                 result
             } catch (error: Exception) {
                 currentCoroutineContext().ensureActive()
+                val mapped = cliFailure(error)
                 FlowObservationReport(kind, "failed", error = FlowError(error.javaClass.simpleName,
-                    cliFailure(error).stderr ?: "Observation failed"))
+                    mapped.stderr ?: "Observation failed"), exitCode = mapped.exitCode)
             }
             records += record
             if (record.status == "failed" && stopOnFailure) stopped = true
@@ -102,10 +125,13 @@ internal class FlowObservationCollector(
         val result = response.value
         val success = result.requiredSuccess()
         val error = result.optionalError()
-        if (!success) return failed("hierarchy", buildJsonObject {
+        return if (!success) failed("hierarchy", buildJsonObject {
             put("success", false)
             error?.let { put("error", it) }
-        }, error ?: "Hierarchy collection failed")
+        }, error ?: "Hierarchy collection failed") else saveHierarchy(result)
+    }
+
+    private suspend fun saveHierarchy(result: JsonObject): FlowObservationReport {
         val xml = result["hierarchy"] as? JsonPrimitive
         if (xml?.isString != true) throw CommandExecutionException("Automation result.hierarchy must be a string")
         val path = artifact("xml")
@@ -127,7 +153,8 @@ internal class FlowObservationCollector(
             return rpcFailure("interactive-elements", result)
         }
         return if (result.requiredSuccess()) succeeded("interactive-elements", result)
-            else failed("interactive-elements", result, result.optionalError() ?: "Interactive element collection failed")
+            else failed("interactive-elements", result,
+                result.optionalError() ?: "Interactive element collection failed")
     }
 
     private fun artifact(extension: String): Path = artifacts.resolve("${UUID.randomUUID()}.$extension")

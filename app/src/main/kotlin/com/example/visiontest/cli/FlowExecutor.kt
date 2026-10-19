@@ -17,18 +17,25 @@ import java.nio.file.Path
 import java.util.concurrent.TimeoutException
 
 internal class FlowExecutor {
-    @Suppress("TooGenericExceptionCaught") // Execution reports retain every mapped command failure.
     suspend fun execute(
         platform: Platform,
         steps: List<FlowPreparedStep>,
         stepTimeoutMs: Long = 35000,
         timeoutMs: Long = 120000,
-        collector: FlowObservationCollector? = null,
-        onFailure: List<String> = emptyList(),
-        evidenceTimeoutMs: Long = 5000,
-        observe: List<String> = emptyList(),
+        observationOptions: FlowObservationOptions = FlowObservationOptions(),
     ): FlowReport {
         val overall = RequestDeadline(timeoutMs)
+        val execution = executeSteps(platform, steps, stepTimeoutMs, overall)
+        return observationOptions.finish(execution, overall)
+    }
+
+    @Suppress("TooGenericExceptionCaught") // Execution reports retain every mapped command failure.
+    private suspend fun executeSteps(
+        platform: Platform,
+        steps: List<FlowPreparedStep>,
+        stepTimeoutMs: Long,
+        overall: RequestDeadline,
+    ): FlowReport {
         val results = mutableListOf<FlowStepReport>()
         var failure: FlowError? = null
         var exitCode = 0
@@ -66,13 +73,7 @@ internal class FlowExecutor {
                     if (uncertain) "unknown" else "confirmed", error = failure)
             }
         }
-        val observations = if (failure == null && observe.isNotEmpty()) {
-            requireNotNull(collector).collect(observe, overall, stopOnFailure = true)
-        } else FlowObservationCollector.skipped(observe)
-        val evidence = if (failure != null && onFailure.isNotEmpty()) {
-            requireNotNull(collector).collect(onFailure, RequestDeadline(evidenceTimeoutMs))
-        } else FlowObservationCollector.skipped(onFailure)
-        return FlowReport(platform, failure == null, exitCode, results, failure, observations, evidence)
+        return FlowReport(platform, failure == null, exitCode, results, failure)
     }
 
     private fun evaluate(platform: Platform, step: FlowPreparedStep, raw: String): FlowOutcome {

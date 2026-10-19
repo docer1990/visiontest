@@ -78,6 +78,21 @@ class FlowPreparedExecutionTest {
     }
 
     @Test
+    fun `executor uses one prepared component holder for ordered actions and waits`() {
+        for (platform in Platform.entries) {
+            response("""{"success":true}""")
+            response("""{"found":true}""")
+            val steps = FlowPreparation.prepare(platform,
+                listOf("press_home", "wait_for_element --text Done"), components)
+            val report = kotlinx.coroutines.runBlocking { FlowExecutor().execute(platform, steps) }
+            assertTrue(report.success)
+            assertTrue(components.isInitialized())
+            assertEquals("device.pressHome", request()["method"].asString)
+            assertEquals("ui.findElement", request()["method"].asString)
+        }
+    }
+
+    @Test
     fun `flow waits preserve raw appearance and disappearance responses`() {
         for (platform in Platform.entries) {
             for (gone in listOf(false, true)) {

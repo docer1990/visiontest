@@ -15,6 +15,7 @@ class FlowBehaviorTest {
             "Reject an invalid later step before acting" to ::invalidLaterStep,
             "Execute ordered steps through one session" to ::orderedExecution,
             "Stop after an operation failure" to ::operationFailure,
+            "Preserve uncertainty after a lost response" to { FlowLostResponseScenario().bindings() },
         ),
     )
 

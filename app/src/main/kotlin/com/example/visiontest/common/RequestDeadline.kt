@@ -1,5 +1,6 @@
 package com.example.visiontest.common
 
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URI
@@ -14,6 +15,7 @@ import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.coroutineContext
 
 internal class RequestDeadline(timeoutMs: Long) : AbstractCoroutineContextElement(Key) {
     companion object Key : CoroutineContext.Key<RequestDeadline> {
@@ -51,10 +53,16 @@ internal class RequestDeadline(timeoutMs: Long) : AbstractCoroutineContextElemen
         }
         // HttpRequest.timeout may stop applying once headers arrive; bound the complete body as well.
         // withTimeoutOrNull converts only this timeout, preserving cancellation from the caller.
+        val httpClient = client
+        coroutineContext.ensureActive()
         return withTimeoutOrNull(minOf(remainingMillis(), timeoutMs.toLong())) {
             suspendCancellableCoroutine { continuation ->
+                if (!continuation.isActive) return@suspendCancellableCoroutine
+                val prepared = request.build()
+                continuation.context.ensureActive()
+                remainingMillis()
                 if (body != null && method !in readMethods) actionDispatched = true
-                val future = client.sendAsync(request.build(), HttpResponse.BodyHandlers.ofByteArray())
+                val future = httpClient.sendAsync(prepared, HttpResponse.BodyHandlers.ofByteArray())
                 continuation.invokeOnCancellation { future.cancel(true) }
                 future.whenComplete { response, failure ->
                     if (failure == null) continuation.resume(response)

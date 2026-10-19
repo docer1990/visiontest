@@ -78,6 +78,43 @@ class FlowPreparedExecutionTest {
     }
 
     @Test
+    fun `dispatched malformed action is uncertain but valid backend failures are confirmed`() {
+        val results = listOf(
+            """{"success":"true"}""" to "uncertain",
+            """{"success":true,"error":{}}""" to "uncertain",
+            """{"success":false,"error":"blocked"}""" to "failed",
+        )
+        for (platform in Platform.entries) for ((result, status) in results) {
+            response(result)
+            val steps = FlowPreparation.prepare(platform, listOf("press_home", "press_home"), components)
+            val report = kotlinx.coroutines.runBlocking { FlowExecutor().execute(platform, steps) }
+            assertEquals(status, report.steps.first().status)
+            assertEquals(if (status == "uncertain") "unknown" else "confirmed", report.steps.first().certainty)
+            assertEquals(listOf("step-2"), report.skippedSteps)
+            request()
+        }
+    }
+
+    @Test
+    fun `read and readiness failures have confirmed outcomes without action dispatch`() {
+        for (platform in Platform.entries) {
+            response("""{"found":"false"}""")
+            val steps = FlowPreparation.prepare(platform,
+                listOf("wait_for_element --text Spinner --gone", "press_home"), components)
+            val report = kotlinx.coroutines.runBlocking { FlowExecutor().execute(platform, steps) }
+            assertEquals("failed", report.steps.first().status)
+            assertEquals("confirmed", report.steps.first().certainty)
+            request()
+            server.enqueue(MockResponse().setResponseCode(503))
+            val action = FlowPreparation.prepare(platform, listOf("press_home"), components)
+            val unavailable = kotlinx.coroutines.runBlocking { FlowExecutor().execute(platform, action) }
+            assertEquals(3, unavailable.exitCode)
+            assertEquals("failed", unavailable.steps.single().status)
+            assertNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+        }
+    }
+
+    @Test
     fun `operation wait budget bounds a stalled find response before step timeout`() {
         for (platform in Platform.entries) {
             response("""{"found":true}""")

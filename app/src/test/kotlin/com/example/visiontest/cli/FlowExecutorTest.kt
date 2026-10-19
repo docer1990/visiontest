@@ -99,6 +99,9 @@ class FlowExecutorTest {
                 """{"success":true,"path":"relative.png"}"""
             },
             FlowPreparedStep("step-1", "screenshot", FlowStepKind.SCREENSHOT) { """{"success":false}""" },
+            FlowPreparedStep("step-1", "screenshot", FlowStepKind.SCREENSHOT) {
+                """{"success":true,"path":"/tmp/\u0000.png"}"""
+            },
         )
         for (step in cases) {
             val report = FlowExecutor().execute(Platform.Ios, listOf(step))
@@ -124,6 +127,30 @@ class FlowExecutorTest {
             assertEquals(listOf("step-2"), report.skippedSteps)
             assertEquals("TimeoutException", report.error?.type)
         }
+    }
+
+    @Test
+    fun `step cancellation with an active caller still produces a report`() = runBlocking {
+        val step = FlowPreparedStep("step-1", "press_home", FlowStepKind.ACTION) {
+            throw kotlinx.coroutines.CancellationException("operation cancelled")
+        }
+        val report = FlowExecutor().execute(Platform.Android, listOf(step))
+        assertFalse(report.success)
+        assertEquals("CancellationException", report.error?.type)
+    }
+
+    @Test
+    fun `parent cancellation propagates without running later steps`() = runBlocking {
+        var laterCalls = 0
+        val step = FlowPreparedStep("step-1", "press_home", FlowStepKind.ACTION) {
+            kotlinx.coroutines.delay(5000)
+            laterCalls++
+            """{"result":{"success":true}}"""
+        }
+        kotlin.test.assertFailsWith<kotlinx.coroutines.TimeoutCancellationException> {
+            kotlinx.coroutines.withTimeout(20) { FlowExecutor().execute(Platform.Android, listOf(step)) }
+        }
+        assertEquals(0, laterCalls)
     }
 
 }

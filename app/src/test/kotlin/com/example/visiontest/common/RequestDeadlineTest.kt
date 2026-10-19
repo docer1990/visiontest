@@ -1,6 +1,7 @@
 package com.example.visiontest.common
 
 import com.example.visiontest.android.AutomationClient
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.TimeoutCancellationException
@@ -17,6 +18,35 @@ import java.util.concurrent.TimeoutException
 import kotlin.test.assertFails
 
 class RequestDeadlineTest {
+    @Test
+    fun `expired budgets never dispatch an action`() = runBlocking {
+        MockWebServer().use { server ->
+            server.start()
+            val budget = RequestDeadline(1)
+            kotlinx.coroutines.delay(20)
+            assertFailsWith<TimeoutException> {
+                budget.exchange(server.url("/jsonrpc").toString(), "{}".toByteArray(), "device.pressHome", 5000)
+            }
+            assertFalse(budget.actionDispatched)
+            kotlin.test.assertEquals(0, server.requestCount)
+        }
+    }
+
+    @Test
+    fun `cancelled callers never dispatch an action`() = runBlocking {
+        MockWebServer().use { server ->
+            server.start()
+            val budget = RequestDeadline(5000)
+            val job = launch {
+                kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]!!.cancel()
+                budget.exchange(server.url("/jsonrpc").toString(), "{}".toByteArray(), "device.pressHome", 5000)
+            }
+            job.join()
+            assertFalse(budget.actionDispatched)
+            kotlin.test.assertEquals(0, server.requestCount)
+        }
+    }
+
     @Test
     fun `deadline bounds delayed response body after headers`() = runBlocking {
         MockWebServer().use { server ->

@@ -1,6 +1,5 @@
 package com.example.visiontest.cli
 
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -26,6 +25,8 @@ internal data class FlowReport(
     val exitCode: Int,
     val steps: List<FlowStepReport>,
     val error: FlowError? = null,
+    val observations: List<FlowObservationReport> = emptyList(),
+    val evidence: List<FlowObservationReport> = emptyList(),
 ) {
     val failedStep: String? get() = steps.firstOrNull { it.status in setOf("failed", "uncertain") }?.id
     val skippedSteps: List<String> get() = steps.filter { it.status == "skipped" }.map { it.id }
@@ -38,8 +39,8 @@ internal data class FlowReport(
         put("steps", buildJsonArray { steps.forEach { add(it.toJson()) } })
         put("failedStep", failedStep?.let(::JsonPrimitive) ?: JsonNull)
         put("skippedSteps", buildJsonArray { skippedSteps.forEach { add(it) } })
-        put("observations", JsonArray(emptyList()))
-        put("evidence", JsonArray(emptyList()))
+        put("observations", buildJsonArray { observations.forEach { add(it.toJson()) } })
+        put("evidence", buildJsonArray { evidence.forEach { add(it.toJson()) } })
         put("error", error?.toJson() ?: JsonNull)
     }
 
@@ -48,7 +49,9 @@ internal data class FlowReport(
         append("${steps.count { it.status == "succeeded" }} completed, ${skippedSteps.size} skipped")
         failedStep?.let { append("; failed step $it") }
         error?.let { append(". ${it.message}") }
-        steps.mapNotNull { it.result?.get("path") as? JsonPrimitive }.forEach { append("\n${it.content}") }
+        val paths = steps.mapNotNull { it.result?.get("path") as? JsonPrimitive } +
+            (observations + evidence).mapNotNull { it.result?.get("path") as? JsonPrimitive }
+        paths.forEach { append("\n${it.content}") }
     }
 }
 
@@ -64,4 +67,11 @@ private fun FlowStepReport.toJson() = buildJsonObject {
 private fun FlowError.toJson() = buildJsonObject {
     put("type", type)
     put("message", message)
+}
+
+private fun FlowObservationReport.toJson() = buildJsonObject {
+    put("kind", kind)
+    put("status", status)
+    put("result", result ?: JsonNull)
+    put("error", error?.toJson() ?: JsonNull)
 }

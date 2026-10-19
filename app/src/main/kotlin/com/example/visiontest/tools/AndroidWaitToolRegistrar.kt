@@ -29,30 +29,27 @@ class AndroidWaitToolRegistrar internal constructor(
 
     // ==================== Extracted business logic ====================
 
-    private suspend fun requireServer() {
-        if (!automationClient.isServerRunning()) {
-            throw ServerNotRunningException("Automation server is not running. Use 'start_automation_server' first.")
-        }
-    }
     internal suspend fun waitForElement(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
-        waitForElementResult(selectors, timeoutMs)
+        waitResult(selectors, timeoutMs)
 
     internal suspend fun waitUntilGone(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String {
-        waitUntilGoneResult(selectors, timeoutMs)
+        waitResult(selectors, timeoutMs, expectGone = true)
         return "Element is no longer present (${selectors.describe()})."
     }
 
-    internal suspend fun waitForElementResult(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
-        waitResult(selectors, timeoutMs, expectGone = false)
-
-    internal suspend fun waitUntilGoneResult(selectors: AndroidElementSelectors, timeoutMs: Int? = null): String =
-        waitResult(selectors, timeoutMs, expectGone = true)
-
-    private suspend fun waitResult(selectors: AndroidElementSelectors, timeoutMs: Int?, expectGone: Boolean): String =
+    internal suspend fun waitResult(
+        selectors: AndroidElementSelectors,
+        timeoutMs: Int? = null,
+        expectGone: Boolean = false,
+    ): String =
         trace.span(TraceStage.OPERATION) {
             val timeout = resolveWaitTimeout(timeoutMs)
             requireAnySelector(selectors)
-            requireServer()
+            if (!automationClient.isServerRunning()) {
+                throw ServerNotRunningException(
+                    "Automation server is not running. Use 'start_automation_server' first."
+                )
+            }
             automationClient.pollForElementResult(
                 expectGone = expectGone,
                 timeoutMs = timeout,

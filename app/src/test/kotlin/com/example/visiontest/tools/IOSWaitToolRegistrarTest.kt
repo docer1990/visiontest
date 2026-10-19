@@ -45,7 +45,7 @@ class IOSWaitToolRegistrarTest {
         mockServer.enqueue(MockResponse().setBody("""{"result":{"found":true}}"""))
         mockServer.enqueue(MockResponse().setBody(response))
 
-        assertEquals(response, registrar.waitUntilGoneResult(IOSElementSelectors(text = "Loading")))
+        assertEquals(response, registrar.waitResult(IOSElementSelectors(text = "Loading"), expectGone = true))
         assertEquals(3, mockServer.requestCount)
     }
 
@@ -55,7 +55,7 @@ class IOSWaitToolRegistrarTest {
         mockServer.enqueue(MockResponse().setBody("OK"))
         mockServer.enqueue(MockResponse().setBody(response))
 
-        assertEquals(response, registrar.waitForElementResult(IOSElementSelectors(text = "Login")))
+        assertEquals(response, registrar.waitResult(IOSElementSelectors(text = "Login")))
     }
 
     @Test
@@ -65,7 +65,7 @@ class IOSWaitToolRegistrarTest {
             mockServer.enqueue(MockResponse().setBody("OK"))
             mockServer.enqueue(MockResponse().setBody(response))
             assertFailsWith<com.example.visiontest.CommandExecutionException> {
-                registrar.waitUntilGoneResult(IOSElementSelectors(text = "Loading"))
+                registrar.waitResult(IOSElementSelectors(text = "Loading"), expectGone = true)
             }
         }
     }
@@ -73,10 +73,10 @@ class IOSWaitToolRegistrarTest {
     @Test
     fun `structured waits validate before health check`() = runBlocking {
         assertFailsWith<IllegalArgumentException> {
-            registrar.waitUntilGoneResult(IOSElementSelectors(text = "Loading"), timeoutMs = 0)
+            registrar.waitResult(IOSElementSelectors(text = "Loading"), timeoutMs = 0, expectGone = true)
         }
         assertFailsWith<IllegalArgumentException> {
-            registrar.waitForElementResult(IOSElementSelectors(text = " "))
+            registrar.waitResult(IOSElementSelectors(text = " "))
         }
         assertEquals(0, mockServer.requestCount)
     }

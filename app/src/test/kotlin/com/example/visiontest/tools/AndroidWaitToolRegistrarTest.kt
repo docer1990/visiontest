@@ -43,7 +43,7 @@ class AndroidWaitToolRegistrarTest {
         mockServer.enqueue(MockResponse().setBody("""{"result":{"found":true}}"""))
         mockServer.enqueue(MockResponse().setBody(response))
 
-        assertEquals(response, registrar.waitUntilGoneResult(AndroidElementSelectors(text = "Loading")))
+        assertEquals(response, registrar.waitResult(AndroidElementSelectors(text = "Loading"), expectGone = true))
         assertEquals(3, mockServer.requestCount)
     }
 
@@ -53,7 +53,7 @@ class AndroidWaitToolRegistrarTest {
         mockServer.enqueue(MockResponse().setBody("OK"))
         mockServer.enqueue(MockResponse().setBody(response))
 
-        assertEquals(response, registrar.waitForElementResult(AndroidElementSelectors(text = "Login")))
+        assertEquals(response, registrar.waitResult(AndroidElementSelectors(text = "Login")))
     }
 
     @Test
@@ -63,7 +63,7 @@ class AndroidWaitToolRegistrarTest {
             mockServer.enqueue(MockResponse().setBody("OK"))
             mockServer.enqueue(MockResponse().setBody(response))
             assertFailsWith<com.example.visiontest.CommandExecutionException> {
-                registrar.waitUntilGoneResult(AndroidElementSelectors(text = "Loading"))
+                registrar.waitResult(AndroidElementSelectors(text = "Loading"), expectGone = true)
             }
         }
     }
@@ -71,10 +71,10 @@ class AndroidWaitToolRegistrarTest {
     @Test
     fun `structured waits validate before health check`() = runBlocking {
         assertFailsWith<IllegalArgumentException> {
-            registrar.waitUntilGoneResult(AndroidElementSelectors(text = "Loading"), timeoutMs = 0)
+            registrar.waitResult(AndroidElementSelectors(text = "Loading"), timeoutMs = 0, expectGone = true)
         }
         assertFailsWith<IllegalArgumentException> {
-            registrar.waitForElementResult(AndroidElementSelectors(text = " "))
+            registrar.waitResult(AndroidElementSelectors(text = " "))
         }
         assertEquals(0, mockServer.requestCount)
     }

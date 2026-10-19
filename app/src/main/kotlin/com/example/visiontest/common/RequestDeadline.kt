@@ -1,6 +1,7 @@
 package com.example.visiontest.common
 
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -20,8 +21,8 @@ internal class RequestDeadline(timeoutMs: Long) : AbstractCoroutineContextElemen
             HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
                 .followRedirects(HttpClient.Redirect.NEVER).build()
         }
-        private val readMethods = setOf("ui.findElement", "ui.getInteractiveElements", "ui.getDeviceInfo",
-            "ui.getUiHierarchy", "ui.screenshot")
+        private val readMethods = setOf("ui.findElement", "ui.getInteractiveElements", "device.getInfo",
+            "ui.dumpHierarchy", "ui.screenshot")
     }
 
     private val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
@@ -48,16 +49,20 @@ internal class RequestDeadline(timeoutMs: Long) : AbstractCoroutineContextElemen
             request.header("Content-Type", "application/json")
             request.POST(HttpRequest.BodyPublishers.ofByteArray(body))
         }
-        return suspendCancellableCoroutine { continuation ->
-            if (body != null && method !in readMethods) actionDispatched = true
-            val future = client.sendAsync(request.build(), HttpResponse.BodyHandlers.ofByteArray())
-            continuation.invokeOnCancellation { future.cancel(true) }
-            future.whenComplete { response, failure ->
-                if (failure == null) continuation.resume(response)
-                else continuation.resumeWithException(
-                    if (failure is CompletionException) failure.cause ?: failure else failure
-                )
+        // HttpRequest.timeout may stop applying once headers arrive; bound the complete body as well.
+        // withTimeoutOrNull converts only this timeout, preserving cancellation from the caller.
+        return withTimeoutOrNull(minOf(remainingMillis(), timeoutMs.toLong())) {
+            suspendCancellableCoroutine { continuation ->
+                if (body != null && method !in readMethods) actionDispatched = true
+                val future = client.sendAsync(request.build(), HttpResponse.BodyHandlers.ofByteArray())
+                continuation.invokeOnCancellation { future.cancel(true) }
+                future.whenComplete { response, failure ->
+                    if (failure == null) continuation.resume(response)
+                    else continuation.resumeWithException(
+                        if (failure is CompletionException) failure.cause ?: failure else failure
+                    )
+                }
             }
-        }
+        } ?: throw TimeoutException("Flow HTTP exchange deadline exceeded")
     }
 }

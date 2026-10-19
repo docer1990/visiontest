@@ -29,32 +29,27 @@ class IOSWaitToolRegistrar internal constructor(
 
     // ==================== Extracted business logic ====================
 
-    private suspend fun requireServer() {
-        if (!iosAutomationClient.isServerRunning()) {
-            throw ServerNotRunningException(
-                "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            )
-        }
-    }
     internal suspend fun waitForElement(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
-        waitForElementResult(selectors, timeoutMs)
+        waitResult(selectors, timeoutMs)
 
     internal suspend fun waitUntilGone(selectors: IOSElementSelectors, timeoutMs: Int? = null): String {
-        waitUntilGoneResult(selectors, timeoutMs)
+        waitResult(selectors, timeoutMs, expectGone = true)
         return "Element is no longer present (${selectors.describe()})."
     }
 
-    internal suspend fun waitForElementResult(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
-        waitResult(selectors, timeoutMs, expectGone = false)
-
-    internal suspend fun waitUntilGoneResult(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
-        waitResult(selectors, timeoutMs, expectGone = true)
-
-    private suspend fun waitResult(selectors: IOSElementSelectors, timeoutMs: Int?, expectGone: Boolean): String =
+    internal suspend fun waitResult(
+        selectors: IOSElementSelectors,
+        timeoutMs: Int? = null,
+        expectGone: Boolean = false,
+    ): String =
         trace.span(TraceStage.OPERATION) {
             val timeout = resolveWaitTimeout(timeoutMs)
             requireAnySelector(selectors)
-            requireServer()
+            if (!iosAutomationClient.isServerRunning()) {
+                throw ServerNotRunningException(
+                    "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                )
+            }
             iosAutomationClient.pollForElementResult(
                 expectGone = expectGone,
                 timeoutMs = timeout,

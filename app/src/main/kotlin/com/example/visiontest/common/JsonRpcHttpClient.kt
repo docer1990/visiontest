@@ -244,42 +244,6 @@ abstract class JsonRpcHttpClient internal constructor(
     }
 
     /**
-     * Extracts `result.found` from a raw findElement JSON-RPC response.
-     * Both automation servers return an element result with a `found` boolean.
-     */
-    private fun parseElementFound(response: String): Boolean {
-        val body = parseJsonObject(response)
-        val error = body.get("error")
-        if (error != null && !error.isJsonNull) {
-            throw CommandExecutionException("Automation server returned an error: $error")
-        }
-        val result = body.get("result")?.takeIf { it.isJsonObject }?.asJsonObject
-            ?: throw CommandExecutionException("findElement response has no result object: $response")
-        return readFoundFlag(result, response)
-    }
-
-    /**
-     * A missing or non-boolean `found` is a protocol violation, not "element absent":
-     * defaulting it to false would let [pollForElement] report a malformed response
-     * as the element having disappeared.
-     */
-    private fun readFoundFlag(result: JsonObject, response: String): Boolean {
-        val found = result.get("found")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
-            ?: throw CommandExecutionException("findElement response has no boolean 'found' field: $response")
-        return found.asBoolean
-    }
-
-    private fun parseJsonObject(response: String): JsonObject {
-        return try {
-            JsonParser.parseString(response).asJsonObject
-        } catch (e: JsonParseException) {
-            throw CommandExecutionException("Malformed findElement response from automation server: ${e.message}")
-        } catch (ignored: IllegalStateException) {
-            throw CommandExecutionException("Unexpected findElement response from automation server: $response")
-        }
-    }
-
-    /**
      * Checks if the automation server is running.
      */
     suspend fun isServerRunning(): Boolean {
@@ -412,4 +376,36 @@ private fun containsInvalidJsonControls(response: String): Boolean {
         }
     }
     return false
+}
+
+/**
+ * Extracts `result.found` from a raw findElement JSON-RPC response.
+ * Both automation servers return an element result with a `found` boolean.
+ */
+private fun parseElementFound(response: String): Boolean {
+    val body = parseJsonObject(response)
+    val error = body.get("error")
+    if (error != null && !error.isJsonNull) {
+        throw CommandExecutionException("Automation server returned an error: $error")
+    }
+    val result = body.get("result")?.takeIf { it.isJsonObject }?.asJsonObject
+        ?: throw CommandExecutionException("findElement response has no result object: $response")
+    return readFoundFlag(result, response)
+}
+
+// Absence requires an explicit boolean false; malformed responses never satisfy a gone wait.
+private fun readFoundFlag(result: JsonObject, response: String): Boolean {
+    val found = result.get("found")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
+        ?: throw CommandExecutionException("findElement response has no boolean 'found' field: $response")
+    return found.asBoolean
+}
+
+private fun parseJsonObject(response: String): JsonObject {
+    return try {
+        JsonParser.parseString(response).asJsonObject
+    } catch (e: JsonParseException) {
+        throw CommandExecutionException("Malformed findElement response from automation server: ${e.message}")
+    } catch (ignored: IllegalStateException) {
+        throw CommandExecutionException("Unexpected findElement response from automation server: $response")
+    }
 }

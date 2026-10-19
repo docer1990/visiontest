@@ -109,6 +109,7 @@ coverage/
 # Screenshots (default output dir for screenshot commands)
 # ===================================
 screenshots/
+flow-artifacts/
 
 # ===================================
 # Empty Directory

@@ -159,7 +159,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 
 ## CLI Usage
 
-The CLI registers 29 commands. MCP device and UI operations can be invoked directly from the command line; the wait disappearance operation uses `wait_for_element --gone`. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. With no arguments, `visiontest` starts the MCP stdio server as before. `visiontest --version` prints the installed version (stamped into the JAR manifest at build time from `app/build.gradle.kts`).
+The CLI exposes the commands registered in `VisionTestCli`. MCP device and UI operations can be invoked directly from the command line; the wait disappearance operation uses `wait_for_element --gone`. Device-operation commands require `--platform android` or `--platform ios` (alias `-p`); `init`, root `--help`, and root `--version` do not. With no arguments, `visiontest` starts the MCP stdio server as before. `visiontest --version` prints the installed version (stamped into the JAR manifest at build time from `app/build.gradle.kts`).
 
 | Command | Platforms | Required args | Optional flags |
 |---------|-----------|---------------|----------------|
@@ -230,6 +230,14 @@ Default text and mapped exit codes remain stable. Scripts must inspect `found`,
 `success`, or `error` for operation-level outcomes that return normally.
 
 ### CLI Exit Codes
+
+`flow` validates an entire known sequence before device access, reuses one
+component holder, and stops at the first failure. Its `--json` report is emitted
+after execution begins even when an operation throws. Returned operation failures
+exit 1; only successful steps and requested final observations yield exit 0.
+Evidence has a separate budget and preserves the original error. Potentially
+dispatched actions without a validated result are uncertain and are never replayed.
+See [the flow guide](docs/cli-flow.md) and [report schema](docs/cli-json.md).
 
 | Code | Meaning |
 |------|---------|

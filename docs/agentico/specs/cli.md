@@ -274,7 +274,63 @@ Schema validation and RPC error handling MUST remain shared by the adapters.
 - **When** `list_apps --json` handles it
 - **Then** stdout SHALL be `{"apps":[]}` and exit code SHALL be 0
 
-## Verification
+### Requirement: Flows validate before device access and stop on failure
+
+`flow` MUST require one platform and exactly one of repeated `--step`, `--file`,
+or `--stdin`. The command MUST parse and validate the complete sequence before
+creating device components. It MUST use the existing command arguments and
+registrar operations with one shared component holder. Supported commands,
+quoting, comments, deadlines and observation options are specified in
+[the flow contract](2026-10-19-flow-design.md) and
+[the user guide](../../cli-flow.md).
+
+Preflight errors MUST emit diagnostics on stderr with empty stdout and MUST NOT
+perform device actions. Unsupported platform operations MUST exit 5. Malformed
+input and arguments MUST exit 2. Execution MUST be sequential and MUST stop on
+the first thrown failure, returned operation failure, invalid response, or timeout.
+Returned `success:false` and RPC errors MUST exit 1; thrown failures MUST retain
+the existing mapped codes. This is a flow-specific exception to the normal-return
+exit-0 convention of individual commands.
+
+Once execution begins, `--json` MUST emit one complete report and newline even on
+failure. Reports MUST contain stable positional step ids, completed outcomes,
+the failed step, skipped steps and requested observations without JSON-RPC framing
+or image base64. A potentially dispatched action with an unestablished outcome
+MUST be reported as uncertain. Actions MUST NOT be automatically replayed or
+rolled back.
+
+Final observation failure MUST make the flow unsuccessful without changing
+completed action statuses. Failure evidence MUST have its own short total budget,
+return absolute artifact paths, and preserve the original failure and exit code
+when collection fails. Explicit appearance and disappearance waits MUST distinguish
+valid absence from malformed responses and backend failures.
+
+#### Scenario: A later step is invalid
+
+- **Given** a valid first action and an invalid later step
+- **When** the flow performs preflight
+- **Then** it SHALL reject the entire flow before creating components or contacting a backend
+
+#### Scenario: The action response is lost
+
+- **Given** an action may have reached the server but its response is lost
+- **When** execution stops
+- **Then** the report SHALL mark its effect unknown, skip later steps and perform no replay
+
+#### Scenario: Evidence collection fails
+
+- **Given** a failed action and requested failure evidence
+- **When** evidence collection throws or exceeds its separate budget
+- **Then** the report SHALL preserve the original action failure and exit code
+
+## Flow verification
+
+The executable scenarios in `app/src/test/resources/features/flow.feature` cover
+preflight, ordered execution, operation failure, uncertainty, bounded evidence,
+final observations and observation failure. Focused tests cover parsing,
+shared results and transport deadlines on both platforms.
+
+## Existing command verification
 
 - Production routing and command registration: `app/src/main/kotlin/com/example/visiontest/Main.kt`, `app/src/main/kotlin/com/example/visiontest/cli/VisionTestCli.kt`, `app/src/main/kotlin/com/example/visiontest/cli/PlatformOption.kt`
 - Production result and dependency wiring: `app/src/main/kotlin/com/example/visiontest/cli/CliErrorHandler.kt`, `app/src/main/kotlin/com/example/visiontest/cli/CliExit.kt`, `app/src/main/kotlin/com/example/visiontest/cli/ComponentHolder.kt`

@@ -42,7 +42,9 @@ failure but does not promise the action had no partial effect.
 
 `--step-timeout` defaults to 35000 ms and `--timeout` to 120000 ms. Both must be
 positive bounded integers. Existing operation-specific timeouts retain their
-validation and defaults. The closest operation, step, or overall deadline wins.
+validation and defaults. The closest applicable operation, step, or overall deadline wins. Host element
+wait budgets begin at polling after readiness; native selector operations retain
+their existing HTTP grace periods. Step and overall budgets cap the total time.
 The overall execution budget includes component creation and final observations,
 but excludes input parsing. HTTP connect/read operations respect remaining budgets.
 
@@ -57,7 +59,10 @@ makes the flow unsuccessful without changing completed step statuses.
 
 Screenshot and hierarchy artifacts have absolute host paths. No image base64 is
 included. Interactive elements use the validated inspection schema. Each observation
-reports its own status, result and error. Preflight errors write only stderr.
+reports its own status, result and error. The outer iOS `--bundle-id` scopes
+hierarchy and element observations, including evidence, through existing registrar
+arguments. It does not supply step scope. Without it, queries retain the existing
+SpringBoard default. Android rejects this flag during preflight. Preflight errors write only stderr.
 Once execution starts, JSON mode writes exactly one complete report object and a
 newline, even on failure. Diagnostics go to stderr. The report includes schema
 version, platform, overall success and exit code, steps, failed-step id, skipped

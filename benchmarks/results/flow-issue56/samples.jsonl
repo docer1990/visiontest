@@ -1,0 +1,18 @@
+{"mode": "separate", "elapsedMs": 4277.432333, "processMs": [2408.477292, 887.866, 329.258708, 384.210916, 267.345125], "processCount": 5, "screenshotBytes": 61035, "finalElementCount": 2, "round": 0, "warmup": true}
+{"mode": "flow", "elapsedMs": 2912.650917, "processMs": [2912.517791], "processCount": 1, "screenshotBytes": 61035, "finalElementCount": 2, "round": 0, "warmup": true}
+{"mode": "flow", "elapsedMs": 2981.29525, "processMs": [2981.148834], "processCount": 1, "screenshotBytes": 61035, "finalElementCount": 2, "round": 1, "warmup": true}
+{"mode": "separate", "elapsedMs": 3442.26, "processMs": [1641.865666, 846.653833, 336.037667, 342.2415, 275.253333], "processCount": 5, "screenshotBytes": 60465, "finalElementCount": 2, "round": 1, "warmup": true}
+{"mode": "separate", "elapsedMs": 3644.832125, "processMs": [1730.0735, 909.955458, 308.563167, 345.787041, 350.280334], "processCount": 5, "screenshotBytes": 60465, "finalElementCount": 2, "round": 2, "warmup": false}
+{"mode": "flow", "elapsedMs": 2872.5465, "processMs": [2872.383625], "processCount": 1, "screenshotBytes": 60465, "finalElementCount": 2, "round": 2, "warmup": false}
+{"mode": "flow", "elapsedMs": 2935.207625, "processMs": [2935.111], "processCount": 1, "screenshotBytes": 60465, "finalElementCount": 2, "round": 3, "warmup": false}
+{"mode": "separate", "elapsedMs": 3519.54475, "processMs": [1659.164833, 838.481792, 329.191459, 431.592375, 260.850041], "processCount": 5, "screenshotBytes": 60465, "finalElementCount": 2, "round": 3, "warmup": false}
+{"mode": "separate", "elapsedMs": 3591.849916, "processMs": [1704.103166, 897.73125, 317.574833, 345.679167, 326.561125], "processCount": 5, "screenshotBytes": 60465, "finalElementCount": 2, "round": 4, "warmup": false}
+{"mode": "flow", "elapsedMs": 2898.630084, "processMs": [2898.4755], "processCount": 1, "screenshotBytes": 60465, "finalElementCount": 2, "round": 4, "warmup": false}
+{"mode": "flow", "elapsedMs": 2903.116625, "processMs": [2902.888708], "processCount": 1, "screenshotBytes": 60465, "finalElementCount": 2, "round": 5, "warmup": false}
+{"mode": "separate", "elapsedMs": 3407.471042, "processMs": [1667.338291, 817.571125, 312.01975, 348.841416, 261.5035], "processCount": 5, "screenshotBytes": 60465, "finalElementCount": 2, "round": 5, "warmup": false}
+{"mode": "separate", "elapsedMs": 3487.022458, "processMs": [1652.167416, 831.831666, 314.783167, 430.32025, 257.689], "processCount": 5, "screenshotBytes": 60465, "finalElementCount": 2, "round": 6, "warmup": false}
+{"mode": "flow", "elapsedMs": 2928.6245, "processMs": [2928.410541], "processCount": 1, "screenshotBytes": 60465, "finalElementCount": 2, "round": 6, "warmup": false}
+{"mode": "flow", "elapsedMs": 3037.070333, "processMs": [3036.98075], "processCount": 1, "screenshotBytes": 60465, "finalElementCount": 2, "round": 7, "warmup": false}
+{"mode": "separate", "elapsedMs": 4966.497875, "processMs": [1835.5065, 1122.247709, 1019.466667, 535.330334, 453.679458], "processCount": 5, "screenshotBytes": 60128, "finalElementCount": 2, "round": 7, "warmup": false}
+{"mode": "separate", "elapsedMs": 3512.101, "processMs": [1611.944375, 891.878875, 319.558291, 339.467458, 349.033125], "processCount": 5, "screenshotBytes": 60128, "finalElementCount": 2, "round": 8, "warmup": false}
+{"mode": "flow", "elapsedMs": 2907.745167, "processMs": [2907.545541], "processCount": 1, "screenshotBytes": 60128, "finalElementCount": 2, "round": 8, "warmup": false}

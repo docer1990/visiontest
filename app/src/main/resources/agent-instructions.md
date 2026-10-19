@@ -95,6 +95,51 @@ Use one bounded wait instead of manual polling or sleeps. Its timeout is a
 maximum, not a mandatory delay; lowering it needlessly can create retries.
 A successful interaction alone does not prove the expected app outcome.
 
+### Batch a short known sequence
+
+Use `flow` when several next actions are already known and no intermediate
+observation is needed. It reuses one process and device session. End navigation
+with an explicit element wait, then request the next screen's state:
+
+```bash
+visiontest flow -p ios --bundle-id com.example.app \
+  --step 'input_text "user@example.com" --target-resource-id email --bundle-id com.example.app' \
+  --step 'tap_on_element --resource-id continue --bundle-id com.example.app' \
+  --step 'wait_for_element --resource-id done --bundle-id com.example.app' \
+  --observe interactive-elements --on-failure screenshot --json
+```
+
+Choose exactly one source: repeated `--step`, `--file PATH`, or `--stdin`.
+Each uses one command per line. Blank lines and whole lines beginning with `#`
+after whitespace are ignored. Single/double quotes group arguments; backslash
+escapes the next character outside single quotes. No shell expressions or
+`@file` references expand. Put the platform on `flow`, not on individual steps.
+
+Supported steps are taps, text input, long press, double tap, coordinate/directional/
+element swipes, Home, element waits and screenshots. Android also supports Back,
+key presses and focused-field clearing; iOS supports keyboard dismissal and alerts.
+Setup, app management and nested flows are excluded. On iOS, outer `--bundle-id`
+scopes hierarchy/element observations and evidence; these otherwise query
+SpringBoard. It does not supply step scope, so keep app-specific `--bundle-id`
+arguments inside steps as well. Each step keeps its normal
+operation arguments. The entire sequence is validated before device access.
+
+Repeat `--observe` for final `screenshot`, `hierarchy`, or `interactive-elements`.
+Use the same values with `--on-failure` for optional evidence. Artifact paths are
+absolute; reports contain no image base64. No full hierarchy is captured after
+each action. Final observation failure makes the flow unsuccessful while completed
+actions remain successful.
+
+Default budgets are 35000 ms per step (`--step-timeout`), 120000 ms overall
+(`--timeout`), and a separate 5000 ms for all failure evidence (`--evidence-timeout`).
+The nearest applicable deadline wins, including an operation's own timeout.
+Unlike individual commands, flow exits nonzero for returned operation failures.
+Preflight failures leave stdout empty; after execution starts, `--json` returns a
+complete report even on failure. Inspect step statuses and evidence as well as
+the exit code. The first failure skips remaining steps, without rollback or replay.
+After an uncertain action outcome, inspect the UI before choosing a recovery;
+the action may already have happened. Keep flows short between observations.
+
 `--json` produces compact JSON without JSON-RPC framing. The element list omits
 uninformative containers and excludes disabled elements by default; request
 `--include-disabled` only when needed. On iOS, scope queries with `--bundle-id`.

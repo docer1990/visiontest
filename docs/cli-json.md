@@ -6,6 +6,86 @@ Add `--json` to `get_interactive_elements`, `get_device_info`, `find_element`,
 newline to stdout. Diagnostics use stderr. Without `--json`, existing text
 output is preserved.
 
+`flow --json` has its own execution-report contract, described below. Its exit
+status also reflects returned operation failures.
+
+## Flow reports
+
+Preflight errors leave stdout empty. Once execution starts, `flow --json` emits
+one complete object and a newline on success or failure. Diagnostics go to stderr.
+There is no JSON-RPC framing and no image base64.
+
+| Field | Type and meaning |
+| --- | --- |
+| `schemaVersion` | Integer, currently `1` |
+| `platform` | `"android"` or `"ios"` |
+| `success` | Boolean; all steps and requested final observations succeeded |
+| `exitCode` | Integer, the process exit status |
+| `steps` | Array of step records in submitted order |
+| `failedStep` | Failed or uncertain step id, or null when no step failed |
+| `skippedSteps` | Array of ids of steps not executed after failure |
+| `observations` | Array of explicitly requested final observation records |
+| `evidence` | Array of requested failure evidence records |
+| `error` | Overall error object, or null on success |
+
+Each step has `id` (`step-1`, `step-2`, ...), `command`, `status`, `certainty`,
+`result`, and `error`. Status is `succeeded`, `failed`, `uncertain`, or `skipped`.
+Certainty is `confirmed`, `unknown`, or `not_executed`. A confirmed failure does
+not guarantee an action had no partial effect. A possibly dispatched action
+without an established result has status `uncertain` and certainty `unknown`.
+Skipped steps have null result/error and certainty `not_executed`.
+
+Results are operation objects without transport framing. Action results require
+boolean `success` and optional string `error`. Returned RPC errors appear as
+`{"error":{"code":-32601,"message":"Unknown method"}}` and fail the flow.
+Malformed responses fail rather than being treated as success or absence.
+
+Wait results include the unwrapped element result plus `condition` (`appeared` or
+`gone`) and boolean `satisfied`. Screenshot results are
+`{"success":true,"path":"/absolute/path.png"}` or
+`{"success":false,"error":"..."}`. No path is claimed on failure.
+
+An error object contains string `type` and `message`. Exception types identify
+the underlying failure; callers should use status, certainty and exitCode for
+control flow rather than matching English messages.
+
+Each observation record has `kind` (`screenshot`, `hierarchy`, or
+`interactive-elements`), `status` (`succeeded`, `failed`, or `skipped`), `result`,
+and `error`. Screenshot and hierarchy results contain `success` and an absolute
+`path`. Interactive-element results follow the inspection schema below. Failed
+final observations make the overall flow unsuccessful without changing successful
+steps; `failedStep` remains null. Failure evidence errors do not change the
+original overall error or exit code.
+
+```json
+{
+  "schemaVersion": 1,
+  "platform": "ios",
+  "success": true,
+  "exitCode": 0,
+  "steps": [
+    {
+      "id": "step-1",
+      "command": "press_home",
+      "status": "succeeded",
+      "certainty": "confirmed",
+      "result": {"success": true},
+      "error": null
+    }
+  ],
+  "failedStep": null,
+  "skippedSteps": [],
+  "observations": [],
+  "evidence": [],
+  "error": null
+}
+```
+
+Unlike individual commands, a returned `success:false` or RPC error exits 1.
+Thrown failures retain mapped codes 1 through 5. Only a fully successful flow
+exits 0. See [the flow guide](cli-flow.md) for timeout precedence, input grammar,
+supported steps, evidence budgets and recovery.
+
 ## UI inspection
 
 The CLI emits the automation server's `result` object without the JSON-RPC

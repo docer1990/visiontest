@@ -1,0 +1,18 @@
+{
+  "separate": {
+    "samples": 7,
+    "medianMs": 3519.54475,
+    "meanMs": 3732.759880857143,
+    "minMs": 3407.471042,
+    "maxMs": 4966.497875
+  },
+  "flow": {
+    "samples": 7,
+    "medianMs": 2907.745167,
+    "meanMs": 2926.1344048571427,
+    "minMs": 2872.5465,
+    "maxMs": 3037.070333
+  },
+  "medianSpeedup": 1.2104034390438727,
+  "medianReductionPercent": 17.38291814587668
+}

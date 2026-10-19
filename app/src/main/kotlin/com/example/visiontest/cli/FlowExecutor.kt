@@ -2,6 +2,7 @@ package com.example.visiontest.cli
 
 import com.example.visiontest.CommandExecutionException
 import com.example.visiontest.common.RequestDeadline
+import com.example.visiontest.common.strictJsonObject
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -128,8 +129,7 @@ internal class FlowExecutor {
     }
 
     private fun parseScreenshotObject(raw: String): JsonObject = try {
-        Json.parseToJsonElement(raw) as? JsonObject
-            ?: throw CommandExecutionException("Screenshot response must be an object")
+        strictJsonObject(raw)
     } catch (error: IllegalArgumentException) {
         throw CommandExecutionException("Malformed screenshot response: ${error.message}").also { it.initCause(error) }
     }

@@ -17,7 +17,6 @@ import kotlinx.coroutines.CancellationException
 import kotlin.coroutines.coroutineContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject as StructuredJsonObject
@@ -327,25 +326,6 @@ private fun parseTraceResponse(response: String): JsonElement? {
 // Bound parser recursion before building a tree; deeper bodies still return unchanged.
 private const val MAX_TRACE_JSON_DEPTH = 64
 
-private val jsonBooleanLiterals = setOf("true", "false")
-private val jsonNumberPattern = Regex("-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?")
-
-/** The tree parser retains arbitrary bare tokens; require RFC JSON literals throughout the body. */
-private fun hasValidJsonPrimitives(root: JsonElement): Boolean {
-    val pending = ArrayDeque<JsonElement>()
-    pending.add(root)
-    while (pending.isNotEmpty()) {
-        when (val element = pending.removeLast()) {
-            is StructuredJsonObject -> pending.addAll(element.values)
-            is JsonArray -> pending.addAll(element)
-            JsonNull -> Unit
-            is JsonPrimitive -> if (!element.isString && element.content !in jsonBooleanLiterals &&
-                !jsonNumberPattern.matches(element.content)) return false
-        }
-    }
-    return true
-}
-
 /** Bound recursive parsing while ignoring brackets in strings, including escaped quotes. */
 private fun exceedsTraceJsonDepth(response: String): Boolean {
     var depth = 0
@@ -363,24 +343,6 @@ private fun exceedsTraceJsonDepth(response: String): Boolean {
             '}', ']' -> if (!quoted) depth--
         }
         if (depth > MAX_TRACE_JSON_DEPTH) return true
-    }
-    return false
-}
-
-/** Raw string controls are invalid; escaped controls and formatting whitespace remain valid. */
-private fun containsInvalidJsonControls(response: String): Boolean {
-    var quoted = false
-    var escaped = false
-    for (character in response) {
-        if (character < ' ' && (quoted || character !in "\t\r\n")) return true
-        if (escaped) {
-            escaped = false
-            continue
-        }
-        when (character) {
-            '\\' -> escaped = quoted
-            '"' -> quoted = !quoted
-        }
     }
     return false
 }

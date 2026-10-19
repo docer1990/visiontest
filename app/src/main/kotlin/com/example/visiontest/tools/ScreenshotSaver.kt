@@ -1,5 +1,6 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.common.strictJsonObject
 import com.google.gson.JsonParser
 import com.google.gson.JsonObject
 import com.google.gson.JsonElement
@@ -69,6 +70,7 @@ internal class ScreenshotSaver(
     private data class ParsedScreenshot(val pngBase64: String? = null, val failure: String? = null)
     private suspend fun parseScreenshot(response: String): ParsedScreenshot {
         val root = try {
+            strictJsonObject(response)
             JsonParser.parseString(response).asJsonObject
         } catch (e: Exception) {
             return ParsedScreenshot(

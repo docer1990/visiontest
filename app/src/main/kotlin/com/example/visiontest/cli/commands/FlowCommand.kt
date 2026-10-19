@@ -29,7 +29,7 @@ internal class FlowCommand(
     Supply repeated --step, --file, or --stdin. Each line is one command. Single and double
     quotes group arguments, including empty arguments. Backslash escapes outside single quotes.
     Blank lines and lines whose first non-whitespace character is # are ignored. No inline
-    comments, shell execution, variable expansion, or command expansion occurs.
+    comments, shell execution, variable expansion, or command expansion occurs. Other # characters are literal.
 
     Both platforms support tap_by_coordinates, tap_on_element, input_text, long_press,
     double_tap, swipe, swipe_direction, swipe_on_element, press_home, wait_for_element,
@@ -40,7 +40,7 @@ internal class FlowCommand(
     remaining overall budget. No observations are collected unless requested. The outer
     --bundle-id scopes only iOS hierarchy and interactive-element observations and evidence;
     each step keeps its own scope. Omitted iOS observation scope targets Springboard.
-    Screenshots always capture the full display. Artifacts use flow-artifacts/<invocation>/.
+    Screenshots always capture the full display. Observation artifacts use flow-artifacts/<invocation>/.
 
     The earliest operation, step, or overall deadline wins. Overall time includes component
     creation and final observations; parsing is excluded. Failure evidence adds a separate

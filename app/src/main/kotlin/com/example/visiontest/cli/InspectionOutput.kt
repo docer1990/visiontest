@@ -1,6 +1,7 @@
 package com.example.visiontest.cli
 
 import com.example.visiontest.CommandExecutionException
+import com.example.visiontest.common.strictJsonObject
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -42,8 +43,7 @@ internal fun automationResult(response: String): AutomationResponse {
 
 private fun parseResponseObject(response: String): JsonObject {
     return try {
-        Json.parseToJsonElement(response) as? JsonObject
-            ?: throw CommandExecutionException("Automation response must be a JSON object")
+        strictJsonObject(response)
     } catch (e: IllegalArgumentException) {
         throw CommandExecutionException("Malformed automation response: ${e.message}").also {
             it.initCause(e)

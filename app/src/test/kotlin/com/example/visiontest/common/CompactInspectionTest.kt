@@ -134,8 +134,20 @@ class CompactInspectionTest {
         assertFailsWith<CommandExecutionException> { parsed(observation("""{"value":4}"""), ios = true) }
     }
 
+    @Test fun `operation failures require valid count and elements`() {
+        listOf(
+            """{"success":false,"error":"Not ready"}""",
+            """{"success":false,"elements":[],"error":"Not ready"}""",
+            """{"success":false,"count":0,"error":"Not ready"}""",
+            """{"success":false,"count":"0","elements":[],"error":"Not ready"}""",
+            """{"success":false,"count":0,"elements":{},"error":"Not ready"}""",
+        ).forEach { failure ->
+            assertFailsWith<CommandExecutionException>(failure) { parsed("""{"result":$failure}""") }
+        }
+    }
+
     @Test fun `operation and rpc failures remain unwrapped`() {
-        val failure = """{"success":false,"error":"Not ready"}"""
+        val failure = """{"success":false,"count":0,"elements":[],"error":"Not ready"}"""
         assertEquals(Json.parseToJsonElement(failure), parsed("""{"result":$failure}"""))
         assertEquals(Json.parseToJsonElement("""{"error":{"code":-1,"message":"Not ready"}}"""),
             parsed("""{"jsonrpc":"2.0","id":1,"error":{"code":-1,"message":"Not ready"}}"""))

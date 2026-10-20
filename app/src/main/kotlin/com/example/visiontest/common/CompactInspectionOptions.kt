@@ -35,8 +35,8 @@ internal data class CompactInspectionOptions(
         result.validateFields("success", FieldType.BOOLEAN, required = true)
         result.validateFields("error", FieldType.STRING)
         val success = result.getValue("success").jsonPrimitive.boolean
-        result.validateFields("count", FieldType.INTEGER, required = success)
-        val elements = validatedElements(result, ios, success)
+        result.validateFields("count", FieldType.INTEGER, required = true)
+        val elements = validatedElements(result, ios)
         return if (success) projectElements(elements, ios) else result.toString()
     }
 
@@ -60,8 +60,7 @@ internal data class CompactInspectionOptions(
     }
 }
 
-private fun validatedElements(result: JsonObject, ios: Boolean, required: Boolean): List<JsonObject> {
-    if (!required && !result.containsKey("elements")) return emptyList()
+private fun validatedElements(result: JsonObject, ios: Boolean): List<JsonObject> {
     val elements = result["elements"] as? JsonArray
         ?: throw CommandExecutionException("Automation result.elements must be an array")
     return elements.map {

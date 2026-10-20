@@ -109,7 +109,12 @@ failure and exit code. Evidence collection stops when its total budget expires.
 ## Output and recovery
 
 Default text summarizes the number of completed and skipped steps and identifies
-the failure. `--json` emits one complete JSON object followed by a newline, without
+the failure, followed by saved step artifact paths. Every requested observation is
+also printed under a `Final KIND` or `Evidence KIND` label with a compact JSON
+record containing its kind, status, result and error. This includes skipped and
+failed records, complete validated interactive-element data, and absolute artifact
+paths. Observation artifact paths appear in their records once.
+`--json` emits one complete JSON object followed by a newline, without
 JSON-RPC framing. See [the JSON contract](cli-json.md) for fields and examples.
 
 Preflight failures produce stderr diagnostics and empty stdout. Once execution

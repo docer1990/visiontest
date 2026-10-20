@@ -52,9 +52,10 @@ internal data class FlowReport(
         if (steps.any { it.status == "uncertain" }) {
             append(". The action effect is unknown. Inspect the UI before retrying.")
         }
-        val paths = steps.mapNotNull { it.result?.get("path") as? JsonPrimitive } +
-            (observations + evidence).mapNotNull { it.result?.get("path") as? JsonPrimitive }
-        paths.forEach { append("\n${it.content}") }
+        steps.mapNotNull { it.result?.get("path") as? JsonPrimitive }
+            .forEach { append("\n${it.content}") }
+        observations.forEach { append("\nFinal ${it.kind}: ${it.toJson()}") }
+        evidence.forEach { append("\nEvidence ${it.kind}: ${it.toJson()}") }
     }
 }
 

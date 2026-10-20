@@ -70,7 +70,11 @@ newline, even on failure. Diagnostics go to stderr. The report includes schema
 version, platform, overall success and exit code, steps, failed-step id, skipped
 ids, final observations and failure evidence. Default output summarizes execution
 and warns when an action effect is unknown, with advice to inspect the UI before
-retrying.
+retrying. Text also lists step artifact paths and renders every explicitly requested
+final observation and evidence record, including skipped and failed records, with
+its category, kind, status, result and error. Preserve all validated interactive
+element fields and artifact paths without truncation, JSON-RPC framing or image
+base64. Render observation artifact paths only within their records, once.
 
 ## Verification and delivery
 

@@ -87,7 +87,7 @@ internal data class TraceEvent(
 
 internal object TraceNames {
     private val operations = setOf(
-        "init", "help", "version", "other", "available_device", "list_apps", "info_app", "launch_app",
+        "init", "help", "version", "other", "flow", "available_device", "list_apps", "info_app", "launch_app",
         "install_automation_server", "start_automation_server", "stop_automation_server", "automation_server_status",
         "get_ui_hierarchy", "find_element", "wait_for_element", "wait_until_gone", "tap_by_coordinates",
         "swipe", "swipe_direction", "swipe_on_element", "tap_on_element", "get_device_info",

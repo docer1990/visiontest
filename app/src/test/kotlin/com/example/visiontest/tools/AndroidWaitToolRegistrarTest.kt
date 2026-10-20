@@ -37,6 +37,49 @@ class AndroidWaitToolRegistrarTest {
     }
 
     @Test
+    fun `structured disappearance returns matched response`() = runBlocking {
+        val response = """{"jsonrpc":"2.0","result":{"found":false},"id":9}"""
+        mockServer.enqueue(MockResponse().setBody("OK"))
+        mockServer.enqueue(MockResponse().setBody("""{"result":{"found":true}}"""))
+        mockServer.enqueue(MockResponse().setBody(response))
+
+        assertEquals(response, registrar.waitResult(AndroidElementSelectors(text = "Loading"), expectGone = true))
+        assertEquals(3, mockServer.requestCount)
+    }
+
+    @Test
+    fun `structured appearance returns matched response`() = runBlocking {
+        val response = """{"jsonrpc":"2.0","result":{"found":true,"text":"Login"},"id":8}"""
+        mockServer.enqueue(MockResponse().setBody("OK"))
+        mockServer.enqueue(MockResponse().setBody(response))
+
+        assertEquals(response, registrar.waitResult(AndroidElementSelectors(text = "Login")))
+    }
+
+    @Test
+    fun `structured disappearance rejects malformed responses`() = runBlocking {
+        for (response in listOf("not json", "{}", """{"result":{"found":"false"}}""",
+            """{"error":{"code":-32000,"message":"failed"}}""")) {
+            mockServer.enqueue(MockResponse().setBody("OK"))
+            mockServer.enqueue(MockResponse().setBody(response))
+            assertFailsWith<com.example.visiontest.CommandExecutionException> {
+                registrar.waitResult(AndroidElementSelectors(text = "Loading"), expectGone = true)
+            }
+        }
+    }
+
+    @Test
+    fun `structured waits validate before health check`() = runBlocking {
+        assertFailsWith<IllegalArgumentException> {
+            registrar.waitResult(AndroidElementSelectors(text = "Loading"), timeoutMs = 0, expectGone = true)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            registrar.waitResult(AndroidElementSelectors(text = " "))
+        }
+        assertEquals(0, mockServer.requestCount)
+    }
+
+    @Test
     fun `waitForElement returns element response when found`() = runBlocking {
         val foundResponse = """{"jsonrpc":"2.0","result":{"found":true,"text":"Login"},"id":1}"""
         mockServer.enqueue(MockResponse().setResponseCode(200).setBody("OK"))

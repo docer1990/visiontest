@@ -1,0 +1,31 @@
+{
+  "dateUtc": "2026-10-19T16:16:43Z",
+  "target": "8CF7A9E3-89C0-49D8-B144-2BC6AF3B38FC",
+  "fixture": "com.example.visiontest.benchmark",
+  "scenario": "navigation",
+  "language": "en",
+  "host": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "architecture": "arm64",
+  "java": "openjdk version \"17.0.18\" 2026-01-20 LTS\nOpenJDK Runtime Environment Corretto-17.0.18.9.1 (build 17.0.18+9-LTS)\nOpenJDK 64-Bit Server VM Corretto-17.0.18.9.1 (build 17.0.18+9-LTS, mixed mode, sharing)",
+  "xcode": "Xcode 27.1\nBuild version 27A9275",
+  "simulators": "== Devices ==\n-- iOS 26.5 --\n    iPhone 17 (8CF7A9E3-89C0-49D8-B144-2BC6AF3B38FC) (Booted) \n-- iOS 27.0 --\n    iPhone 17 iOS27 (307E104B-04BD-4A49-8BD4-F5B88E12C6CE) (Booted) \n-- iOS 27.1 --",
+  "sourceCommit": "fa6e2df9ee8ff304d4904532dc70da8a662f7c08",
+  "jarSha256": "bc913f05b900b7e2dfefb582771ff3fe0846c294c189f65107ce80af21a8fe80",
+  "samplesPerMode": 7,
+  "warmupsPerMode": 2,
+  "processesPerSequence": {
+    "separate": 5,
+    "flow": 1
+  },
+  "timing": "perf_counter_ns wall time, complete subprocess startup through exit and output capture",
+  "setupExcluded": "terminate and launch navigation fixture; explicit fixture_ready wait",
+  "order": "separate,flow on even rounds; flow,separate on odd rounds",
+  "actions": [
+    "targeted input email",
+    "tap continue",
+    "wait done",
+    "screenshot",
+    "observe interactive elements"
+  ],
+  "tracePerformance": false
+}

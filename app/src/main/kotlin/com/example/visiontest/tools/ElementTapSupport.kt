@@ -1,6 +1,10 @@
 package com.example.visiontest.tools
 
 import com.example.visiontest.CommandExecutionException
+import com.example.visiontest.android.AndroidElementSelectors
+import com.example.visiontest.config.AutomationConfig
+import com.example.visiontest.config.IOSAutomationConfig
+import com.example.visiontest.ios.IOSElementSelectors
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
@@ -15,6 +19,30 @@ internal const val ELEMENT_TAP_TOOL_TIMEOUT_MS = 45_000L
 private const val ELEMENT_TAP_MIN_TIMEOUT_MS = 1
 private const val ELEMENT_TAP_MAX_TIMEOUT_MS = 30_000
 private const val ELEMENT_TAP_DEFAULT_TIMEOUT_MS = 10_000
+
+internal fun validateElementTap(selectors: AndroidElementSelectors, timeoutMs: Int?): Int = validateElementTap(
+    selectorValues = listOf(
+        "text" to selectors.text, "textContains" to selectors.textContains,
+        "resourceId" to selectors.resourceId, "className" to selectors.className,
+        "contentDescription" to selectors.contentDescription,
+    ),
+    hasSelector = selectors.hasAnySelector(),
+    timeoutMs = timeoutMs,
+    defaultTimeoutMs = AutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
+    maxTimeoutMs = AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+)
+
+internal fun validateElementTap(selectors: IOSElementSelectors, timeoutMs: Int?): Int = validateElementTap(
+    selectorValues = listOf(
+        "text" to selectors.text, "textContains" to selectors.textContains,
+        "resourceId" to selectors.identifier, "className" to selectors.elementType,
+        "contentDescription" to selectors.label, "bundleId" to selectors.bundleId,
+    ),
+    hasSelector = selectors.hasAnySelector(),
+    timeoutMs = timeoutMs,
+    defaultTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
+    maxTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
+)
 
 internal fun validateElementTap(
     selectorValues: List<Pair<String, String?>>,

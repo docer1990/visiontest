@@ -1,5 +1,6 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.common.strictJsonObject
 import com.google.gson.JsonParser
 import com.google.gson.JsonObject
 import com.google.gson.JsonElement
@@ -16,6 +17,8 @@ import java.nio.file.StandardCopyOption
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Base64
+
+internal data class ScreenshotResult(val success: Boolean, val message: String, val path: String? = null)
 
 /**
  * Shared screenshot pipeline for the Android and iOS automation tool registrars.
@@ -48,37 +51,48 @@ internal class ScreenshotSaver(
      *
      * Returns a user-facing result string (success or a specific error message).
      */
-    suspend fun capture(outputPath: String?, fetchResponse: suspend () -> String): String {
+    suspend fun capture(outputPath: String?, fetchResponse: suspend () -> String): String =
+        captureResult(outputPath, fetchResponse).message
+
+    suspend fun captureResult(outputPath: String?, fetchResponse: suspend () -> String): ScreenshotResult {
         val response = fetchResponse()
         val parsed = trace.span(TraceStage.SCREENSHOT_PARSE) {
-            parseScreenshot(response)
+            parseScreenshot(response).also {
+                if (it.failure != null) trace.operationOutcome(OperationOutcome.FAILURE)
+            }
         }
         parsed.failure?.let {
             trace.operationOutcome(OperationOutcome.FAILURE)
-            return it
+            return ScreenshotResult(success = false, message = it)
         }
-        return writeScreenshot(resolveScreenshotPath(outputPath), checkNotNull(parsed.pngBase64))
+        return writeScreenshotResult(resolveScreenshotPath(outputPath), checkNotNull(parsed.pngBase64))
     }
     private data class ParsedScreenshot(val pngBase64: String? = null, val failure: String? = null)
-    private suspend fun parseFailure(message: String): ParsedScreenshot {
-        trace.operationOutcome(OperationOutcome.FAILURE)
-        return ParsedScreenshot(failure = message)
-    }
     private suspend fun parseScreenshot(response: String): ParsedScreenshot {
         val root = try {
+            strictJsonObject(response)
             JsonParser.parseString(response).asJsonObject
         } catch (e: Exception) {
-            return parseFailure("Screenshot failed: unable to parse response from $platformLabel automation " +
-                "server (${e.message}).")
+            return ParsedScreenshot(
+                failure = "Screenshot failed: unable to parse response from $platformLabel automation " +
+                    "server (${e.message})."
+            )
         }
         val errorElement = root.get("error")
         return if (errorElement != null && !errorElement.isJsonNull) {
             parseError(errorElement)
         } else {
-            parseResult(root)
+            val result = root.get("result")
+            when {
+                result == null || result.isJsonNull ->
+                    ParsedScreenshot(failure = "Screenshot failed: response missing 'result' object.")
+                !result.isJsonObject ->
+                    ParsedScreenshot(failure = "Screenshot failed: response 'result' is not a JSON object.")
+                else -> parseSuccess(result.asJsonObject)
+            }
         }
     }
-    private suspend fun parseError(errorElement: JsonElement): ParsedScreenshot {
+    private fun parseError(errorElement: JsonElement): ParsedScreenshot {
 
         // JSON-RPC 2.0 envelope: either `result` OR `error` is present at the top level.
         // Check `error` first so we can surface the server's message and map `methodNotFound`
@@ -93,7 +107,7 @@ internal class ScreenshotSaver(
             val message = if (messageElement?.isJsonPrimitive == true && messageElement.asJsonPrimitive.isString) {
                 messageElement.asString
             } else "unknown error"
-            return parseFailure(if (code == JSON_RPC_METHOD_NOT_FOUND) {
+            return ParsedScreenshot(failure = if (code == JSON_RPC_METHOD_NOT_FOUND) {
                 "Screenshot failed: the $platformLabel automation server does not recognize 'ui.screenshot' " +
                     "(JSON-RPC methodNotFound). This indicates an $outdatedArtifact"
             } else if (code != null) {
@@ -102,23 +116,21 @@ internal class ScreenshotSaver(
                 "Screenshot failed: $platformLabel automation server returned an error: $message"
             })
         }
-        return parseFailure("Screenshot failed: $platformLabel automation server returned a malformed error envelope.")
-    }
-    private suspend fun parseResult(root: JsonObject): ParsedScreenshot {
-        val result = root.get("result")
-        return when {
-            result == null || result.isJsonNull -> parseFailure("Screenshot failed: response missing 'result' object.")
-            !result.isJsonObject -> parseFailure("Screenshot failed: response 'result' is not a JSON object.")
-            else -> parseSuccess(result.asJsonObject)
-        }
+        return ParsedScreenshot(
+            failure = "Screenshot failed: $platformLabel automation server returned a malformed error envelope."
+        )
     }
     private suspend fun parseSuccess(result: JsonObject): ParsedScreenshot {
         val success = result.get("success")
         return when {
             success == null || success.isJsonNull || !success.isJsonPrimitive ->
-                parseFailure("Screenshot failed: response 'result' has a missing or non-primitive 'success' field.")
+                ParsedScreenshot(
+                    failure = "Screenshot failed: response 'result' has a missing or non-primitive 'success' field."
+                )
             !success.asJsonPrimitive.isBoolean ->
-                parseFailure("Screenshot failed: response 'result.success' is not a boolean (got: $success).")
+                ParsedScreenshot(
+                    failure = "Screenshot failed: response 'result.success' is not a boolean (got: $success)."
+                )
             !success.asBoolean -> {
                 val serverError = result.get("error")
                 val error = if (serverError != null && !serverError.isJsonNull && serverError.isJsonPrimitive && serverError.asJsonPrimitive.isString) {
@@ -126,7 +138,7 @@ internal class ScreenshotSaver(
                 } else {
                     "unknown error"
                 }
-                parseFailure("Screenshot failed on the $platformLabel automation server: $error")
+                ParsedScreenshot(failure = "Screenshot failed on the $platformLabel automation server: $error")
             }
             else -> parsePng(result)
         }
@@ -135,11 +147,17 @@ internal class ScreenshotSaver(
         val png = result.get("pngBase64")
         return when {
             png == null || png.isJsonNull ->
-                parseFailure("Screenshot failed: response missing 'pngBase64'. This may indicate an $outdatedArtifact")
+                ParsedScreenshot(
+                    failure = "Screenshot failed: response missing 'pngBase64'. This may indicate an $outdatedArtifact"
+                )
             !png.isJsonPrimitive || !png.asJsonPrimitive.isString ->
-                parseFailure("Screenshot failed: response 'result.pngBase64' is not a string (got: $png).")
+                ParsedScreenshot(
+                    failure = "Screenshot failed: response 'result.pngBase64' is not a string (got: $png)."
+                )
             png.asString.isEmpty() ->
-                parseFailure("Screenshot failed: response missing 'pngBase64'. This may indicate an $outdatedArtifact")
+                ParsedScreenshot(
+                    failure = "Screenshot failed: response missing 'pngBase64'. This may indicate an $outdatedArtifact"
+                )
             else -> {
                 trace.operationOutcome(OperationOutcome.SUCCESS)
                 ParsedScreenshot(pngBase64 = png.asString)
@@ -169,7 +187,10 @@ internal class ScreenshotSaver(
      *
      * Returns a user-facing result string (success or a specific error message).
      */
-    suspend fun writeScreenshot(target: File, pngBase64: String): String = withContext(Dispatchers.IO) {
+    suspend fun writeScreenshot(target: File, pngBase64: String): String =
+        writeScreenshotResult(target, pngBase64).message
+
+    suspend fun writeScreenshotResult(target: File, pngBase64: String): ScreenshotResult = withContext(Dispatchers.IO) {
         var decodeFailure: String? = null
         val bytes = trace.span(TraceStage.SCREENSHOT_DECODE) {
             try {
@@ -185,19 +206,18 @@ internal class ScreenshotSaver(
             }
         } ?: run {
             trace.operationOutcome(OperationOutcome.FAILURE)
-            return@withContext checkNotNull(decodeFailure)
+            return@withContext ScreenshotResult(success = false, message = checkNotNull(decodeFailure))
         }
         val saved = writeScreenshotBytes(target, bytes)
         trace.operationOutcome(if (saved.success) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
-        saved.message
+        saved
     }
-    private data class SavedScreenshot(val message: String, val success: Boolean)
 
-    private suspend fun writeScreenshotBytes(target: File, bytes: ByteArray): SavedScreenshot =
+    private suspend fun writeScreenshotBytes(target: File, bytes: ByteArray): ScreenshotResult =
         trace.span(TraceStage.SCREENSHOT_WRITE) {
-            val failure: suspend (String) -> SavedScreenshot = { message ->
+            val failure: suspend (String) -> ScreenshotResult = { message ->
                 trace.operationOutcome(OperationOutcome.FAILURE)
-                SavedScreenshot(message, success = false)
+                ScreenshotResult(success = false, message = message)
             }
             val targetPath = target.toPath()
             val parentDir = target.parentFile
@@ -232,7 +252,9 @@ internal class ScreenshotSaver(
                     Files.move(tempFile, targetPath, StandardCopyOption.REPLACE_EXISTING)
                 }
                 trace.operationOutcome(OperationOutcome.SUCCESS)
-                SavedScreenshot("Screenshot saved to ${target.absolutePath}", success = true)
+                ScreenshotResult(
+                    success = true, message = "Screenshot saved to ${target.absolutePath}", path = target.absolutePath
+                )
             } catch (e: IOException) {
                 runCatching { Files.deleteIfExists(tempFile) }
                 failure("Screenshot failed: unable to write PNG to ${target.absolutePath} (${e.message}).")

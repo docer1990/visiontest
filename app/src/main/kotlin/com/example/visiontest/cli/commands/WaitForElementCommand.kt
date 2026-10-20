@@ -9,7 +9,7 @@ import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.android.AndroidElementSelectors
 import com.example.visiontest.config.AutomationConfig
 import com.example.visiontest.ios.IOSElementSelectors
-import com.github.ajalt.clikt.core.CliktCommand
+import com.example.visiontest.cli.PreparedCommand
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
@@ -20,9 +20,12 @@ import com.github.ajalt.clikt.parameters.types.int
  */
 class WaitForElementCommand(
     private val components: Lazy<ComponentHolder>,
-    private val runner: CliCommandRunner = ::runCliCommand,
+    runner: CliCommandRunner = ::runCliCommand,
 ) :
-    CliktCommand(name = "wait_for_element", help = "Wait for a UI element to appear (or disappear with --gone)") {
+    PreparedCommand(
+        runner = runner, name = "wait_for_element",
+        help = "Wait for a UI element to appear (or disappear with --gone)",
+    ) {
 
     private val platform by platformOption()
     private val text by option("--text", help = "Exact text match")
@@ -41,12 +44,17 @@ class WaitForElementCommand(
     ).int()
     private val gone by option("--gone", help = "Wait for the element to disappear instead").flag()
 
-    override fun run() = runner {
+    internal val flowCondition: String get() = if (gone) "gone" else "appeared"
+
+    override fun prepareExecution(): suspend () -> String {
         validateArguments()
-        requireServerRunning { components.value.isServerRunning(platform) }
-        when (platform) {
-            Platform.Android -> runAndroid()
-            Platform.Ios -> runIos()
+        val raw = preparingForFlow
+        return {
+            requireServerRunning { components.value.isServerRunning(platform) }
+            when (platform) {
+                Platform.Android -> runAndroid(raw)
+                Platform.Ios -> runIos(raw)
+            }
         }
     }
 
@@ -63,7 +71,7 @@ class WaitForElementCommand(
         require(bundleId?.isNotBlank() != false) { "--bundle-id must not be blank" }
     }
 
-    private suspend fun runAndroid(): String {
+    private suspend fun runAndroid(raw: Boolean): String {
         val registrar = components.value.androidWaitRegistrar
         val selectors = AndroidElementSelectors(
             text = text,
@@ -72,14 +80,16 @@ class WaitForElementCommand(
             className = className,
             contentDescription = contentDescription,
         )
-        return if (gone) {
+        return if (raw) {
+            registrar.waitResult(selectors, timeout, expectGone = gone)
+        } else if (gone) {
             registrar.waitUntilGone(selectors, timeout)
         } else {
             registrar.waitForElement(selectors, timeout)
         }
     }
 
-    private suspend fun runIos(): String {
+    private suspend fun runIos(raw: Boolean): String {
         val registrar = components.value.iosWaitRegistrar
         val selectors = IOSElementSelectors(
             text = text,
@@ -89,7 +99,9 @@ class WaitForElementCommand(
             label = contentDescription,
             bundleId = bundleId,
         )
-        return if (gone) {
+        return if (raw) {
+            registrar.waitResult(selectors, timeout, expectGone = gone)
+        } else if (gone) {
             registrar.waitUntilGone(selectors, timeout)
         } else {
             registrar.waitForElement(selectors, timeout)

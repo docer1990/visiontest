@@ -8,32 +8,34 @@ import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
-import com.github.ajalt.clikt.core.CliktCommand
+import com.example.visiontest.cli.PreparedCommand
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.arguments.argument
 
 class InputTextCommand(
     private val components: Lazy<ComponentHolder>,
-    private val runner: CliCommandRunner = ::runCliCommand,
+    runner: CliCommandRunner = ::runCliCommand,
 ) :
-    CliktCommand(name = "input_text", help = "Type text into the focused or selected element") {
+    PreparedCommand(runner = runner, name = "input_text", help = "Type text into the focused or selected element") {
 
     private val platform by platformOption()
     private val text by argument(help = "Text to type")
     private val appScope by IosAppScopeOptions()
     private val target by InputTextTargetOptions()
 
-    override fun run() = runner {
+    override fun prepareExecution(): suspend () -> String {
         appScope.validate(platform)
         target.validate()
-        requireServerRunning { components.value.isServerRunning(platform) }
-        when (platform) {
-            Platform.Android -> components.value.androidAutomationRegistrar.inputText(
-                text, target.androidSelectors(), target.timeout,
-            )
-            Platform.Ios -> components.value.iosAutomationRegistrar.inputText(
-                text, appScope.bundleId, target.iosSelectors(appScope.bundleId), target.timeout,
-            )
+        return {
+            requireServerRunning { components.value.isServerRunning(platform) }
+            when (platform) {
+                Platform.Android -> components.value.androidAutomationRegistrar.inputText(
+                    text, target.androidSelectors(), target.timeout,
+                )
+                Platform.Ios -> components.value.iosAutomationRegistrar.inputText(
+                    text, appScope.bundleId, target.iosSelectors(appScope.bundleId), target.timeout,
+                )
+            }
         }
     }
 }

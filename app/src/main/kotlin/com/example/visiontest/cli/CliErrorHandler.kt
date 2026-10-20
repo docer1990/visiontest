@@ -4,7 +4,6 @@ import com.example.visiontest.NoDeviceAvailableException
 import com.example.visiontest.NoSimulatorAvailableException
 import com.example.visiontest.ServerNotRunningException
 import com.github.ajalt.clikt.core.CliktError
-import com.github.ajalt.clikt.core.UsageError
 import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
 
@@ -37,26 +36,39 @@ internal fun runCliCommand(block: suspend () -> String, beforeExit: () -> Any?):
  * This is the testable core of [runCliCommand].
  */
 internal fun executeCliCommand(block: suspend () -> String): CliResult {
-    return try {
-        val output = runBlocking { block() }
-        CliResult(ExitCode.Success.value, stdout = output, stderr = null)
-    } catch (e: CliExit) {
-        CliResult(e.code.value, stdout = null, stderr = e.message)
-    } catch (e: ServerNotRunningException) {
-        CliResult(ExitCode.ServerNotReachable.value, stdout = null, stderr = e.message)
-    } catch (e: NoDeviceAvailableException) {
-        CliResult(ExitCode.DeviceNotFound.value, stdout = null, stderr = e.message)
-    } catch (e: NoSimulatorAvailableException) {
-        CliResult(ExitCode.DeviceNotFound.value, stdout = null, stderr = e.message)
-    } catch (e: UsageError) {
-        CliResult(ExitCode.UsageError.value, stdout = null, stderr = e.message)
-    } catch (e: CliktError) {
-        CliResult(ExitCode.UsageError.value, stdout = null, stderr = e.message)
-    } catch (e: IllegalArgumentException) {
-        CliResult(ExitCode.UsageError.value, stdout = null, stderr = e.message ?: "Invalid argument")
-    } catch (e: Exception) {
-        CliResult(ExitCode.GenericFailure.value, stdout = null, stderr = e.message ?: "Unknown error")
+    return executeCliResultCommand { CliResult(ExitCode.Success.value, block(), null) }
+}
+
+@Suppress("TooGenericExceptionCaught") // Every command failure passes through the shared exit-code mapping.
+internal fun executeCliResultCommand(block: suspend () -> CliResult): CliResult = try {
+    runBlocking { block() }
+} catch (error: Exception) {
+    cliFailure(error)
+}
+
+internal fun runCliResultCommand(block: suspend () -> CliResult, beforeExit: () -> Any? = {}): Nothing {
+    val result = executeCliResultCommand(block)
+    result.stdout?.let(::println)
+    result.stderr?.let(System.err::println)
+    beforeExit()
+    exitProcess(result.exitCode)
+}
+
+internal fun cliFailure(error: Exception): CliResult {
+    val code = when (error) {
+        is CliExit -> error.code.value
+        is ServerNotRunningException -> ExitCode.ServerNotReachable.value
+        is NoDeviceAvailableException, is NoSimulatorAvailableException -> ExitCode.DeviceNotFound.value
+        is CliktError, is IllegalArgumentException -> ExitCode.UsageError.value
+        else -> ExitCode.GenericFailure.value
     }
+    val message = error.message ?: when (error) {
+        is IllegalArgumentException -> "Invalid argument"
+        is CliExit, is ServerNotRunningException, is NoDeviceAvailableException,
+        is NoSimulatorAvailableException, is CliktError -> null
+        else -> "Unknown error"
+    }
+    return CliResult(code, null, message)
 }
 
 /**

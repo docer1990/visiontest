@@ -53,7 +53,7 @@ The `run-visiontest.sh` launcher handles `JAVA_HOME`, `ANDROID_HOME`, and APK pa
 
 VisionTest has three components:
 
-1. **MCP Server and CLI** (`app/`) — Kotlin/JVM application that exposes mobile automation through Model Context Protocol (stdio transport) and 29 CLI subcommands
+1. **MCP Server and CLI** (`app/`) — Kotlin/JVM application that exposes mobile automation through Model Context Protocol (stdio transport) and CLI subcommands
 2. **Android Automation Server** (`automation-server/`) — Native Android app with UIAutomator API access via JSON-RPC, using the instrumentation pattern (like Maestro/Appium)
 3. **iOS Automation Server** (`ios-automation-server/`) — Native iOS app with XCUITest access via JSON-RPC
 
@@ -66,7 +66,7 @@ visiontest/
 │       ├── Main.kt                   # Entry point (MCP server or CLI dispatch)
 │       ├── ToolFactory.kt            # Thin coordinator wiring registrars
 │       ├── cli/
-│       │   ├── VisionTestCli.kt      # Root Clikt command with 29 subcommands
+│       │   ├── VisionTestCli.kt      # Root Clikt command
 │       │   ├── CliErrorHandler.kt    # Exit-code mapping + runCliCommand
 │       │   ├── CliExit.kt            # CliExit exception + ExitCode enum
 │       │   ├── PlatformOption.kt     # Platform enum + --platform option helpers
@@ -128,10 +128,18 @@ visiontest/
 └── build.gradle.kts                  # Root build config
 ```
 
-`VisionTestCli` registers 29 subcommands. The authoritative command and argument
+`VisionTestCli` registers the CLI subcommands. The authoritative command and argument
 contract is [docs/agentico/specs/cli.md](docs/agentico/specs/cli.md); use
 `visiontest --help` to inspect the built artifact. CLI adapters delegate to the
 same registrar operations exposed through MCP.
+
+Flow-compatible commands extend `PreparedCommand`. Their `prepareExecution()`
+validates arguments synchronously and returns a suspend closure containing every
+component access and device operation. `FlowPreparation` parses all steps through
+these same command definitions before returning any executable sequence. Keep its
+allowlist explicit. Shared operations expose typed screenshot and raw wait/tap
+outcomes so flow classification does not interpret prose. Standalone adapters
+retain their existing output and exit semantics. See [flows](docs/cli-flow.md).
 
 `ToolFactory` composes the seven registrars shown above: `AndroidDeviceToolRegistrar`, `AndroidAutomationToolRegistrar`, `AndroidStopToolRegistrar`, `AndroidWaitToolRegistrar`, `IOSDeviceToolRegistrar`, `IOSAutomationToolRegistrar`, and `IOSWaitToolRegistrar`.
 

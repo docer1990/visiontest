@@ -6,7 +6,7 @@ import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
 import com.example.visiontest.cli.CliCommandRunner
-import com.github.ajalt.clikt.core.CliktCommand
+import com.example.visiontest.cli.PreparedCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
@@ -14,9 +14,9 @@ import com.github.ajalt.clikt.parameters.types.choice
 
 class SwipeDirectionCommand @JvmOverloads constructor(
     private val components: Lazy<ComponentHolder>,
-    private val runner: CliCommandRunner = ::runCliCommand,
+    runner: CliCommandRunner = ::runCliCommand,
 ) :
-    CliktCommand(name = "swipe_direction", help = "Swipe in a direction") {
+    PreparedCommand(runner = runner, name = "swipe_direction", help = "Swipe in a direction") {
 
     private val platform by platformOption()
     private val direction by argument(help = "Swipe direction: up, down, left, right")
@@ -26,11 +26,14 @@ class SwipeDirectionCommand @JvmOverloads constructor(
     private val speed by option("--speed", help = "Swipe speed")
         .choice("slow", "normal", "fast").default("normal")
 
-    override fun run() = runner {
-        requireServerRunning { components.value.isServerRunning(platform) }
-        when (platform) {
-            Platform.Android -> components.value.androidAutomationRegistrar.swipeByDirection(direction, distance, speed)
-            Platform.Ios -> components.value.iosAutomationRegistrar.swipeByDirection(direction, distance, speed)
+    override fun prepareExecution(): suspend () -> String {
+        return {
+            requireServerRunning { components.value.isServerRunning(platform) }
+            when (platform) {
+                Platform.Android -> components.value.androidAutomationRegistrar
+                    .swipeByDirection(direction, distance, speed)
+                Platform.Ios -> components.value.iosAutomationRegistrar.swipeByDirection(direction, distance, speed)
+            }
         }
     }
 }

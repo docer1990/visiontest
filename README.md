@@ -98,6 +98,12 @@ start. iOS uses an XCUITest bundle and currently supports simulators. VisionTest
 handles device interaction and UI evidence; the agent can combine those results
 with logs available in its development environment.
 
+For a short known sequence, use `flow` to run actions and explicit waits in one
+process, then request the next screen's state with `--observe interactive-elements`.
+Choose `--on-failure screenshot` when failure evidence is useful. See
+[sequential CLI flows](docs/cli-flow.md) for supported steps, input files, timeouts,
+failure reports, and recovery after an uncertain action outcome.
+
 | Area | Capabilities |
 | --- | --- |
 | Server | install, start, stop, and status |

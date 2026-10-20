@@ -1,5 +1,8 @@
 package com.example.visiontest.tools
 
+import com.example.visiontest.common.RequestDeadline
+import com.example.visiontest.common.validateFindElementResponse
+import kotlin.coroutines.coroutineContext
 import com.example.visiontest.performance.TraceRecorder
 import com.example.visiontest.performance.TraceStage
 
@@ -29,39 +32,38 @@ class IOSWaitToolRegistrar internal constructor(
 
     // ==================== Extracted business logic ====================
 
-    private suspend fun requireServer() {
-        if (!iosAutomationClient.isServerRunning()) {
-            throw ServerNotRunningException(
-                "iOS automation server is not running. Use 'ios_start_automation_server' first."
-            )
-        }
-    }
     internal suspend fun waitForElement(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
+        waitResult(selectors, timeoutMs)
+
+    internal suspend fun waitUntilGone(selectors: IOSElementSelectors, timeoutMs: Int? = null): String {
+        waitResult(selectors, timeoutMs, expectGone = true)
+        return "Element is no longer present (${selectors.describe()})."
+    }
+
+    internal suspend fun waitResult(
+        selectors: IOSElementSelectors,
+        timeoutMs: Int? = null,
+        expectGone: Boolean = false,
+    ): String =
         trace.span(TraceStage.OPERATION) {
             val timeout = resolveWaitTimeout(timeoutMs)
             requireAnySelector(selectors)
-            requireServer()
-            return@span iosAutomationClient.pollForElement(
-                expectGone = false,
-                timeoutMs = timeout,
-                pollIntervalMs = IOSAutomationConfig.WAIT_POLL_INTERVAL_MS,
-                selectorDescription = selectors.describe(),
-            ) {
-                findElement(selectors)
+            if (!iosAutomationClient.isServerRunning()) {
+                throw ServerNotRunningException(
+                    "iOS automation server is not running. Use 'ios_start_automation_server' first."
+                )
             }
-        }
-    internal suspend fun waitUntilGone(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
-        trace.span(TraceStage.OPERATION) {
-            val timeout = resolveWaitTimeout(timeoutMs)
-            requireAnySelector(selectors)
-            requireServer()
-            return@span iosAutomationClient.pollForElement(
-                expectGone = true,
+            iosAutomationClient.pollForElementResult(
+                expectGone = expectGone,
                 timeoutMs = timeout,
                 pollIntervalMs = IOSAutomationConfig.WAIT_POLL_INTERVAL_MS,
                 selectorDescription = selectors.describe(),
             ) {
-                findElement(selectors)
+                findElement(selectors).also { response ->
+                    if (coroutineContext[RequestDeadline] != null) {
+                        validateFindElementResponse(response, ios = true)
+                    }
+                }
             }
         }
 

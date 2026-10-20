@@ -52,6 +52,21 @@ class PerformanceTraceE2ETest {
         assertEquals("android", invocation.get("platform").asString)
         assertTrue(rows(path).last().get("complete").asBoolean)
     }
+    @Test fun `invalid flow retains its operation name in preparation and invocation`() {
+        val path = directory.resolve("flow.jsonl")
+        val result = run("--trace-performance", path.toString(), "flow", "--platform", "android",
+            "--step", "invalid_command")
+        assertEquals(2, result.code)
+        assertEquals("", result.stdout)
+        val events = rows(path)
+        for (stage in listOf("cli.prepare", "invocation")) {
+            val event = events.single { it.get("stage")?.asString == stage }
+            assertEquals("flow", event.get("operation").asString)
+            assertEquals("android", event.get("platform").asString)
+        }
+        assertFalse(events.any { it.get("stage")?.asString == "component.init" })
+        assertTrue(events.last().get("complete").asBoolean)
+    }
     @Test fun `CLI ignores environment and rejects missing or blank option values`() {
         val ignored = directory.resolve("ignored.jsonl")
         assertEquals(run("--version"), run("--version", environment = ignored.toString()))

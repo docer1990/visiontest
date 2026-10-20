@@ -42,6 +42,9 @@ class VisionTestCli internal constructor(private val trace: TraceRuntime) : NoOp
         context { obj = trace }
         versionOption(VersionInfo.version)
         subcommands(
+            FlowCommand(lazy { components }, runner = { block ->
+                runCliResultCommand({ trace.cliInvocation("flow", block) }, trace::finish)
+            }),
             // Setup
             InstallAutomationServerCommand(lazy { components }, runner = runner("install_automation_server")),
             StartAutomationServerCommand(lazy { components }, runner = runner("start_automation_server")),

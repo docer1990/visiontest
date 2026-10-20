@@ -11,10 +11,12 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import kotlin.coroutines.coroutineContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject as StructuredJsonObject
@@ -93,13 +95,38 @@ abstract class JsonRpcHttpClient internal constructor(
                 ).toByteArray(Charsets.UTF_8)
             }
             val responseBytes = trace.span(TraceStage.HTTP_EXCHANGE) {
-                exchange(requestBytes, readTimeoutMs)
+                val budget = coroutineContext[RequestDeadline]
+                if (budget == null) exchange(requestBytes, readTimeoutMs)
+                else budgetExchange(budget, method, requestBytes, readTimeoutMs)
             }
             trace.span(TraceStage.RESPONSE_PROCESS) {
                 val response = responseBytes.toString(Charsets.UTF_8)
                 if (trace !== TraceRecorder.Disabled) trace.operationOutcome(responseOutcome(response))
                 response
             }
+        }
+    }
+
+    private suspend fun budgetExchange(
+        budget: RequestDeadline, method: String, bytes: ByteArray, timeoutMs: Int,
+    ): ByteArray {
+        val nativeRequest = trace.nativeRequest()
+        var timingHeader: String? = null
+        try {
+            val response = budget.exchange("http://$host:$port/jsonrpc", bytes, method, timeoutMs,
+                nativeRequest?.let { mapOf("X-VisionTest-Trace" to it.header) }.orEmpty())
+            timingHeader = response.headers().firstValue("X-VisionTest-Timing").orElse(null)
+            trace.metric(TraceMetric.REQUEST_BYTES, bytes.size.toLong())
+            trace.metric(TraceMetric.RESPONSE_BYTES, response.body().size.toLong())
+            if (response.statusCode() != HttpURLConnection.HTTP_OK) {
+                throw CommandExecutionException(
+                    "HTTP error: ${response.statusCode()} - ${response.body().toString(Charsets.UTF_8)}",
+                    response.statusCode(),
+                )
+            }
+            return response.body()
+        } finally {
+            nativeRequest?.record(timingHeader)
         }
     }
 
@@ -157,8 +184,24 @@ abstract class JsonRpcHttpClient internal constructor(
         selectorDescription: String,
         find: suspend () -> String,
     ): String {
-        return trace.span(TraceStage.POLL) {
+        val response = pollForElementResult(expectGone, timeoutMs, pollIntervalMs, selectorDescription, find)
+        return if (expectGone) "Element is no longer present ($selectorDescription)." else response
+    }
+
+    /** Returns the validated matching find response for either appearance or disappearance. */
+    internal suspend fun pollForElementResult(
+        expectGone: Boolean,
+        timeoutMs: Long,
+        pollIntervalMs: Long,
+        selectorDescription: String,
+        find: suspend () -> String,
+    ): String = trace.span(TraceStage.POLL) {
+        if (coroutineContext[RequestDeadline] == null) {
             pollUntilMatched(expectGone, timeoutMs, pollIntervalMs, selectorDescription, find)
+        } else {
+            withTimeoutOrNull(timeoutMs) {
+                pollUntilMatched(expectGone, timeoutMs, pollIntervalMs, selectorDescription, find)
+            } ?: throw TimeoutException("Element wait deadline exceeded after ${timeoutMs}ms ($selectorDescription)")
         }
     }
 
@@ -176,7 +219,7 @@ abstract class JsonRpcHttpClient internal constructor(
             val found = trace.span(TraceStage.RESPONSE_PROCESS) { parseElementFound(response) }
             if (found != expectGone) {
                 trace.operationOutcome(OperationOutcome.SUCCESS)
-                return if (expectGone) "Element is no longer present ($selectorDescription)." else response
+                return response
             }
             val elapsedMs = (System.nanoTime() - startNanos) / NANOS_PER_MILLI
             if (elapsedMs + pollIntervalMs > timeoutMs) {
@@ -207,46 +250,23 @@ abstract class JsonRpcHttpClient internal constructor(
     }
 
     /**
-     * Extracts `result.found` from a raw findElement JSON-RPC response.
-     * Both automation servers return an element result with a `found` boolean.
-     */
-    private fun parseElementFound(response: String): Boolean {
-        val body = parseJsonObject(response)
-        val error = body.get("error")
-        if (error != null && !error.isJsonNull) {
-            throw CommandExecutionException("Automation server returned an error: $error")
-        }
-        val result = body.get("result")?.takeIf { it.isJsonObject }?.asJsonObject
-            ?: throw CommandExecutionException("findElement response has no result object: $response")
-        return readFoundFlag(result, response)
-    }
-
-    /**
-     * A missing or non-boolean `found` is a protocol violation, not "element absent":
-     * defaulting it to false would let [pollForElement] report a malformed response
-     * as the element having disappeared.
-     */
-    private fun readFoundFlag(result: JsonObject, response: String): Boolean {
-        val found = result.get("found")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
-            ?: throw CommandExecutionException("findElement response has no boolean 'found' field: $response")
-        return found.asBoolean
-    }
-
-    private fun parseJsonObject(response: String): JsonObject {
-        return try {
-            JsonParser.parseString(response).asJsonObject
-        } catch (e: JsonParseException) {
-            throw CommandExecutionException("Malformed findElement response from automation server: ${e.message}")
-        } catch (ignored: IllegalStateException) {
-            throw CommandExecutionException("Unexpected findElement response from automation server: $response")
-        }
-    }
-
-    /**
      * Checks if the automation server is running.
      */
     suspend fun isServerRunning(): Boolean {
         return trace.span(TraceStage.HEALTH) {
+            val budget = coroutineContext[RequestDeadline]
+            if (budget != null) {
+                val running = try {
+                    budget.exchange("http://$host:$port/health", null, timeoutMs = HEALTH_TIMEOUT_MS)
+                        .statusCode() == HttpURLConnection.HTTP_OK
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    false
+                }
+                trace.operationOutcome(if (running) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
+                return@span running
+            }
             val running = withContext(Dispatchers.IO) {
                 val connection = try {
                     URL("http://$host:$port/health").openConnection() as HttpURLConnection
@@ -306,25 +326,6 @@ private fun parseTraceResponse(response: String): JsonElement? {
 // Bound parser recursion before building a tree; deeper bodies still return unchanged.
 private const val MAX_TRACE_JSON_DEPTH = 64
 
-private val jsonBooleanLiterals = setOf("true", "false")
-private val jsonNumberPattern = Regex("-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?")
-
-/** The tree parser retains arbitrary bare tokens; require RFC JSON literals throughout the body. */
-private fun hasValidJsonPrimitives(root: JsonElement): Boolean {
-    val pending = ArrayDeque<JsonElement>()
-    pending.add(root)
-    while (pending.isNotEmpty()) {
-        when (val element = pending.removeLast()) {
-            is StructuredJsonObject -> pending.addAll(element.values)
-            is JsonArray -> pending.addAll(element)
-            JsonNull -> Unit
-            is JsonPrimitive -> if (!element.isString && element.content !in jsonBooleanLiterals &&
-                !jsonNumberPattern.matches(element.content)) return false
-        }
-    }
-    return true
-}
-
 /** Bound recursive parsing while ignoring brackets in strings, including escaped quotes. */
 private fun exceedsTraceJsonDepth(response: String): Boolean {
     var depth = 0
@@ -346,20 +347,34 @@ private fun exceedsTraceJsonDepth(response: String): Boolean {
     return false
 }
 
-/** Raw string controls are invalid; escaped controls and formatting whitespace remain valid. */
-private fun containsInvalidJsonControls(response: String): Boolean {
-    var quoted = false
-    var escaped = false
-    for (character in response) {
-        if (character < ' ' && (quoted || character !in "\t\r\n")) return true
-        if (escaped) {
-            escaped = false
-            continue
-        }
-        when (character) {
-            '\\' -> escaped = quoted
-            '"' -> quoted = !quoted
-        }
+/**
+ * Extracts `result.found` from a raw findElement JSON-RPC response.
+ * Both automation servers return an element result with a `found` boolean.
+ */
+private fun parseElementFound(response: String): Boolean {
+    val body = parseJsonObject(response)
+    val error = body.get("error")
+    if (error != null && !error.isJsonNull) {
+        throw CommandExecutionException("Automation server returned an error: $error")
     }
-    return false
+    val result = body.get("result")?.takeIf { it.isJsonObject }?.asJsonObject
+        ?: throw CommandExecutionException("findElement response has no result object: $response")
+    return readFoundFlag(result, response)
+}
+
+// Absence requires an explicit boolean false; malformed responses never satisfy a gone wait.
+private fun readFoundFlag(result: JsonObject, response: String): Boolean {
+    val found = result.get("found")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }
+        ?: throw CommandExecutionException("findElement response has no boolean 'found' field: $response")
+    return found.asBoolean
+}
+
+private fun parseJsonObject(response: String): JsonObject {
+    return try {
+        JsonParser.parseString(response).asJsonObject
+    } catch (e: JsonParseException) {
+        throw CommandExecutionException("Malformed findElement response from automation server: ${e.message}")
+    } catch (ignored: IllegalStateException) {
+        throw CommandExecutionException("Unexpected findElement response from automation server: $response")
+    }
 }

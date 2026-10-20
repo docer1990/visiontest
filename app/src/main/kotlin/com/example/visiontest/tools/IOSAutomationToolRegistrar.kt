@@ -153,7 +153,7 @@ class IOSAutomationToolRegistrar internal constructor(
         trace.operationOutcome(OperationOutcome.FAILURE)
         return message
     }
-    private suspend fun serverOperation(block: suspend () -> String): String = trace.span(TraceStage.OPERATION) {
+    private suspend fun <T> serverOperation(block: suspend () -> T): T = trace.span(TraceStage.OPERATION) {
         requireServer()
         block()
     }
@@ -241,21 +241,19 @@ class IOSAutomationToolRegistrar internal constructor(
         return@span iosAutomationClient.swipeOnElement(direction, selectors, speed)
     }
     internal suspend fun tapOnElement(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
-        trace.span(TraceStage.OPERATION) {
-            val timeout = validateElementTap(
-                selectorValues = listOf(
-                    "text" to selectors.text, "textContains" to selectors.textContains,
-                    "resourceId" to selectors.identifier, "className" to selectors.elementType,
-                    "contentDescription" to selectors.label, "bundleId" to selectors.bundleId,
-                ),
-                hasSelector = selectors.hasAnySelector(),
-                timeoutMs = timeoutMs,
-                defaultTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_DEFAULT_TIMEOUT_MS,
-                maxTimeoutMs = IOSAutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS,
-            )
-            requireServer()
-            return@span successfulElementTapResponse(iosAutomationClient.tapOnElement(selectors, timeout))
-        }
+        tapOnElementResponse(selectors, timeoutMs, requireSuccess = true)
+
+    internal suspend fun tapOnElementResult(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
+        tapOnElementResponse(selectors, timeoutMs, requireSuccess = false)
+
+    private suspend fun tapOnElementResponse(
+        selectors: IOSElementSelectors, timeoutMs: Int?, requireSuccess: Boolean,
+    ): String = trace.span(TraceStage.OPERATION) {
+        val timeout = validateElementTap(selectors, timeoutMs)
+        requireServer()
+        val response = iosAutomationClient.tapOnElement(selectors, timeout)
+        if (requireSuccess) successfulElementTapResponse(response) else response
+    }
 
     internal suspend fun findElement(
         text: String?,
@@ -637,7 +635,10 @@ class IOSAutomationToolRegistrar internal constructor(
         trace = trace,
     )
     internal suspend fun captureScreenshot(outputPath: String?): String =
-        serverOperation { screenshotSaver.capture(outputPath) { iosAutomationClient.screenshot() } }
+        captureScreenshotResult(outputPath).message
+
+    internal suspend fun captureScreenshotResult(outputPath: String?): ScreenshotResult =
+        serverOperation { screenshotSaver.captureResult(outputPath) { iosAutomationClient.screenshot() } }
 
     internal fun resolveScreenshotPath(outputPath: String?): File =
         screenshotSaver.resolveScreenshotPath(outputPath)

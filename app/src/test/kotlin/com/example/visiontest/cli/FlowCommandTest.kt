@@ -32,6 +32,36 @@ class FlowCommandTest {
         }
     }
     @Test
+    fun `invalid later screenshot paths from file and stdin reject before device access`() {
+        val input = "press_home\nscreenshot --output 'invalid\u0000.png'"
+        val file = directory.resolve("invalid-path.txt")
+        Files.writeString(file, input)
+        for (platform in Platform.entries) for (source in listOf(listOf("--file", file.toString()),
+            listOf("--stdin"))) FlowObservationFixture(platform).use { fixture ->
+            var result: CliResult? = null
+            FlowCommand(fixture.components, runner = { result = executeCliResultCommand(it) }, readStdin = { input })
+                .parse(listOf("-p", platform.value) + source)
+            assertEquals(2, result?.exitCode)
+            assertNull(result?.stdout)
+            assertNotNull(result?.stderr)
+            assertFalse(fixture.components.isInitialized())
+            assertEquals(emptyList(), fixture.calls)
+            assertEquals(0, fixture.server.requestCount)
+        }
+    }
+
+    @Test
+    fun `screenshot host path syntax accepts spaces relative absolute and default paths`() {
+        for (platform in Platform.entries) for (line in listOf("screenshot", "screenshot --output ''",
+            "screenshot --output '  '", "screenshot --output 'relative folder/shot.png'",
+            "screenshot --output '${directory.resolve("absolute shot.png")}'")) {
+            val components = lazy<ComponentHolder> { error("components created") }
+            FlowPreparation.prepare(platform, listOf("press_home", line), components)
+            assertFalse(components.isInitialized())
+        }
+    }
+
+    @Test
     fun `invalid flow budgets fail preflight without stdout or device components`() {
         for (option in listOf("--timeout", "--step-timeout")) for (value in listOf("0", "-1", "3600001")) {
             val components = lazy<ComponentHolder> { error("components created") }

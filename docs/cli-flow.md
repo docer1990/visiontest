@@ -60,6 +60,8 @@ Use observation options for screen inspection.
 disappearance with `--gone`. Missing or invalid backend fields never count as
 absence. `screenshot` accepts `--output` and reports the saved absolute host path.
 Without `--output`, flow screenshots use unique names under `screenshots/`.
+Invalid host-path syntax is rejected before any step runs. Filesystem existence,
+permissions and writability are checked when the screenshot executes.
 
 ## Time budgets
 

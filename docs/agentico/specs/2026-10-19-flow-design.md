@@ -18,7 +18,9 @@ components. Reuse command argument definitions and validation. Supported steps a
 and `screenshot`; Android additionally supports `press_back`, `press_key`, and
 `clear_text`; iOS additionally supports `dismiss_keyboard` and `handle_alert`.
 Reject nested flows, other commands, step-level platform/output-mode options,
-and unsupported platform combinations before any backend access.
+and unsupported platform combinations before any backend access. Validate screenshot
+output host-path syntax during preparation; filesystem existence, permissions and
+writability are checked only when the screenshot executes.
 
 ## Execution and outcomes
 

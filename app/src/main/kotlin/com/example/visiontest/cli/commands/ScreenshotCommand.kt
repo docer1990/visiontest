@@ -9,6 +9,7 @@ import com.example.visiontest.cli.CliCommandRunner
 import com.example.visiontest.cli.PreparedCommand
 import com.github.ajalt.clikt.parameters.options.option
 import com.google.gson.JsonObject
+import java.nio.file.Path
 import java.util.UUID
 
 class ScreenshotCommand @JvmOverloads constructor(
@@ -25,6 +26,7 @@ class ScreenshotCommand @JvmOverloads constructor(
         val outputPath = if (raw && output.isNullOrBlank()) {
             "screenshots/${platform.value}_flow_${UUID.randomUUID()}.png"
         } else output
+        if (raw) outputPath?.let { Path.of(it) }
         return {
             requireServerRunning { components.value.isServerRunning(platform) }
             val result = when (platform) {

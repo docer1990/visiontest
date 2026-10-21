@@ -1,0 +1,11 @@
+{
+  "id": "ios-failure",
+  "platform": "ios",
+  "full": {
+    "success": false,
+    "count": 0,
+    "elements": [],
+    "error": "Synthetic acquisition failure"
+  },
+  "expected": []
+}

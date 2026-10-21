@@ -6,6 +6,10 @@ implement the planned 57D agent evaluation runner or measure model tokens, cost,
 or image consumption. Current collection evidence and remaining gaps live in the
 [HTTP baseline guide](../docs/benchmarks/http-baseline.md).
 
+For the opt-in observation format, see the separate
+[compact inspection evaluation](../docs/benchmarks/compact-inspection.md), including
+versioned offline fixtures, payload token estimates and a live iOS functional check.
+
 ## Prerequisites
 
 Use Python 3.11+ (standard library only), JDK 17+, and the repository's Gradle

@@ -1,0 +1,11 @@
+{
+  "id": "android-failure",
+  "platform": "android",
+  "full": {
+    "success": false,
+    "count": 0,
+    "elements": [],
+    "error": "Synthetic acquisition failure"
+  },
+  "expected": []
+}

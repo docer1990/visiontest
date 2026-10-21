@@ -99,7 +99,7 @@ handles device interaction and UI evidence; the agent can combine those results
 with logs available in its development environment.
 
 For a short known sequence, use `flow` to run actions and explicit waits in one
-process, then request the next screen's state with `--observe interactive-elements`.
+process, then request the next screen's state with `--observe interactive-elements --compact`.
 Choose `--on-failure screenshot` when failure evidence is useful. See
 [sequential CLI flows](docs/cli-flow.md) for supported steps, input files, timeouts,
 failure reports, and recovery after an uncertain action outcome.
@@ -125,7 +125,7 @@ The same backend is available without an MCP client:
 
 ```bash
 visiontest start_automation_server -p android
-visiontest get_interactive_elements -p android --json
+visiontest get_interactive_elements -p android --compact
 visiontest find_element -p android --text "Login" --json
 visiontest tap_on_element -p android --resource-id "com.example:id/login" --timeout 5000
 visiontest wait_for_element -p android --text "Welcome" --timeout 5000
@@ -138,7 +138,7 @@ Device commands require `--platform android` or `--platform ios` (`-p`).
 On iOS, `--bundle-id` scopes inspection and element operations to an app:
 
 ```bash
-visiontest get_interactive_elements -p ios --bundle-id com.example.app --json
+visiontest get_interactive_elements -p ios --bundle-id com.example.app --compact
 visiontest get_ui_hierarchy -p ios --bundle-id com.example.app
 visiontest tap_on_element -p ios --bundle-id com.example.app --text "Continue" --timeout 5000
 ```
@@ -232,7 +232,9 @@ shared skill source is
 The skill includes separate Android and iOS CLI examples, MCP tool discovery,
 selector guidance, and checks for operation outcomes. It prioritizes targeted
 element queries and built-in waits, using screenshots for visual checks or missing
-UI information. It also documents optional output filtering with `jq`. Agents use
+UI information. Compact inspection preserves selectors and state while reducing
+observation payloads; see the [compact JSON format](docs/cli-json.md#compact-interactive-elements)
+and [reproducible evaluation](docs/benchmarks/compact-inspection.md). Agents use
 the CLI by default, even when MCP tools are available. MCP requires an explicit
 user request and is never an automatic fallback for CLI failures. `init` writes
 instructions; it does not configure an MCP connection.

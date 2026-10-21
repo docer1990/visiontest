@@ -112,7 +112,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `android_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
 | `android_swipe_on_element` | Swipe on a specific element (for carousels, sliders) |
 | `android_get_device_info` | Get display size, rotation, and SDK version |
-| `get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
+| `get_interactive_elements` | Inspect interactive elements; optional `compact`, `type`, `region`, `includeBounds` |
 | `android_input_text` | Type into the focused element or wait, focus, and type using optional `target*` selectors |
 | `android_press_key` | Press exactly one nonnegative `keyCode` or named `action`: enter, tab, backspace, delete, escape |
 | `android_clear_text` | Clear the focused editable element; no selectors |
@@ -136,7 +136,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `ios_swipe` | Swipe by coordinates |
 | `ios_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
 | `ios_swipe_on_element` | Swipe inside a selected element; optional app scope `bundleId` and speed |
-| `ios_get_interactive_elements` | Get filtered list of interactive elements with center coordinates |
+| `ios_get_interactive_elements` | Inspect interactive elements; optional `compact`, `type`, `region`, `includeBounds` |
 | `ios_get_device_info` | Get display size, rotation, and iOS version |
 | `ios_input_text` | Type into the focused element or wait, focus, and type using optional `target*` selectors; optional `bundleId` |
 | `ios_dismiss_keyboard` | Dismiss a visible software keyboard and verify disappearance; optional `bundleId` |
@@ -167,7 +167,7 @@ The CLI exposes the commands registered in `VisionTestCli`. MCP device and UI op
 | `start_automation_server` | android, ios | — | — |
 | `stop_automation_server` | android, ios | — | — |
 | `automation_server_status` | android, ios | — | — |
-| `get_interactive_elements` | android, ios | — | `--include-disabled`, `--bundle-id` (iOS), `--json` |
+| `get_interactive_elements` | android, ios | — | `--include-disabled`, `--bundle-id` (iOS), `--json`, `--compact`, `--type`, `--region`, `--include-bounds` |
 | `wait_for_element` | android, ios | at least one selector option | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--timeout MS`, `--gone` |
 | `get_ui_hierarchy` | android, ios | — | `--bundle-id` (iOS) |
 | `get_device_info` | android, ios | — | `--json` |
@@ -313,3 +313,13 @@ See [the flow guide](docs/cli-flow.md) and [report schema](docs/cli-json.md).
 - [`docs/agentico/specs/`](docs/agentico/specs/) — Detailed behavioral contracts for current capabilities
 - [`docs/installation.md`](docs/installation.md) — Installer, release workflow, launcher script, prerequisites
 - [`kotlin-mcp-server.instruction.md`](kotlin-mcp-server.instruction.md) — Required Kotlin/MCP patterns
+
+### Compact MCP inspection
+
+Prefer `compact: true` for selector discovery with the existing
+`get_interactive_elements` and `ios_get_interactive_elements` tools. Both accept
+optional `type` (exact native className), `region` (`"x,y,width,height"`), and
+`includeBounds`; these modifiers require compact. Existing `includeDisabled`
+and iOS `bundleId` properties remain unchanged. No tool names are added.
+The shared [compact-v1 schema](docs/cli-json.md#compact-interactive-elements)
+applies to MCP results and CLI/flow observations. Omit compact for full details.

@@ -1,0 +1,69 @@
+{
+  "id": "android-ambiguous",
+  "platform": "android",
+  "full": {
+    "success": true,
+    "count": 3,
+    "elements": [
+      {
+        "resourceId": "",
+        "text": "Delete",
+        "contentDescription": "",
+        "className": "android.widget.Button",
+        "bounds": "[20,100][300,140]",
+        "centerX": 160,
+        "centerY": 120,
+        "isEnabled": true,
+        "isClickable": true,
+        "isCheckable": false,
+        "isScrollable": false,
+        "isLongClickable": false
+      },
+      {
+        "resourceId": "",
+        "text": "Delete",
+        "contentDescription": "",
+        "className": "android.widget.Button",
+        "bounds": "[20,180][300,220]",
+        "centerX": 160,
+        "centerY": 200,
+        "isEnabled": true,
+        "isClickable": true,
+        "isCheckable": false,
+        "isScrollable": false,
+        "isLongClickable": false
+      },
+      {
+        "resourceId": "",
+        "text": "",
+        "contentDescription": "",
+        "className": "android.widget.Button",
+        "bounds": "[20,260][300,300]",
+        "centerX": 160,
+        "centerY": 280,
+        "isEnabled": true,
+        "isClickable": true,
+        "isCheckable": false,
+        "isScrollable": false,
+        "isLongClickable": false
+      }
+    ]
+  },
+  "expected": [
+    {
+      "selector": {
+        "text": "Delete"
+      },
+      "selectorMatches": 2
+    },
+    {
+      "selector": {
+        "text": "Delete"
+      },
+      "selectorMatches": 2
+    },
+    {
+      "selector": null
+    }
+  ]
+}

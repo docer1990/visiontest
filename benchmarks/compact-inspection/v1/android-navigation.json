@@ -1,0 +1,53 @@
+{
+  "id": "android-navigation",
+  "platform": "android",
+  "full": {
+    "success": true,
+    "count": 2,
+    "elements": [
+      {
+        "resourceId": "",
+        "text": "Next",
+        "contentDescription": "Open details",
+        "className": "android.widget.Button",
+        "bounds": "[20,100][300,140]",
+        "centerX": 160,
+        "centerY": 120,
+        "isEnabled": true,
+        "isClickable": true,
+        "isCheckable": false,
+        "isScrollable": false,
+        "isLongClickable": false
+      },
+      {
+        "resourceId": "done",
+        "text": "Ready",
+        "contentDescription": "Ready",
+        "className": "android.widget.TextView",
+        "bounds": "[20,180][300,220]",
+        "centerX": 160,
+        "centerY": 200,
+        "isEnabled": true,
+        "isClickable": true,
+        "isCheckable": false,
+        "isScrollable": false,
+        "isLongClickable": false
+      }
+    ]
+  },
+  "expected": [
+    {
+      "selector": {
+        "contentDescription": "Open details"
+      },
+      "label": "Next",
+      "contentDescription": "Open details"
+    },
+    {
+      "selector": {
+        "resourceId": "done"
+      },
+      "label": "Ready"
+    }
+  ]
+}

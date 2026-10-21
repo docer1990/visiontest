@@ -339,3 +339,31 @@ shared results and transport deadlines on both platforms.
 - Production command adapters continued: `app/src/main/kotlin/com/example/visiontest/cli/commands/WaitForElementCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/TapByCoordinatesCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/InputTextCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/SwipeDirectionCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/PressBackCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/PressHomeCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/LaunchAppCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/InitCommand.kt`
 - P3 adapters and JSON output: `app/src/main/kotlin/com/example/visiontest/cli/commands/FindElementCommand.kt`, `SwipeCommand.kt`, `SwipeOnElementCommand.kt`, `ListAppsCommand.kt`, `InfoAppCommand.kt`, `AvailableDeviceCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/InspectionOutput.kt`
 - Executable tests: `app/src/test/kotlin/com/example/visiontest/MainDispatchTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/CliErrorHandlerTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/CliCommandIntegrationTest.kt`, `app/src/test/kotlin/com/example/visiontest/McpStdioE2ETest.kt`
+
+## Compact interactive inspection
+
+`get_interactive_elements --compact` returns one unwrapped `compact-v1` JSON
+object regardless of `--json`. Without compact, existing full behavior is unchanged.
+`--type TYPE` (exact native className), `--region x,y,width,height` (half-open center
+rectangle), and `--include-bounds` require compact. Region components are signed
+32-bit integers, x/y nonnegative, dimensions positive, and edges at most
+2147483647. Coordinates use native Android pixels or iOS points without scaling.
+Invalid options fail before device/component access. Missing center coordinates
+on any source element fail region inspection explicitly; validation precedes filtering.
+
+Success contains success, format, count, observedCount, and elements with no
+truncation. Count is returned length; observedCount is the pre-filter candidate
+length. Each element contains a one-key selector (first nonblank resourceId,
+contentDescription, text), or null. Optional label/type/enabled and Android
+capabilities preserve observed presentation/state; distinct descriptions and iOS
+values remain available. Geometry is optional with include-bounds. selectorMatches
+is emitted only for multiple observed native-semantic matches, computed before
+filtering; it never establishes native-tree uniqueness. Actions resolve again.
+
+Flow accepts these options only when interactive-elements is requested by observe
+or on-failure, and applies them to all such observations/evidence. Step results,
+other observations, report formatting, timeout/failure certainty and exit codes
+are unchanged. Returned failures are preserved; standalone returned failures still
+exit zero. The complete shared contract is
+[compact inspection](2026-10-20-compact-inspection-design.md), with user-facing
+schema and examples in [CLI JSON](../../cli-json.md#compact-interactive-elements).

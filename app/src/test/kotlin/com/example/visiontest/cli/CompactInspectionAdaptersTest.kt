@@ -2,7 +2,6 @@ package com.example.visiontest.cli
 
 import com.example.visiontest.android.AutomationClient
 import com.example.visiontest.cli.commands.GetInteractiveElementsCommand
-import com.example.visiontest.common.CompactInspectionFeatureScenarios
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.discovery.ToolDiscovery
 import com.example.visiontest.ios.IOSAutomationClient
@@ -24,7 +23,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import org.junit.jupiter.api.TestFactory
 import org.slf4j.LoggerFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,9 +32,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CompactInspectionAdaptersTest {
-    @TestFactory
-    fun scenarios() = CompactInspectionFeatureScenarios.tests(scenarioBindings())
-
     companion object {
         fun scenarioBindings(): Map<String, () -> Map<String, () -> Unit>> = mapOf(
             "Request compact inspection through CLI and MCP" to {

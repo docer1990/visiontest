@@ -1,5 +1,6 @@
 package com.example.visiontest.cli.commands
 
+import com.example.visiontest.cli.CompactInspectionCliOptions
 import com.example.visiontest.cli.ComponentHolder
 import com.example.visiontest.cli.CliResult
 import com.example.visiontest.cli.FlowExecutor
@@ -48,6 +49,7 @@ internal class FlowCommand(
 """.trimIndent()) {
     private val platform by platformOption()
     private val appScope by IosAppScopeOptions()
+    private val compactInspection by CompactInspectionCliOptions()
     private val observe by option("--observe",
         help = "Final observation: screenshot, hierarchy, interactive-elements").multiple()
     private val onFailure by option("--on-failure",
@@ -80,10 +82,16 @@ internal class FlowCommand(
         require((onFailure + observe).all { it in FlowObservationCollector.kinds }) {
             "Observation kinds must be screenshot, hierarchy, or interactive-elements"
         }
+        val inspectionOptions = compactInspection.options()
+        inspectionOptions.validate()
+        require(!inspectionOptions.compact || "interactive-elements" in (onFailure + observe)) {
+            "Compact flow options require an interactive-elements observation or failure evidence request"
+        }
         val lines = FlowInput.read(steps, file, stdin, readStdin)
         val prepared = FlowPreparation.prepare(platform, lines, components)
         val report = FlowExecutor().execute(platform, prepared, stepTimeout.toLong(), timeout.toLong(),
-            FlowObservationOptions(FlowObservationCollector(platform, components, appScope.bundleId),
+            FlowObservationOptions(FlowObservationCollector(platform, components, appScope.bundleId,
+                options = inspectionOptions),
                 onFailure, evidenceTimeout.toLong(), observe))
         CliResult(report.exitCode, if (json) report.toJson().toString() else report.text(), report.error?.message)
     }

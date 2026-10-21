@@ -12,16 +12,14 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestFactory
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class CompactInspectionTest {
-    @TestFactory
-    fun scenarios() = CompactInspectionFeatureScenarios.tests(mapOf(
+    internal fun scenarioBindings(): Map<String, () -> Map<String, () -> Unit>> = mapOf(
         "Preserve target information in a compact observation" to ::bindings,
-    ))
+    )
 
     private fun bindings(): Map<String, () -> Unit> {
         var sources = emptyList<String>()

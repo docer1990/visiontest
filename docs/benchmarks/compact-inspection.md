@@ -138,8 +138,14 @@ directory. The runtime label is supplied metadata; verify it against `simctl`.
 The archived runs used the original local collector; this portable adaptation
 changes configuration paths and arguments and has mocked process/HTTP tests,
 but has not itself been rerun against a device.
-It preserves returned failures and prints exit statuses but is a collection script,
-not an automated outcome assertion gate: inspect every result against the outcomes
-above. Readiness RPC/setup exceptions can stop collection; retain diagnostics and
-any partial artifact. Do not overwrite old runs. Pilot reproduction uses the same
+The current portable collector retains setup exceptions as failed attempts and
+continues through the matrix. Command records retain raw stdout, stderr, exit
+status, byte/token counts and nullable parsed stdout independently of JSON parsing;
+parse failures have explicit error fields. Process timeouts retain available partial
+output and a null exit status. Timeout bytes are decoded as UTF-8 with replacement
+for incomplete or invalid sequences, so their counts describe that retained text.
+These additional diagnostics do not change the historical archives. The collector
+prints command failures and exit statuses but is a collection script, not an
+automated outcome assertion gate: inspect every result against the outcomes above.
+Do not overwrite old runs. Pilot reproduction uses the same
 matrix with the historical invalid form flag, only if that failure is needed.

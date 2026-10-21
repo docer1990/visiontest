@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import runpy
 import sys
+import subprocess
+import urllib.error
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -13,16 +15,20 @@ COLLECTOR = Path(__file__).resolve().parents[1] / "compact-inspection/collect_io
 
 
 class CompactCollectionTest(unittest.TestCase):
-    def collect(self, setup_exit=0, command_error=None):
+    def collect(self, setup_exit=0, command_error=None, setup_error=None,
+                readiness_error=None, readiness_body=None, command_stdout=None):
         commands = []
 
         def run(argv, **kwargs):
             commands.append(argv)
             if argv[0] == "xcrun":
+                if setup_error:
+                    raise setup_error
                 return SimpleNamespace(returncode=setup_exit, stderr="setup diagnostic")
             if command_error:
                 raise command_error
-            return SimpleNamespace(returncode=0, stdout='{"success":true}\n', stderr="")
+            return SimpleNamespace(returncode=0, stdout=command_stdout if command_stdout is not None else '{"success":true}\n',
+                                   stderr="command diagnostic")
 
         tokenizer = SimpleNamespace(
             __version__="test", get_encoding=lambda name: SimpleNamespace(name=name, encode=list),
@@ -38,8 +44,13 @@ class CompactCollectionTest(unittest.TestCase):
                     patch.object(Path, "read_bytes", return_value=b"synthetic-artifact"), \
                     patch("urllib.request.urlopen") as request, patch("builtins.print"):
                 request.return_value.__enter__.return_value.read.return_value = \
-                    b'{"result":{"found":true}}'
-                runpy.run_path(str(COLLECTOR), run_name="__main__")
+                    readiness_body if readiness_body is not None else b'{"result":{"found":true}}'
+                if readiness_error:
+                    request.side_effect = readiness_error
+                try:
+                    runpy.run_path(str(COLLECTOR), run_name="__main__")
+                except Exception as error:
+                    self.fail(f"Collection aborted instead of retaining failed attempts: {error}")
                 report = json.loads((output / "results.json").read_text())
                 request_count = request.call_count
         return report, commands, request_count
@@ -78,3 +89,60 @@ class CompactCollectionTest(unittest.TestCase):
             for kind in ("inspection", "flow"):
                 self.assertEqual("command timed out", sample[kind]["error"])
                 self.assertGreaterEqual(sample[kind]["durationMs"], 0)
+
+    def test_setup_launch_timeout_is_retained(self):
+        error = subprocess.TimeoutExpired("simctl", 30, output=b"launch partial", stderr=b"launch error")
+        report, commands, _ = self.collect(setup_error=error)
+        self.assertEqual(8, len(report["samples"]))
+        self.assertTrue(all(argv[0] == "xcrun" for argv in commands))
+        for sample in report["samples"]:
+            setup = sample["setup"]
+            self.assertFalse(setup["ok"])
+            self.assertEqual("TimeoutExpired", setup["errorType"])
+            self.assertEqual("launch partial", setup["rawStdout"])
+            self.assertEqual("launch error", setup["stderr"])
+            self.assertIsNone(setup["exitCode"])
+
+    def test_readiness_transport_error_is_retained(self):
+        report, commands, _ = self.collect(readiness_error=urllib.error.URLError("unavailable"))
+        self.assertEqual(8, len(report["samples"]))
+        self.assertTrue(all(argv[0] == "xcrun" for argv in commands))
+        for sample in report["samples"]:
+            self.assertFalse(sample["setup"]["ok"])
+            self.assertEqual("URLError", sample["setup"]["errorType"])
+
+    def test_malformed_readiness_json_is_retained(self):
+        report, _, _ = self.collect(readiness_body=b"not json")
+        self.assertEqual(8, len(report["samples"]))
+        for sample in report["samples"]:
+            self.assertFalse(sample["setup"]["ok"])
+            self.assertEqual("JSONDecodeError", sample["setup"]["errorType"])
+
+    def test_invalid_command_json_keeps_process_evidence(self):
+        raw = "invalid stdout é\n"
+        report, _, _ = self.collect(command_stdout=raw)
+        for sample in report["samples"]:
+            for kind in ("inspection", "flow"):
+                record = sample[kind]
+                self.assertEqual(raw, record.get("rawStdout"))
+                self.assertEqual("command diagnostic", record["stderr"])
+                self.assertEqual(0, record["exitCode"])
+                self.assertEqual(len(raw.encode()), record["bytes"])
+                self.assertEqual(len(raw), record["estimatedTokens"])
+                self.assertIsNone(record["stdout"])
+                self.assertEqual("JSONDecodeError", record["errorType"])
+                self.assertIn("error", record)
+
+    def test_command_timeout_keeps_partial_process_evidence(self):
+        error = subprocess.TimeoutExpired("java", 60, output=b"partial output", stderr=b"partial error")
+        report, _, _ = self.collect(command_error=error)
+        for sample in report["samples"]:
+            for kind in ("inspection", "flow"):
+                record = sample[kind]
+                self.assertEqual("partial output", record.get("rawStdout"))
+                self.assertEqual("partial error", record["stderr"])
+                self.assertIsNone(record["exitCode"])
+                self.assertIsNone(record["stdout"])
+                self.assertEqual(14, record["bytes"])
+                self.assertEqual(14, record["estimatedTokens"])
+                self.assertEqual("TimeoutExpired", record["errorType"])

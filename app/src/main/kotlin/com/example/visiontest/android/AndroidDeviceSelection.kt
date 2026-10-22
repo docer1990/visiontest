@@ -11,7 +11,7 @@ internal fun parseAdbDevices(output: String): List<MobileDevice> {
     val serials = mutableSetOf<String>()
     val devices = lines.drop(1).filter { it.isNotEmpty() }.mapNotNull { line ->
         val match = Regex("([^\\s]+)\\t" +
-            "(device|offline|unauthorized|bootloader|recovery|sideload|host|connecting|no permissions)")
+            "(device|offline|unauthorized|bootloader|recovery|sideload|host|connecting|no permissions(?: .*)?)")
             .matchEntire(line) ?: malformedDevices("entry")
         val serial = match.groupValues[1]
         if (!serials.add(serial)) malformedDevices("duplicate serial")

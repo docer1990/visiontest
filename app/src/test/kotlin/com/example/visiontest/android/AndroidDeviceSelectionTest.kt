@@ -9,6 +9,22 @@ import kotlin.test.assertFailsWith
 
 class AndroidDeviceSelectionTest {
     @Test
+    fun `permission diagnostics do not block an online device`() {
+        val devices = parseAdbDevices("List of devices attached\n" +
+            "usb-1\tno permissions (user in plugdev group; are your udev rules wrong?); see [http://developer.android.com/tools/device.html]\n" +
+            "emulator-5554\tdevice\n")
+        assertEquals(listOf("emulator-5554"), devices.map { it.id })
+    }
+
+    @Test
+    fun `permission diagnostics alone retain missing device classification`() {
+        assertFailsWith<NoDeviceAvailableException> {
+            parseAdbDevices("List of devices attached\n" +
+                "usb-1\tno permissions (missing udev rules? user is in the plugdev group)\n")
+        }
+    }
+
+    @Test
     fun `offline devices cannot become the recording target`() {
         val devices = parseAdbDevices(
             "List of devices attached\nserial-offline\toffline\nserial-1\tdevice\nserial-2\tdevice\n"
@@ -33,6 +49,7 @@ class AndroidDeviceSelectionTest {
         listOf("", "serial-1\tdevice", "List of devices attached\na device\n",
             "List of devices attached\na\tunknown\n", "List of devices attached\n\tdevice\n",
             "List of devices attached\na\tdevice extra\n", "List of devices attached\na\tdevice\nbad\n",
+            "List of devices attached\na\tunauthorized extra\n", "List of devices attached\na\tno permissionsINVALID\n",
             "List of devices attached\na\tdevice\na\tdevice\n").forEach {
             assertFailsWith<RecordingException> { parseAdbDevices(it) }
         }

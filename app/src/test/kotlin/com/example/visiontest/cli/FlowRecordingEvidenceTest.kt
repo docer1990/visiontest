@@ -35,7 +35,8 @@ class FlowRecordingEvidenceTest {
         for (platform in Platform.entries) for (source in EvidenceFailureSource.entries) {
             val artifacts = directory.resolve("${platform.value}-$source")
             val session = FakeRecordingSession(artifacts).also { it.platform = platform }
-            val (report, requests) = recordingFailureDuringEvidence(platform, session, artifacts, source)
+            val (report, requests) = recordingFailureDuringEvidence(platform, session, artifacts,
+                RecordingEvidenceCase(source = source))
             assertEquals(if (source == EvidenceFailureSource.THROWN_ACTION) 3 else 1, report.exitCode)
             assertEquals(source.message, report.error?.message)
             assertEquals("failed", report.recording?.status)
@@ -58,7 +59,7 @@ class FlowRecordingEvidenceTest {
             val artifacts = directory.resolve("${platform.value}-$recorderFails")
             val session = FakeRecordingSession(artifacts).also { it.platform = platform }
             val (report, requests) = recordingFailureDuringEvidence(platform, session, artifacts,
-                evidenceFails = true, recorderFails = recorderFails)
+                RecordingEvidenceCase(evidenceFails = true, recorderFails = recorderFails))
             assertEquals(3, report.exitCode)
             assertEquals("Action backend lost", report.error?.message)
             assertEquals(if (recorderFails) "failed" else "succeeded", report.recording?.status)
@@ -74,7 +75,8 @@ class FlowRecordingEvidenceTest {
         for (platform in Platform.entries) {
             val artifacts = directory.resolve(platform.value)
             val session = FakeRecordingSession(artifacts).also { it.platform = platform }
-            val (report, requests) = recordingFailureDuringEvidence(platform, session, artifacts, recorderFails = false)
+            val (report, requests) = recordingFailureDuringEvidence(platform, session, artifacts,
+                RecordingEvidenceCase(recorderFails = false))
             assertEquals(3, report.exitCode)
             assertEquals("Action backend lost", report.error?.message)
             assertEquals("succeeded", report.recording?.status)
@@ -90,7 +92,8 @@ class FlowRecordingEvidenceTest {
             val artifacts = directory.resolve(platform.value)
             val session = FakeRecordingSession(artifacts).also { it.platform = platform }
             session.beforeFinish = { session.terminal.complete(RecordingExit(7, "discovered during finalization")) }
-            val (report, requests) = recordingFailureDuringEvidence(platform, session, artifacts, recorderFails = false)
+            val (report, requests) = recordingFailureDuringEvidence(platform, session, artifacts,
+                RecordingEvidenceCase(recorderFails = false))
             assertEquals(3, report.exitCode)
             assertEquals("Action backend lost", report.error?.message)
             assertEquals("failed", report.recording?.status)
@@ -196,7 +199,9 @@ class FlowRecordingEvidenceTest {
             coEvery { components.androidAutomationRegistrar.getInteractiveElements(options = any()) } coAnswers {
                 finalObservation()
             }
-            coEvery { components.iosAutomationRegistrar.getInteractiveElements(bundleId = null, options = any()) } coAnswers {
+            coEvery {
+                components.iosAutomationRegistrar.getInteractiveElements(bundleId = null, options = any())
+            } coAnswers {
                 finalObservation()
             }
             val evidence: suspend () -> String = {
@@ -238,13 +243,17 @@ internal enum class EvidenceFailureSource(val message: String) {
     FINAL_OBSERVATION("Observation unavailable"),
 }
 
+internal data class RecordingEvidenceCase(
+    val source: EvidenceFailureSource = EvidenceFailureSource.THROWN_ACTION,
+    val evidenceFails: Boolean = false,
+    val recorderFails: Boolean = true,
+)
+
 internal fun recordingFailureDuringEvidence(
     platform: Platform,
     session: FakeRecordingSession,
     artifacts: Path,
-    source: EvidenceFailureSource = EvidenceFailureSource.THROWN_ACTION,
-    evidenceFails: Boolean = false,
-    recorderFails: Boolean = true,
+    case: RecordingEvidenceCase = RecordingEvidenceCase(),
 ): Pair<FlowReport, Int> = FlowObservationFixture(platform).use { fixture ->
     val observing = CompletableDeferred<Unit>()
     val release = CountDownLatch(1)
@@ -254,7 +263,7 @@ internal fun recordingFailureDuringEvidence(
         } else {
             observing.complete(Unit)
             release.await()
-            MockResponse().setBody(if (evidenceFails) {
+            MockResponse().setBody(if (case.evidenceFails) {
                 """{"result":{"success":false,"error":"Evidence unavailable"}}"""
             } else """{"result":{"success":true,"pngBase64":"AQID"}}""")
         }
@@ -265,15 +274,15 @@ internal fun recordingFailureDuringEvidence(
                 FlowExecutor().execute(platform, listOf(
                     FlowPreparedStep("step-1", "press_home", FlowStepKind.ACTION) {
                         assertEquals(listOf("record-start"), session.events)
-                        when (source) {
-                            EvidenceFailureSource.THROWN_ACTION -> throw ServerNotRunningException(source.message)
+                        when (case.source) {
+                            EvidenceFailureSource.THROWN_ACTION -> throw ServerNotRunningException(case.source.message)
                             EvidenceFailureSource.RETURNED_ACTION ->
                                 """{"result":{"success":false,"error":"Action rejected"}}"""
                             EvidenceFailureSource.FINAL_OBSERVATION -> """{"result":{"success":true}}"""
                         }
                     },
                     FlowPreparedStep("step-2", "press_home", FlowStepKind.ACTION) {
-                        check(source == EvidenceFailureSource.FINAL_OBSERVATION)
+                        check(case.source == EvidenceFailureSource.FINAL_OBSERVATION)
                         """{"result":{"success":true}}"""
                     }), observationOptions = FlowObservationOptions(
                     collector = FlowObservationCollector(platform, fixture.components, artifacts = artifacts),
@@ -283,7 +292,7 @@ internal fun recordingFailureDuringEvidence(
             }
             withTimeout(5000) { observing.await() }
             assertEquals(listOf("record-start"), session.events)
-            if (recorderFails) session.terminal.complete(RecordingExit(7, "evidence encoder failure"))
+            if (case.recorderFails) session.terminal.complete(RecordingExit(7, "evidence encoder failure"))
             assertFalse(execution.isCompleted)
             release.countDown()
             val report = withTimeout(5000) { execution.await() }

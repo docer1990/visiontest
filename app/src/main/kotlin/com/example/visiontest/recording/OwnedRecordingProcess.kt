@@ -3,6 +3,7 @@ package com.example.visiontest.recording
 import com.example.visiontest.common.RequestDeadline
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -37,9 +38,10 @@ internal class JvmOwnedRecordingProcess(
     private val process: Process,
     private val stderrReadyLine: String?,
     private val stdoutLimitBytes: Int? = null,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : OwnedRecordingProcess {
     private val lifetime = SupervisorJob(scope.coroutineContext[Job])
-    private val workers = CoroutineScope(scope.coroutineContext + lifetime + Dispatchers.IO)
+    private val workers = CoroutineScope(scope.coroutineContext + lifetime + dispatcher)
     override val pid: Long = process.pid()
     override val firstStdoutLine = CompletableDeferred<String>()
     override val stderrReady = CompletableDeferred<Unit>().also { if (stderrReadyLine == null) it.complete(Unit) }
@@ -82,12 +84,13 @@ internal class JvmOwnedRecordingProcess(
         }
     }
 
-    override suspend fun forceStop(deadline: RequestDeadline) = terminate(deadline) {
+    override suspend fun forceStop(deadline: RequestDeadline) = withContext(dispatcher) {
         if (process.isAlive) process.destroyForcibly()
+        terminate(deadline) { }
     }
 
     private suspend fun terminate(deadline: RequestDeadline, signal: suspend () -> Unit) {
-        withContext(Dispatchers.IO) {
+        withContext(dispatcher) {
             withTimeoutOrNull(deadline.remainingMillis()) {
                 termination.withLock {
                     signal()

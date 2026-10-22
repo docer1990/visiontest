@@ -3,6 +3,7 @@ package com.example.visiontest.recording
 import com.example.visiontest.common.RequestDeadline
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
@@ -30,6 +31,7 @@ internal interface RecordingProcessRunner {
 }
 
 internal class JvmRecordingProcessRunner(
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val launch: (List<String>) -> Process = { ProcessBuilder(it).start() },
 ) : RecordingProcessRunner {
     override suspend fun start(
@@ -38,7 +40,7 @@ internal class JvmRecordingProcessRunner(
         deadline: RequestDeadline,
         stderrReadyLine: String?,
     ): OwnedRecordingProcess = execute(command, deadline, { _, process ->
-        JvmOwnedRecordingProcess(scope, process, stderrReadyLine)
+        JvmOwnedRecordingProcess(scope, process, stderrReadyLine, dispatcher = dispatcher)
     }) { it }
 
     override suspend fun run(
@@ -46,7 +48,7 @@ internal class JvmRecordingProcessRunner(
         deadline: RequestDeadline,
         stdoutLimitBytes: Int,
     ): RecordingCommandResult = execute(command, deadline, { scope, process ->
-        JvmOwnedRecordingProcess(scope, process, null, stdoutLimitBytes)
+        JvmOwnedRecordingProcess(scope, process, null, stdoutLimitBytes, dispatcher)
     }) { it.exit.await() }
 
     @Suppress("TooGenericExceptionCaught") // Every failure after launch must release the owned child.
@@ -58,8 +60,10 @@ internal class JvmRecordingProcessRunner(
     ): T {
         var owned: OwnedRecordingProcess? = null
         try {
-            return withContext(Dispatchers.IO) {
-                withTimeoutOrNull(deadline.remainingMillis()) {
+            return withContext(dispatcher) {
+                val remaining = deadline.remainingMillis()
+                val reserve = minOf(CLEANUP_TIMEOUT_MS, remaining / CLEANUP_RESERVE_FRACTION)
+                withTimeoutOrNull(remaining - reserve) {
                     coroutineContext.ensureActive()
                     val handle = register(this, launch(command))
                     owned = handle
@@ -69,9 +73,9 @@ internal class JvmRecordingProcessRunner(
                 } ?: throw TimeoutException("Recording command deadline exceeded")
             }
         } catch (failure: Exception) {
-            withContext(NonCancellable + Dispatchers.IO) {
+            withContext(NonCancellable + dispatcher) {
                 try {
-                    owned?.forceStop(RequestDeadline(CLEANUP_TIMEOUT_MS))
+                    owned?.forceStop(deadline)
                 } catch (cleanup: Exception) {
                     failure.addSuppressed(cleanup)
                 }
@@ -85,5 +89,6 @@ internal class JvmRecordingProcessRunner(
 
     private companion object {
         const val CLEANUP_TIMEOUT_MS = 1000L
+        const val CLEANUP_RESERVE_FRACTION = 5
     }
 }

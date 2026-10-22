@@ -60,9 +60,9 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
                 session?.let { cleanupStartup(it) }
                 throw error
             } catch (error: Exception) {
-                session?.let { cleanupStartup(it) }
+                val cleanupError = session?.let { cleanupStartup(it) }
                 currentCoroutineContext().ensureActive()
-                return@coroutineScope startupFailure(platform, steps, observationOptions, error)
+                return@coroutineScope startupFailure(platform, steps, observationOptions, error, cleanupError)
             }
         }
         val coordinator = FlowRecordingCoordinator(session)
@@ -102,13 +102,14 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
     }
 
     @Suppress("TooGenericExceptionCaught")
-    private suspend fun cleanupStartup(session: RecordingSession) = withContext(NonCancellable) {
+    private suspend fun cleanupStartup(session: RecordingSession): Exception? = withContext(NonCancellable) {
         try {
             withTimeoutOrNull(FINALIZATION_TIMEOUT_MS) {
                 session.finish(deadlineFactory(FINALIZATION_TIMEOUT_MS))
-            }
-        } catch (_: Exception) {
-            // Startup remains the primary failure even when partial-recorder cleanup fails.
+            } ?: throw TimeoutException("Flow recording finalization deadline exceeded")
+            null
+        } catch (error: Exception) {
+            error
         }
     }
 
@@ -117,6 +118,7 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
         steps: List<FlowPreparedStep>,
         observations: FlowObservationOptions,
         error: Exception,
+        cleanupError: Exception?,
     ): FlowReport {
         val mapped = cliFailure(error)
         val failure = FlowError(error.javaClass.simpleName, mapped.stderr ?: "Recording startup failed")
@@ -127,7 +129,9 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
             steps.map { FlowStepReport(it.id, it.command, "skipped", "not_executed") }, failure,
             observations = FlowObservationCollector.skipped(observations.observe),
             evidence = FlowObservationCollector.skipped(observations.onFailure),
-            recording = FlowRecordingReport("failed", "start", error = failure))
+            recording = FlowRecordingReport("failed", "start", error = if (cleanupError == null) failure else
+                failure.copy(message = "${failure.message}\nRecording finalization failed. " +
+                    (cleanupError.message ?: "Recording cleanup failed"))))
     }
 
     @Suppress("TooGenericExceptionCaught") // Execution reports retain every mapped command failure.

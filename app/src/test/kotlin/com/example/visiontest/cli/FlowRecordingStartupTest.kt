@@ -6,6 +6,10 @@ import com.example.visiontest.cli.commands.FlowCommand
 import com.example.visiontest.common.RequestDeadline
 import com.example.visiontest.recording.RecordingException
 import com.example.visiontest.recording.RecordingSession
+import com.example.visiontest.recording.AndroidRecordingSession
+import com.example.visiontest.recording.FakeAndroidRecordingProcesses
+import com.example.visiontest.recording.RecordingProcessRunner
+import com.example.visiontest.recording.RecordingCommandResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -74,7 +78,10 @@ class FlowRecordingStartupTest {
         assertEquals(1, actual.exitCode)
         val report = Json.parseToJsonElement(assertNotNull(actual.stdout)).jsonObject
         assertEquals("false", report.getValue("success").toString())
-        assertEquals(actual.stderr, report.getValue("error").jsonObject.getValue("message").jsonPrimitive.content)
+        val primary = report.getValue("error").jsonObject.getValue("message").jsonPrimitive.content
+        assertTrue(assertNotNull(actual.stderr).startsWith(primary))
+        assertTrue(actual.stderr.contains(report.getValue("recording").jsonObject.getValue("error")
+            .jsonObject.getValue("message").jsonPrimitive.content))
         assertEquals("start", report.getValue("recording").jsonObject.getValue("phase").jsonPrimitive.content)
         for (field in listOf("steps", "observations", "evidence")) {
             assertEquals("skipped", report.getValue(field).jsonArray.single().jsonObject
@@ -156,9 +163,47 @@ class FlowRecordingStartupTest {
         val report = FlowExecutor { RequestDeadline(it) { testScheduler.currentTime * 1_000_000 } }.execute(
             Platform.Android, steps(fake.events), timeoutMs = 5,
             observationOptions = observations(fake.events), recordingOptions = options(session))
-        assertRejected(report, "Encoder initialization failed")
+        assertRejected(report, "Encoder initialization failed", cleanupMessage =
+            if (hang) "Flow recording finalization deadline exceeded" else "Cleanup failed")
         assertTrue(cleanupEnded)
         assertEquals(if (hang) 30000L else 0L, testScheduler.currentTime)
+    }
+
+    @TestFactory
+    fun `Android startup failure retains video recovery diagnostics in command output`() = cases(
+        listOf(false, true)) { json ->
+        val processes = FakeAndroidRecordingProcesses().also { it.pullCode = 1 }
+        val runner = object : RecordingProcessRunner by processes {
+            override suspend fun run(command: List<String>, deadline: RequestDeadline, stdoutLimitBytes: Int)
+                : RecordingCommandResult {
+                if (command.last().contains("then dd if=")) throw RecordingException("Readiness inspection failed")
+                return processes.run(command, deadline, stdoutLimitBytes)
+            }
+        }
+        var result: CliResult? = null
+        FlowCommand(lazy { error("Startup failure must skip device operations") },
+            runner = { result = executeCliResultCommand(it) },
+            recordingFactory = lazy { FlowRecordingFactory { scope, _, _, duration ->
+                AndroidRecordingSession(scope, directory, duration, runner)
+            } }).parse(listOf("-p", "android", "--record", "--step", "press_home") +
+                if (json) listOf("--json") else emptyList())
+        val actual = assertNotNull(result)
+        val recovery = "retained ${processes.remote}/recording.mp4 on serial-1"
+        assertEquals(1, actual.exitCode)
+        assertTrue(assertNotNull(actual.stderr).contains(recovery), actual.stderr)
+        val stdout = assertNotNull(actual.stdout)
+        assertTrue(stdout.contains("Readiness inspection failed"))
+        assertTrue(stdout.contains(recovery))
+        if (json) {
+            val report = Json.parseToJsonElement(stdout).jsonObject
+            assertEquals("Readiness inspection failed",
+                report.getValue("error").jsonObject.getValue("message").jsonPrimitive.content)
+            assertEquals("start", report.getValue("recording").jsonObject.getValue("phase").jsonPrimitive.content)
+            assertEquals("skipped", report.getValue("steps").jsonArray.single().jsonObject
+                .getValue("status").jsonPrimitive.content)
+        }
+        assertFalse(processes.removed)
+        assertTrue(processes.exited.isCompleted)
     }
 
     @Test
@@ -211,7 +256,7 @@ class FlowRecordingStartupTest {
         DynamicTest.dynamicTest(value.toString()) { runTest { test(value) } }
     }
 
-    private fun assertRejected(report: FlowReport, message: String, exitCode: Int = 1) {
+    private fun assertRejected(report: FlowReport, message: String, exitCode: Int = 1, cleanupMessage: String? = null) {
         assertFalse(report.success)
         assertEquals(exitCode, report.exitCode)
         assertEquals(message, report.error?.message)
@@ -222,7 +267,9 @@ class FlowRecordingStartupTest {
         assertEquals("skipped", report.evidence.single().status)
         assertEquals("failed", report.recording?.status)
         assertEquals("start", report.recording?.phase)
-        assertEquals(report.error, report.recording?.error)
+        val recordingError = if (cleanupMessage == null) report.error else report.error?.copy(
+            message = "$message\nRecording finalization failed. $cleanupMessage")
+        assertEquals(recordingError, report.recording?.error)
         assertNull(report.recording?.path)
     }
 }

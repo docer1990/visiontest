@@ -53,3 +53,21 @@ No #57 performance trace is claimed for simulated commands. Future live trials
 should use the [performance guide](../performance.md), capture available agent
 usage separately, and record unnecessary help calls, inspections and retries.
 Body bytes and proposed command counts are not token or reasoning savings.
+
+## Shortened skill revision
+
+Following user review, the distributed skill was reduced from 4,375 to 1,672
+whitespace-delimited words (523 to 200 lines). All MCP and tracing instructions
+were removed; those remain in product documentation. This is a measured text-size
+reduction, not a token or execution-performance measurement. The preceding trial
+table describes the longer revision, not this replacement.
+
+The packaged initialization tests were updated for the CLI-only body and passed
+against the shortened resource. Native commands, structured outcomes, built-in
+waits, recording exceptions and reset limitations remain self-contained.
+
+A follow-up simulated trial retained correct choices for waits, functional
+evidence, recording, errors and native lifecycle. It identified three avoidable
+help calls because timeout flag syntax had been removed. The final text restores
+those flag names and millisecond units in two lines. No live-model token or
+runtime measurement was collected.

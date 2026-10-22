@@ -115,8 +115,8 @@ and [performance tracing guide](docs/performance.md) for measurement methods.
 The [guidance trials](docs/benchmarks/cli-agent-guidance.md) record simulated
 command choices and their measurement limits.
 
-Agents use CLI by default, including when MCP is available, and use MCP only on
-explicit request. They follow the application's build/install instructions and
+The distributed skill covers CLI testing only. MCP setup remains in the section
+below, and tracing instructions remain in the performance guide. Agents follow the application's build/install instructions and
 use native lifecycle commands for deep links, termination and scenario-specific
 resets. Deep links must not skip navigation that is itself under test. iOS
 uninstall/reinstall does not guarantee removal of Keychain, shared or remote state.

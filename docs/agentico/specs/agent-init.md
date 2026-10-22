@@ -94,15 +94,13 @@ The `init` command MUST NOT define or require `--platform`, instantiate device c
 
 ## Usage guidance
 
-The embedded usage guidance MUST direct agents to use the CLI by default,
-including when MCP tools are available. MCP usage MUST require an explicit user
-request; CLI unavailability or failure MUST NOT trigger an automatic switch to
-MCP. CLI examples distinguish Android APK
-installation from iOS bundle setup. MCP guidance uses discovered tool schemas
-instead of treating CLI flags as tool arguments. Both workflows require checking
-operation results and the expected app state rather than assuming a successful
-call proves the app behavior. Visual claims require inspecting image evidence.
-Init itself does not configure an MCP connection.
+The embedded skill MUST describe only the CLI workflow. MCP setup and usage
+remain in the product documentation, not in the distributed skill. Performance
+tracing guidance likewise belongs in the performance documentation. Keep the
+skill focused on routine testing, with no dependency on those external references.
+CLI examples MUST distinguish Android APK installation from iOS bundle setup.
+Require checking operation results and expected app state rather than assuming a
+successful call proves app behavior. Visual claims require inspecting image evidence.
 
 The guidance MUST prioritize targeted element queries for known selectors and
 filtered element discovery for unfamiliar screens. Built-in waiting and targeted

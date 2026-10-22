@@ -58,11 +58,12 @@ class InitCommandTest {
         val content = requireNotNull(InitCommand.loadClasspathResource("agent-instructions.md"))
         val normalizedContent = content.replace(Regex("\\s+"), " ")
 
+        assertTrue(!Regex("\\bMCP\\b", RegexOption.IGNORE_CASE).containsMatchIn(content))
         assertContains(normalizedContent, "Prefer `tap_on_element` for a uniquely identified control")
         assertContains(normalizedContent, "`--bundle-id` only scopes an iOS app and never replaces an element selector")
         assertContains(
             normalizedContent,
-            "poll every 500 ms, default to 10,000 ms, and accept timeouts from 1 through 30,000 ms",
+            "default to 10,000 ms and accept timeouts from 1 through 30,000 ms",
         )
         assertContains(normalizedContent, "It does not scroll the screen")
         assertContains(normalizedContent, "there is no generic iOS `clear_text` command")

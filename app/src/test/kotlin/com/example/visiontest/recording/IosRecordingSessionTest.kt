@@ -4,6 +4,7 @@ import com.example.visiontest.common.RequestDeadline
 import com.example.visiontest.NoSimulatorAvailableException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancelAndJoin
@@ -19,6 +20,7 @@ import java.nio.file.Path
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertContentEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.assertFailsWith
@@ -54,6 +56,28 @@ class IosRecordingSessionTest {
         assertEquals(directory.resolve("recording.mov"), session.finish(RequestDeadline(1000)))
         assertEquals(RecordingExit(9, "early exit"), withTimeoutOrNull(100) { session.terminal.await() })
         assertEquals(0, runner.interrupts)
+    }
+
+    @Test
+    fun `exit after the finalization snapshot remains premature when its observer is delayed`() = runTest {
+        val runner = FakeIosRecordingProcesses(directory)
+        runner.firstFrame.complete(Unit)
+        val session = IosRecordingSession(backgroundScope, directory, runner)
+        session.start(RequestDeadline(1000))
+        runner.afterExitSnapshot = {
+            Files.write(runner.temporary, runner.finalBytes)
+            runner.exited.complete(RecordingCommandResult(0, byteArrayOf(), "exit before stop intent"))
+        }
+
+        val path = session.finish(RequestDeadline(1000))
+        runCurrent()
+
+        assertEquals(directory.resolve("recording.mov"), path)
+        assertContentEquals(runner.finalBytes, Files.readAllBytes(path))
+        assertEquals(0, runner.interrupts)
+        assertTrue(session.terminal.isCompleted)
+        assertEquals(RecordingExit(0, "exit before stop intent"), session.terminal.await())
+        assertEquals(path, session.finish(RequestDeadline(0)))
     }
 
     @Test
@@ -291,6 +315,7 @@ class IosRecordingSessionTest {
     }
 }
 
+@OptIn(kotlinx.coroutines.InternalForInheritanceCoroutinesApi::class)
 private class FakeIosRecordingProcesses(private val directory: Path) : RecordingProcessRunner {
     val firstFrame = CompletableDeferred<Unit>()
     var recordedTarget: String? = null
@@ -304,6 +329,7 @@ private class FakeIosRecordingProcesses(private val directory: Path) : Recording
     var rejectExistingOutput = false
     val stopDeadlines = mutableListOf<RequestDeadline>()
     val exited = CompletableDeferred<RecordingCommandResult>()
+    var afterExitSnapshot: (() -> Unit)? = null
     val launched = CompletableDeferred<Unit>()
     var launchFailure: Exception? = null
     var finalBytes = movieFileType() + movieBox("mdat", byteArrayOf(1, 2, 3, 4)) +
@@ -357,10 +383,20 @@ private class FakeIosRecordingProcesses(private val directory: Path) : Recording
             override val pid = 2_000_000_000L
             override val firstStdoutLine = CompletableDeferred<String>()
             override val stderrReady = firstFrame
-            override val exit = exited
+            override val exit = object : Deferred<RecordingCommandResult> by exited {
+                override val isCompleted: Boolean
+                    get() {
+                        val snapshot = exited.isCompleted
+                        val afterSnapshot = afterExitSnapshot
+                        afterExitSnapshot = null
+                        afterSnapshot?.invoke()
+                        return snapshot
+                    }
+            }
             override fun isAlive() = !exited.isCompleted
             override suspend fun interrupt(deadline: RequestDeadline) {
                 interrupts++
+                if (exited.isCompleted) return
                 stopDeadlines += deadline
                 delay(interruptDelay)
                 Files.write(temporary, finalBytes)

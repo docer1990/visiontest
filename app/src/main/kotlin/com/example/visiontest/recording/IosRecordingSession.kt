@@ -79,8 +79,9 @@ internal class IosRecordingSession(
 
     private suspend fun finalizeVideo(deadline: RequestDeadline): Path {
         val handle = process ?: throw RecordingException("iOS recorder did not start")
-        val premature = !handle.isAlive() || handle.exit.isCompleted
+        val exitedBeforeStop = !handle.isAlive() || handle.exit.isCompleted
         stopping.set(true)
+        val premature = exitedBeforeStop || !handle.isAlive() || handle.exit.isCompleted
         val exit = stop(handle, premature, deadline)
         if (premature) terminal.complete(RecordingExit(exit.exitCode, exit.stderr))
         else if (exit.exitCode != 0) throw RecordingException("iOS recorder failed to finalize: ${exit.stderr}")

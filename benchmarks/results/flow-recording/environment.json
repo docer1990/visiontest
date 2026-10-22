@@ -1,0 +1,38 @@
+{
+  "dateUtc": "2026-10-22T21:16:02.463433+00:00",
+  "sourceCommit": "1497ef23032dc9fc29b7b0ef0667df6553e2822a",
+  "jarSha256": "2445478c31e791d364e1473b1da4f5c0f1e684e83055b25be63cae13b51df6cd",
+  "host": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "architecture": "arm64",
+  "java": "openjdk version \"17.0.18\" 2026-01-20 LTS\nOpenJDK Runtime Environment Corretto-17.0.18.9.1 (build 17.0.18+9-LTS)\nOpenJDK 64-Bit Server VM Corretto-17.0.18.9.1 (build 17.0.18+9-LTS, mixed mode, sharing)",
+  "xcode": "Xcode 27.1\nBuild version 27A9275",
+  "adb": "Android Debug Bridge version 1.0.41\nVersion 36.0.2-14143358\nInstalled as /Users/domenicocervo/Library/Android/sdk/platform-tools/adb\nRunning on Darwin 27.0.0 (arm64)",
+  "visiontestJarVersion": "visiontest version 0.2.0",
+  "iosSimulator": {
+    "id": "307E104B-04BD-4A49-8BD4-F5B88E12C6CE",
+    "name": "iPhone 17 iOS27",
+    "os": "iOS 27.0",
+    "state": "Booted",
+    "screenResolution": null
+  },
+  "androidDevices": "List of devices attached",
+  "target": "com.example.visiontest.benchmark (navigation, en)",
+  "sampleCount": 0,
+  "videoValidation": "pending; no video recorded",
+  "recorderResolutionFallback": "not measured",
+  "phaseTiming": "pending; no valid fixture flow available",
+  "failures": [
+    "No Android device connected (adb devices -l contains no devices).",
+    "iOS 27 fixture fails at launch: Application failed to launch: UIScene life cycle is required for apps built with this SDK. The repository iOS 26.5 fixture-compatible simulator is Shutdown; no changes to simulator states or existing XCUITest server were made."
+  ],
+  "commands": [
+    "visiontest available_device -p android --json",
+    "visiontest available_device -p ios --json",
+    "xcrun simctl launch 307E104B-04BD-4A49-8BD4-F5B88E12C6CE com.example.visiontest.benchmark navigation en",
+    "java -jar app/build/libs/visiontest.jar wait_for_element -p ios --resource-id fixture_ready --bundle-id com.example.visiontest.benchmark --timeout 3500 --json"
+  ],
+  "warmupsPerMode": 2,
+  "measuredRounds": 7,
+  "modeOrder": "plain,record even rounds; record,plain odd rounds",
+  "notFullFlowBenchmarks": true
+}

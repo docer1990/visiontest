@@ -123,6 +123,13 @@ scopes hierarchy/element observations and evidence; these otherwise query
 SpringBoard. It does not supply step scope, so keep app-specific `--bundle-id`
 arguments inside steps as well. Each step keeps its normal
 operation arguments. The entire sequence is validated before device access.
+Add `--record` to require a display video for the entire flow. It works with
+repeated `--step`, `--file`, or `--stdin`, not inside an individual step. Recording
+does not restrict capture to an iOS app bundle. The flag does nothing to flows
+that omit it: no recorder is started and no `recording` field is added. Configure
+the automation server for the same single selected target; the backend does not
+identify its device to allow a runtime match check. Recording does not boot or
+switch targets. No audio is captured.
 
 Repeat `--observe` for final `screenshot`, `hierarchy`, or `interactive-elements`.
 Use the same values with `--on-failure` for optional evidence. Artifact paths are
@@ -139,6 +146,25 @@ complete report even on failure. Inspect step statuses and evidence as well as
 the exit code. The first failure skips remaining steps, without rollback or replay.
 After an uncertain action outcome, inspect the UI before choosing a recovery;
 the action may already have happened. Keep flows short between observations.
+Recording startup shares the overall timeout with the steps and is capped at
+10000 ms. iOS starts steps after the first-frame signal; Android starts after
+the MP4 container initializes while its recorder is alive, not after a frame
+payload appears. Android rejects insufficient or unknown duration capability
+before dispatching steps unless its recorder supports unlimited recording. The
+duration must cover the configured flow timeout, requested failure evidence
+budget, and 30000 ms of finalization. One separate *total* 30000 ms finalization
+budget covers stop, video validation, Android transfer and cleanup, even after
+a flow timeout. This is not an unconditional wait. A startup failure skips all
+steps and evidence. Recording remains active through requested observations and
+failure evidence. Only a validated video with a nonempty video sample gets an
+absolute `flow-artifacts/` host path in `recording` (`recording.mp4` on Android,
+`recording.mov` on iOS); capture is not a full-frame decode guarantee.
+`recording` reports `status` (`succeeded`/`failed`), failure `phase`
+(`start`/`record`/`finalize`, null on success), `path` (or null), and `error`
+(or null). Text mode prints recording status, error and saved path; JSON mode
+emits one full report without video bytes after execution begins. Missing device
+exits 4; other primary recording failures exit 1. A recording failure after a
+step or observation failure leaves the original error and exit code intact.
 
 Prefer `get_interactive_elements --compact` for selector discovery. It emits one
 `compact-v1` JSON object even without `--json`. Full inspection remains available

@@ -19,6 +19,12 @@ The flow runs in one process and reuses its device components. It stops at the
 first failed step. Completed actions remain applied. There is no rollback,
 automatic retry, replay, resume, condition, loop, or parallel execution.
 
+Add `--record` at the flow level to require one screen video for this invocation.
+It works with repeated `--step`, `--file`, and `--stdin`; do not put it inside a
+step. Recording captures the whole display without audio, even when iOS element
+inspection uses `--bundle-id`. Without `--record`, the flow does not inspect
+recorder capabilities, touch video paths, or add a recording report.
+
 ## Input
 
 Supply exactly one of repeated `--step 'COMMAND ...'`, `--file PATH`, or `--stdin`.
@@ -82,6 +88,18 @@ retain their existing HTTP grace period; step and overall deadlines cap the tota
 time, including readiness and transport. Parsing is outside the execution budget.
 Failure evidence adds its separately bounded budget to execution time.
 
+Recording startup shares the overall `--timeout` and cannot exceed 10000 ms.
+This is a ceiling, not a fixed delay. iOS waits for `simctl recordVideo` to
+confirm its first frame; Android waits for a live `screenrecord` process and
+an initialized MP4 container, not a frame payload. The first step starts only
+after readiness. Android recorder duration must support the configured overall
+budget plus requested evidence time and 30000 ms of finalization, rounded up to
+seconds, unless the installed recorder advertises unlimited duration. Unsupported
+or unestablished capability fails before dispatching a step. One additional
+*total* 30000 ms finalization budget covers stop, exit, Android transfer,
+validation and cleanup, including when execution timed out. It is not an
+unconditional sleep.
+
 A deadline can interrupt response collection after the server has received an
 action. It cannot undo device actions. Such an action has an uncertain outcome.
 
@@ -117,6 +135,17 @@ A failed final observation makes the flow unsuccessful without changing complete
 step statuses. Evidence failures are reported separately and preserve the original
 failure and exit code. Evidence collection stops when its total budget expires.
 
+Recording continues through final observations on success and requested failure
+evidence on execution failure. It is required: a recorder or video-validation
+failure makes successful steps fail overall. The first failure remains primary.
+A later recording failure does not replace a step or observation error, its exit
+code, or completed step statuses. Startup failure skips all steps, final
+observations, and evidence. Recording resolves one target using existing
+selection rules and pins its serial or UDID. Configure the automation server
+for that same target and isolate it from other active targets. The backend does
+not supply identity for a runtime match check. Recording does not switch devices
+or boot a shutdown simulator.
+
 ## Output and recovery
 
 Default text summarizes the number of completed and skipped steps and identifies
@@ -127,6 +156,13 @@ failed records, complete validated interactive-element data, and absolute artifa
 paths. Observation artifact paths appear in their records once.
 `--json` emits one complete JSON object followed by a newline, without
 JSON-RPC framing. See [the JSON contract](cli-json.md) for fields and examples.
+With `--record`, text output also reports recording status, any error and the
+saved video path. Video is saved under the invocation's `flow-artifacts/`
+directory as Android `recording.mp4` or iOS `recording.mov`. Only a finalized,
+structurally validated video with a nonempty video sample gets an absolute host
+path in the report; partial valid video may survive a failed recording. Validation
+does not guarantee that protected content is visible. Video bytes are never
+embedded in the report.
 
 Preflight failures produce stderr diagnostics and empty stdout. Once execution
 begins, JSON mode emits a report even when a step throws. Diagnostics stay on
@@ -137,6 +173,8 @@ Exit 0 means every step and every requested final observation succeeded. A retur
 operation failure exits 1. Thrown failures retain the existing mapping: 1 generic,
 2 invalid arguments, 3 unavailable automation server, 4 missing device, and
 5 unsupported platform. Failure evidence cannot change that exit code.
+Missing recording target exits 4; other recorder startup, premature exit,
+finalization and validation failures exit 1 when they are primary.
 
 Step identifiers are positional (`step-1`, `step-2`, and so on) and remain stable
 within the submitted flow, including skipped steps. A validated backend failure is

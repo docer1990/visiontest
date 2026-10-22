@@ -140,6 +140,13 @@ these same command definitions before returning any executable sequence. Keep it
 allowlist explicit. Shared operations expose typed screenshot and raw wait/tap
 outcomes so flow classification does not interpret prose. Standalone adapters
 retain their existing output and exit semantics. See [flows](docs/cli-flow.md).
+Recorded flows use host-owned Android `screenrecord` or iOS `simctl recordVideo`
+after full preflight. Keep the selected recorder target aligned with the native
+automation server as a setup precondition; no runtime identity check exists.
+Android waits for initialized MP4 structure; iOS waits for the first-frame
+signal. A recording is a required result, with an extra 30000 ms total
+finalization budget and first-failure precedence. Do not add timing fields to
+the public report. See [recording measurements](benchmarks/results/flow-recording/README.md).
 
 `ToolFactory` composes the seven registrars shown above: `AndroidDeviceToolRegistrar`, `AndroidAutomationToolRegistrar`, `AndroidStopToolRegistrar`, `AndroidWaitToolRegistrar`, `IOSDeviceToolRegistrar`, `IOSAutomationToolRegistrar`, and `IOSWaitToolRegistrar`.
 

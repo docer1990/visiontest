@@ -248,6 +248,12 @@ exit 1; only successful steps and requested final observations yield exit 0.
 Evidence has a separate budget and preserves the original error. Potentially
 dispatched actions without a validated result are uncertain and are never replayed.
 See [the flow guide](docs/cli-flow.md) and [report schema](docs/cli-json.md).
+Optional `flow --record` requires a validated display video. Its status, failure
+phase, error and absolute saved path appear under `recording` only when requested.
+Configure the automation backend for the same single selected target; there is
+no runtime backend identity check. Android requires initialized MP4 readiness,
+iOS requires a first-frame signal, and finalization has one additional 30000 ms
+budget. A later recorder error does not replace an existing step failure.
 
 | Code | Meaning |
 |------|---------|

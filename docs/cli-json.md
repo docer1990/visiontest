@@ -56,6 +56,20 @@ There is no JSON-RPC framing and no image base64.
 | `observations` | Array of explicitly requested final observation records |
 | `evidence` | Array of requested failure evidence records |
 | `error` | Overall error object, or null on success |
+| `recording` | Only with `--record`; required recording result object |
+
+`recording` has `status` (`succeeded` or `failed`), `phase` (`start`, `record`,
+or `finalize` on failure, null on success), `path` (absolute validated host
+video path or null), and `error` (the usual `{type, message}` or null). The field
+is absent without `--record`; no video bytes or extra timing fields enter the
+report. For example, a startup error still returns one complete object with
+every step skipped and `"recording":{"status":"failed","phase":"start",
+"path":null,"error":{"type":"TimeoutException","message":"..."}}`.
+An execution failure stays the primary `error` and preserves its exit code even
+if recording later fails; inspect both error objects. A recording failure with
+successful steps makes `success` false and exits 1, without changing step
+statuses. Missing target at startup exits 4. In text mode, recording status,
+error and saved path appear in the summary; see [the flow guide](cli-flow.md).
 
 Each step has `id` (`step-1`, `step-2`, ...), `command`, `status`, `certainty`,
 `result`, and `error`. Status is `succeeded`, `failed`, `uncertain`, or `skipped`.

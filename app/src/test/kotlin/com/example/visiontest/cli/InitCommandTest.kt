@@ -67,7 +67,16 @@ class InitCommandTest {
         )
         assertContains(normalizedContent, "It does not scroll the screen")
         assertContains(normalizedContent, "there is no generic iOS `clear_text` command")
-        assertContains(normalizedContent, "It overwrites each selected `SKILL.md` completely")
+    }
+
+    @Test
+    fun `embedded guidance covers cleanup and discovery limitations`() {
+        val content = requireNotNull(InitCommand.loadClasspathResource("agent-instructions.md"))
+            .replace(Regex("\\s+"), " ")
+        assertContains(content, "report cleanup as incomplete")
+        assertContains(content, "selectorMatches > 1")
+        assertContains(content, "--type TYPE")
+        assertContains(content, "--region x,y,width,height")
     }
 
     // --- single agent writes correct file ---

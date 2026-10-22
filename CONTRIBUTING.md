@@ -146,7 +146,8 @@ automation server as a setup precondition; no runtime identity check exists.
 Android waits for initialized MP4 structure; iOS waits for the first-frame
 signal. A recording is a required result, with an extra 30000 ms total
 finalization budget and first-failure precedence. Do not add timing fields to
-the public report. See [recording measurements](benchmarks/results/flow-recording/README.md).
+the public report. Use the [recording probe](benchmarks/recording_probe.py) for
+local measurements and keep generated artifacts out of version control.
 
 `ToolFactory` composes the seven registrars shown above: `AndroidDeviceToolRegistrar`, `AndroidAutomationToolRegistrar`, `AndroidStopToolRegistrar`, `AndroidWaitToolRegistrar`, `IOSDeviceToolRegistrar`, `IOSAutomationToolRegistrar`, and `IOSWaitToolRegistrar`.
 

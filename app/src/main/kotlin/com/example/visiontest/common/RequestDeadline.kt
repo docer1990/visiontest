@@ -17,7 +17,8 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.coroutineContext
 
-internal class RequestDeadline(timeoutMs: Long) : AbstractCoroutineContextElement(Key) {
+internal class RequestDeadline(timeoutMs: Long, private val nowNs: () -> Long = System::nanoTime) :
+    AbstractCoroutineContextElement(Key) {
     companion object Key : CoroutineContext.Key<RequestDeadline> {
         private val client: HttpClient by lazy {
             HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1)
@@ -27,12 +28,12 @@ internal class RequestDeadline(timeoutMs: Long) : AbstractCoroutineContextElemen
             "ui.dumpHierarchy", "ui.screenshot")
     }
 
-    private val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
+    private val deadline = nowNs() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
     var actionDispatched: Boolean = false
         private set
 
     fun remainingMillis(): Long {
-        val remaining = deadline - System.nanoTime()
+        val remaining = deadline - nowNs()
         if (remaining <= 0) throw TimeoutException("Flow execution deadline exceeded")
         return TimeUnit.NANOSECONDS.toMillis(remaining).coerceAtLeast(1)
     }

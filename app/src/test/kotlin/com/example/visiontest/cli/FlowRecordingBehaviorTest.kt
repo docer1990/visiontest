@@ -12,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -31,11 +32,23 @@ class FlowRecordingBehaviorTest {
                 FlowRecordingScenarios(platform, directory.resolve("${platform.value}-evidence")).bindings()
             }, "Fail a flow whose video cannot be saved" to {
                 FlowRecordingScenarios(platform, directory.resolve("${platform.value}-finalization")).bindings()
-            }), requireComplete = false, resourcePath = "/features/flow-recording.feature"))
+            }, "Save the video after the flow deadline expires" to {
+                FlowRecordingScenarios(platform, directory.resolve("${platform.value}-deadline")).bindings()
+            }), requireComplete = true, resourcePath = "/features/flow-recording.feature"))
     }
 
     @Test
-    fun `startup steps and finalization share the injected execution clock`() = runTest {
+    fun `recording feature rejects an unregistered scenario`() {
+        val failure = assertFailsWith<IllegalArgumentException> {
+            FlowFeatureScenarios.tests(mapOf("Save the requested flow recording" to { emptyMap() }),
+                requireComplete = true,
+                resourcePath = "/features/flow-recording.feature")
+        }
+        assertTrue(failure.message.orEmpty().contains("Save the video after the flow deadline expires"))
+    }
+
+    @Test
+    fun `startup and steps share execution budget while finalization has its own budget`() = runTest {
         for (timeout in listOf(500L, 120000L)) {
             val budgets = mutableListOf<Long>()
             val fake = FakeRecordingSession(directory.resolve("budget-$timeout"))
@@ -58,7 +71,7 @@ class FlowRecordingBehaviorTest {
                 lazy { FlowRecordingFactory { _, _, _, duration -> requiredDuration = duration; session } }))
             assertTrue(report.success)
             assertEquals(listOf(timeout, minOf(10000L, timeout), minOf(35000L, timeout - 100),
-                minOf(30000L, timeout - 200)), budgets)
+                30000L), budgets)
             assertEquals(timeout + 30000, requiredDuration)
         }
     }

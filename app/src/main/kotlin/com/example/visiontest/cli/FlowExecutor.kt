@@ -49,8 +49,8 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
                     observationOptions.evidenceTimeoutMs
                 } else 0
                 withTimeoutOrNull(budget) {
-                    val allocated = recordingOptions.factory.value.create(this@coroutineScope, platform,
-                        recordingOptions.artifacts, timeoutMs + evidenceBudget + FINALIZATION_TIMEOUT_MS)
+                    val allocated = FlowRecordingLifetime(recordingOptions, this@coroutineScope, platform,
+                        timeoutMs + evidenceBudget + FINALIZATION_TIMEOUT_MS, deadlineFactory)
                     session = allocated
                     deadline.remainingMillis()
                     allocated.start(deadline)
@@ -66,20 +66,25 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
             }
         }
         val coordinator = FlowRecordingCoordinator(session)
-        val execution = executeSteps(platform, steps, stepTimeoutMs, overall, coordinator)
-        val observed = observationOptions.finish(execution, overall, deadlineFactory, coordinator)
-        val recording = session?.let { finalizeRecording(it, overall, coordinator) }
+        val observed: FlowReport
+        val recording: FlowRecordingReport?
+        try {
+            val execution = executeSteps(platform, steps, stepTimeoutMs, overall, coordinator)
+            observed = observationOptions.finish(execution, overall, deadlineFactory, coordinator)
+        } finally {
+            recording = session?.let { finalizeRecording(it, coordinator) }
+        }
+        currentCoroutineContext().ensureActive()
         observed.withRecording(recording)
     }
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun finalizeRecording(
         session: RecordingSession,
-        overall: RequestDeadline,
         coordinator: FlowRecordingCoordinator,
-    ): FlowRecordingReport {
-        return try {
-            val budget = minOf(FINALIZATION_TIMEOUT_MS, overall.remainingMillis())
+    ): FlowRecordingReport = withContext(NonCancellable) {
+        try {
+            val budget = FINALIZATION_TIMEOUT_MS
             val deadline = deadlineFactory(budget)
             val path = withTimeoutOrNull(budget) {
                 session.finish(deadline).also { deadline.remainingMillis() }

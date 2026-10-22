@@ -521,7 +521,7 @@ class AndroidRecordingSessionTest {
 }
 
 @OptIn(kotlinx.coroutines.InternalForInheritanceCoroutinesApi::class)
-private class FakeAndroidRecordingProcesses : RecordingProcessRunner {
+internal class FakeAndroidRecordingProcesses : RecordingProcessRunner {
     val commands = mutableListOf<List<String>>()
     val reads = mutableListOf<Pair<Long, Int>>()
     val exited = CompletableDeferred<RecordingCommandResult>()

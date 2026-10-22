@@ -316,7 +316,7 @@ class IosRecordingSessionTest {
 }
 
 @OptIn(kotlinx.coroutines.InternalForInheritanceCoroutinesApi::class)
-private class FakeIosRecordingProcesses(private val directory: Path) : RecordingProcessRunner {
+internal class FakeIosRecordingProcesses(private val directory: Path) : RecordingProcessRunner {
     val firstFrame = CompletableDeferred<Unit>()
     var recordedTarget: String? = null
     val commands = mutableListOf<List<String>>()

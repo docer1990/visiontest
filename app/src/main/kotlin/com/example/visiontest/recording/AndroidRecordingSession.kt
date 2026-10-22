@@ -147,10 +147,12 @@ internal class AndroidRecordingSession(
     @Suppress("TooGenericExceptionCaught")
     private suspend fun transfer(recorder: AndroidRemoteRecorder, path: Path, deadline: RequestDeadline) {
         try {
-            val result = bounded(deadline) {
+            val remaining = deadline.remainingMillis()
+            val budget = remaining - minOf(CLEANUP_RESERVE_MS, remaining / CLEANUP_RESERVE_FRACTION)
+            val result = withTimeoutOrNull(budget) {
                 processes.run(recorder.target + listOf("pull", recorder.media, path.toString()), deadline)
-            }
-            if (result.exitCode != 0) throw RecordingException(result.stderr)
+            } ?: throw RecordingException("Android recording transfer deadline exceeded")
+            check(result.exitCode == 0) { result.stderr }
         } catch (failure: Exception) {
             throw RecordingException("Unable to pull Android recording; retained ${recorder.media} on " +
                 "${recorder.target.last()}: ${failure.message}", failure)
@@ -182,6 +184,8 @@ internal class AndroidRecordingSession(
             val result = try {
                 val exit = handle.exit.await()
                 RecordingExit(exit.exitCode, recordingDiagnostics(exit))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (failure: Exception) {
                 RecordingExit(null, failure.message ?: "Unable to observe Android recorder exit")
             }

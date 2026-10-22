@@ -4,6 +4,9 @@ import com.example.visiontest.common.RequestDeadline
 import com.example.visiontest.recording.RecordingContainerInspector
 import com.example.visiontest.recording.RecordingException
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.mockwebserver.MockResponse
@@ -15,16 +18,54 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 internal class FlowRecordingScenarios(private val platform: Platform, private val artifacts: Path) {
     private val session = FakeRecordingSession(artifacts).also { it.platform = platform }
     private var report: FlowReport? = null
     private var lines = emptyList<String>()
     private var interruption: RecordingInterruptionAttempt? = null
     private var evidenceRequests = 0
+    private var elapsed = 0L
 
     fun bindings(): Map<String, () -> Unit> =
         successBindings() + startupFailureBindings() + interruptionBindings() + evidenceBindings() +
-            finalizationBindings()
+            finalizationBindings() + deadlineBindings()
+
+    private fun deadlineBindings(): Map<String, () -> Unit> = mapOf(
+        "Given a recorded flow with a short execution deadline" to { lines = listOf("press_home") },
+        "When the execution deadline expires during an action" to {
+            runTest {
+                session.beforeFinish = { delay(200) }
+                val steps = lines.map { command ->
+                    FlowPreparedStep("step-1", command, FlowStepKind.ACTION) {
+                        session.events += "action"
+                        delay(200)
+                        """{"result":{"success":true}}"""
+                    }
+                }
+                report = FlowExecutor { ms -> RequestDeadline(ms) { testScheduler.currentTime * 1_000_000 } }
+                    .execute(platform, steps, timeoutMs = 100, recordingOptions = FlowRecordingOptions(artifacts,
+                        lazy { FlowRecordingFactory { _, _, _, _ -> session } }))
+                elapsed = testScheduler.currentTime
+            }
+        },
+        "Then the flow retains its timeout failure" to {
+            val actual = assertNotNull(report)
+            assertFalse(actual.success)
+            assertEquals(1, actual.exitCode)
+            assertEquals("TimeoutException", actual.error?.type)
+        },
+        "And the recorder stops within its separate finalization budget" to {
+            assertEquals("succeeded", assertNotNull(report).recording?.status)
+            assertEquals(300, elapsed)
+            assertTrue(session.events.indexOf("record-stop") > session.events.indexOf("action"))
+        },
+        "And a valid video path is reported" to {
+            val path = Path.of(assertNotNull(assertNotNull(report).recording?.path))
+            assertTrue(path.isAbsolute)
+            runBlocking { RecordingContainerInspector().validateVideo(path, RequestDeadline(1000)) }
+        },
+    )
 
     private fun finalizationBindings(): Map<String, () -> Unit> = mapOf(
         "Given a recorded flow whose steps have succeeded" to { lines = listOf("press_home", "press_home") },

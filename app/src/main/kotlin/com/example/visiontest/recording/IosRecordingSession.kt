@@ -128,6 +128,8 @@ internal class IosRecordingSession(
             val result = try {
                 val exit = handle.exit.await()
                 RecordingExit(exit.exitCode, exit.stderr)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (failure: Exception) {
                 RecordingExit(null, failure.message ?: "Unable to observe iOS recorder exit")
             }

@@ -9,6 +9,8 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.CountDownLatch
+import com.example.visiontest.common.RequestDeadline
+import java.nio.ByteBuffer
 
 internal fun completedProcess(stdout: String, stderr: String, exitCode: Int): Process {
     val process = mockk<Process>()
@@ -106,3 +108,67 @@ internal class StubbornStream : InputStream() {
 
     fun finish() = release.countDown()
 }
+
+internal class ByteArrayRecordingSource(private val bytes: ByteArray) : RecordingDataSource {
+    val reads = mutableListOf<Pair<Long, Int>>()
+
+    override suspend fun read(offset: Long, maxBytes: Int, deadline: RequestDeadline): ByteArray {
+        reads += offset to maxBytes
+        if (offset >= bytes.size) return byteArrayOf()
+        return bytes.copyOfRange(offset.toInt(), minOf(bytes.size.toLong(), offset + maxBytes).toInt())
+    }
+}
+
+internal fun movieWords(vararg values: Long): ByteArray =
+    ByteBuffer.allocate(values.size * 4).apply { values.forEach { putInt(it.toInt()) } }.array()
+
+internal fun movieLong(value: Long): ByteArray = ByteBuffer.allocate(8).putLong(value).array()
+
+internal fun movieBox(type: String, payload: ByteArray = byteArrayOf(), extended: Boolean = false): ByteArray =
+    if (extended) movieWords(1) + type.toByteArray() + movieLong(payload.size + 16L) + payload
+    else movieWords(payload.size + 8L) + type.toByteArray() + payload
+
+internal fun movieFileType(): ByteArray = movieBox("ftyp", "isom".toByteArray() + movieWords(0) + "isom".toByteArray())
+
+internal fun initializedMovie(): ByteArray = movieFileType() + movieWords(0) + "mdat".toByteArray()
+
+internal data class MovieTrackOptions(
+    val constantSize: Long = 0,
+    val sampleCount: Long? = null,
+    val wideOffsets: Boolean = false,
+    val extraTables: ByteArray = byteArrayOf(),
+    val offsetCount: Long? = null,
+    val mappingCount: Long? = null,
+    val tableVersion: Long = 0,
+    val dataReference: ByteArray = byteArrayOf(),
+)
+
+internal fun movieTrack(
+    handler: String = "vide",
+    sampleSizes: LongArray = longArrayOf(4),
+    chunkOffsets: LongArray = longArrayOf(28),
+    chunkEntries: List<Triple<Long, Long, Long>> = listOf(Triple(1L, 1L, 1L)),
+    options: MovieTrackOptions = MovieTrackOptions(),
+): ByteArray {
+    val handlerBox = movieBox("hdlr", movieWords(0, 0) + handler.toByteArray() + movieWords(0, 0, 0))
+    val sizes = movieBox("stsz", movieWords(options.tableVersion, options.constantSize,
+        options.sampleCount ?: sampleSizes.size.toLong()) +
+        if (options.constantSize == 0L) movieWords(*sampleSizes) else byteArrayOf())
+    val offsets = movieBox(if (options.wideOffsets) "co64" else "stco",
+        movieWords(0, options.offsetCount ?: chunkOffsets.size.toLong()) +
+        if (options.wideOffsets) chunkOffsets.fold(byteArrayOf()) { bytes, offset -> bytes + movieLong(offset) }
+        else movieWords(*chunkOffsets))
+    val mapping = movieBox("stsc", movieWords(0, options.mappingCount ?: chunkEntries.size.toLong()) +
+        chunkEntries.fold(byteArrayOf()) { bytes, (first, count, description) ->
+            bytes + movieWords(first, count, description)
+        })
+    return movieBox("trak", movieBox("mdia", handlerBox + movieBox("minf",
+        options.dataReference + movieBox("stbl", sizes + offsets + mapping + options.extraTables))))
+}
+
+internal fun movieWithMetadataBeforeVideo(): ByteArray = movieFileType() +
+    movieBox("mdat", byteArrayOf(9, 9, 9, 9, 1, 2, 3, 4)) +
+    movieBox("moov", movieTrack(handler = "meta") + movieTrack(chunkOffsets = longArrayOf(32)))
+
+internal fun movieWithInvalidVideoOffset(): ByteArray = movieFileType() +
+    movieBox("mdat", byteArrayOf(1, 2, 3, 4)) + movieBox("moov", movieTrack(chunkOffsets = longArrayOf(24)))

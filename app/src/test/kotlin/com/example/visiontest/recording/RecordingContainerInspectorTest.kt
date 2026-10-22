@@ -138,6 +138,27 @@ class RecordingContainerInspectorTest {
     }
 
     @Test
+    fun `QuickTime visual extensions accept a trailing zero terminator`() = runTest {
+        val description = movieAvcDescription(movieAvcEntry(
+            extensions = movieBox("avcC", movieAvcConfiguration()) +
+                movieBox("colr", "nclc".toByteArray() + ByteArray(6)) + movieWords(0)
+        ))
+        validate(movieFileType() + movieBox("mdat", ByteArray(4)) +
+            movieBox("moov", movieTrack(options = MovieTrackOptions(sampleDescription = description))))
+    }
+
+    @Test
+    fun `visual extension terminator does not allow arbitrary trailing bytes`() = runTest {
+        for (tail in listOf(ByteArray(1), ByteArray(3), movieWords(1), ByteArray(5))) {
+            val description = movieAvcDescription(movieAvcEntry(
+                extensions = movieBox("avcC", movieAvcConfiguration()) + tail
+            ))
+            rejects(movieFileType() + movieBox("mdat", ByteArray(4)) +
+                movieBox("moov", movieTrack(options = MovieTrackOptions(sampleDescription = description))), "Truncated")
+        }
+    }
+
+    @Test
     fun `per sample sizes resolve across multiple chunks and media boxes`() = runTest {
         val firstMedia = movieBox("mdat", byteArrayOf(1, 2, 3, 4, 5, 6))
         val secondMedia = movieBox("mdat", byteArrayOf(7, 8, 9), extended = true)

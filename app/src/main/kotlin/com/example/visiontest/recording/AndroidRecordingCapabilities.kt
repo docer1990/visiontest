@@ -19,10 +19,12 @@ internal class AndroidRecordingCapabilities private constructor(private val maxi
 
         fun parse(help: String): AndroidRecordingCapabilities {
             if (!help.contains("--time-limit")) return AndroidRecordingCapabilities(null)
-            val bound = if (help.contains("Set to 0 to remove the time limit.", ignoreCase = true)) {
+            val normalizedHelp = help.replace(Regex("\\s+"), " ")
+            val bound = if (normalizedHelp.contains("Set to 0 to remove the time limit.", ignoreCase = true)) {
                 Int.MAX_VALUE.toLong()
             } else {
-                maximum.find(help)?.groupValues?.get(1)?.toLongOrNull()?.takeIf { it in 1..Int.MAX_VALUE.toLong() }
+                maximum.find(normalizedHelp)?.groupValues?.get(1)?.toLongOrNull()
+                    ?.takeIf { it in 1..Int.MAX_VALUE.toLong() }
             }
             return AndroidRecordingCapabilities(bound)
         }

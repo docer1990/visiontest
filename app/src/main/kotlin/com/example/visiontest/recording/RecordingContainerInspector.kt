@@ -301,6 +301,8 @@ private class SampleDescriptionReader(private val reader: ContainerReader) {
         val end = entry.end ?: invalid("Missing recording sample entry end")
         var configuration: ContainerBox? = null
         while (offset < end) {
+            // QuickTime visual sample extensions may end with a four-byte zero terminator.
+            if (end - offset == TYPE_SIZE.toLong() && reader.read(offset, TYPE_SIZE).all { it == 0.toByte() }) break
             val child = reader.header(offset, end)
             if (child.type == "sinf") invalid("Unsupported protected recording sample entry")
             if (child.type == "avcC") {

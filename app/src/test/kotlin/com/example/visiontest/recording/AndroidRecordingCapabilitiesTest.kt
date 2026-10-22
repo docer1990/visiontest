@@ -28,6 +28,16 @@ class AndroidRecordingCapabilitiesTest {
     }
 
     @Test
+    fun `wrapped unlimited help retains its advertised capability`() {
+        val capabilities = AndroidRecordingCapabilities.parse(
+            "--time-limit TIME\n" +
+                "    Set the maximum recording time, in seconds. Default is 180. Set to 0\n" +
+                "    to remove the time limit."
+        )
+        assertEquals(181L, capabilities.durationSeconds(180_001))
+    }
+
+    @Test
     fun `default alone and unknown help do not establish a supported bound`() {
         listOf("", "screenrecord help", "--time-limit TIME\nDefault is 180.").forEach { help ->
             assertFailsWith<RecordingException> { AndroidRecordingCapabilities.parse(help).durationSeconds(150_000) }

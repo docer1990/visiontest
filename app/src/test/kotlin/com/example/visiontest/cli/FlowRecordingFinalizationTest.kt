@@ -5,6 +5,8 @@ import com.example.visiontest.common.RequestDeadline
 import com.example.visiontest.recording.RecordingContainerInspector
 import com.example.visiontest.recording.RecordingException
 import com.example.visiontest.recording.RecordingExit
+import com.example.visiontest.recording.AndroidRecordingSession
+import com.example.visiontest.recording.FakeAndroidRecordingProcesses
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
@@ -98,6 +100,41 @@ class FlowRecordingFinalizationTest {
     }
 
     @Test
+    fun `premature Android exit retains failed transfer recovery in report and stderr`() {
+        for (json in listOf(false, true)) FlowObservationFixture(Platform.Android).use { fixture ->
+            val processes = FakeAndroidRecordingProcesses().also { it.pullCode = 1 }
+            fixture.respond = {
+                processes.completeExit(7)
+                okhttp3.mockwebserver.MockResponse().setBody("""{"result":{"success":true}}""")
+            }
+            var result: CliResult? = null
+            FlowCommand(fixture.components, runner = { result = executeCliResultCommand(it) },
+                recordingFactory = lazy { FlowRecordingFactory { scope, _, _, duration ->
+                    AndroidRecordingSession(scope, directory.resolve("video-$json"), duration, processes)
+                } }).parse(listOf("-p", "android", "--record", "--step", "press_home") +
+                if (json) listOf("--json") else emptyList())
+            val actual = assertNotNull(result)
+            assertEquals(1, actual.exitCode)
+            val recovery = "retained ${processes.remote}/recording.mp4 on serial-1"
+            assertTrue(assertNotNull(actual.stderr).contains(recovery), actual.stderr)
+            assertTrue(actual.stderr.contains("Recorder exited before intentional stop (exit 7)"))
+            val stdout = assertNotNull(actual.stdout)
+            assertTrue(stdout.contains(recovery))
+            if (json) {
+                val report = Json.parseToJsonElement(stdout).jsonObject
+                val recording = report.getValue("recording").jsonObject
+                assertEquals(setOf("status", "phase", "path", "error"), recording.keys)
+                assertEquals("record", recording.getValue("phase").jsonPrimitive.content)
+                val primary = report.getValue("error").jsonObject
+                assertEquals("RecordingException", primary.getValue("type").jsonPrimitive.content)
+                assertFalse(primary.getValue("message").jsonPrimitive.content.contains(recovery))
+                assertEquals(JsonNull, recording["path"])
+            }
+            assertFalse(processes.removed)
+        }
+    }
+
+    @Test
     fun `earlier recorder failure survives a second finalization error`() {
         for (platform in Platform.entries) {
             val session = FakeRecordingSession(directory).also {
@@ -109,6 +146,7 @@ class FlowRecordingFinalizationTest {
             assertEquals("Action backend lost", report.error?.message)
             assertEquals("record", report.recording?.phase)
             assertTrue(assertNotNull(report.recording?.error).message.contains("evidence encoder failure"))
+            assertTrue(report.recording.error.message.contains("Video transfer failed"))
             assertNull(report.recording?.path)
             assertEquals(1, requests)
         }

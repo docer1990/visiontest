@@ -251,9 +251,13 @@ internal class FlowRecordingCoordinator(private val session: RecordingSession?) 
 
     suspend fun report(path: Path?, finalizationError: Exception? = null): FlowRecordingReport {
         if (session?.terminal?.isCompleted == true) exited(session.terminal.await())
-        val error = failure?.asFlowError() ?: finalizationError?.let {
+        val finalization = finalizationError?.let {
             FlowError(it.javaClass.simpleName, it.message ?: "Recording finalization failed")
         }
+        val error = failure?.asFlowError()?.let { primary ->
+            if (finalization == null) primary
+            else primary.copy(message = "${primary.message}\nRecording finalization failed. ${finalization.message}")
+        } ?: finalization
         val phase = when {
             failure != null -> "record"
             finalizationError != null -> "finalize"

@@ -102,6 +102,8 @@ internal class FlowCommand(
                 artifacts = artifacts, options = inspectionOptions),
                 onFailure, evidenceTimeout.toLong(), observe),
             recordingOptions = if (record) FlowRecordingOptions(artifacts, recordingFactory) else null)
-        CliResult(report.exitCode, if (json) report.toJson().toString() else report.text(), report.error?.message)
+        val diagnostics = listOfNotNull(report.error?.message, report.recording?.error?.message).distinct()
+        CliResult(report.exitCode, if (json) report.toJson().toString() else report.text(),
+            diagnostics.takeIf { it.isNotEmpty() }?.joinToString("\n"))
     }
 }

@@ -1,6 +1,19 @@
 package com.example.visiontest.cli
 
-import com.example.visiontest.cli.commands.*
+import com.example.visiontest.cli.commands.ClearTextCommand
+import com.example.visiontest.cli.commands.DismissKeyboardCommand
+import com.example.visiontest.cli.commands.DoubleTapCommand
+import com.example.visiontest.cli.commands.HandleAlertCommand
+import com.example.visiontest.cli.commands.InputTextCommand
+import com.example.visiontest.cli.commands.LongPressCommand
+import com.example.visiontest.cli.commands.PressBackCommand
+import com.example.visiontest.cli.commands.PressHomeCommand
+import com.example.visiontest.cli.commands.PressKeyCommand
+import com.example.visiontest.cli.commands.SwipeCommand
+import com.example.visiontest.cli.commands.SwipeDirectionCommand
+import com.example.visiontest.cli.commands.SwipeOnElementCommand
+import com.example.visiontest.cli.commands.TapByCoordinatesCommand
+import com.example.visiontest.cli.commands.TapOnElementCommand
 import com.github.ajalt.clikt.core.CliktCommand
 import okhttp3.mockwebserver.MockResponse
 import kotlin.test.Test
@@ -50,8 +63,12 @@ class ActionJsonOutputTest {
     }
 
     @Test
-    internal fun `json preserves success and returned failures for every supported pair`() = actions().forEach { action ->
-        for (platform in action.platforms) FlowObservationFixture(platform).use { fixture ->
+    internal fun `json preserves success and returned failures for every supported pair`() {
+        for (action in actions()) for (platform in action.platforms) assertActionResults(action, platform)
+    }
+
+    private fun assertActionResults(action: ActionJsonCase, platform: Platform) {
+        FlowObservationFixture(platform).use { fixture ->
             for (payload in listOf(
                 """{"success":true}""",
                 """{"success":true,"extra":{"label":"a\\b","items":[null,3]}}""",
@@ -77,7 +94,11 @@ class ActionJsonOutputTest {
     }
 
     @Test
-    internal fun `invalid json results fail without partial output or replay`() = actions().forEach { action ->
+    internal fun `invalid json results fail without partial output or replay`() {
+        for (action in actions()) for (platform in action.platforms) assertInvalidResults(action, platform)
+    }
+
+    private fun assertInvalidResults(action: ActionJsonCase, platform: Platform) {
         val invalid = listOf(
             "{}", "not json", "[]", "null", """{"result":[]}""",
             """{"result":{}}""", """{"result":{"success":"true"}}""",
@@ -87,7 +108,7 @@ class ActionJsonOutputTest {
             """{"result":{"success":true},"error":{"code":-1,"message":"bad"}}""",
             """{"error":{"code":"-1","message":"bad"}}""",
         )
-        for (platform in action.platforms) FlowObservationFixture(platform).use { fixture ->
+        FlowObservationFixture(platform).use { fixture ->
             for (response in invalid) {
                 fixture.respond = { MockResponse().setBody(response) }
                 val result = invoke(action, fixture.components, listOf("-p", platform.value, "--json") + action.args)
@@ -128,8 +149,8 @@ class ActionJsonOutputTest {
         val components = lazy<ComponentHolder> { error("Unexpected components") }
         for (platform in action.platforms) {
             val result = executeCliCommand {
-                FlowPreparation.prepare(platform, listOf((listOf(action.name) + action.args + "--json").joinToString(" ")),
-                    components)
+                val step = (listOf(action.name) + action.args + "--json").joinToString(" ")
+                FlowPreparation.prepare(platform, listOf(step), components)
                 ""
             }
             assertEquals(2, result.exitCode)

@@ -42,6 +42,11 @@ rejection and validation before lazy component creation. Verify flow rejection o
 step-level JSON and raw flow results. Existing tests cover the gateway newline;
 add an executable CLI check if needed to pin the new output at that boundary.
 
+The user's active iPhone 17 / iOS 27 simulator must not be used. Executable tests
+must bind an owned mock server before starting a command. An occupied native port
+skips that platform's executable case without contacting the existing service.
+Apply the same isolation to the existing flow failure E2E before the full gate.
+
 Run `:app:test`, `:app:e2eTest`, `build` and `git diff --check`. Update CLI and
 interaction contracts, JSON reference, README, CLAUDE and self-contained agent
 guidance. No latency or measured token-saving claim follows from this change.

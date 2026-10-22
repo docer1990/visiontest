@@ -62,6 +62,14 @@ Run `./gradlew :app:test --tests '*ActionJson*' --tests '*FlowPreparationTest'
 --tests '*FlowPreparedExecutionTest' --tests '*ParityCliTest' --quiet`; expect
 all selected tests to pass after the demonstrated red run. Commit the change.
 
+User constraint added during execution: do not use the active iPhone 17 / iOS 27
+simulator. Isolate the existing `FlowCommandE2ETest` failure-report subprocess
+case with an owned mock server before full E2E execution. Bind before launching
+the CLI and skip occupied platform ports without querying existing services.
+Keep Android and iOS cases independent and preserve the failure-report assertions.
+Verify with `:app:e2eTest --tests '*FlowCommandE2ETest' --tests '*ActionJsonE2ETest'`.
+This test-only safety adjustment is reviewed with Task 1 before documentation.
+
 ### Task 2: Document the expanded action contract
 
 **Review:** checkpoint (final public documentation).

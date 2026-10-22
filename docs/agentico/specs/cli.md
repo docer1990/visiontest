@@ -75,20 +75,20 @@ The CLI SHALL register these 30 subcommands and argument contracts:
 | `available_device` | Android or iOS | Optional `--json` |
 | `screenshot` | Android or iOS | Optional `--output PATH` |
 | `wait_for_element` | Android or iOS | One or more selector options; optional iOS app scope `--bundle-id`, plus `--timeout MS` and `--gone` |
-| `tap_by_coordinates` | Android or iOS | Required integer `x` and `y` arguments |
-| `tap_on_element` | Android or iOS | At least one selector; optional iOS app scope `--bundle-id` and `--timeout MS` |
-| `input_text` | Android or iOS | Required `text` argument; optional `--target-*` selectors, selector `--timeout MS`, and iOS app scope `--bundle-id` |
-| `press_key` | Android only | Required named action or nonnegative integer key code |
-| `clear_text` | Android only | None; clears the focused editable element |
-| `long_press` | Android or iOS | Exactly one target: `--x X --y Y` or selectors; optional selector `--timeout MS` and iOS `--bundle-id` |
-| `double_tap` | Android or iOS | Exactly one target: `--x X --y Y` or selectors; optional selector `--timeout MS` and iOS `--bundle-id` |
-| `dismiss_keyboard` | iOS only | Optional `--bundle-id` |
-| `handle_alert` | iOS only | Required `accept` or `dismiss`; optional `--button-label` and `--bundle-id` |
-| `swipe_direction` | Android or iOS | Required `up`, `down`, `left`, or `right`; optional `--distance` and `--speed` choices |
-| `swipe` | Android or iOS | Integer `startX`, `startY`, `endX`, `endY`; optional positive `--steps` (default 20) |
-| `swipe_on_element` | Android or iOS | Direction and at least one selector; optional `--speed` and iOS `--bundle-id` |
-| `press_back` | Android only | None |
-| `press_home` | Android or iOS | None |
+| `tap_by_coordinates` | Android or iOS | Required integer `x` and `y` arguments; optional `--json` |
+| `tap_on_element` | Android or iOS | At least one selector; optional iOS app scope `--bundle-id` and `--timeout MS`; optional `--json` |
+| `input_text` | Android or iOS | Required `text` argument; optional `--target-*` selectors, selector `--timeout MS`, and iOS app scope `--bundle-id`; optional `--json` |
+| `press_key` | Android only | Required named action or nonnegative integer key code; optional `--json` |
+| `clear_text` | Android only | None; clears the focused editable element; optional `--json` |
+| `long_press` | Android or iOS | Exactly one target: `--x X --y Y` or selectors; optional selector `--timeout MS` and iOS `--bundle-id`; optional `--json` |
+| `double_tap` | Android or iOS | Exactly one target: `--x X --y Y` or selectors; optional selector `--timeout MS` and iOS `--bundle-id`; optional `--json` |
+| `dismiss_keyboard` | iOS only | Optional `--bundle-id`; optional `--json` |
+| `handle_alert` | iOS only | Required `accept` or `dismiss`; optional `--button-label` and `--bundle-id`; optional `--json` |
+| `swipe_direction` | Android or iOS | Required `up`, `down`, `left`, or `right`; optional `--distance` and `--speed` choices; optional `--json` |
+| `swipe` | Android or iOS | Integer `startX`, `startY`, `endX`, `endY`; optional positive `--steps` (default 20); optional `--json` |
+| `swipe_on_element` | Android or iOS | Direction and at least one selector; optional `--speed` and iOS `--bundle-id`; optional `--json` |
+| `press_back` | Android only | None; optional `--json` |
+| `press_home` | Android or iOS | None; optional `--json` |
 | `launch_app` | Android or iOS | Required package or bundle `id` argument |
 | `list_apps` | Android or iOS | Optional `--json` |
 | `info_app` | Android or iOS | Required app `id`; optional `--json` |
@@ -206,15 +206,35 @@ exit 2. `press_key` MUST accept one unsigned decimal key code in the signed
 `handle_alert` MUST accept only `accept` or `dismiss`. Invalid key values,
 actions, scope, and timeouts MUST fail before device access.
 
-These commands SHALL return text and SHALL NOT add `--json`. Operation failures
-returned normally SHALL retain exit 0; thrown failures SHALL retain the existing
-exit mapping. See [missing interactions](missing-interactions.md) for readiness,
+These commands SHALL retain their default text output and accept opt-in `--json`.
+Operation failures returned normally SHALL retain exit 0; thrown failures SHALL
+retain the existing exit mapping. See [missing interactions](missing-interactions.md) for readiness,
 gesture behavior, keyboard operations, alert ordering, and native compatibility.
 
-### Requirement: Element taps retain text output
+### Requirement: Element taps retain default text output
 
-`tap_on_element` MUST NOT add `--json` or any new structured-output contract.
-It SHALL preserve the normal text result and mapped failure behavior.
+`tap_on_element` MUST accept `--json` and return its existing raw registrar
+operation result through the action JSON formatter. Without `--json`, it SHALL
+preserve the normal text result and mapped failure behavior.
+
+### Requirement: UI actions offer structured CLI output
+
+`tap_by_coordinates`, `tap_on_element`, `input_text`, `long_press`, `double_tap`,
+`swipe_direction`, `swipe`, `swipe_on_element`, and `press_home` MUST accept
+`--json` on Android and iOS. `press_back`, `press_key`, and `clear_text` MUST
+accept it only on Android. `dismiss_keyboard` and `handle_alert` MUST accept it
+only on iOS. Unsupported platform use SHALL retain exit 5.
+
+JSON mode MUST emit exactly one unwrapped result object and newline, with no
+JSON-RPC transport fields. Results MUST contain boolean `success`; optional
+`error` MUST be a string. Unknown additive fields SHALL be retained. A valid
+returned RPC error SHALL emit a complete top-level `error` object with integer
+`code` and string `message`, using the existing shared response validation.
+Normally returned `success:false` and valid RPC errors SHALL exit 0. Invalid
+responses SHALL exit 1 with diagnostics on stderr and no stdout. Thrown errors
+SHALL retain their mapped codes and stderr behavior. Default output, MCP results,
+registrar execution and flow step results SHALL remain unchanged. `flow` SHALL
+continue to reject a step-level `--json` before device access.
 
 ### Requirement: Inspection offers machine-readable output
 

@@ -11,7 +11,9 @@ import com.example.visiontest.cli.PreparedActionCommand
 class ClearTextCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
-) : PreparedActionCommand(runner = runner, name = "clear_text", help = "Clear the focused editable field (Android only)") {
+) : PreparedActionCommand(
+    runner = runner, name = "clear_text", help = "Clear the focused editable field (Android only)",
+) {
     private val platform by androidOnlyPlatformOption()
 
     override fun prepareExecution(): suspend () -> String {

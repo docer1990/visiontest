@@ -16,7 +16,9 @@ class InputTextCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
 ) :
-    PreparedActionCommand(runner = runner, name = "input_text", help = "Type text into the focused or selected element") {
+    PreparedActionCommand(
+        runner = runner, name = "input_text", help = "Type text into the focused or selected element",
+    ) {
 
     private val platform by platformOption()
     private val text by argument(help = "Text to type")

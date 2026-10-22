@@ -84,6 +84,10 @@ method-not-found response from an older server remains an operation error.
 
 ## Verification
 
+The standalone CLI MUST accept opt-in `--json` with the shared action-result
+contract in [CLI](cli.md). Default element-tap text and MCP behavior remain
+unchanged. A flow step MUST continue to reject its own `--json` option.
+
 - Kotlin client, registrar, and CLI tests cover selector mapping, app scope,
   timeouts, validation, and public registration.
 - Android and iOS native tests cover implicit waiting, actionability, direct

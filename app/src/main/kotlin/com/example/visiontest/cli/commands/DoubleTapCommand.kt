@@ -13,7 +13,9 @@ import com.github.ajalt.clikt.parameters.groups.provideDelegate
 class DoubleTapCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
-) : PreparedActionCommand(runner = runner, name = "double_tap", help = "Double tap at coordinates or on a selected element") {
+) : PreparedActionCommand(
+    runner = runner, name = "double_tap", help = "Double tap at coordinates or on a selected element",
+) {
     private val platform by platformOption()
     private val target by InteractionTargetOptions()
 

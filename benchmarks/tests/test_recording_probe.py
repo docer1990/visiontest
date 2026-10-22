@@ -1,6 +1,6 @@
 import unittest
 
-from benchmarks.recording_probe import phase_durations, traced_flow_command, run_probe, summarize_samples
+from benchmarks.recording_probe import fixture_selector, fixture_steps, phase_durations, traced_flow_command, run_probe, summarize_samples
 
 
 class RecordingProbeTest(unittest.TestCase):
@@ -63,6 +63,17 @@ class RecordingProbeTest(unittest.TestCase):
                           "flow", "-p", "ios", "--record"],
                          traced_flow_command(["java", "-jar", "source.jar", "flow", "-p", "ios"],
                                              "trace.jsonl", record=True))
+
+    def test_android_fixture_uses_accessibility_descriptions_not_short_resource_ids(self):
+        self.assertEqual(["--content-description", "fixture_ready"], fixture_selector("android", "fixture_ready"))
+        self.assertEqual(["--target-content-description", "email"], fixture_selector("android", "email", target=True))
+        self.assertEqual(["--resource-id", "done", "--bundle-id", "com.example.visiontest.benchmark"],
+                         fixture_selector("ios", "done"))
+
+    def test_android_flow_dismisses_keyboard_before_tapping_continue(self):
+        self.assertEqual("press_back", fixture_steps("android")[1][0])
+        self.assertEqual("tap_on_element", fixture_steps("android")[2][0])
+        self.assertEqual(3, len(fixture_steps("ios")))
 
 
 if __name__ == "__main__":

@@ -1,57 +1,94 @@
-# Recorded full-flow measurement, pending device verification
+# Recorded full-flow device investigation
 
-No paired full-flow performance result is claimed. [Raw samples](samples.jsonl)
-is empty because neither available target could complete the repository
-navigation fixture. [Environment](environment.json) records the source commit,
-JAR hash, installed tools, attempted commands and blockers. The static-screen
-feasibility numbers in the recording design are not full-flow benchmarks.
+There is no successful recorded full-flow pair on either target. No recording
+overhead or median delta can be claimed. The [20 raw attempts](samples.jsonl)
+include two warmup rounds and three measured rounds per platform, with mode
+order alternating each round. Each platform has three successful measured plain
+flows and three failed measured recorded flows. All five recorded warmup and
+measured failures per platform remain in the raw JSONL. Each recorded attempt
+has `videoValid: false`; `pairedMedianDeltaMs` is null on both platforms.
 
-On 2026-10-22, `adb devices -l` returned no Android device. The sole booted
-simulator was iPhone 17 iOS 27.0, UDID
-`307E104B-04BD-4A49-8BD4-F5B88E12C6CE`. Its installed navigation fixture
-launched but did not reach `fixture_ready`. The simulator log reported
-`Application failed to launch: UIScene life cycle is required for apps built with this SDK`.
-The compatible iOS 26.5 simulator was shutdown. The existing XCUITest server
-on port 9009 was not stopped or replaced. No video, decoded screen transition,
-startup-failure action check, or timeout-saved-video device check exists for
-this attempt. The fixture launch was not a measured sample.
+The [environment and checks](environment.json) contain the source commit, built
+JAR hash, target and tool versions, full command arguments, two startup-failure
+reports, a timeout report, and the original blocked attempt under
+`previousAttempt`. [Traces](traces/) preserve the original host JSONL sessions
+as gzip files; `tracePath` in each sample points to its archive. Harness
+`processStartedNs`, `processFinishedNs`, and `elapsedMs` use a monotonic clock.
+`phaseMs` is null because host tracing does not emit recording lifecycle
+boundaries. Do not infer startup, execution or finalization durations from
+overlapping host spans or from the flow report. The 2026-10-22 static-screen
+feasibility numbers are not full-flow results.
 
-## Collect when isolated targets are available
+## Actual device behavior
 
-Build the source JAR and native fixtures using [the fixture guide](../../fixtures/README.md).
-Install the fixture, start the native automation server on the same isolated
-device or booted simulator, and verify `fixture_ready`. The server must target
-the recorder's selected serial or UDID. Then use a dedicated output directory:
+- Android 17 emulator `emulator-5554`, 1280x2856, screenrecord 1.4. Plain
+  navigation flows input email, dismiss the keyboard with `press_back`, tap
+  Continue, wait for Done, and observe the Done element. All recorded attempts
+  fail before a step with `Android recording duration capability is unknown`.
+  The emulator's `screenrecord --help` wraps `Set to 0` and `to remove the time
+  limit.` onto separate lines; the exact-substring test in
+  `AndroidRecordingCapabilities.kt:22` does not recognize that advertised
+  unlimited capability. No Android video or resolution fallback was reached.
+- iPhone 17 simulator `8CF7A9E3-89C0-49D8-B144-2BC6AF3B38FC`, iOS 26.5,
+  display 402x874 points (1206x2622 pixels). Plain navigation flows reach and
+  observe Done. Every recorded flow also completes its steps and observations,
+  then fails validation in phase `finalize` with
+  `Truncated recording box header`. The flow removes its unvalidated temporary
+  video, so no successful `--record` artifact or decoded recorded transition
+  can be claimed. This failure is raised by the container inspector at
+  `RecordingContainerInspector.kt:105`; the exact box that triggers it has not
+  been identified.
+
+An independent `simctl recordVideo --codec=h264` probe around a successful
+plain iOS flow produced [a native video](ios-native-transition-delayed.mov)
+with 24 video samples. AVFoundation decoded its first, middle and last frames.
+The first and last PNG hashes match, and visual inspection found only the
+initial Start/Email/Continue screen, not Done, despite the plain flow reporting
+Done. This probe is **not** a `--record` artifact or successful screen-transition
+video. Its raw file and hashes are retained to distinguish structural success
+from visible screen-transition evidence.
+
+Startup-failure checks reset only the fixture, run a recorded flow, and inspect
+the fixture afterward. Both platforms report the sole step as `skipped` with
+`certainty: not_executed`; `done` remains absent and `continue` remains present.
+Android fails duration preflight; iOS hits a 1 ms overall timeout during startup.
+An iOS flow with 2500 ms overall timeout completed its first tap, timed out in
+its wait, and preserved the step timeout as its primary error. Final video
+validation still failed, so a saved timeout video cannot be verified. Android
+cannot reach execution with recording until its duration parser accepts the
+emulator's help text.
+
+The focused packaged fake-recorder E2E test runs with ports 9008 and 9009 free,
+not against the native servers. All 28 cases pass after updating the fake iOS
+runtime identifier to the production parser format and accepting a precise
+`EOF before stderr readiness` startup diagnostic. That suite does not replace
+device verification. The servers launched for device testing were stopped
+before running it; unrelated services were not touched.
+
+## Reproduce and next decision
+
+Build the JAR and both fixtures using [the fixture guide](../../fixtures/README.md).
+Install the fixtures and run their native automation servers on the same isolated
+targets selected by the recorder. The harness restarts only the fixture, waits
+for `fixture_ready`, alternates modes by round, records every failure and uses
+an explicit Done marker. Android needs `press_back` after email input to dismiss
+its stylus keyboard overlay.
 
 ```bash
-python3 benchmarks/recording_probe.py --platform ios --target SIMULATOR_UDID \
+python3 benchmarks/recording_probe.py --platform ios \
+  --target 8CF7A9E3-89C0-49D8-B144-2BC6AF3B38FC \
   --jar app/build/libs/visiontest.jar --output test-output/flow-recording-ios \
-  --warmups 2 --rounds 7
-python3 benchmarks/recording_probe.py --platform android --target DEVICE_SERIAL \
-  --jar app/build/libs/visiontest.jar --output test-output/flow-recording-android \
-  --warmups 2 --rounds 7
+  --warmups 2 --rounds 3
+python3 benchmarks/recording_probe.py --platform android \
+  --target emulator-5554 --jar app/build/libs/visiontest.jar \
+  --output test-output/flow-recording-android --warmups 2 --rounds 3
 ```
 
-The harness isolates the target before changing device state, restarts only the
-fixture for each attempt, waits for `fixture_ready`, then enters email, taps
-continue, waits for `done`, and checks the final element observation. It
-alternates plain/record order by round. It writes each attempt immediately,
-including setup and subprocess failures, without deleting failed samples.
-Warmups are excluded from summaries. `elapsedMs` spans the flow subprocess;
-fixture restart is excluded. No public flow report timing fields are added.
-
-The harness marks every recorded video `videoValid: false` until a human checks
-decoded frames. Do not treat a file size, report path or MP4 container as a
-visible transition. Inspect the beginning and end using the platform video
-viewer or `ffmpeg` frame extraction when available, confirm the email/Continue
-screen changes to Done, and annotate each raw record with the actual
-`videoValid` result and validation method. Use `summarize_samples` to recompute
-the summary. Only successful complete pairs with a validated video contribute
-to `pairedMedianDeltaMs`; retain failures and invalid recordings in JSONL.
-Startup/execution/finalization phase timings require external lifecycle probes
-or instrumented process timestamps; this harness does not infer them from
-report fields. Record those separately before making a phase-overhead claim.
-
-The current device block also prevents checking that startup failures dispatch
-no steps and that an execution timeout still saves a valid video. Complete
-these checks on both targets before calling the device verification finished.
+The harness leaves `videoValid: false` until someone decodes the actual
+`--record` file and confirms the Start/Continue to Done transition. Retain
+failed and ambiguous attempts. Only successful complete pairs with validated
+video contribute to `summarize_samples`'s paired median. Production recording
+issues need a separate approved code change before device verification and
+phase-overhead measurement can finish. A preexisting iOS 27 fixture launch
+failure and unavailable Android target from the prior attempt remain recorded
+in `environment.json` instead of being erased.

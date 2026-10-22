@@ -44,6 +44,22 @@ def summarize_samples(samples: list[dict]) -> dict:
 FIXTURE = "com.example.visiontest.benchmark"
 
 
+def fixture_selector(platform_name, identifier, target=False):
+    if platform_name == "android":
+        return ["--target-content-description" if target else "--content-description", identifier]
+    return ["--target-resource-id" if target else "--resource-id", identifier, "--bundle-id", FIXTURE]
+
+
+def fixture_steps(platform_name):
+    steps = [["input_text", "flow-benchmark@example.com", *fixture_selector(platform_name, "email", target=True)]]
+    if platform_name == "android":
+        steps.append(["press_back"])
+    return steps + [
+        ["tap_on_element", *fixture_selector(platform_name, "continue")],
+        ["wait_for_element", *fixture_selector(platform_name, "done")],
+    ]
+
+
 def traced_flow_command(flow, trace_path, record=False):
     command = flow[:3] + ["--trace-performance", str(trace_path)] + flow[3:]
     return command + (["--record"] if record else [])
@@ -105,20 +121,12 @@ def run_probe(platform_name, target, jar, output, rounds=7, warmups=2):
         else:
             command(["xcrun", "simctl", "terminate", target, FIXTURE])
             checked(["xcrun", "simctl", "launch", target, FIXTURE, "navigation", "en"])
-        selector = ["--resource-id", "fixture_ready"]
-        if platform_name == "ios":
-            selector += ["--bundle-id", FIXTURE]
+        selector = fixture_selector(platform_name, "fixture_ready")
         ready = json.loads(checked(prefix + ["wait_for_element", "-p", platform_name] + selector + ["--json"]))
         if ready.get("found") is not True or ready.get("satisfied") is not True:
             raise RuntimeError(f"Fixture not ready: {ready}")
 
-    steps = [
-        ["input_text", "flow-benchmark@example.com", "--target-resource-id", "email"],
-        ["tap_on_element", "--resource-id", "continue"],
-        ["wait_for_element", "--resource-id", "done"],
-    ]
-    if platform_name == "ios":
-        steps = [step + ["--bundle-id", FIXTURE] for step in steps]
+    steps = fixture_steps(platform_name)
     flow = prefix + ["flow", "-p", platform_name, "--json", "--timeout", "20000"]
     if platform_name == "ios":
         flow += ["--bundle-id", FIXTURE]
@@ -154,6 +162,7 @@ def run_probe(platform_name, target, jar, output, rounds=7, warmups=2):
                     sample["success"] = result.returncode == 0 and report.get("success") is True and all(
                         step["status"] == "succeeded" for step in report["steps"])
                     sample["success"] &= any(element.get("resourceId", "").endswith("done")
+                        or element.get("contentDescription") == "done"
                         for observation in report["observations"] if observation["status"] == "succeeded"
                         for element in observation["result"].get("elements", []))
                     if mode == "record":

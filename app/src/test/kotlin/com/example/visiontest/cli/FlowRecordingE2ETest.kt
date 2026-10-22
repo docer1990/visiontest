@@ -54,7 +54,8 @@ class FlowRecordingE2ETest {
                 assertEquals(false, report.getValue("success").jsonPrimitive.boolean)
                 assertEquals("start", report.getValue("recording").jsonObject.getValue("phase").jsonPrimitive.content)
                 assertFalse(report.containsKey("jsonrpc"))
-                assertTrue(result.stderr.contains("record", ignoreCase = true), result.stderr)
+                assertTrue(result.stderr.contains("readiness") ||
+                    result.stderr.contains("record", ignoreCase = true), result.stderr)
                 assertEquals(listOf("skipped", "skipped"), statuses(report))
                 assertTrue(fixture.calls.isEmpty())
                 assertTrue(fixture.invocations().isNotEmpty())

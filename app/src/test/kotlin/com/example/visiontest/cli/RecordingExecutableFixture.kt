@@ -224,7 +224,7 @@ private const val FAKE_EXECUTABLE = """
 
     if pathlib.Path(sys.argv[0]).name == 'xcrun':
         if args == ['simctl', 'list', 'devices', 'available', '--json']:
-            print(json.dumps({'devices': {'fixture-runtime': [
+            print(json.dumps({'devices': {'com.apple.CoreSimulator.SimRuntime.iOS-26-5': [
                 {'udid': 'fixture-ios', 'name': 'Fixture Simulator', 'state': 'Booted', 'isAvailable': True}
             ]}}))
         elif args[:5] == ['simctl', 'io', 'fixture-ios', 'recordVideo', '--codec=h264']:

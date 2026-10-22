@@ -5,6 +5,9 @@ import com.example.visiontest.CommandExecutionException
 import com.example.visiontest.common.AutomationResponse
 import com.example.visiontest.common.RequestDeadline
 import com.example.visiontest.common.strictJsonObject
+import com.example.visiontest.recording.RecordingSession
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
@@ -21,7 +24,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeoutException
 
 internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadline = { RequestDeadline(it) }) {
-    @Suppress("LongParameterList")
+    @Suppress("LongParameterList", "TooGenericExceptionCaught")
     suspend fun execute(
         platform: Platform,
         steps: List<FlowPreparedStep>,
@@ -31,17 +34,30 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
         recordingOptions: FlowRecordingOptions? = null,
     ): FlowReport = coroutineScope {
         val overall = deadlineFactory(timeoutMs)
-        val session = recordingOptions?.let {
-            val evidenceBudget = if (observationOptions.onFailure.isNotEmpty()) {
-                observationOptions.evidenceTimeoutMs
-            } else 0
-            it.factory.value.create(this, platform, it.artifacts, timeoutMs + evidenceBudget + FINALIZATION_TIMEOUT_MS)
-        }
-        session?.let {
-            val budget = minOf(STARTUP_TIMEOUT_MS, overall.remainingMillis())
-            val deadline = deadlineFactory(budget)
-            withTimeoutOrNull(budget) { it.start(deadline); deadline.remainingMillis() }
-                ?: throw TimeoutException("Flow recording startup deadline exceeded")
+        var session: RecordingSession? = null
+        if (recordingOptions != null) {
+            try {
+                val budget = minOf(STARTUP_TIMEOUT_MS, overall.remainingMillis())
+                val deadline = deadlineFactory(budget)
+                val evidenceBudget = if (observationOptions.onFailure.isNotEmpty()) {
+                    observationOptions.evidenceTimeoutMs
+                } else 0
+                withTimeoutOrNull(budget) {
+                    val allocated = recordingOptions.factory.value.create(this@coroutineScope, platform,
+                        recordingOptions.artifacts, timeoutMs + evidenceBudget + FINALIZATION_TIMEOUT_MS)
+                    session = allocated
+                    deadline.remainingMillis()
+                    allocated.start(deadline)
+                    deadline.remainingMillis()
+                } ?: throw TimeoutException("Flow recording startup deadline exceeded")
+            } catch (error: CancellationException) {
+                session?.let { cleanupStartup(it) }
+                throw error
+            } catch (error: Exception) {
+                session?.let { cleanupStartup(it) }
+                currentCoroutineContext().ensureActive()
+                return@coroutineScope startupFailure(platform, steps, observationOptions, error)
+            }
         }
         val execution = executeSteps(platform, steps, stepTimeoutMs, overall)
         val observed = observationOptions.finish(execution, overall, deadlineFactory)
@@ -59,6 +75,35 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
     private companion object {
         const val STARTUP_TIMEOUT_MS = 10000L
         const val FINALIZATION_TIMEOUT_MS = 30000L
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun cleanupStartup(session: RecordingSession) = withContext(NonCancellable) {
+        try {
+            withTimeoutOrNull(FINALIZATION_TIMEOUT_MS) {
+                session.finish(deadlineFactory(FINALIZATION_TIMEOUT_MS))
+            }
+        } catch (_: Exception) {
+            // Startup remains the primary failure even when partial-recorder cleanup fails.
+        }
+    }
+
+    private fun startupFailure(
+        platform: Platform,
+        steps: List<FlowPreparedStep>,
+        observations: FlowObservationOptions,
+        error: Exception,
+    ): FlowReport {
+        val mapped = cliFailure(error)
+        val failure = FlowError(error.javaClass.simpleName, mapped.stderr ?: "Recording startup failed")
+        val exitCode = if (mapped.exitCode == ExitCode.DeviceNotFound.value) {
+            mapped.exitCode
+        } else ExitCode.GenericFailure.value
+        return FlowReport(platform, false, exitCode,
+            steps.map { FlowStepReport(it.id, it.command, "skipped", "not_executed") }, failure,
+            observations = FlowObservationCollector.skipped(observations.observe),
+            evidence = FlowObservationCollector.skipped(observations.onFailure),
+            recording = FlowRecordingReport("failed", "start", error = failure))
     }
 
     @Suppress("TooGenericExceptionCaught") // Execution reports retain every mapped command failure.

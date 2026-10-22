@@ -23,6 +23,8 @@ class FlowRecordingBehaviorTest {
         DynamicContainer.dynamicContainer(platform.value, FlowFeatureScenarios.tests(
             mapOf("Save the requested flow recording" to {
                 FlowRecordingScenarios(platform, directory.resolve(platform.value)).bindings()
+            }, "Reject a flow whose recorder cannot start" to {
+                FlowRecordingScenarios(platform, directory.resolve("${platform.value}-startup")).bindings()
             }), requireComplete = false, resourcePath = "/features/flow-recording.feature"))
     }
 

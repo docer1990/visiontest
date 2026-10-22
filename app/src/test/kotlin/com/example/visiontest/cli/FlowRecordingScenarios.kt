@@ -2,6 +2,7 @@ package com.example.visiontest.cli
 
 import com.example.visiontest.common.RequestDeadline
 import com.example.visiontest.recording.RecordingContainerInspector
+import com.example.visiontest.recording.RecordingException
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -18,7 +19,9 @@ internal class FlowRecordingScenarios(private val platform: Platform, private va
     private var report: FlowReport? = null
     private var lines = emptyList<String>()
 
-    fun bindings(): Map<String, () -> Unit> = mapOf(
+    fun bindings(): Map<String, () -> Unit> = successBindings() + startupFailureBindings()
+
+    private fun successBindings(): Map<String, () -> Unit> = mapOf(
         "Given a valid flow with recording requested" to {
             lines = listOf("press_home")
             assertFalse(Files.exists(artifacts))
@@ -63,6 +66,47 @@ internal class FlowRecordingScenarios(private val platform: Platform, private va
             val screenshot = Path.of(assertNotNull(observation.result).getValue("path").jsonPrimitive.content)
             assertEquals(artifacts, screenshot.parent)
             assertTrue(Files.exists(screenshot))
+        },
+    )
+
+    private fun startupFailureBindings(): Map<String, () -> Unit> = mapOf(
+        "When the recorder cannot start" to {
+            session.startFailure = RecordingException("Encoder initialization failed")
+            FlowObservationFixture(platform).use { fixture ->
+                fixture.respond = { method ->
+                    session.events += if (method == "ui.screenshot") "observation" else "action"
+                    MockResponse().setBody("""{"result":{"success":true,"pngBase64":"AQID"}}""")
+                }
+                val steps = FlowPreparation.prepare(platform, lines + "press_home", fixture.components)
+                report = runBlocking {
+                    FlowExecutor().execute(platform, steps, observationOptions = FlowObservationOptions(
+                        collector = FlowObservationCollector(platform, fixture.components, artifacts = artifacts),
+                        observe = listOf("screenshot"), onFailure = listOf("screenshot")),
+                        recordingOptions = FlowRecordingOptions(artifacts,
+                            lazy { FlowRecordingFactory { _, _, _, _ -> session } }))
+                }
+            }
+        },
+        "Then the flow fails with the recording error" to {
+            val actual = assertNotNull(report)
+            assertFalse(actual.success)
+            assertEquals(1, actual.exitCode)
+            assertEquals("Encoder initialization failed", actual.error?.message)
+            assertEquals("failed", actual.recording?.status)
+            assertEquals("start", actual.recording?.phase)
+            assertEquals(actual.error, actual.recording?.error)
+        },
+        "And every flow step is skipped" to {
+            val steps = assertNotNull(report).steps
+            assertEquals(listOf("step-1", "step-2"), steps.map { it.id })
+            assertTrue(steps.all { it.status == "skipped" && it.certainty == "not_executed" })
+            assertFalse(session.events.contains("action"))
+        },
+        "And no observations or failure evidence are collected" to {
+            val actual = assertNotNull(report)
+            assertEquals("skipped", actual.observations.single().status)
+            assertEquals("skipped", actual.evidence.single().status)
+            assertEquals(listOf("record-start", "record-stop"), session.events)
         },
     )
 }

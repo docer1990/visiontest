@@ -43,21 +43,25 @@ class WaitOutputE2ETest {
                 assumeTrue(false, "$platform automation port is occupied; no live server was contacted")
             }
             for (gone in listOf(false, true)) for (json in listOf(false, true)) {
-                response = """{"jsonrpc":"2.0","id":17,"result":{"found":${!gone},"extra":"kept"}}"""
-                val condition = if (gone) "gone" else "appeared"
-                val success = runWait(platform, gone, json)
-                assertEquals(0, success.first)
-                val expected = if (json) {
-                    """{"found":${!gone},"extra":"kept","condition":"$condition","satisfied":true}"""
-                } else "Element $condition."
-                assertEquals("$expected\n", success.second)
-                response = """{"result":{"found":${!gone},"bounds":null}}"""
-                val failure = runWait(platform, gone, json)
-                assertEquals(1, failure.first)
-                assertEquals("", failure.second)
-                assertTrue(failure.third.contains("bounds"))
+                assertWaitCase(platform, gone, json) { response = it }
             }
         }
+    }
+
+    private fun assertWaitCase(platform: Platform, gone: Boolean, json: Boolean, setResponse: (String) -> Unit) {
+        setResponse("""{"jsonrpc":"2.0","id":17,"result":{"found":${!gone},"extra":"kept"}}""")
+        val condition = if (gone) "gone" else "appeared"
+        val success = runWait(platform, gone, json)
+        assertEquals(0, success.first)
+        val expected = if (json) {
+            """{"found":${!gone},"extra":"kept","condition":"$condition","satisfied":true}"""
+        } else "Element $condition."
+        assertEquals("$expected\n", success.second)
+        setResponse("""{"result":{"found":${!gone},"bounds":null}}""")
+        val failure = runWait(platform, gone, json)
+        assertEquals(1, failure.first)
+        assertEquals("", failure.second)
+        assertTrue(failure.third.contains("bounds"))
     }
 
     private fun runWait(platform: Platform, gone: Boolean, json: Boolean): Triple<Int, String, String> {

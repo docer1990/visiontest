@@ -29,18 +29,22 @@ class WaitOutputTest {
     @Test
     fun `both conditions have symmetric text and unwrapped additive json`() {
         for (platform in Platform.entries) for (gone in listOf(false, true)) {
-            FlowObservationFixture(platform).use { fixture ->
-                val payload = """{"found":${!gone},"extra":{"items":[null,3]},"text":"Ready"}"""
-                fixture.respond = { MockResponse().setBody("""{"jsonrpc":"2.0","id":17,"result":$payload}""") }
-                val condition = if (gone) "gone" else "appeared"
-                assertEquals(CliResult(0, "Element $condition.", null),
-                    invoke(fixture.components, args(platform, gone, false)))
-                val expected = payload.dropLast(1) + """, "condition":"$condition","satisfied":true}"""
-                val result = invoke(fixture.components, args(platform, gone, true))
-                assertEquals(0, result.exitCode, result.stderr)
-                assertEquals(Json.parseToJsonElement(expected), Json.parseToJsonElement(assertNotNull(result.stdout)))
-                assertEquals(listOf("ui.findElement", "ui.findElement"), fixture.calls)
-            }
+            assertSymmetricOutput(platform, gone)
+        }
+    }
+
+    private fun assertSymmetricOutput(platform: Platform, gone: Boolean) {
+        FlowObservationFixture(platform).use { fixture ->
+            val payload = """{"found":${!gone},"extra":{"items":[null,3]},"text":"Ready"}"""
+            fixture.respond = { MockResponse().setBody("""{"jsonrpc":"2.0","id":17,"result":$payload}""") }
+            val condition = if (gone) "gone" else "appeared"
+            assertEquals(CliResult(0, "Element $condition.", null),
+                invoke(fixture.components, args(platform, gone, false)))
+            val expected = payload.dropLast(1) + """, "condition":"$condition","satisfied":true}"""
+            val result = invoke(fixture.components, args(platform, gone, true))
+            assertEquals(0, result.exitCode, result.stderr)
+            assertEquals(Json.parseToJsonElement(expected), Json.parseToJsonElement(assertNotNull(result.stdout)))
+            assertEquals(listOf("ui.findElement", "ui.findElement"), fixture.calls)
         }
     }
 
@@ -63,43 +67,51 @@ class WaitOutputTest {
     @Test
     fun `invalid final results fail without partial output or replay`() {
         for (platform in Platform.entries) for (gone in listOf(false, true)) {
-            FlowObservationFixture(platform).use { fixture ->
-                val invalid = listOf("{}", "not json", "[]", """{"result":[]}""",
-                    """{"result":{}}""", """{"result":{"found":"false"}}""",
-                    """{"error":{"code":-1,"message":"blocked"}}""",
-                    """{"result":{"found":${!gone},"error":null}}""",
-                    """{"result":{"found":${!gone},"bounds":{}}}""",
-                    """{"result":{"found":${!gone},"isEnabled":"true"}}""",
-                    """{"result":{"found":${!gone},"${if (platform == Platform.Ios) "value" else "isClickable"}":3}}""")
-                for (response in invalid) for (json in listOf(false, true)) {
-                    fixture.respond = { MockResponse().setBody(response) }
-                    val result = invoke(fixture.components, args(platform, gone, json))
-                    assertEquals(1, result.exitCode, "$platform $response")
-                    assertNull(result.stdout)
-                    assertNotNull(result.stderr)
-                }
-                assertEquals(invalid.size * 2, fixture.calls.size)
+            assertInvalidResults(platform, gone)
+        }
+    }
+
+    private fun assertInvalidResults(platform: Platform, gone: Boolean) {
+        FlowObservationFixture(platform).use { fixture ->
+            val invalid = listOf("{}", "not json", "[]", """{"result":[]}""",
+                """{"result":{}}""", """{"result":{"found":"false"}}""",
+                """{"error":{"code":-1,"message":"blocked"}}""",
+                """{"result":{"found":${!gone},"error":null}}""",
+                """{"result":{"found":${!gone},"bounds":{}}}""",
+                """{"result":{"found":${!gone},"isEnabled":"true"}}""",
+                """{"result":{"found":${!gone},"${if (platform == Platform.Ios) "value" else "isClickable"}":3}}""")
+            for (response in invalid) for (json in listOf(false, true)) {
+                fixture.respond = { MockResponse().setBody(response) }
+                val result = invoke(fixture.components, args(platform, gone, json))
+                assertEquals(1, result.exitCode, "$platform $response")
+                assertNull(result.stdout)
+                assertNotNull(result.stderr)
             }
+            assertEquals(invalid.size * 2, fixture.calls.size)
         }
     }
 
     @Test
     fun `timeout and stopped server retain exits in both modes`() {
         for (platform in Platform.entries) for (gone in listOf(false, true)) {
-            FlowObservationFixture(platform).use { fixture ->
-                fixture.respond = { MockResponse().setBody("""{"result":{"found":$gone}}""") }
-                for (json in listOf(false, true)) {
-                    val result = invoke(fixture.components, args(platform, gone, json))
-                    assertEquals(1, result.exitCode)
-                    assertNull(result.stdout)
-                    assertNotNull(result.stderr)
-                }
-                fixture.server.shutdown()
-                for (json in listOf(false, true)) {
-                    val result = invoke(fixture.components, args(platform, gone, json))
-                    assertEquals(3, result.exitCode)
-                    assertNull(result.stdout)
-                }
+            assertFailureExits(platform, gone)
+        }
+    }
+
+    private fun assertFailureExits(platform: Platform, gone: Boolean) {
+        FlowObservationFixture(platform).use { fixture ->
+            fixture.respond = { MockResponse().setBody("""{"result":{"found":$gone}}""") }
+            for (json in listOf(false, true)) {
+                val result = invoke(fixture.components, args(platform, gone, json))
+                assertEquals(1, result.exitCode)
+                assertNull(result.stdout)
+                assertNotNull(result.stderr)
+            }
+            fixture.server.shutdown()
+            for (json in listOf(false, true)) {
+                val result = invoke(fixture.components, args(platform, gone, json))
+                assertEquals(3, result.exitCode)
+                assertNull(result.stdout)
             }
         }
     }
@@ -125,16 +137,20 @@ class WaitOutputTest {
     @Test
     fun `http failures never satisfy waits or replay requests`() {
         for (platform in Platform.entries) for (gone in listOf(false, true)) {
-            FlowObservationFixture(platform).use { fixture ->
-                fixture.respond = { MockResponse().setResponseCode(503).setBody("unavailable") }
-                for (json in listOf(false, true)) {
-                    val result = invoke(fixture.components, args(platform, gone, json))
-                    assertEquals(1, result.exitCode)
-                    assertNull(result.stdout)
-                    assertNotNull(result.stderr)
-                }
-                assertEquals(2, fixture.calls.size)
+            assertHttpFailure(platform, gone)
+        }
+    }
+
+    private fun assertHttpFailure(platform: Platform, gone: Boolean) {
+        FlowObservationFixture(platform).use { fixture ->
+            fixture.respond = { MockResponse().setResponseCode(503).setBody("unavailable") }
+            for (json in listOf(false, true)) {
+                val result = invoke(fixture.components, args(platform, gone, json))
+                assertEquals(1, result.exitCode)
+                assertNull(result.stdout)
+                assertNotNull(result.stderr)
             }
+            assertEquals(2, fixture.calls.size)
         }
     }
 

@@ -6,6 +6,7 @@ import com.example.visiontest.common.AutomationResponse
 import com.example.visiontest.common.RequestDeadline
 import com.example.visiontest.common.strictJsonObject
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -19,17 +20,45 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.concurrent.TimeoutException
 
-internal class FlowExecutor {
+internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadline = { RequestDeadline(it) }) {
+    @Suppress("LongParameterList")
     suspend fun execute(
         platform: Platform,
         steps: List<FlowPreparedStep>,
         stepTimeoutMs: Long = 35000,
         timeoutMs: Long = 120000,
         observationOptions: FlowObservationOptions = FlowObservationOptions(),
-    ): FlowReport {
-        val overall = RequestDeadline(timeoutMs)
+        recordingOptions: FlowRecordingOptions? = null,
+    ): FlowReport = coroutineScope {
+        val overall = deadlineFactory(timeoutMs)
+        val session = recordingOptions?.let {
+            val evidenceBudget = if (observationOptions.onFailure.isNotEmpty()) {
+                observationOptions.evidenceTimeoutMs
+            } else 0
+            it.factory.value.create(this, platform, it.artifacts, timeoutMs + evidenceBudget + FINALIZATION_TIMEOUT_MS)
+        }
+        session?.let {
+            val budget = minOf(STARTUP_TIMEOUT_MS, overall.remainingMillis())
+            val deadline = deadlineFactory(budget)
+            withTimeoutOrNull(budget) { it.start(deadline); deadline.remainingMillis() }
+                ?: throw TimeoutException("Flow recording startup deadline exceeded")
+        }
         val execution = executeSteps(platform, steps, stepTimeoutMs, overall)
-        return observationOptions.finish(execution, overall)
+        val observed = observationOptions.finish(execution, overall, deadlineFactory)
+        val recording = session?.let {
+            val budget = minOf(FINALIZATION_TIMEOUT_MS, overall.remainingMillis())
+            val deadline = deadlineFactory(budget)
+            val path = withTimeoutOrNull(budget) {
+                it.finish(deadline).also { deadline.remainingMillis() }
+            } ?: throw TimeoutException("Flow recording finalization deadline exceeded")
+            FlowRecordingReport("succeeded", path = path.toAbsolutePath().toString())
+        }
+        observed.copy(recording = recording)
+    }
+
+    private companion object {
+        const val STARTUP_TIMEOUT_MS = 10000L
+        const val FINALIZATION_TIMEOUT_MS = 30000L
     }
 
     @Suppress("TooGenericExceptionCaught") // Execution reports retain every mapped command failure.
@@ -50,7 +79,7 @@ internal class FlowExecutor {
             var deadline: RequestDeadline? = null
             try {
                 val budget = minOf(stepTimeoutMs, overall.remainingMillis())
-                val stepDeadline = RequestDeadline(budget)
+                val stepDeadline = deadlineFactory(budget)
                 deadline = stepDeadline
                 val result = withContext(stepDeadline) {
                     withTimeoutOrNull(budget) {

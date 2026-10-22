@@ -4,6 +4,9 @@ import com.example.visiontest.cli.CompactInspectionCliOptions
 import com.example.visiontest.cli.ComponentHolder
 import com.example.visiontest.cli.CliResult
 import com.example.visiontest.cli.FlowExecutor
+import com.example.visiontest.cli.FlowRecordingFactory
+import com.example.visiontest.cli.FlowRecordingOptions
+import com.example.visiontest.cli.SystemFlowRecordingFactory
 import com.example.visiontest.cli.FlowObservationOptions
 import com.example.visiontest.cli.FlowObservationCollector
 import com.example.visiontest.cli.IosAppScopeOptions
@@ -18,11 +21,14 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
+import java.nio.file.Path
+import java.util.UUID
 
 internal class FlowCommand(
     private val components: Lazy<ComponentHolder>,
     private val runner: (suspend () -> CliResult) -> Unit = { runCliResultCommand(it) },
     private val readStdin: () -> String = { System.`in`.bufferedReader().readText() },
+    private val recordingFactory: Lazy<FlowRecordingFactory> = lazy { SystemFlowRecordingFactory() },
 ) : CliktCommand(name = "flow", help = """
     Execute UI commands sequentially through one device session. Stops on the first failure.
     Completed actions remain applied. No rollback, replay, or automatic retry occurs.
@@ -61,6 +67,7 @@ internal class FlowCommand(
     private val file by option("--file", help = "Read commands from a UTF-8 file")
     private val stdin by option("--stdin", help = "Read commands from standard input").flag()
     private val json by option("--json", help = "Print a complete JSON execution report").flag()
+    private val record by option("--record", help = "Require a saved screen recording of the flow").flag()
     private val stepTimeout by option("--step-timeout", help = "Per-step budget: default 35000 ms; range 1..3600000")
         .int().default(DEFAULT_STEP_TIMEOUT_MS)
     private val timeout by option("--timeout", help = "Overall execution budget: default 120000 ms; range 1..3600000")
@@ -89,10 +96,12 @@ internal class FlowCommand(
         }
         val lines = FlowInput.read(steps, file, stdin, readStdin)
         val prepared = FlowPreparation.prepare(platform, lines, components)
+        val artifacts = Path.of("flow-artifacts", UUID.randomUUID().toString()).toAbsolutePath()
         val report = FlowExecutor().execute(platform, prepared, stepTimeout.toLong(), timeout.toLong(),
             FlowObservationOptions(FlowObservationCollector(platform, components, appScope.bundleId,
-                options = inspectionOptions),
-                onFailure, evidenceTimeout.toLong(), observe))
+                artifacts = artifacts, options = inspectionOptions),
+                onFailure, evidenceTimeout.toLong(), observe),
+            recordingOptions = if (record) FlowRecordingOptions(artifacts, recordingFactory) else null)
         CliResult(report.exitCode, if (json) report.toJson().toString() else report.text(), report.error?.message)
     }
 }

@@ -1,0 +1,68 @@
+package com.example.visiontest.cli
+
+import com.example.visiontest.common.RequestDeadline
+import com.example.visiontest.recording.RecordingContainerInspector
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.mockwebserver.MockResponse
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+internal class FlowRecordingScenarios(private val platform: Platform, private val artifacts: Path) {
+    private val session = FakeRecordingSession(artifacts).also { it.platform = platform }
+    private var report: FlowReport? = null
+    private var lines = emptyList<String>()
+
+    fun bindings(): Map<String, () -> Unit> = mapOf(
+        "Given a valid flow with recording requested" to {
+            lines = listOf("press_home")
+            assertFalse(Files.exists(artifacts))
+        },
+        "When the recorder starts and the flow succeeds" to {
+            FlowObservationFixture(platform).use { fixture ->
+                fixture.respond = { method ->
+                    assertFalse(session.terminal.isCompleted)
+                    if (method == "ui.screenshot") {
+                        session.events += "final-observation"
+                        MockResponse().setBody("""{"result":{"success":true,"pngBase64":"AQID"}}""")
+                    } else {
+                        session.events += "action"
+                        MockResponse().setBody("""{"result":{"success":true}}""")
+                    }
+                }
+                val steps = FlowPreparation.prepare(platform, lines, fixture.components)
+                report = runBlocking {
+                    FlowExecutor().execute(platform, steps, observationOptions = FlowObservationOptions(
+                        collector = FlowObservationCollector(platform, fixture.components, artifacts = artifacts),
+                        observe = listOf("screenshot")), recordingOptions = FlowRecordingOptions(artifacts,
+                        lazy { FlowRecordingFactory { _, _, _, _ -> session } }))
+                }
+            }
+        },
+        "Then the flow succeeds with a saved video" to {
+            val actual = assertNotNull(report)
+            assertTrue(actual.success)
+            assertEquals(0, actual.exitCode)
+            assertEquals("succeeded", actual.recording?.status)
+            val path = Path.of(assertNotNull(actual.recording?.path))
+            assertTrue(path.isAbsolute)
+            assertTrue(Files.exists(path))
+            runBlocking { RecordingContainerInspector().validateVideo(path, RequestDeadline(1000)) }
+            assertEquals(setOf("status", "phase", "path", "error"),
+                actual.toJson().getValue("recording").jsonObject.keys)
+        },
+        "And the video includes the requested final observation" to {
+            assertEquals(listOf("record-start", "action", "final-observation", "record-stop"), session.events)
+            val observation = assertNotNull(report).observations.single()
+            assertEquals("succeeded", observation.status)
+            val screenshot = Path.of(assertNotNull(observation.result).getValue("path").jsonPrimitive.content)
+            assertEquals(artifacts, screenshot.parent)
+            assertTrue(Files.exists(screenshot))
+        },
+    )
+}

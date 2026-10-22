@@ -6,8 +6,9 @@ internal object FlowFeatureScenarios {
     fun tests(
         implemented: Map<String, () -> Map<String, () -> Unit>>,
         requireComplete: Boolean = false,
+        resourcePath: String = "/features/flow.feature",
     ): List<DynamicTest> {
-        val scenarios = readScenarios()
+        val scenarios = readScenarios(resourcePath)
         require(implemented.isNotEmpty()) { "At least one flow scenario must be registered" }
         require(scenarios.keys.containsAll(implemented.keys)) {
             "Registered flow scenarios are absent from the feature: ${implemented.keys - scenarios.keys}"
@@ -27,9 +28,9 @@ internal object FlowFeatureScenarios {
         }
     }
 
-    private fun readScenarios(): Map<String, List<String>> {
-        val resource = checkNotNull(javaClass.getResourceAsStream("/features/flow.feature")) {
-            "Missing features/flow.feature resource"
+    private fun readScenarios(resourcePath: String): Map<String, List<String>> {
+        val resource = checkNotNull(javaClass.getResourceAsStream(resourcePath)) {
+            "Missing $resourcePath resource"
         }
         val scenarios = linkedMapOf<String, MutableList<String>>()
         var current: MutableList<String>? = null

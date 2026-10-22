@@ -34,14 +34,18 @@ internal data class FlowObservationOptions(
     val evidenceTimeoutMs: Long = 5000,
     val observe: List<String> = emptyList(),
 ) {
-    suspend fun finish(execution: FlowReport, overall: RequestDeadline): FlowReport {
+    suspend fun finish(
+        execution: FlowReport,
+        overall: RequestDeadline,
+        deadlineFactory: (Long) -> RequestDeadline = { RequestDeadline(it) },
+    ): FlowReport {
         val observations = if (execution.success && observe.isNotEmpty()) {
             requireNotNull(collector).collect(observe, overall, stopOnFailure = true)
         } else FlowObservationCollector.skipped(observe)
         val failedObservation = observations.firstOrNull { it.status == "failed" }
         val failure = execution.error ?: failedObservation?.error
         val evidence = if (failure != null && onFailure.isNotEmpty()) {
-            requireNotNull(collector).collect(onFailure, RequestDeadline(evidenceTimeoutMs))
+            requireNotNull(collector).collect(onFailure, deadlineFactory(evidenceTimeoutMs))
         } else FlowObservationCollector.skipped(onFailure)
         return execution.copy(success = failure == null, error = failure,
             exitCode = if (execution.success) failedObservation?.exitCode ?: 0 else execution.exitCode,

@@ -35,7 +35,8 @@ Selection prefers nonblank resourceId, then contentDescription, then exact text.
 No selector is synthesized or composed; native lookup precedence is unchanged.
 The optional `selectorMatches` field appears only for duplicate matches in the
 unfiltered observation. It counts according to native semantics, including iOS
-text matching label OR value. It does not assert uniqueness in the native tree
+text matching label OR value and iOS resourceId matching observed identifier,
+label, or value. It does not assert uniqueness in the native tree
 or actionability. Actions always resolve their target again.
 
 `label` prefers nonempty text, then contentDescription. `type` preserves the

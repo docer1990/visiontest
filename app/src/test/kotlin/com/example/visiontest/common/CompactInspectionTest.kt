@@ -111,6 +111,19 @@ class CompactInspectionTest {
         assertNull(parsed(source)["elements"]!!.jsonArray[0].jsonObject["selectorMatches"])
     }
 
+    @Test fun `ios resource selector counts observed label and value aliases before filtering`() {
+        val source = observation("""
+            {"resourceId":"save","className":"Button"},
+            {"text":"save","contentDescription":"save","value":"save","className":"Label"},
+            {"value":"save","className":"TextField"},
+            {"resourceId":"other","value":"save","className":"Other"}
+        """)
+        val result = parsed(source, CompactInspectionOptions(true, type = "Button"), ios = true)
+        val element = result["elements"]!!.jsonArray.single().jsonObject
+        assertEquals(JsonPrimitive(4), result["observedCount"])
+        assertEquals(JsonPrimitive(4), element["selectorMatches"])
+    }
+
     @Test fun `all elements validated before filters including missing region centers`() {
         listOf("""{"className":"Other","isEnabled":"false"}""", """{"className":"Other"}""").forEach {
             assertFailsWith<CommandExecutionException> {

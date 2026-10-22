@@ -148,9 +148,12 @@ needed. On iOS, scope queries with `--bundle-id`.
 
 Each compact element has `selector`: a one-key map with a native action argument
 (`resourceId`, then `contentDescription`, then `text`), or null if none exists.
-Use these camelCase keys directly with MCP; CLI equivalents are `--resource-id`,
-`--content-description`, and `--text` (input_text uses `--target-resource-id`,
-`--target-content-description`, or `--target-text`). `label`, native `type`, `enabled`,
+Use these camelCase keys directly with MCP action tools except `android_input_text`
+and `ios_input_text`: map `resourceId` to `targetResourceId`,
+`contentDescription` to `targetContentDescription`, or `text` to `targetText`.
+CLI equivalents are `--resource-id`, `--content-description`, and `--text`;
+`input_text` uses `--target-resource-id`, `--target-content-description`, or
+`--target-text`. `label`, native `type`, `enabled`,
 and Android `clickable`, `checkable`, `scrollable`, `longClickable` are optional.
 Distinct `contentDescription` and iOS `value` remain available. `selectorMatches`
 appears only for duplicate observed matches, calculated before filtering. Its

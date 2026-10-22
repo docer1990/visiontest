@@ -238,7 +238,7 @@ Successful `compact-v1` output has this shape (example values):
 | `count` | Number returned after host filtering |
 | `observedCount` | Native candidates before host filtering; not a total tree count |
 | `selector` | One-key native action argument map: first nonblank `resourceId`, then `contentDescription`, then `text`; null if unavailable |
-| `selectorMatches` | Only present when the selector matches more than one unfiltered observed element |
+| `selectorMatches` | Only present when the selector matches more than one unfiltered observed element; iOS resourceId counts observed identifier, label, and value aliases |
 | `label` | Nonempty text, otherwise nonempty contentDescription; optional |
 | `type` | Native className; optional |
 | `contentDescription`, `value` | Distinct description and iOS value retained when different from other presentation fields |

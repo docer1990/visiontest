@@ -29,6 +29,9 @@ private fun matchingKeys(element: JsonObject, ios: Boolean): Set<Pair<String, St
     if (ios) keys += listOf("contentDescription", "value").mapNotNull { field ->
         element.presentation(field)?.let { "text" to it }
     }
+    if (ios) keys += listOf("text", "contentDescription", "value").mapNotNull { field ->
+        element.presentation(field)?.let { "resourceId" to it }
+    }
     return keys
 }
 

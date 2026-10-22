@@ -8,7 +8,7 @@ import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.arguments.argument
 
@@ -16,7 +16,9 @@ class InputTextCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
 ) :
-    PreparedCommand(runner = runner, name = "input_text", help = "Type text into the focused or selected element") {
+    PreparedActionCommand(
+        runner = runner, name = "input_text", help = "Type text into the focused or selected element",
+    ) {
 
     private val platform by platformOption()
     private val text by argument(help = "Text to type")

@@ -1,5 +1,34 @@
 # CLI JSON output
 
+## UI actions
+
+The 14 UI interaction commands accept opt-in `--json`: `tap_by_coordinates`,
+`tap_on_element`, `input_text`, `long_press`, `double_tap`, `swipe_direction`,
+`swipe`, `swipe_on_element`, `press_home` on both platforms; Android-only
+`press_back`, `press_key`, `clear_text`; and iOS-only `dismiss_keyboard`,
+`handle_alert`. Default output remains compatible. MCP tool arguments do not
+gain a `json` field.
+
+The CLI writes exactly one result object and newline to stdout, with no
+JSON-RPC framing or transport ID. `success` is a required Boolean. `error` is
+an optional string. Other native result fields remain available. For example:
+
+```bash
+visiontest tap_on_element -p android --resource-id com.example:id/login --json
+# {"success":true}
+visiontest handle_alert -p ios accept --button-label Allow --json
+# {"success":false,"error":"Alert not found"}
+```
+
+A valid returned RPC error is a separate outcome such as
+`{"error":{"code":-32601,"message":"Unknown method"}}`. Additional error
+data is preserved. `success:false` and returned RPC errors still exit 0, so
+scripts must inspect `success` or the top-level `error`. A malformed response,
+missing or non-Boolean `success`, or non-string result `error` exits 1 with
+diagnostics on stderr and empty stdout. Thrown failures retain their mapped
+codes. `flow --json` has its own report and failure exit rules; a step cannot
+include `--json`.
+
 Add `--json` to `get_interactive_elements`, `get_device_info`, `find_element`,
 `list_apps`, `info_app`, or `available_device`. Every command requires
 `--platform android|ios` (`-p`). Each successful invocation writes one JSON object and a

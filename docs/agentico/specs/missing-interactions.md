@@ -142,8 +142,12 @@ buttons, and blocked buttons MUST return distinct operation failures.
 Operation failures MUST remain normal returned results. Text-mode CLI commands
 MUST print those results to stdout and exit 0, even when the result reports a
 failure. Thrown failures, transport failures, and method-not-found responses
-MUST retain their existing handling. These interactions MUST NOT introduce a
-new structured CLI output format or alter the documented exit codes.
+MUST retain their existing handling. Default CLI output and exit codes MUST
+remain compatible.
+
+The interactions in this contract MUST accept opt-in `--json` with the shared
+action-result contract in [CLI](cli.md), without altering default output or
+exit codes.
 
 Callers MUST upgrade both Android automation APKs or the iOS XCUITest bundle
 before using the new native methods or targeted `ui.inputText` fields. Updating

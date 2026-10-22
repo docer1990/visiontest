@@ -107,7 +107,7 @@ Both automation servers expose `GET /health` and `POST /jsonrpc` (JSON-RPC 2.0) 
 | `wait_for_element` | Poll until an element appears (same selectors as `find_element`, optional `timeoutMs`, max 30s) |
 | `wait_until_gone` | Poll until an element disappears (spinners, dialogs); server failures are errors, never "gone" |
 | `android_tap_by_coordinates` | Tap at screen coordinates (x, y) |
-| `tap_on_element` | Directly tap a visible, enabled selected Android element; optional timeout |
+| `tap_on_element` | Directly tap a visible, enabled selected Android element; optional timeout, `--json` |
 | `android_swipe` | Swipe by coordinates (startX, startY) to (endX, endY) |
 | `android_swipe_direction` | Swipe by direction (up/down/left/right) with distance and speed |
 | `android_swipe_on_element` | Swipe on a specific element (for carousels, sliders) |
@@ -174,20 +174,20 @@ The CLI exposes the commands registered in `VisionTestCli`. MCP device and UI op
 | `find_element` | android, ios | at least one selector | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--json` |
 | `available_device` | android, ios | — | `--json` |
 | `screenshot` | android, ios | — | `--output PATH` |
-| `tap_by_coordinates` | android, ios | `x` `y` (ints) | — |
-| `tap_on_element` | android, ios | at least one selector | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--timeout MS` |
-| `input_text` | android, ios | `text` (string) | `--target-text`, `--target-text-contains`, `--target-resource-id`, `--target-class-name`, `--target-content-description`, selector `--timeout MS`, `--bundle-id` (iOS) |
-| `press_key` | android | key code or `enter`, `tab`, `backspace`, `delete`, `escape` | None |
-| `clear_text` | android | None | None |
-| `long_press` | android, ios | `--x X --y Y` or at least one selector | same selectors as `find_element`, selector `--timeout MS`, `--bundle-id` (iOS) |
-| `double_tap` | android, ios | `--x X --y Y` or at least one selector | same selectors as `find_element`, selector `--timeout MS`, `--bundle-id` (iOS) |
-| `dismiss_keyboard` | ios | None | `--bundle-id` |
-| `handle_alert` | ios | `accept` or `dismiss` | `--button-label`, `--bundle-id` |
-| `swipe_direction` | android, ios | `direction` (up\|down\|left\|right) | `--distance`, `--speed` |
-| `swipe` | android, ios | `startX` `startY` `endX` `endY` (ints) | `--steps` (positive, default 20) |
-| `swipe_on_element` | android, ios | `direction` and at least one selector | same selectors as `find_element`, `--speed` |
-| `press_back` | android | — | — |
-| `press_home` | android, ios | — | — |
+| `tap_by_coordinates` | android, ios | `x` `y` (ints) | `--json` |
+| `tap_on_element` | android, ios | at least one selector | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--timeout MS`, `--json` |
+| `input_text` | android, ios | `text` (string) | `--target-text`, `--target-text-contains`, `--target-resource-id`, `--target-class-name`, `--target-content-description`, selector `--timeout MS`, `--bundle-id` (iOS), `--json` |
+| `press_key` | android | key code or `enter`, `tab`, `backspace`, `delete`, `escape` | `--json` |
+| `clear_text` | android | None | `--json` |
+| `long_press` | android, ios | `--x X --y Y` or at least one selector | same selectors as `find_element`, selector `--timeout MS`, `--bundle-id` (iOS), `--json` |
+| `double_tap` | android, ios | `--x X --y Y` or at least one selector | same selectors as `find_element`, selector `--timeout MS`, `--bundle-id` (iOS), `--json` |
+| `dismiss_keyboard` | ios | None | `--bundle-id`, `--json` |
+| `handle_alert` | ios | `accept` or `dismiss` | `--button-label`, `--bundle-id`, `--json` |
+| `swipe_direction` | android, ios | `direction` (up\|down\|left\|right) | `--distance`, `--speed`, `--json` |
+| `swipe` | android, ios | `startX` `startY` `endX` `endY` (ints) | `--steps` (positive, default 20), `--json` |
+| `swipe_on_element` | android, ios | `direction` and at least one selector | same selectors as `find_element`, `--speed`, `--json` |
+| `press_back` | android | — | `--json` |
+| `press_home` | android, ios | — | `--json` |
 | `launch_app` | android, ios | `id` (string) | — |
 | `list_apps` | android, ios | — | `--json` |
 | `info_app` | android, ios | `id` (string) | `--json` |
@@ -225,7 +225,10 @@ the new native methods or targeted `ui.inputText` fields. A JAR update alone
 does not provide them. See [missing interactions](docs/agentico/specs/missing-interactions.md)
 for the full operation and compatibility contract.
 
-Inspection `--json` emits structured objects; see [JSON schemas and examples](docs/cli-json.md).
+Inspection and all 14 UI interaction commands accept `--json` and emit
+unwrapped structured objects; see [JSON schemas and examples](docs/cli-json.md).
+For standalone actions, inspect `success` or the top-level RPC `error` even when
+the exit code is 0. Flow steps cannot include their own `--json` option.
 Default text and mapped exit codes remain stable. Scripts must inspect `found`,
 `success`, or `error` for operation-level outcomes that return normally.
 

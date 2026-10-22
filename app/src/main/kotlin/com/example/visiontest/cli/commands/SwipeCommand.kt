@@ -6,7 +6,7 @@ import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
@@ -15,7 +15,7 @@ import com.github.ajalt.clikt.parameters.types.int
 class SwipeCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
-) : PreparedCommand(runner = runner, name = "swipe", help = "Swipe between screen coordinates") {
+) : PreparedActionCommand(runner = runner, name = "swipe", help = "Swipe between screen coordinates") {
     private companion object {
         const val DEFAULT_STEPS = 20
     }

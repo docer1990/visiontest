@@ -127,7 +127,7 @@ The same backend is available without an MCP client:
 visiontest start_automation_server -p android
 visiontest get_interactive_elements -p android --compact
 visiontest find_element -p android --text "Login" --json
-visiontest tap_on_element -p android --resource-id "com.example:id/login" --timeout 5000
+visiontest tap_on_element -p android --resource-id "com.example:id/login" --timeout 5000 --json
 visiontest wait_for_element -p android --text "Welcome" --timeout 5000
 visiontest screenshot -p android --output ./after.png
 visiontest stop_automation_server -p android
@@ -198,12 +198,16 @@ rejects it.
 Upgrade both Android automation APKs or the iOS XCUITest bundle before using
 these new native methods or targeted input. Updating only the CLI/MCP JAR is
 insufficient. Restart the automation server after upgrading its artifacts.
-Inspect returned text and verify the app outcome. A normal operation failure
-still exits 0. Thrown failures keep the exit codes below.
+Inspect the action result and verify the app outcome. All 14 UI interactions
+support opt-in `--json`, including `tap_on_element`, gestures and keyboard/alert
+actions. JSON results contain `success` without JSON-RPC framing. A normal
+`success:false` or returned RPC error still exits 0, so check the JSON fields.
+Thrown failures keep the exit codes below. Without `--json`, output is unchanged.
 
 Six inspection commands support `--json`: `get_interactive_elements`,
 `get_device_info`, `find_element`, `list_apps`, `info_app`, and
-`available_device`. See the [JSON schemas and examples](docs/cli-json.md).
+`available_device`. See the [JSON schemas and examples](docs/cli-json.md),
+including the action-result format.
 
 ### Exit codes
 

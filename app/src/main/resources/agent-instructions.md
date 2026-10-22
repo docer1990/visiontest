@@ -80,7 +80,7 @@ Use structured queries for functional checks. Commands in this table omit
 | --- | --- |
 | Check one known element now | `find_element --resource-id ID --json` |
 | Await an expected result | `wait_for_element --text "Expected marker"`; add `--gone` for disappearance |
-| Tap a known control | `tap_on_element --resource-id ID`; it already waits for an actionable target |
+| Tap a known control | `tap_on_element --resource-id ID --json`; it already waits for an actionable target |
 | Fill a known field | `input_text "value" --target-resource-id ID`; it waits, focuses, and enters text |
 | Discover controls on an unfamiliar screen | `get_interactive_elements --compact` |
 | Reveal content in a known list or carousel | `swipe_on_element up --resource-id CONTAINER_ID` |
@@ -194,7 +194,7 @@ visiontest start_automation_server -p android
 visiontest automation_server_status -p android
 visiontest launch_app -p android com.example.app
 visiontest get_interactive_elements -p android --compact
-visiontest tap_on_element -p android --resource-id com.example.app:id/login
+visiontest tap_on_element -p android --resource-id com.example.app:id/login --json
 visiontest wait_for_element -p android --text "Home" --timeout 10000
 ```
 
@@ -213,7 +213,7 @@ visiontest start_automation_server -p ios
 visiontest automation_server_status -p ios
 visiontest launch_app -p ios com.example.app
 visiontest get_interactive_elements -p ios --bundle-id com.example.app --compact
-visiontest tap_on_element -p ios --bundle-id com.example.app --resource-id login
+visiontest tap_on_element -p ios --bundle-id com.example.app --resource-id login --json
 visiontest wait_for_element -p ios --bundle-id com.example.app --text "Home" --timeout 10000
 ```
 
@@ -295,8 +295,11 @@ They print one JSON object without JSON-RPC framing. Check for a top-level
 `error` first, then `found` or `success` when present. For example,
 `{"found":false}` means the lookup succeeded but the target is absent;
 `{"error":{"code":-32601,"message":"Unknown method"}}` is an operation failure.
-Both can exit 0. Interaction commands do not support `--json`; their text can
-include JSON-RPC content. Check that content as well as the exit status.
+Both can exit 0. All 14 UI interaction commands support opt-in `--json`, including
+`tap_on_element`, input, gestures, Android key/back/clear, and iOS keyboard/alert
+commands. In JSON mode, inspect `success` or the top-level `error`; returned
+failures still exit 0. Without `--json`, their previous output remains available.
+Flow steps reject their own `--json` option.
 Exit codes 1 through 5 mean generic failure, invalid arguments,
 server unreachable, device unavailable, and unsupported platform respectively.
 

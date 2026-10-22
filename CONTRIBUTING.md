@@ -322,6 +322,9 @@ The Gradle `test` tasks run pure JVM unit tests (no device or emulator required)
 | `app/android` | `AutomationClientTest.kt` | Android JSON-RPC requests and health checks |
 | `app/android` | `AutomationClientWaitTest.kt` | Android element polling, timeouts, and malformed responses |
 | `app/cli` | `CliCommandIntegrationTest.kt` | CLI delegation, waits, screenshots, stop behavior, and exit codes |
+| `app/cli` | `ActionJsonOutputTest.kt` | Structured action results, errors, platform restrictions, and flow preflight |
+| `app/cli` | `ActionJsonE2ETest.kt` | Packaged CLI action JSON output with an isolated backend |
+| `app/cli` | `FlowCommandE2ETest.kt` | Packaged flow reports and isolated operation failure |
 | `app/cli` | `CliErrorHandlerTest.kt` | CLI exception-to-exit-code mapping |
 | `app/cli` | `InitCommandE2ETest.kt` | Packaged JAR agent-instruction installation |
 | `app/cli` | `InitCommandTest.kt` | Agent selection, paths, validation, and idempotent writes |

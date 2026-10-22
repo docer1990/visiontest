@@ -1,5 +1,14 @@
 package com.example.visiontest.cli
 
+import com.example.visiontest.config.AutomationConfig
+import com.example.visiontest.config.IOSAutomationConfig
+import okhttp3.mockwebserver.Dispatcher
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest
+import org.junit.jupiter.api.Assumptions.assumeTrue
+import java.net.BindException
+import java.util.Collections
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -84,19 +93,47 @@ class FlowCommandE2ETest {
     }
 
     @Test
-    fun `real CLI emits one complete JSON report after execution starts and fails`() {
-        for (platform in Platform.entries) {
-            val result = run(listOf("-p", platform.value, "--json", "--step", "screenshot --output .",
-                "--step", "press_home", "--step-timeout", "100", "--timeout", "500"))
-            assertTrue(result.code != 0)
+    fun `Android CLI emits a complete report for an isolated operation failure`() =
+        assertOperationFailureReport(Platform.Android, AutomationConfig.DEFAULT_PORT)
+
+    @Test
+    fun `iOS CLI emits a complete report for an isolated operation failure`() =
+        assertOperationFailureReport(Platform.Ios, IOSAutomationConfig.DEFAULT_PORT)
+
+    private fun assertOperationFailureReport(platform: Platform, port: Int) {
+        MockWebServer().use { server ->
+            val calls = Collections.synchronizedList(mutableListOf<String>())
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    if (request.method == "GET") return MockResponse().setBody("OK")
+                    calls += Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+                        .getValue("method").jsonPrimitive.content
+                    return MockResponse().setBody(
+                        """{"result":{"success":false,"error":"isolated screenshot failure"}}"""
+                    )
+                }
+            }
+            // Own the destination before starting the CLI; never contact an existing native server.
+            try {
+                server.start(port)
+            } catch (_: BindException) {
+                assumeTrue(false, "$platform automation port is occupied; no live server was contacted")
+            }
+            val result = run(listOf("-p", platform.value, "--json", "--step", "screenshot",
+                "--step", "press_home"))
+            assertEquals(1, result.code)
             assertTrue(result.stdout.endsWith('\n'))
             assertEquals(1, result.stdout.lines().count { it.isNotEmpty() })
             val report = Json.parseToJsonElement(result.stdout).jsonObject
             assertEquals(result.code.toString(), report.getValue("exitCode").jsonPrimitive.content)
             assertEquals("false", report.getValue("success").jsonPrimitive.content)
             assertEquals("step-1", report.getValue("failedStep").jsonPrimitive.content)
-            assertEquals("skipped", report.getValue("steps").jsonArray[1].jsonObject
-                .getValue("status").jsonPrimitive.content)
+            val steps = report.getValue("steps").jsonArray
+            assertEquals("failed", steps[0].jsonObject.getValue("status").jsonPrimitive.content)
+            assertEquals("skipped", steps[1].jsonObject.getValue("status").jsonPrimitive.content)
+            assertTrue(report.getValue("error").jsonObject.getValue("message").jsonPrimitive.content
+                .contains("isolated screenshot failure"))
+            assertEquals(listOf("ui.screenshot"), calls.toList())
             assertFalse(report.containsKey("jsonrpc"))
         }
     }

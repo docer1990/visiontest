@@ -9,13 +9,13 @@ import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 
 class DismissKeyboardCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
-) : PreparedCommand(
+) : PreparedActionCommand(
         runner = runner, name = "dismiss_keyboard", help = "Dismiss the visible software keyboard (iOS only)",
     ) {
     private val platform by platformOption()

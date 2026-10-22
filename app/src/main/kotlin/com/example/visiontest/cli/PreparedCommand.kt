@@ -14,11 +14,13 @@ abstract class PreparedCommand protected constructor(
 
     protected abstract fun prepareExecution(): suspend () -> String
 
+    protected open fun formatStandaloneOutput(response: String): String = response
+
     final override fun run() {
         if (preparingForFlow) {
             preparedExecution = prepareExecution()
         } else {
-            runner { prepareExecution().invoke() }
+            runner { formatStandaloneOutput(prepareExecution().invoke()) }
         }
     }
 

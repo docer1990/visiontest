@@ -6,12 +6,14 @@ import com.example.visiontest.cli.androidOnlyPlatformOption
 import com.example.visiontest.cli.requireAndroid
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 
 class ClearTextCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
-) : PreparedCommand(runner = runner, name = "clear_text", help = "Clear the focused editable field (Android only)") {
+) : PreparedActionCommand(
+    runner = runner, name = "clear_text", help = "Clear the focused editable field (Android only)",
+) {
     private val platform by androidOnlyPlatformOption()
 
     override fun prepareExecution(): suspend () -> String {

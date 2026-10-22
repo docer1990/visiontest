@@ -6,7 +6,7 @@ import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
 import com.example.visiontest.cli.CliCommandRunner
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.types.int
 
@@ -14,7 +14,7 @@ class TapByCoordinatesCommand @JvmOverloads constructor(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
 ) :
-    PreparedCommand(runner = runner, name = "tap_by_coordinates", help = "Tap at screen coordinates") {
+    PreparedActionCommand(runner = runner, name = "tap_by_coordinates", help = "Tap at screen coordinates") {
 
     private val platform by platformOption()
     private val x by argument(help = "X coordinate").int()

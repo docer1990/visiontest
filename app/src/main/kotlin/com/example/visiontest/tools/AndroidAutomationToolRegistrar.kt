@@ -8,6 +8,7 @@ import com.example.visiontest.ServerNotRunningException
 import com.example.visiontest.android.AndroidElementSelectors
 import com.example.visiontest.android.Android
 import com.example.visiontest.android.AutomationClient
+import com.example.visiontest.common.CompactInspectionOptions
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.config.AutomationConfig
 import com.example.visiontest.discovery.ToolDiscovery
@@ -220,8 +221,15 @@ class AndroidAutomationToolRegistrar internal constructor(
         timeoutMs: Int? = null,
     ): String = trace.span(TraceStage.OPERATION) { interactionOperations.inputText(text, selectors, timeoutMs) }
     internal suspend fun getDeviceInfo(): String = serverOperation { automationClient.getDeviceInfo() }
-    internal suspend fun getInteractiveElements(includeDisabled: Boolean = false): String =
-        serverOperation { automationClient.getInteractiveElements(includeDisabled) }
+    internal suspend fun getInteractiveElements(
+        includeDisabled: Boolean = false,
+        options: CompactInspectionOptions = CompactInspectionOptions(),
+    ): String {
+        options.validate()
+        return serverOperation {
+            options.project(automationClient.getInteractiveElements(includeDisabled), ios = false)
+        }
+    }
 
     // ==================== MCP Tool Registrations ====================
 
@@ -569,39 +577,21 @@ class AndroidAutomationToolRegistrar internal constructor(
         scope.tool(
             name = "get_interactive_elements",
             description = """
-                Gets a filtered list of interactive UI elements from the current screen.
-                The automation server must be running first (use start_automation_server).
-
-                MUCH MORE USEFUL than 'get_ui_hierarchy' for most tasks because it:
-                - Returns only elements you can actually interact with
-                - Filters out layout containers and invisible elements
-                - Provides center coordinates for intentional coordinate targets
-                - Returns clean JSON instead of verbose XML
-
-                HEURISTICS USED (handles missing accessibility properties):
-                - Explicitly interactive: clickable, checkable, scrollable, long-clickable
-                - Known interactive classes: Button, EditText, CheckBox, Switch, etc.
-                - Has meaningful content: text, content-description, or resource-id
-                - Excludes: layout containers, invisible elements, disabled elements
-
-                OPTIONAL PARAMETERS:
-                - includeDisabled: Set to true to also include disabled elements (default: false)
-
-                RETURNS for each element:
-                - text, contentDescription, resourceId, className
-                - bounds (e.g., "[100,200][300,400]")
-                - centerX, centerY (ready for android_tap_by_coordinates)
-                - isClickable, isCheckable, isScrollable, isLongClickable, isEnabled
-
-                WORKFLOW:
-                1. Call get_interactive_elements to see what you can interact with
-                2. Find the element you want by text, contentDescription, or resourceId
-                3. Prefer tap_on_element with a stable selector. Use centerX, centerY with
-                   android_tap_by_coordinates only when coordinates are the intended target.
+                Inspect native UI candidates. The automation server must be running.
+                Set compact for compact-v1 JSON; type, region and includeBounds require compact.
+                Region uses display pixels and matches centers in a half-open rectangle.
+                Set includeDisabled to include disabled candidates.
+                Selectors describe observed elements; actions resolve targets again.
+                Prefer tap_on_element with a stable selector. Use coordinates only when
+                coordinates are the intended target.
             """.trimIndent(),
+            inputSchema = Tool.Input(properties = compactInspectionProperties(ios = false)),
             timeoutMs = 30000
         ) { request ->
-            getInteractiveElements(request.optionalBoolean("includeDisabled") ?: false)
+            getInteractiveElements(
+                includeDisabled = request.optionalBoolean("includeDisabled") ?: false,
+                options = request.compactInspectionOptions(),
+            )
         }
     }
 

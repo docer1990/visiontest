@@ -1,0 +1,1289 @@
+{
+  "revision": "0fef718213f994d8e1b4e2061def48070b993756",
+  "platform": "ios",
+  "simulator": "8CF7A9E3-89C0-49D8-B144-2BC6AF3B38FC",
+  "runtime": "iOS 26.5",
+  "host": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "tokenizer": {
+    "name": "tiktoken",
+    "version": "0.12.0",
+    "encoding": "o200k_base",
+    "accounting": "estimated stdout text tokens; no agent/provider usage"
+  },
+  "samples": [
+    {
+      "case": "form",
+      "mode": "full",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 395.673,
+        "exitCode": 0,
+        "stdout": {
+          "count": 7,
+          "elements": [
+            {
+              "bounds": "[0,0][402,874]",
+              "centerX": 201,
+              "centerY": 437,
+              "className": "Application",
+              "contentDescription": "BenchmarkFixture",
+              "isEnabled": true,
+              "text": "BenchmarkFixture"
+            },
+            {
+              "bounds": "[24,86][378,130]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "Button",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "resourceId": "start",
+              "text": "Start"
+            },
+            {
+              "bounds": "[184,99][218,117]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "StaticText",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "text": "Start"
+            },
+            {
+              "bounds": "[24,146][378,180]",
+              "centerX": 201,
+              "centerY": 163,
+              "className": "TextField",
+              "isEnabled": true,
+              "resourceId": "email"
+            },
+            {
+              "bounds": "[24,196][378,240]",
+              "centerX": 201,
+              "centerY": 218,
+              "className": "Button",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "resourceId": "continue",
+              "text": "Continue"
+            },
+            {
+              "bounds": "[170,209][232,227]",
+              "centerX": 201,
+              "centerY": 218,
+              "className": "StaticText",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "text": "Continue"
+            },
+            {
+              "bounds": "[24,256][378,276]",
+              "centerX": 201,
+              "centerY": 266,
+              "className": "StaticText",
+              "contentDescription": "Ready",
+              "isEnabled": true,
+              "resourceId": "fixture_ready",
+              "text": "Ready"
+            }
+          ],
+          "success": true
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1129,
+        "estimatedTokens": 318
+      },
+      "flow": {
+        "durationMs": 222.939,
+        "exitCode": 2,
+        "stdout": null,
+        "stderr": "",
+        "bytes": 0,
+        "estimatedTokens": 0
+      }
+    },
+    {
+      "case": "form",
+      "mode": "compact",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 302.042,
+        "exitCode": 0,
+        "stdout": {
+          "success": true,
+          "format": "compact-v1",
+          "count": 7,
+          "observedCount": 7,
+          "elements": [
+            {
+              "selector": {
+                "contentDescription": "BenchmarkFixture"
+              },
+              "label": "BenchmarkFixture",
+              "type": "Application",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "start"
+              },
+              "label": "Start",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Start"
+              },
+              "selectorMatches": 2,
+              "label": "Start",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "email"
+              },
+              "type": "TextField",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "continue"
+              },
+              "label": "Continue",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Continue"
+              },
+              "selectorMatches": 2,
+              "label": "Continue",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "fixture_ready"
+              },
+              "label": "Ready",
+              "type": "StaticText",
+              "enabled": true
+            }
+          ]
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 771,
+        "estimatedTokens": 178
+      },
+      "flow": {
+        "durationMs": 223.14,
+        "exitCode": 2,
+        "stdout": null,
+        "stderr": "",
+        "bytes": 0,
+        "estimatedTokens": 0
+      }
+    },
+    {
+      "case": "navigation",
+      "mode": "full",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 289.011,
+        "exitCode": 0,
+        "stdout": {
+          "count": 7,
+          "elements": [
+            {
+              "bounds": "[0,0][402,874]",
+              "centerX": 201,
+              "centerY": 437,
+              "className": "Application",
+              "contentDescription": "BenchmarkFixture",
+              "isEnabled": true,
+              "text": "BenchmarkFixture"
+            },
+            {
+              "bounds": "[24,86][378,130]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "Button",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "resourceId": "start",
+              "text": "Start"
+            },
+            {
+              "bounds": "[184,99][218,117]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "StaticText",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "text": "Start"
+            },
+            {
+              "bounds": "[24,146][378,180]",
+              "centerX": 201,
+              "centerY": 163,
+              "className": "TextField",
+              "isEnabled": true,
+              "resourceId": "email"
+            },
+            {
+              "bounds": "[24,196][378,240]",
+              "centerX": 201,
+              "centerY": 218,
+              "className": "Button",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "resourceId": "continue",
+              "text": "Continue"
+            },
+            {
+              "bounds": "[170,209][232,227]",
+              "centerX": 201,
+              "centerY": 218,
+              "className": "StaticText",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "text": "Continue"
+            },
+            {
+              "bounds": "[24,256][378,276]",
+              "centerX": 201,
+              "centerY": 266,
+              "className": "StaticText",
+              "contentDescription": "Ready",
+              "isEnabled": true,
+              "resourceId": "fixture_ready",
+              "text": "Ready"
+            }
+          ],
+          "success": true
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1129,
+        "estimatedTokens": 318
+      },
+      "flow": {
+        "durationMs": 1281.659,
+        "exitCode": 0,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": true,
+          "exitCode": 0,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "tap_on_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "success": true
+              },
+              "error": null
+            },
+            {
+              "id": "step-2",
+              "command": "wait_for_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "bounds": "[24,86][378,106]",
+                "className": "StaticText",
+                "contentDescription": "Done",
+                "found": true,
+                "isEnabled": true,
+                "resourceId": "done",
+                "text": "Done",
+                "condition": "appeared",
+                "satisfied": true
+              },
+              "error": null
+            }
+          ],
+          "failedStep": null,
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "count": 2,
+                "elements": [
+                  {
+                    "bounds": "[0,0][402,874]",
+                    "centerX": 201,
+                    "centerY": 437,
+                    "className": "Application",
+                    "contentDescription": "BenchmarkFixture",
+                    "isEnabled": true,
+                    "text": "BenchmarkFixture"
+                  },
+                  {
+                    "bounds": "[24,86][378,106]",
+                    "centerX": 201,
+                    "centerY": 96,
+                    "className": "StaticText",
+                    "contentDescription": "Done",
+                    "isEnabled": true,
+                    "resourceId": "done",
+                    "text": "Done"
+                  }
+                ],
+                "success": true
+              },
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "error": null
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1099,
+        "estimatedTokens": 292
+      }
+    },
+    {
+      "case": "navigation",
+      "mode": "compact",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 275.493,
+        "exitCode": 0,
+        "stdout": {
+          "success": true,
+          "format": "compact-v1",
+          "count": 7,
+          "observedCount": 7,
+          "elements": [
+            {
+              "selector": {
+                "contentDescription": "BenchmarkFixture"
+              },
+              "label": "BenchmarkFixture",
+              "type": "Application",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "start"
+              },
+              "label": "Start",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Start"
+              },
+              "selectorMatches": 2,
+              "label": "Start",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "email"
+              },
+              "type": "TextField",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "continue"
+              },
+              "label": "Continue",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Continue"
+              },
+              "selectorMatches": 2,
+              "label": "Continue",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "fixture_ready"
+              },
+              "label": "Ready",
+              "type": "StaticText",
+              "enabled": true
+            }
+          ]
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 771,
+        "estimatedTokens": 178
+      },
+      "flow": {
+        "durationMs": 1197.616,
+        "exitCode": 0,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": true,
+          "exitCode": 0,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "tap_on_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "success": true
+              },
+              "error": null
+            },
+            {
+              "id": "step-2",
+              "command": "wait_for_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "bounds": "[24,86][378,106]",
+                "className": "StaticText",
+                "contentDescription": "Done",
+                "found": true,
+                "isEnabled": true,
+                "resourceId": "done",
+                "text": "Done",
+                "condition": "appeared",
+                "satisfied": true
+              },
+              "error": null
+            }
+          ],
+          "failedStep": null,
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "success": true,
+                "format": "compact-v1",
+                "count": 2,
+                "observedCount": 2,
+                "elements": [
+                  {
+                    "selector": {
+                      "contentDescription": "BenchmarkFixture"
+                    },
+                    "label": "BenchmarkFixture",
+                    "type": "Application",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "done"
+                    },
+                    "label": "Done",
+                    "type": "StaticText",
+                    "enabled": true
+                  }
+                ]
+              },
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "error": null
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1016,
+        "estimatedTokens": 258
+      }
+    },
+    {
+      "case": "ambiguous",
+      "mode": "full",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 321.031,
+        "exitCode": 0,
+        "stdout": {
+          "count": 8,
+          "elements": [
+            {
+              "bounds": "[0,0][402,874]",
+              "centerX": 201,
+              "centerY": 437,
+              "className": "Application",
+              "contentDescription": "BenchmarkFixture",
+              "isEnabled": true,
+              "text": "BenchmarkFixture"
+            },
+            {
+              "bounds": "[24,86][378,130]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "Button",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "resourceId": "start",
+              "text": "Start"
+            },
+            {
+              "bounds": "[184,99][218,117]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "StaticText",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "text": "Start"
+            },
+            {
+              "bounds": "[24,146][378,190]",
+              "centerX": 201,
+              "centerY": 168,
+              "className": "Button",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "resourceId": "continue_primary",
+              "text": "Continue"
+            },
+            {
+              "bounds": "[170,159][232,177]",
+              "centerX": 201,
+              "centerY": 168,
+              "className": "StaticText",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "text": "Continue"
+            },
+            {
+              "bounds": "[24,206][378,250]",
+              "centerX": 201,
+              "centerY": 228,
+              "className": "Button",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "resourceId": "continue_secondary",
+              "text": "Continue"
+            },
+            {
+              "bounds": "[170,219][232,237]",
+              "centerX": 201,
+              "centerY": 228,
+              "className": "StaticText",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "text": "Continue"
+            },
+            {
+              "bounds": "[24,266][378,286]",
+              "centerX": 201,
+              "centerY": 276,
+              "className": "StaticText",
+              "contentDescription": "Ready",
+              "isEnabled": true,
+              "resourceId": "fixture_ready",
+              "text": "Ready"
+            }
+          ],
+          "success": true
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1349,
+        "estimatedTokens": 370
+      },
+      "flow": {
+        "durationMs": 1413.976,
+        "exitCode": 0,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": true,
+          "exitCode": 0,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "tap_on_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "success": true
+              },
+              "error": null
+            },
+            {
+              "id": "step-2",
+              "command": "wait_for_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "bounds": "[24,206][378,250]",
+                "className": "Button",
+                "contentDescription": "Continue",
+                "found": true,
+                "isEnabled": true,
+                "resourceId": "continue_secondary",
+                "text": "Continue",
+                "condition": "appeared",
+                "satisfied": true
+              },
+              "error": null
+            }
+          ],
+          "failedStep": null,
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "count": 8,
+                "elements": [
+                  {
+                    "bounds": "[0,0][402,874]",
+                    "centerX": 201,
+                    "centerY": 437,
+                    "className": "Application",
+                    "contentDescription": "BenchmarkFixture",
+                    "isEnabled": true,
+                    "text": "BenchmarkFixture"
+                  },
+                  {
+                    "bounds": "[24,86][378,130]",
+                    "centerX": 201,
+                    "centerY": 108,
+                    "className": "Button",
+                    "contentDescription": "Start",
+                    "isEnabled": true,
+                    "resourceId": "start",
+                    "text": "Start"
+                  },
+                  {
+                    "bounds": "[184,99][218,117]",
+                    "centerX": 201,
+                    "centerY": 108,
+                    "className": "StaticText",
+                    "contentDescription": "Start",
+                    "isEnabled": true,
+                    "text": "Start"
+                  },
+                  {
+                    "bounds": "[24,146][378,190]",
+                    "centerX": 201,
+                    "centerY": 168,
+                    "className": "Button",
+                    "contentDescription": "Continue",
+                    "isEnabled": true,
+                    "resourceId": "continue_primary",
+                    "text": "Continue"
+                  },
+                  {
+                    "bounds": "[170,159][232,177]",
+                    "centerX": 201,
+                    "centerY": 168,
+                    "className": "StaticText",
+                    "contentDescription": "Continue",
+                    "isEnabled": true,
+                    "text": "Continue"
+                  },
+                  {
+                    "bounds": "[24,206][378,250]",
+                    "centerX": 201,
+                    "centerY": 228,
+                    "className": "Button",
+                    "contentDescription": "Continue",
+                    "isEnabled": true,
+                    "resourceId": "continue_secondary",
+                    "text": "Continue"
+                  },
+                  {
+                    "bounds": "[170,219][232,237]",
+                    "centerX": 201,
+                    "centerY": 228,
+                    "className": "StaticText",
+                    "contentDescription": "Continue",
+                    "isEnabled": true,
+                    "text": "Continue"
+                  },
+                  {
+                    "bounds": "[24,266][378,286]",
+                    "centerX": 201,
+                    "centerY": 276,
+                    "className": "StaticText",
+                    "contentDescription": "Ready",
+                    "isEnabled": true,
+                    "resourceId": "fixture_ready",
+                    "text": "Ready"
+                  }
+                ],
+                "success": true
+              },
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "error": null
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 2101,
+        "estimatedTokens": 559
+      }
+    },
+    {
+      "case": "ambiguous",
+      "mode": "compact",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 372.888,
+        "exitCode": 0,
+        "stdout": {
+          "success": true,
+          "format": "compact-v1",
+          "count": 8,
+          "observedCount": 8,
+          "elements": [
+            {
+              "selector": {
+                "contentDescription": "BenchmarkFixture"
+              },
+              "label": "BenchmarkFixture",
+              "type": "Application",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "start"
+              },
+              "label": "Start",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Start"
+              },
+              "selectorMatches": 2,
+              "label": "Start",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "continue_primary"
+              },
+              "label": "Continue",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Continue"
+              },
+              "selectorMatches": 4,
+              "label": "Continue",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "continue_secondary"
+              },
+              "label": "Continue",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Continue"
+              },
+              "selectorMatches": 4,
+              "label": "Continue",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "fixture_ready"
+              },
+              "label": "Ready",
+              "type": "StaticText",
+              "enabled": true
+            }
+          ]
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 929,
+        "estimatedTokens": 209
+      },
+      "flow": {
+        "durationMs": 1399.818,
+        "exitCode": 0,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": true,
+          "exitCode": 0,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "tap_on_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "success": true
+              },
+              "error": null
+            },
+            {
+              "id": "step-2",
+              "command": "wait_for_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "bounds": "[24,206][378,250]",
+                "className": "Button",
+                "contentDescription": "Continue",
+                "found": true,
+                "isEnabled": true,
+                "resourceId": "continue_secondary",
+                "text": "Continue",
+                "condition": "appeared",
+                "satisfied": true
+              },
+              "error": null
+            }
+          ],
+          "failedStep": null,
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "success": true,
+                "format": "compact-v1",
+                "count": 8,
+                "observedCount": 8,
+                "elements": [
+                  {
+                    "selector": {
+                      "contentDescription": "BenchmarkFixture"
+                    },
+                    "label": "BenchmarkFixture",
+                    "type": "Application",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "start"
+                    },
+                    "label": "Start",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Start"
+                    },
+                    "selectorMatches": 2,
+                    "label": "Start",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "continue_primary"
+                    },
+                    "label": "Continue",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Continue"
+                    },
+                    "selectorMatches": 4,
+                    "label": "Continue",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "continue_secondary"
+                    },
+                    "label": "Continue",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Continue"
+                    },
+                    "selectorMatches": 4,
+                    "label": "Continue",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "fixture_ready"
+                    },
+                    "label": "Ready",
+                    "type": "StaticText",
+                    "enabled": true
+                  }
+                ]
+              },
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "error": null
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1681,
+        "estimatedTokens": 399
+      }
+    },
+    {
+      "case": "missing",
+      "mode": "full",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 362.389,
+        "exitCode": 0,
+        "stdout": {
+          "count": 4,
+          "elements": [
+            {
+              "bounds": "[0,0][402,874]",
+              "centerX": 201,
+              "centerY": 437,
+              "className": "Application",
+              "contentDescription": "BenchmarkFixture",
+              "isEnabled": true,
+              "text": "BenchmarkFixture"
+            },
+            {
+              "bounds": "[24,86][378,130]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "Button",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "resourceId": "start",
+              "text": "Start"
+            },
+            {
+              "bounds": "[184,99][218,117]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "StaticText",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "text": "Start"
+            },
+            {
+              "bounds": "[24,146][378,166]",
+              "centerX": 201,
+              "centerY": 156,
+              "className": "StaticText",
+              "contentDescription": "Ready",
+              "isEnabled": true,
+              "resourceId": "fixture_ready",
+              "text": "Ready"
+            }
+          ],
+          "success": true
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 685,
+        "estimatedTokens": 192
+      },
+      "flow": {
+        "durationMs": 720.062,
+        "exitCode": 1,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": false,
+          "exitCode": 1,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "wait_for_element",
+              "status": "failed",
+              "certainty": "confirmed",
+              "result": null,
+              "error": {
+                "type": "TimeoutException",
+                "message": "Element not found after 21ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')"
+              }
+            }
+          ],
+          "failedStep": "step-1",
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "count": 4,
+                "elements": [
+                  {
+                    "bounds": "[0,0][402,874]",
+                    "centerX": 201,
+                    "centerY": 437,
+                    "className": "Application",
+                    "contentDescription": "BenchmarkFixture",
+                    "isEnabled": true,
+                    "text": "BenchmarkFixture"
+                  },
+                  {
+                    "bounds": "[24,86][378,130]",
+                    "centerX": 201,
+                    "centerY": 108,
+                    "className": "Button",
+                    "contentDescription": "Start",
+                    "isEnabled": true,
+                    "resourceId": "start",
+                    "text": "Start"
+                  },
+                  {
+                    "bounds": "[184,99][218,117]",
+                    "centerX": 201,
+                    "centerY": 108,
+                    "className": "StaticText",
+                    "contentDescription": "Start",
+                    "isEnabled": true,
+                    "text": "Start"
+                  },
+                  {
+                    "bounds": "[24,146][378,166]",
+                    "centerX": 201,
+                    "centerY": 156,
+                    "className": "StaticText",
+                    "contentDescription": "Ready",
+                    "isEnabled": true,
+                    "resourceId": "fixture_ready",
+                    "text": "Ready"
+                  }
+                ],
+                "success": true
+              },
+              "error": null
+            }
+          ],
+          "error": {
+            "type": "TimeoutException",
+            "message": "Element not found after 21ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')"
+          }
+        },
+        "stderr": "Element not found after 21ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')\n[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1427,
+        "estimatedTokens": 381
+      }
+    },
+    {
+      "case": "missing",
+      "mode": "compact",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 275.873,
+        "exitCode": 0,
+        "stdout": {
+          "success": true,
+          "format": "compact-v1",
+          "count": 4,
+          "observedCount": 4,
+          "elements": [
+            {
+              "selector": {
+                "contentDescription": "BenchmarkFixture"
+              },
+              "label": "BenchmarkFixture",
+              "type": "Application",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "start"
+              },
+              "label": "Start",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Start"
+              },
+              "selectorMatches": 2,
+              "label": "Start",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "fixture_ready"
+              },
+              "label": "Ready",
+              "type": "StaticText",
+              "enabled": true
+            }
+          ]
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 491,
+        "estimatedTokens": 115
+      },
+      "flow": {
+        "durationMs": 748.335,
+        "exitCode": 1,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": false,
+          "exitCode": 1,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "wait_for_element",
+              "status": "failed",
+              "certainty": "confirmed",
+              "result": null,
+              "error": {
+                "type": "TimeoutException",
+                "message": "Element not found after 28ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')"
+              }
+            }
+          ],
+          "failedStep": "step-1",
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "success": true,
+                "format": "compact-v1",
+                "count": 4,
+                "observedCount": 4,
+                "elements": [
+                  {
+                    "selector": {
+                      "contentDescription": "BenchmarkFixture"
+                    },
+                    "label": "BenchmarkFixture",
+                    "type": "Application",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "start"
+                    },
+                    "label": "Start",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Start"
+                    },
+                    "selectorMatches": 2,
+                    "label": "Start",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "fixture_ready"
+                    },
+                    "label": "Ready",
+                    "type": "StaticText",
+                    "enabled": true
+                  }
+                ]
+              },
+              "error": null
+            }
+          ],
+          "error": {
+            "type": "TimeoutException",
+            "message": "Element not found after 28ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')"
+          }
+        },
+        "stderr": "Element not found after 28ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')\n[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1233,
+        "estimatedTokens": 305
+      }
+    }
+  ],
+  "methodology": "One sample per case/mode; setup outside timing; warm native server, fresh JVM per invocation; no latency inference; full then compact order; all attempted samples retained.",
+  "jarSha256": "6bec726c4c96147c23e040dba863275554a5764bda4586e7ec0490cbcd5f739e",
+  "fixtureSha256": "ff9a1bf6a8f1fd3f16d60ab5cafc612f5404bb9622c5bdf852e95ddc4068878b"
+}

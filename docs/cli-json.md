@@ -204,3 +204,67 @@ visiontest get_interactive_elements -p ios --json | jq -e '.success == true'
 
 Use your shell's pipeline failure handling (for example `set -o pipefail` in
 Bash) when the script must also propagate VisionTest's nonzero exit status.
+
+## Compact interactive elements
+
+`get_interactive_elements --compact` emits one unwrapped JSON object with or
+without `--json`. Existing full output remains the default when compact is absent.
+For example:
+
+```bash
+visiontest get_interactive_elements -p android --compact
+visiontest get_interactive_elements -p ios --bundle-id com.example.app \
+  --compact --type Button --region 0,0,400,800 --include-bounds
+```
+
+`--type` matches native `className` exactly, without role inference. `--region`
+accepts `x,y,width,height` and includes centers in a half-open rectangle: left/top
+included, right/bottom excluded. Android units are display pixels; iOS units are
+screen points. No scaling or orientation conversion occurs. Components are signed
+32-bit integers; x/y must be nonnegative, width/height positive, and right/bottom
+must not exceed 2147483647. Blank types, invalid regions, and modifiers without
+`--compact` fail argument validation before device access. Every source element
+must supply integer `centerX` and `centerY` for a region query; missing centers
+fail explicitly even when another filter would exclude that element.
+
+Successful `compact-v1` output has this shape (example values):
+
+```json
+{"success":true,"format":"compact-v1","count":1,"observedCount":4,"elements":[{"selector":{"resourceId":"save"},"label":"Save","type":"Button","enabled":true}]}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `count` | Number returned after host filtering |
+| `observedCount` | Native candidates before host filtering; not a total tree count |
+| `selector` | One-key native action argument map: first nonblank `resourceId`, then `contentDescription`, then `text`; null if unavailable |
+| `selectorMatches` | Only present when the selector matches more than one unfiltered observed element; iOS resourceId counts observed identifier, label, and value aliases |
+| `label` | Nonempty text, otherwise nonempty contentDescription; optional |
+| `type` | Native className; optional |
+| `contentDescription`, `value` | Distinct description and iOS value retained when different from other presentation fields |
+| `enabled` | Observed isEnabled, when supplied |
+| `clickable`, `checkable`, `scrollable`, `longClickable` | Observed Android capability booleans, when supplied |
+| `bounds`, `centerX`, `centerY` | Supplied native geometry, only with `--include-bounds` |
+
+Selector keys use existing camelCase action arguments for MCP. CLI equivalents
+are `--resource-id`, `--content-description`, and `--text`; text-input target flags have
+`--target-` prefixes. No selector is composed or invented. Duplicate counts use
+native matching semantics (iOS text matches label OR value) before filtering.
+Absence of `selectorMatches` is not proof of native-tree uniqueness or actionability;
+actions resolve their targets again. An element with `selector:null` remains in
+results and may need geometry or full inspection.
+
+Nothing is truncated. Optional missing fields stay absent, equivalent presentation
+fields and empty strings are omitted, and unknown native attributes remain in
+full inspection. Omit filters to retrieve all native candidates; omit compact to
+retrieve full detail. Source elements are validated before filtering. Returned
+operation failures and RPC errors retain their unwrapped failure objects instead
+of becoming empty successes. Standalone returned failures still exit zero; thrown
+failures and flow failures retain their documented exit behavior.
+
+MCP retains `get_interactive_elements` and `ios_get_interactive_elements`, adding
+`compact`, `type`, `region` (the same string), and `includeBounds`. Existing
+`includeDisabled` and iOS `bundleId` are retained. Flow applies these options to
+requested interactive-element observations and failure evidence; see
+[flow observations](cli-flow.md#observations). Payload measurements and their
+limitations are recorded in the [compact evaluation](benchmarks/compact-inspection.md).

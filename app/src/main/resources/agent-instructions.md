@@ -82,7 +82,7 @@ Use structured queries for functional checks. Commands in this table omit
 | Await an expected result | `wait_for_element --text "Expected marker"`; add `--gone` for disappearance |
 | Tap a known control | `tap_on_element --resource-id ID`; it already waits for an actionable target |
 | Fill a known field | `input_text "value" --target-resource-id ID`; it waits, focuses, and enters text |
-| Discover controls on an unfamiliar screen | `get_interactive_elements --json` |
+| Discover controls on an unfamiliar screen | `get_interactive_elements --compact` |
 | Reveal content in a known list or carousel | `swipe_on_element up --resource-id CONTAINER_ID` |
 | Scroll the main screen without a container selector | `swipe_direction up --distance medium` |
 | Inspect structure missing from the filtered list | `get_ui_hierarchy` |
@@ -106,7 +106,7 @@ visiontest flow -p ios --bundle-id com.example.app \
   --step 'input_text "user@example.com" --target-resource-id email --bundle-id com.example.app' \
   --step 'tap_on_element --resource-id continue --bundle-id com.example.app' \
   --step 'wait_for_element --resource-id done --bundle-id com.example.app' \
-  --observe interactive-elements --on-failure screenshot --json
+  --observe interactive-elements --compact --on-failure screenshot --json
 ```
 
 Choose exactly one source: repeated `--step`, `--file PATH`, or `--stdin`.
@@ -140,26 +140,45 @@ the exit code. The first failure skips remaining steps, without rollback or repl
 After an uncertain action outcome, inspect the UI before choosing a recovery;
 the action may already have happened. Keep flows short between observations.
 
-`--json` produces compact JSON without JSON-RPC framing. The element list omits
-uninformative containers and excludes disabled elements by default; request
-`--include-disabled` only when needed. On iOS, scope queries with `--bundle-id`.
-There are no native `--compact`, `--fields`, or `--limit` options.
+Prefer `get_interactive_elements --compact` for selector discovery. It emits one
+`compact-v1` JSON object even without `--json`. Full inspection remains available
+by omitting `--compact`; use it for native attributes absent from compact output.
+The list excludes disabled elements by default; add `--include-disabled` when
+needed. On iOS, scope queries with `--bundle-id`.
 
-If a large element list is needed only to choose selectors and `jq` is available,
-reduce fields before the output reaches the model:
+Each compact element has `selector`: a one-key map with a native action argument
+(`resourceId`, then `contentDescription`, then `text`), or null if none exists.
+Use these camelCase keys directly with MCP action tools except `android_input_text`
+and `ios_input_text`: map `resourceId` to `targetResourceId`,
+`contentDescription` to `targetContentDescription`, or `text` to `targetText`.
+CLI equivalents are `--resource-id`, `--content-description`, and `--text`;
+`input_text` uses `--target-resource-id`, `--target-content-description`, or
+`--target-text`. `label`, native `type`, `enabled`,
+and Android `clickable`, `checkable`, `scrollable`, `longClickable` are optional.
+Distinct `contentDescription` and iOS `value` remain available. `selectorMatches`
+appears only for duplicate observed matches, calculated before filtering. Its
+absence does not prove uniqueness in the native tree; actions resolve again.
 
-```bash
-set -o pipefail
-visiontest get_interactive_elements -p android --json | jq -c '
-  if .success == true then .elements |= map(
-    {resourceId,text,contentDescription,className,value,isEnabled}
-    | with_entries(select(.value != null and .value != "")))
-  else . end'
-```
+Use `--type TYPE` for an exact native className match and `--region x,y,width,height`
+for centers inside a half-open rectangle (left/top included, right/bottom excluded).
+Android uses display pixels; iOS uses screen points without scaling. Region queries
+fail explicitly if any source element lacks its center. Coordinates must be
+nonnegative signed-32-bit integers, dimensions positive, and edges at most
+2147483647. Add `--include-bounds` for supplied bounds and center coordinates.
+All three modifiers require `--compact`. `observedCount` counts candidates before
+host filtering; `count` counts returned elements. No truncation occurs. Check
+failures as usual; compact never turns an error into an empty success.
 
-This retains all elements and outcome/error fields but omits geometry and
-interaction flags. Keep those fields when needed. Filtering reduces model input,
-not native work or CLI startup. Do not truncate with `head` or suppress errors.
+On `flow`, pass `--compact` and its modifiers on the outer command; request
+`interactive-elements` with `--observe` or `--on-failure`. They apply to every
+requested element observation/evidence record. Keep `--json` for a structured
+flow report. Known sequences should end in an explicit wait and the final
+observation needed to choose the next action.
+
+MCP uses the existing `get_interactive_elements` (Android) and
+`ios_get_interactive_elements` tools with `compact`, `type`, `region`, and
+`includeBounds`. Existing `includeDisabled` and iOS `bundleId` remain supported.
+These options reduce observation payloads, not native acquisition or CLI startup.
 
 These examples show first use. Skip completed setup and known-selector discovery.
 Adapt app IDs, selectors, and markers; check each result before continuing.
@@ -174,7 +193,7 @@ visiontest install_automation_server -p android
 visiontest start_automation_server -p android
 visiontest automation_server_status -p android
 visiontest launch_app -p android com.example.app
-visiontest get_interactive_elements -p android --json
+visiontest get_interactive_elements -p android --compact
 visiontest tap_on_element -p android --resource-id com.example.app:id/login
 visiontest wait_for_element -p android --text "Home" --timeout 10000
 ```
@@ -193,7 +212,7 @@ visiontest available_device -p ios --json
 visiontest start_automation_server -p ios
 visiontest automation_server_status -p ios
 visiontest launch_app -p ios com.example.app
-visiontest get_interactive_elements -p ios --bundle-id com.example.app --json
+visiontest get_interactive_elements -p ios --bundle-id com.example.app --compact
 visiontest tap_on_element -p ios --bundle-id com.example.app --resource-id login
 visiontest wait_for_element -p ios --bundle-id com.example.app --text "Home" --timeout 10000
 ```
@@ -226,7 +245,7 @@ visiontest find_element -p ios --resource-id notifications --bundle-id com.examp
 ```
 
 Assess progress from current contents and `bounds`; retain Android `isScrollable`
-when identifying containers. The optional `jq` projection omits these fields.
+when identifying containers. Use `--include-bounds` when compact inspection needs geometry.
 Each command performs one gesture, not scroll-until-found; `swipe_on_element`
 has no `--timeout`. Bound attempts and stop on failure or unchanged contents and
 bounds. Inspect an unknown container/direction; use screenshots only if needed

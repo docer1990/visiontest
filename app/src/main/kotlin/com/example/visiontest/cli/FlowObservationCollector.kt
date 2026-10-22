@@ -1,5 +1,6 @@
 package com.example.visiontest.cli
 
+import com.example.visiontest.common.CompactInspectionOptions
 import com.example.visiontest.common.automationResult
 import com.example.visiontest.CommandExecutionException
 import com.example.visiontest.common.RequestDeadline
@@ -53,6 +54,7 @@ internal class FlowObservationCollector(
     private val components: Lazy<ComponentHolder>,
     private val bundleId: String? = null,
     private val artifacts: Path = Path.of("flow-artifacts", UUID.randomUUID().toString()).toAbsolutePath(),
+    private val options: CompactInspectionOptions = CompactInspectionOptions(),
 ) {
     companion object {
         val kinds = setOf("screenshot", "hierarchy", "interactive-elements")
@@ -145,10 +147,11 @@ internal class FlowObservationCollector(
 
     private suspend fun interactiveElements(): FlowObservationReport {
         val raw = when (platform) {
-            Platform.Android -> components.value.androidAutomationRegistrar.getInteractiveElements()
-            Platform.Ios -> components.value.iosAutomationRegistrar.getInteractiveElements(bundleId = bundleId)
+            Platform.Android -> components.value.androidAutomationRegistrar.getInteractiveElements(options = options)
+            Platform.Ios -> components.value.iosAutomationRegistrar
+                .getInteractiveElements(bundleId = bundleId, options = options)
         }
-        val result = Json.parseToJsonElement(inspectionOutput(raw, true,
+        val result = Json.parseToJsonElement(if (options.compact) raw else inspectionOutput(raw, true,
             InspectionCommand.INTERACTIVE_ELEMENTS, platform)) as JsonObject
         if (result.containsKey("error") && result["error"] is JsonObject) {
             return rpcFailure("interactive-elements", result)

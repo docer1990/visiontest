@@ -1,0 +1,72 @@
+{
+  "kind": "offline-synthetic-projection",
+  "fixtureVersion": 1,
+  "tokenizer": "tiktoken 0.12.0 / o200k_base",
+  "agentUsageMeasured": false,
+  "samples": [
+    {
+      "id": "android-ambiguous",
+      "fullBytes": 789,
+      "compactBytes": 599,
+      "byteReductionPercent": 24.08,
+      "fullTokens": 209,
+      "compactTokens": 151
+    },
+    {
+      "id": "android-failure",
+      "fullBytes": 81,
+      "compactBytes": 81,
+      "byteReductionPercent": 0.0,
+      "fullTokens": 18,
+      "compactTokens": 18
+    },
+    {
+      "id": "android-form",
+      "fullBytes": 847,
+      "compactBytes": 650,
+      "byteReductionPercent": 23.26,
+      "fullTokens": 228,
+      "compactTokens": 160
+    },
+    {
+      "id": "android-navigation",
+      "fullBytes": 563,
+      "compactBytes": 478,
+      "byteReductionPercent": 15.1,
+      "fullTokens": 153,
+      "compactTokens": 117
+    },
+    {
+      "id": "ios-ambiguous",
+      "fullBytes": 525,
+      "compactBytes": 326,
+      "byteReductionPercent": 37.9,
+      "fullTokens": 149,
+      "compactTokens": 85
+    },
+    {
+      "id": "ios-failure",
+      "fullBytes": 81,
+      "compactBytes": 81,
+      "byteReductionPercent": 0.0,
+      "fullTokens": 18,
+      "compactTokens": 18
+    },
+    {
+      "id": "ios-form",
+      "fullBytes": 609,
+      "compactBytes": 414,
+      "byteReductionPercent": 32.02,
+      "fullTokens": 171,
+      "compactTokens": 101
+    },
+    {
+      "id": "ios-navigation",
+      "fullBytes": 389,
+      "compactBytes": 298,
+      "byteReductionPercent": 23.39,
+      "fullTokens": 113,
+      "compactTokens": 73
+    }
+  ]
+}

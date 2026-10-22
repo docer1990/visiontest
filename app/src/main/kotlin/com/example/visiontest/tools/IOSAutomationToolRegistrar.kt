@@ -5,6 +5,7 @@ import com.example.visiontest.performance.TraceStage
 import com.example.visiontest.performance.OperationOutcome
 
 import com.example.visiontest.ServerNotRunningException
+import com.example.visiontest.common.CompactInspectionOptions
 import com.example.visiontest.common.DeviceConfig
 import com.example.visiontest.config.IOSAutomationConfig
 import com.example.visiontest.discovery.ToolDiscovery
@@ -214,8 +215,16 @@ class IOSAutomationToolRegistrar internal constructor(
     }
     internal suspend fun getUiHierarchy(bundleId: String? = null): String =
         serverOperation { iosAutomationClient.getUiHierarchy(bundleId) }
-    internal suspend fun getInteractiveElements(includeDisabled: Boolean = false, bundleId: String? = null): String =
-        serverOperation { iosAutomationClient.getInteractiveElements(includeDisabled, bundleId) }
+    internal suspend fun getInteractiveElements(
+        includeDisabled: Boolean = false,
+        bundleId: String? = null,
+        options: CompactInspectionOptions = CompactInspectionOptions(),
+    ): String {
+        options.validate()
+        return serverOperation {
+            options.project(iosAutomationClient.getInteractiveElements(includeDisabled, bundleId), ios = true)
+        }
+    }
     internal suspend fun tapByCoordinates(x: Int, y: Int): String =
         serverOperation { iosAutomationClient.tapByCoordinates(x, y) }
     internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String =
@@ -375,29 +384,21 @@ class IOSAutomationToolRegistrar internal constructor(
         scope.tool(
             name = "ios_get_interactive_elements",
             description = """
-                Gets a filtered list of interactive UI elements from the current iOS simulator screen.
-                The iOS automation server must be running first (use ios_start_automation_server).
-
-                Returns only elements you can interact with (buttons, text fields, switches, etc.)
-                with center coordinates for intentional coordinate targets.
-
-                OPTIONAL PARAMETERS:
-                - includeDisabled: Set to true to include disabled elements (default: false)
-                - bundleId: Bundle ID of the app to query (e.g., "com.apple.Preferences").
-                  If not provided, queries springboard (which only shows system UI, not app content).
-                  ALWAYS provide bundleId when inspecting an app's UI.
-
-                WORKFLOW:
-                1. Call ios_get_interactive_elements with bundleId to see what you can interact with
-                2. Find the element by text, label, or identifier
-                3. Prefer ios_tap_on_element with a stable selector. Use centerX, centerY with
-                   ios_tap_by_coordinates only when coordinates are the intended target.
+                Inspect native UI candidates. The automation server must be running.
+                Set compact for compact-v1 JSON; type, region and includeBounds require compact.
+                Region uses screen points and matches centers in a half-open rectangle.
+                Provide bundleId for app content; omit for Springboard.
+                Selectors describe observed elements; actions resolve targets again.
+                Prefer ios_tap_on_element with a stable selector. Use coordinates only when
+                coordinates are the intended target.
             """.trimIndent(),
+            inputSchema = Tool.Input(properties = compactInspectionProperties(ios = true)),
             timeoutMs = 30000
         ) { request ->
             getInteractiveElements(
                 includeDisabled = request.optionalBoolean("includeDisabled") ?: false,
-                bundleId = request.optionalString("bundleId")
+                bundleId = request.optionalString("bundleId"),
+                options = request.compactInspectionOptions(),
             )
         }
     }

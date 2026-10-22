@@ -1,0 +1,2215 @@
+{
+  "revision": "0fef718213f994d8e1b4e2061def48070b993756",
+  "platform": "ios",
+  "simulator": "8CF7A9E3-89C0-49D8-B144-2BC6AF3B38FC",
+  "runtime": "iOS 26.5",
+  "host": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "tokenizer": {
+    "name": "tiktoken",
+    "version": "0.12.0",
+    "encoding": "o200k_base",
+    "accounting": "estimated stdout text tokens; no agent/provider usage"
+  },
+  "samples": [
+    {
+      "case": "form",
+      "mode": "full",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 282.589,
+        "exitCode": 0,
+        "stdout": {
+          "count": 7,
+          "elements": [
+            {
+              "bounds": "[0,0][402,874]",
+              "centerX": 201,
+              "centerY": 437,
+              "className": "Application",
+              "contentDescription": "BenchmarkFixture",
+              "isEnabled": true,
+              "text": "BenchmarkFixture"
+            },
+            {
+              "bounds": "[24,86][378,130]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "Button",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "resourceId": "start",
+              "text": "Start"
+            },
+            {
+              "bounds": "[184,99][218,117]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "StaticText",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "text": "Start"
+            },
+            {
+              "bounds": "[24,146][378,180]",
+              "centerX": 201,
+              "centerY": 163,
+              "className": "TextField",
+              "isEnabled": true,
+              "resourceId": "email"
+            },
+            {
+              "bounds": "[24,196][378,240]",
+              "centerX": 201,
+              "centerY": 218,
+              "className": "Button",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "resourceId": "continue",
+              "text": "Continue"
+            },
+            {
+              "bounds": "[170,209][232,227]",
+              "centerX": 201,
+              "centerY": 218,
+              "className": "StaticText",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "text": "Continue"
+            },
+            {
+              "bounds": "[24,256][378,276]",
+              "centerX": 201,
+              "centerY": 266,
+              "className": "StaticText",
+              "contentDescription": "Ready",
+              "isEnabled": true,
+              "resourceId": "fixture_ready",
+              "text": "Ready"
+            }
+          ],
+          "success": true
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1129,
+        "estimatedTokens": 318
+      },
+      "flow": {
+        "durationMs": 2686.501,
+        "exitCode": 0,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": true,
+          "exitCode": 0,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "input_text",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "success": true
+              },
+              "error": null
+            },
+            {
+              "id": "step-2",
+              "command": "wait_for_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "bounds": "[24,146][378,180]",
+                "className": "TextField",
+                "found": true,
+                "isEnabled": true,
+                "resourceId": "email",
+                "value": "agent@example.test",
+                "condition": "appeared",
+                "satisfied": true
+              },
+              "error": null
+            }
+          ],
+          "failedStep": null,
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "count": 47,
+                "elements": [
+                  {
+                    "bounds": "[0,0][402,874]",
+                    "centerX": 201,
+                    "centerY": 437,
+                    "className": "Application",
+                    "contentDescription": "BenchmarkFixture",
+                    "isEnabled": true,
+                    "text": "BenchmarkFixture"
+                  },
+                  {
+                    "bounds": "[24,86][378,130]",
+                    "centerX": 201,
+                    "centerY": 108,
+                    "className": "Button",
+                    "contentDescription": "Start",
+                    "isEnabled": true,
+                    "resourceId": "start",
+                    "text": "Start"
+                  },
+                  {
+                    "bounds": "[184,99][218,117]",
+                    "centerX": 201,
+                    "centerY": 108,
+                    "className": "StaticText",
+                    "contentDescription": "Start",
+                    "isEnabled": true,
+                    "text": "Start"
+                  },
+                  {
+                    "bounds": "[24,146][378,180]",
+                    "centerX": 201,
+                    "centerY": 163,
+                    "className": "TextField",
+                    "isEnabled": true,
+                    "resourceId": "email",
+                    "value": "agent@example.test"
+                  },
+                  {
+                    "bounds": "[24,196][378,240]",
+                    "centerX": 201,
+                    "centerY": 218,
+                    "className": "Button",
+                    "contentDescription": "Continue",
+                    "isEnabled": true,
+                    "resourceId": "continue",
+                    "text": "Continue"
+                  },
+                  {
+                    "bounds": "[170,209][232,227]",
+                    "centerX": 201,
+                    "centerY": 218,
+                    "className": "StaticText",
+                    "contentDescription": "Continue",
+                    "isEnabled": true,
+                    "text": "Continue"
+                  },
+                  {
+                    "bounds": "[24,256][378,276]",
+                    "centerX": 201,
+                    "centerY": 266,
+                    "className": "StaticText",
+                    "contentDescription": "Ready",
+                    "isEnabled": true,
+                    "resourceId": "fixture_ready",
+                    "text": "Ready"
+                  },
+                  {
+                    "bounds": "[0,539][402,874]",
+                    "centerX": 201,
+                    "centerY": 706,
+                    "className": "Other",
+                    "isEnabled": true,
+                    "resourceId": "inputView"
+                  },
+                  {
+                    "bounds": "[0,539][402,583]",
+                    "centerX": 201,
+                    "centerY": 561,
+                    "className": "Other",
+                    "isEnabled": true,
+                    "resourceId": "SystemInputAssistantView"
+                  },
+                  {
+                    "bounds": "[0,539][402,583]",
+                    "centerX": 201,
+                    "centerY": 561,
+                    "className": "Other",
+                    "isEnabled": true,
+                    "resourceId": "CenterPageView"
+                  },
+                  {
+                    "bounds": "[0,539][402,583]",
+                    "centerX": 201,
+                    "centerY": 561,
+                    "className": "Other",
+                    "contentDescription": "Typing Predictions",
+                    "isEnabled": true,
+                    "text": "Typing Predictions"
+                  },
+                  {
+                    "bounds": "[0,583][402,816]",
+                    "centerX": 201,
+                    "centerY": 699,
+                    "className": "Other",
+                    "isEnabled": true,
+                    "resourceId": "UIKeyboardLayoutStar Preview"
+                  },
+                  {
+                    "bounds": "[4,590][43,644]",
+                    "centerX": 24,
+                    "centerY": 617,
+                    "className": "Key",
+                    "contentDescription": "Q",
+                    "isEnabled": true,
+                    "text": "Q"
+                  },
+                  {
+                    "bounds": "[44,590][83,644]",
+                    "centerX": 63,
+                    "centerY": 617,
+                    "className": "Key",
+                    "contentDescription": "W",
+                    "isEnabled": true,
+                    "text": "W"
+                  },
+                  {
+                    "bounds": "[83,590][123,644]",
+                    "centerX": 103,
+                    "centerY": 617,
+                    "className": "Key",
+                    "contentDescription": "E",
+                    "isEnabled": true,
+                    "text": "E"
+                  },
+                  {
+                    "bounds": "[122,590][162,644]",
+                    "centerX": 142,
+                    "centerY": 617,
+                    "className": "Key",
+                    "contentDescription": "R",
+                    "isEnabled": true,
+                    "text": "R"
+                  },
+                  {
+                    "bounds": "[162,590][202,644]",
+                    "centerX": 182,
+                    "centerY": 617,
+                    "className": "Key",
+                    "contentDescription": "T",
+                    "isEnabled": true,
+                    "text": "T"
+                  },
+                  {
+                    "bounds": "[202,590][241,644]",
+                    "centerX": 221,
+                    "centerY": 617,
+                    "className": "Key",
+                    "contentDescription": "Y",
+                    "isEnabled": true,
+                    "text": "Y"
+                  },
+                  {
+                    "bounds": "[241,590][281,644]",
+                    "centerX": 261,
+                    "centerY": 617,
+                    "className": "Key",
+                    "contentDescription": "U",
+                    "isEnabled": true,
+                    "text": "U"
+                  },
+                  {
+                    "bounds": "[281,590][320,644]",
+                    "centerX": 300,
+                    "centerY": 617,
+                    "className": "Key",
+                    "contentDescription": "I",
+                    "isEnabled": true,
+                    "text": "I"
+                  },
+                  {
+                    "bounds": "[320,590][359,644]",
+                    "centerX": 340,
+                    "centerY": 617,
+                    "className": "Key",
+                    "contentDescription": "O",
+                    "isEnabled": true,
+                    "text": "O"
+                  },
+                  {
+                    "bounds": "[360,590][399,644]",
+                    "centerX": 379,
+                    "centerY": 617,
+                    "className": "Key",
+                    "contentDescription": "P",
+                    "isEnabled": true,
+                    "text": "P"
+                  },
+                  {
+                    "bounds": "[24,644][63,698]",
+                    "centerX": 43,
+                    "centerY": 671,
+                    "className": "Key",
+                    "contentDescription": "A",
+                    "isEnabled": true,
+                    "text": "A"
+                  },
+                  {
+                    "bounds": "[63,644][103,698]",
+                    "centerX": 83,
+                    "centerY": 671,
+                    "className": "Key",
+                    "contentDescription": "S",
+                    "isEnabled": true,
+                    "text": "S"
+                  },
+                  {
+                    "bounds": "[103,644][142,698]",
+                    "centerX": 122,
+                    "centerY": 671,
+                    "className": "Key",
+                    "contentDescription": "D",
+                    "isEnabled": true,
+                    "text": "D"
+                  },
+                  {
+                    "bounds": "[142,644][182,698]",
+                    "centerX": 162,
+                    "centerY": 671,
+                    "className": "Key",
+                    "contentDescription": "F",
+                    "isEnabled": true,
+                    "text": "F"
+                  },
+                  {
+                    "bounds": "[182,644][221,698]",
+                    "centerX": 202,
+                    "centerY": 671,
+                    "className": "Key",
+                    "contentDescription": "G",
+                    "isEnabled": true,
+                    "text": "G"
+                  },
+                  {
+                    "bounds": "[221,644][261,698]",
+                    "centerX": 241,
+                    "centerY": 671,
+                    "className": "Key",
+                    "contentDescription": "H",
+                    "isEnabled": true,
+                    "text": "H"
+                  },
+                  {
+                    "bounds": "[261,644][300,698]",
+                    "centerX": 280,
+                    "centerY": 671,
+                    "className": "Key",
+                    "contentDescription": "J",
+                    "isEnabled": true,
+                    "text": "J"
+                  },
+                  {
+                    "bounds": "[300,644][340,698]",
+                    "centerX": 320,
+                    "centerY": 671,
+                    "className": "Key",
+                    "contentDescription": "K",
+                    "isEnabled": true,
+                    "text": "K"
+                  },
+                  {
+                    "bounds": "[340,644][379,698]",
+                    "centerX": 359,
+                    "centerY": 671,
+                    "className": "Key",
+                    "contentDescription": "L",
+                    "isEnabled": true,
+                    "text": "L"
+                  },
+                  {
+                    "bounds": "[4,698][55,752]",
+                    "centerX": 30,
+                    "centerY": 725,
+                    "className": "Button",
+                    "contentDescription": "maiuscole",
+                    "isEnabled": true,
+                    "resourceId": "shift",
+                    "text": "maiuscole"
+                  },
+                  {
+                    "bounds": "[63,698][103,752]",
+                    "centerX": 83,
+                    "centerY": 725,
+                    "className": "Key",
+                    "contentDescription": "Z",
+                    "isEnabled": true,
+                    "text": "Z"
+                  },
+                  {
+                    "bounds": "[103,698][142,752]",
+                    "centerX": 122,
+                    "centerY": 725,
+                    "className": "Key",
+                    "contentDescription": "X",
+                    "isEnabled": true,
+                    "text": "X"
+                  },
+                  {
+                    "bounds": "[142,698][182,752]",
+                    "centerX": 162,
+                    "centerY": 725,
+                    "className": "Key",
+                    "contentDescription": "C",
+                    "isEnabled": true,
+                    "text": "C"
+                  },
+                  {
+                    "bounds": "[182,698][221,752]",
+                    "centerX": 202,
+                    "centerY": 725,
+                    "className": "Key",
+                    "contentDescription": "V",
+                    "isEnabled": true,
+                    "text": "V"
+                  },
+                  {
+                    "bounds": "[221,698][261,752]",
+                    "centerX": 241,
+                    "centerY": 725,
+                    "className": "Key",
+                    "contentDescription": "B",
+                    "isEnabled": true,
+                    "text": "B"
+                  },
+                  {
+                    "bounds": "[261,698][300,752]",
+                    "centerX": 280,
+                    "centerY": 725,
+                    "className": "Key",
+                    "contentDescription": "N",
+                    "isEnabled": true,
+                    "text": "N"
+                  },
+                  {
+                    "bounds": "[300,698][340,752]",
+                    "centerX": 320,
+                    "centerY": 725,
+                    "className": "Key",
+                    "contentDescription": "M",
+                    "isEnabled": true,
+                    "text": "M"
+                  },
+                  {
+                    "bounds": "[348,698][399,752]",
+                    "centerX": 373,
+                    "centerY": 725,
+                    "className": "Key",
+                    "contentDescription": "elimina",
+                    "isEnabled": true,
+                    "resourceId": "delete",
+                    "text": "elimina"
+                  },
+                  {
+                    "bounds": "[4,752][53,806]",
+                    "centerX": 29,
+                    "centerY": 779,
+                    "className": "Key",
+                    "contentDescription": "cifre",
+                    "isEnabled": true,
+                    "resourceId": "more",
+                    "text": "cifre"
+                  },
+                  {
+                    "bounds": "[53,752][103,806]",
+                    "centerX": 78,
+                    "centerY": 779,
+                    "className": "Button",
+                    "contentDescription": "Emoji",
+                    "isEnabled": true,
+                    "resourceId": "emoji",
+                    "text": "Emoji"
+                  },
+                  {
+                    "bounds": "[103,752][300,806]",
+                    "centerX": 201,
+                    "centerY": 779,
+                    "className": "Key",
+                    "contentDescription": " ",
+                    "isEnabled": true,
+                    "resourceId": "space",
+                    "text": " "
+                  },
+                  {
+                    "bounds": "[300,752][399,806]",
+                    "centerX": 350,
+                    "centerY": 779,
+                    "className": "Button",
+                    "contentDescription": "invio",
+                    "isEnabled": true,
+                    "resourceId": "Return",
+                    "text": "invio"
+                  },
+                  {
+                    "bounds": "[8,805][76,874]",
+                    "centerX": 42,
+                    "centerY": 840,
+                    "className": "Button",
+                    "contentDescription": "Next keyboard",
+                    "isEnabled": true,
+                    "text": "Next keyboard",
+                    "value": "English (US)"
+                  },
+                  {
+                    "bounds": "[325,805][393,874]",
+                    "centerX": 359,
+                    "centerY": 839,
+                    "className": "Button",
+                    "contentDescription": "Dictate",
+                    "isEnabled": true,
+                    "resourceId": "dictation",
+                    "text": "Dictate"
+                  },
+                  {
+                    "bounds": "[325,805][393,874]",
+                    "centerX": 359,
+                    "centerY": 839,
+                    "className": "Button",
+                    "contentDescription": "Dictate",
+                    "isEnabled": true,
+                    "resourceId": "dictation",
+                    "text": "Dictate"
+                  }
+                ],
+                "success": true
+              },
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "error": null
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 7434,
+        "estimatedTokens": 2209
+      }
+    },
+    {
+      "case": "form",
+      "mode": "compact",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 397.35,
+        "exitCode": 0,
+        "stdout": {
+          "success": true,
+          "format": "compact-v1",
+          "count": 7,
+          "observedCount": 7,
+          "elements": [
+            {
+              "selector": {
+                "contentDescription": "BenchmarkFixture"
+              },
+              "label": "BenchmarkFixture",
+              "type": "Application",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "start"
+              },
+              "label": "Start",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Start"
+              },
+              "selectorMatches": 2,
+              "label": "Start",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "email"
+              },
+              "type": "TextField",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "continue"
+              },
+              "label": "Continue",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Continue"
+              },
+              "selectorMatches": 2,
+              "label": "Continue",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "fixture_ready"
+              },
+              "label": "Ready",
+              "type": "StaticText",
+              "enabled": true
+            }
+          ]
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 771,
+        "estimatedTokens": 178
+      },
+      "flow": {
+        "durationMs": 2169.88,
+        "exitCode": 0,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": true,
+          "exitCode": 0,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "input_text",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "success": true
+              },
+              "error": null
+            },
+            {
+              "id": "step-2",
+              "command": "wait_for_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "bounds": "[24,146][378,180]",
+                "className": "TextField",
+                "found": true,
+                "isEnabled": true,
+                "resourceId": "email",
+                "value": "agent@example.test",
+                "condition": "appeared",
+                "satisfied": true
+              },
+              "error": null
+            }
+          ],
+          "failedStep": null,
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "success": true,
+                "format": "compact-v1",
+                "count": 47,
+                "observedCount": 47,
+                "elements": [
+                  {
+                    "selector": {
+                      "contentDescription": "BenchmarkFixture"
+                    },
+                    "label": "BenchmarkFixture",
+                    "type": "Application",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "start"
+                    },
+                    "label": "Start",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Start"
+                    },
+                    "selectorMatches": 2,
+                    "label": "Start",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "email"
+                    },
+                    "type": "TextField",
+                    "value": "agent@example.test",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "continue"
+                    },
+                    "label": "Continue",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Continue"
+                    },
+                    "selectorMatches": 2,
+                    "label": "Continue",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "fixture_ready"
+                    },
+                    "label": "Ready",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "inputView"
+                    },
+                    "type": "Other",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "SystemInputAssistantView"
+                    },
+                    "type": "Other",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "CenterPageView"
+                    },
+                    "type": "Other",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Typing Predictions"
+                    },
+                    "label": "Typing Predictions",
+                    "type": "Other",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "UIKeyboardLayoutStar Preview"
+                    },
+                    "type": "Other",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Q"
+                    },
+                    "label": "Q",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "W"
+                    },
+                    "label": "W",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "E"
+                    },
+                    "label": "E",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "R"
+                    },
+                    "label": "R",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "T"
+                    },
+                    "label": "T",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Y"
+                    },
+                    "label": "Y",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "U"
+                    },
+                    "label": "U",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "I"
+                    },
+                    "label": "I",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "O"
+                    },
+                    "label": "O",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "P"
+                    },
+                    "label": "P",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "A"
+                    },
+                    "label": "A",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "S"
+                    },
+                    "label": "S",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "D"
+                    },
+                    "label": "D",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "F"
+                    },
+                    "label": "F",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "G"
+                    },
+                    "label": "G",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "H"
+                    },
+                    "label": "H",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "J"
+                    },
+                    "label": "J",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "K"
+                    },
+                    "label": "K",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "L"
+                    },
+                    "label": "L",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "shift"
+                    },
+                    "label": "maiuscole",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Z"
+                    },
+                    "label": "Z",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "X"
+                    },
+                    "label": "X",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "C"
+                    },
+                    "label": "C",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "V"
+                    },
+                    "label": "V",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "B"
+                    },
+                    "label": "B",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "N"
+                    },
+                    "label": "N",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "M"
+                    },
+                    "label": "M",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "delete"
+                    },
+                    "label": "elimina",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "more"
+                    },
+                    "label": "cifre",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "emoji"
+                    },
+                    "label": "Emoji",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "space"
+                    },
+                    "label": " ",
+                    "type": "Key",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "Return"
+                    },
+                    "label": "invio",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Next keyboard"
+                    },
+                    "label": "Next keyboard",
+                    "type": "Button",
+                    "value": "English (US)",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "dictation"
+                    },
+                    "selectorMatches": 2,
+                    "label": "Dictate",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "dictation"
+                    },
+                    "selectorMatches": 2,
+                    "label": "Dictate",
+                    "type": "Button",
+                    "enabled": true
+                  }
+                ]
+              },
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "error": null
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 4874,
+        "estimatedTokens": 1193
+      }
+    },
+    {
+      "case": "navigation",
+      "mode": "full",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 319.713,
+        "exitCode": 0,
+        "stdout": {
+          "count": 7,
+          "elements": [
+            {
+              "bounds": "[0,0][402,874]",
+              "centerX": 201,
+              "centerY": 437,
+              "className": "Application",
+              "contentDescription": "BenchmarkFixture",
+              "isEnabled": true,
+              "text": "BenchmarkFixture"
+            },
+            {
+              "bounds": "[24,86][378,130]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "Button",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "resourceId": "start",
+              "text": "Start"
+            },
+            {
+              "bounds": "[184,99][218,117]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "StaticText",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "text": "Start"
+            },
+            {
+              "bounds": "[24,146][378,180]",
+              "centerX": 201,
+              "centerY": 163,
+              "className": "TextField",
+              "isEnabled": true,
+              "resourceId": "email"
+            },
+            {
+              "bounds": "[24,196][378,240]",
+              "centerX": 201,
+              "centerY": 218,
+              "className": "Button",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "resourceId": "continue",
+              "text": "Continue"
+            },
+            {
+              "bounds": "[170,209][232,227]",
+              "centerX": 201,
+              "centerY": 218,
+              "className": "StaticText",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "text": "Continue"
+            },
+            {
+              "bounds": "[24,256][378,276]",
+              "centerX": 201,
+              "centerY": 266,
+              "className": "StaticText",
+              "contentDescription": "Ready",
+              "isEnabled": true,
+              "resourceId": "fixture_ready",
+              "text": "Ready"
+            }
+          ],
+          "success": true
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1129,
+        "estimatedTokens": 318
+      },
+      "flow": {
+        "durationMs": 1188.731,
+        "exitCode": 0,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": true,
+          "exitCode": 0,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "tap_on_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "success": true
+              },
+              "error": null
+            },
+            {
+              "id": "step-2",
+              "command": "wait_for_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "bounds": "[24,86][378,106]",
+                "className": "StaticText",
+                "contentDescription": "Done",
+                "found": true,
+                "isEnabled": true,
+                "resourceId": "done",
+                "text": "Done",
+                "condition": "appeared",
+                "satisfied": true
+              },
+              "error": null
+            }
+          ],
+          "failedStep": null,
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "count": 2,
+                "elements": [
+                  {
+                    "bounds": "[0,0][402,874]",
+                    "centerX": 201,
+                    "centerY": 437,
+                    "className": "Application",
+                    "contentDescription": "BenchmarkFixture",
+                    "isEnabled": true,
+                    "text": "BenchmarkFixture"
+                  },
+                  {
+                    "bounds": "[24,86][378,106]",
+                    "centerX": 201,
+                    "centerY": 96,
+                    "className": "StaticText",
+                    "contentDescription": "Done",
+                    "isEnabled": true,
+                    "resourceId": "done",
+                    "text": "Done"
+                  }
+                ],
+                "success": true
+              },
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "error": null
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1099,
+        "estimatedTokens": 292
+      }
+    },
+    {
+      "case": "navigation",
+      "mode": "compact",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 311.633,
+        "exitCode": 0,
+        "stdout": {
+          "success": true,
+          "format": "compact-v1",
+          "count": 7,
+          "observedCount": 7,
+          "elements": [
+            {
+              "selector": {
+                "contentDescription": "BenchmarkFixture"
+              },
+              "label": "BenchmarkFixture",
+              "type": "Application",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "start"
+              },
+              "label": "Start",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Start"
+              },
+              "selectorMatches": 2,
+              "label": "Start",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "email"
+              },
+              "type": "TextField",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "continue"
+              },
+              "label": "Continue",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Continue"
+              },
+              "selectorMatches": 2,
+              "label": "Continue",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "fixture_ready"
+              },
+              "label": "Ready",
+              "type": "StaticText",
+              "enabled": true
+            }
+          ]
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 771,
+        "estimatedTokens": 178
+      },
+      "flow": {
+        "durationMs": 1137.542,
+        "exitCode": 0,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": true,
+          "exitCode": 0,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "tap_on_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "success": true
+              },
+              "error": null
+            },
+            {
+              "id": "step-2",
+              "command": "wait_for_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "bounds": "[24,86][378,106]",
+                "className": "StaticText",
+                "contentDescription": "Done",
+                "found": true,
+                "isEnabled": true,
+                "resourceId": "done",
+                "text": "Done",
+                "condition": "appeared",
+                "satisfied": true
+              },
+              "error": null
+            }
+          ],
+          "failedStep": null,
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "success": true,
+                "format": "compact-v1",
+                "count": 2,
+                "observedCount": 2,
+                "elements": [
+                  {
+                    "selector": {
+                      "contentDescription": "BenchmarkFixture"
+                    },
+                    "label": "BenchmarkFixture",
+                    "type": "Application",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "done"
+                    },
+                    "label": "Done",
+                    "type": "StaticText",
+                    "enabled": true
+                  }
+                ]
+              },
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "error": null
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1016,
+        "estimatedTokens": 258
+      }
+    },
+    {
+      "case": "ambiguous",
+      "mode": "full",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 282.219,
+        "exitCode": 0,
+        "stdout": {
+          "count": 8,
+          "elements": [
+            {
+              "bounds": "[0,0][402,874]",
+              "centerX": 201,
+              "centerY": 437,
+              "className": "Application",
+              "contentDescription": "BenchmarkFixture",
+              "isEnabled": true,
+              "text": "BenchmarkFixture"
+            },
+            {
+              "bounds": "[24,86][378,130]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "Button",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "resourceId": "start",
+              "text": "Start"
+            },
+            {
+              "bounds": "[184,99][218,117]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "StaticText",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "text": "Start"
+            },
+            {
+              "bounds": "[24,146][378,190]",
+              "centerX": 201,
+              "centerY": 168,
+              "className": "Button",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "resourceId": "continue_primary",
+              "text": "Continue"
+            },
+            {
+              "bounds": "[170,159][232,177]",
+              "centerX": 201,
+              "centerY": 168,
+              "className": "StaticText",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "text": "Continue"
+            },
+            {
+              "bounds": "[24,206][378,250]",
+              "centerX": 201,
+              "centerY": 228,
+              "className": "Button",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "resourceId": "continue_secondary",
+              "text": "Continue"
+            },
+            {
+              "bounds": "[170,219][232,237]",
+              "centerX": 201,
+              "centerY": 228,
+              "className": "StaticText",
+              "contentDescription": "Continue",
+              "isEnabled": true,
+              "text": "Continue"
+            },
+            {
+              "bounds": "[24,266][378,286]",
+              "centerX": 201,
+              "centerY": 276,
+              "className": "StaticText",
+              "contentDescription": "Ready",
+              "isEnabled": true,
+              "resourceId": "fixture_ready",
+              "text": "Ready"
+            }
+          ],
+          "success": true
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1349,
+        "estimatedTokens": 370
+      },
+      "flow": {
+        "durationMs": 1499.468,
+        "exitCode": 0,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": true,
+          "exitCode": 0,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "tap_on_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "success": true
+              },
+              "error": null
+            },
+            {
+              "id": "step-2",
+              "command": "wait_for_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "bounds": "[24,206][378,250]",
+                "className": "Button",
+                "contentDescription": "Continue",
+                "found": true,
+                "isEnabled": true,
+                "resourceId": "continue_secondary",
+                "text": "Continue",
+                "condition": "appeared",
+                "satisfied": true
+              },
+              "error": null
+            }
+          ],
+          "failedStep": null,
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "count": 8,
+                "elements": [
+                  {
+                    "bounds": "[0,0][402,874]",
+                    "centerX": 201,
+                    "centerY": 437,
+                    "className": "Application",
+                    "contentDescription": "BenchmarkFixture",
+                    "isEnabled": true,
+                    "text": "BenchmarkFixture"
+                  },
+                  {
+                    "bounds": "[24,86][378,130]",
+                    "centerX": 201,
+                    "centerY": 108,
+                    "className": "Button",
+                    "contentDescription": "Start",
+                    "isEnabled": true,
+                    "resourceId": "start",
+                    "text": "Start"
+                  },
+                  {
+                    "bounds": "[184,99][218,117]",
+                    "centerX": 201,
+                    "centerY": 108,
+                    "className": "StaticText",
+                    "contentDescription": "Start",
+                    "isEnabled": true,
+                    "text": "Start"
+                  },
+                  {
+                    "bounds": "[24,146][378,190]",
+                    "centerX": 201,
+                    "centerY": 168,
+                    "className": "Button",
+                    "contentDescription": "Continue",
+                    "isEnabled": true,
+                    "resourceId": "continue_primary",
+                    "text": "Continue"
+                  },
+                  {
+                    "bounds": "[170,159][232,177]",
+                    "centerX": 201,
+                    "centerY": 168,
+                    "className": "StaticText",
+                    "contentDescription": "Continue",
+                    "isEnabled": true,
+                    "text": "Continue"
+                  },
+                  {
+                    "bounds": "[24,206][378,250]",
+                    "centerX": 201,
+                    "centerY": 228,
+                    "className": "Button",
+                    "contentDescription": "Continue",
+                    "isEnabled": true,
+                    "resourceId": "continue_secondary",
+                    "text": "Continue"
+                  },
+                  {
+                    "bounds": "[170,219][232,237]",
+                    "centerX": 201,
+                    "centerY": 228,
+                    "className": "StaticText",
+                    "contentDescription": "Continue",
+                    "isEnabled": true,
+                    "text": "Continue"
+                  },
+                  {
+                    "bounds": "[24,266][378,286]",
+                    "centerX": 201,
+                    "centerY": 276,
+                    "className": "StaticText",
+                    "contentDescription": "Ready",
+                    "isEnabled": true,
+                    "resourceId": "fixture_ready",
+                    "text": "Ready"
+                  }
+                ],
+                "success": true
+              },
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "error": null
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 2101,
+        "estimatedTokens": 559
+      }
+    },
+    {
+      "case": "ambiguous",
+      "mode": "compact",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 296.037,
+        "exitCode": 0,
+        "stdout": {
+          "success": true,
+          "format": "compact-v1",
+          "count": 8,
+          "observedCount": 8,
+          "elements": [
+            {
+              "selector": {
+                "contentDescription": "BenchmarkFixture"
+              },
+              "label": "BenchmarkFixture",
+              "type": "Application",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "start"
+              },
+              "label": "Start",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Start"
+              },
+              "selectorMatches": 2,
+              "label": "Start",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "continue_primary"
+              },
+              "label": "Continue",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Continue"
+              },
+              "selectorMatches": 4,
+              "label": "Continue",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "continue_secondary"
+              },
+              "label": "Continue",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Continue"
+              },
+              "selectorMatches": 4,
+              "label": "Continue",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "fixture_ready"
+              },
+              "label": "Ready",
+              "type": "StaticText",
+              "enabled": true
+            }
+          ]
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 929,
+        "estimatedTokens": 209
+      },
+      "flow": {
+        "durationMs": 1430.092,
+        "exitCode": 0,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": true,
+          "exitCode": 0,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "tap_on_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "success": true
+              },
+              "error": null
+            },
+            {
+              "id": "step-2",
+              "command": "wait_for_element",
+              "status": "succeeded",
+              "certainty": "confirmed",
+              "result": {
+                "bounds": "[24,206][378,250]",
+                "className": "Button",
+                "contentDescription": "Continue",
+                "found": true,
+                "isEnabled": true,
+                "resourceId": "continue_secondary",
+                "text": "Continue",
+                "condition": "appeared",
+                "satisfied": true
+              },
+              "error": null
+            }
+          ],
+          "failedStep": null,
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "success": true,
+                "format": "compact-v1",
+                "count": 8,
+                "observedCount": 8,
+                "elements": [
+                  {
+                    "selector": {
+                      "contentDescription": "BenchmarkFixture"
+                    },
+                    "label": "BenchmarkFixture",
+                    "type": "Application",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "start"
+                    },
+                    "label": "Start",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Start"
+                    },
+                    "selectorMatches": 2,
+                    "label": "Start",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "continue_primary"
+                    },
+                    "label": "Continue",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Continue"
+                    },
+                    "selectorMatches": 4,
+                    "label": "Continue",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "continue_secondary"
+                    },
+                    "label": "Continue",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Continue"
+                    },
+                    "selectorMatches": 4,
+                    "label": "Continue",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "fixture_ready"
+                    },
+                    "label": "Ready",
+                    "type": "StaticText",
+                    "enabled": true
+                  }
+                ]
+              },
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "error": null
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1681,
+        "estimatedTokens": 399
+      }
+    },
+    {
+      "case": "missing",
+      "mode": "full",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 282.174,
+        "exitCode": 0,
+        "stdout": {
+          "count": 4,
+          "elements": [
+            {
+              "bounds": "[0,0][402,874]",
+              "centerX": 201,
+              "centerY": 437,
+              "className": "Application",
+              "contentDescription": "BenchmarkFixture",
+              "isEnabled": true,
+              "text": "BenchmarkFixture"
+            },
+            {
+              "bounds": "[24,86][378,130]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "Button",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "resourceId": "start",
+              "text": "Start"
+            },
+            {
+              "bounds": "[184,99][218,117]",
+              "centerX": 201,
+              "centerY": 108,
+              "className": "StaticText",
+              "contentDescription": "Start",
+              "isEnabled": true,
+              "text": "Start"
+            },
+            {
+              "bounds": "[24,146][378,166]",
+              "centerX": 201,
+              "centerY": 156,
+              "className": "StaticText",
+              "contentDescription": "Ready",
+              "isEnabled": true,
+              "resourceId": "fixture_ready",
+              "text": "Ready"
+            }
+          ],
+          "success": true
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 685,
+        "estimatedTokens": 192
+      },
+      "flow": {
+        "durationMs": 776.909,
+        "exitCode": 1,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": false,
+          "exitCode": 1,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "wait_for_element",
+              "status": "failed",
+              "certainty": "confirmed",
+              "result": null,
+              "error": {
+                "type": "TimeoutException",
+                "message": "Element not found after 20ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')"
+              }
+            }
+          ],
+          "failedStep": "step-1",
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "count": 4,
+                "elements": [
+                  {
+                    "bounds": "[0,0][402,874]",
+                    "centerX": 201,
+                    "centerY": 437,
+                    "className": "Application",
+                    "contentDescription": "BenchmarkFixture",
+                    "isEnabled": true,
+                    "text": "BenchmarkFixture"
+                  },
+                  {
+                    "bounds": "[24,86][378,130]",
+                    "centerX": 201,
+                    "centerY": 108,
+                    "className": "Button",
+                    "contentDescription": "Start",
+                    "isEnabled": true,
+                    "resourceId": "start",
+                    "text": "Start"
+                  },
+                  {
+                    "bounds": "[184,99][218,117]",
+                    "centerX": 201,
+                    "centerY": 108,
+                    "className": "StaticText",
+                    "contentDescription": "Start",
+                    "isEnabled": true,
+                    "text": "Start"
+                  },
+                  {
+                    "bounds": "[24,146][378,166]",
+                    "centerX": 201,
+                    "centerY": 156,
+                    "className": "StaticText",
+                    "contentDescription": "Ready",
+                    "isEnabled": true,
+                    "resourceId": "fixture_ready",
+                    "text": "Ready"
+                  }
+                ],
+                "success": true
+              },
+              "error": null
+            }
+          ],
+          "error": {
+            "type": "TimeoutException",
+            "message": "Element not found after 20ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')"
+          }
+        },
+        "stderr": "Element not found after 20ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')\n[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1427,
+        "estimatedTokens": 381
+      }
+    },
+    {
+      "case": "missing",
+      "mode": "compact",
+      "setup": {
+        "ok": true
+      },
+      "inspection": {
+        "durationMs": 257.293,
+        "exitCode": 0,
+        "stdout": {
+          "success": true,
+          "format": "compact-v1",
+          "count": 4,
+          "observedCount": 4,
+          "elements": [
+            {
+              "selector": {
+                "contentDescription": "BenchmarkFixture"
+              },
+              "label": "BenchmarkFixture",
+              "type": "Application",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "start"
+              },
+              "label": "Start",
+              "type": "Button",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "contentDescription": "Start"
+              },
+              "selectorMatches": 2,
+              "label": "Start",
+              "type": "StaticText",
+              "enabled": true
+            },
+            {
+              "selector": {
+                "resourceId": "fixture_ready"
+              },
+              "label": "Ready",
+              "type": "StaticText",
+              "enabled": true
+            }
+          ]
+        },
+        "stderr": "[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 491,
+        "estimatedTokens": 115
+      },
+      "flow": {
+        "durationMs": 758.852,
+        "exitCode": 1,
+        "stdout": {
+          "schemaVersion": 1,
+          "platform": "ios",
+          "success": false,
+          "exitCode": 1,
+          "steps": [
+            {
+              "id": "step-1",
+              "command": "wait_for_element",
+              "status": "failed",
+              "certainty": "confirmed",
+              "result": null,
+              "error": {
+                "type": "TimeoutException",
+                "message": "Element not found after 30ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')"
+              }
+            }
+          ],
+          "failedStep": "step-1",
+          "skippedSteps": [],
+          "observations": [
+            {
+              "kind": "interactive-elements",
+              "status": "skipped",
+              "result": null,
+              "error": null
+            }
+          ],
+          "evidence": [
+            {
+              "kind": "interactive-elements",
+              "status": "succeeded",
+              "result": {
+                "success": true,
+                "format": "compact-v1",
+                "count": 4,
+                "observedCount": 4,
+                "elements": [
+                  {
+                    "selector": {
+                      "contentDescription": "BenchmarkFixture"
+                    },
+                    "label": "BenchmarkFixture",
+                    "type": "Application",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "start"
+                    },
+                    "label": "Start",
+                    "type": "Button",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "contentDescription": "Start"
+                    },
+                    "selectorMatches": 2,
+                    "label": "Start",
+                    "type": "StaticText",
+                    "enabled": true
+                  },
+                  {
+                    "selector": {
+                      "resourceId": "fixture_ready"
+                    },
+                    "label": "Ready",
+                    "type": "StaticText",
+                    "enabled": true
+                  }
+                ]
+              },
+              "error": null
+            }
+          ],
+          "error": {
+            "type": "TimeoutException",
+            "message": "Element not found after 30ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')"
+          }
+        },
+        "stderr": "Element not found after 30ms (waited up to 500ms; resourceId='never-present', bundleId='com.example.visiontest.benchmark')\n[Thread-0] INFO VisionTest - Shutting down CLI\n[Thread-0] INFO com.example.visiontest.ios.IOSManager - Closing IOSManager resources\n[Thread-0] INFO VisionTest - CLI shutdown complete\n",
+        "bytes": 1233,
+        "estimatedTokens": 305
+      }
+    }
+  ],
+  "methodology": "One sample per case/mode; setup outside timing; warm native server, fresh JVM per invocation; no latency inference; full then compact order; all attempted samples retained.",
+  "jarSha256": "6bec726c4c96147c23e040dba863275554a5764bda4586e7ec0490cbcd5f739e",
+  "fixtureSha256": "ff9a1bf6a8f1fd3f16d60ab5cafc612f5404bb9622c5bdf852e95ddc4068878b"
+}

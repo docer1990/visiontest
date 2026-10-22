@@ -1,0 +1,72 @@
+{
+  "id": "android-form",
+  "platform": "android",
+  "full": {
+    "success": true,
+    "count": 3,
+    "elements": [
+      {
+        "resourceId": "email",
+        "text": "Email",
+        "contentDescription": "Email address",
+        "className": "android.widget.EditText",
+        "bounds": "[20,100][300,140]",
+        "centerX": 160,
+        "centerY": 120,
+        "isEnabled": true,
+        "isClickable": true,
+        "isCheckable": false,
+        "isScrollable": false,
+        "isLongClickable": true
+      },
+      {
+        "resourceId": "password",
+        "text": "Password",
+        "contentDescription": "Password",
+        "className": "android.widget.EditText",
+        "bounds": "[20,160][300,200]",
+        "centerX": 160,
+        "centerY": 180,
+        "isEnabled": true,
+        "isClickable": true,
+        "isCheckable": false,
+        "isScrollable": false,
+        "isLongClickable": true
+      },
+      {
+        "resourceId": "submit",
+        "text": "Sign in",
+        "contentDescription": "Sign in",
+        "className": "android.widget.Button",
+        "bounds": "[20,220][300,260]",
+        "centerX": 160,
+        "centerY": 240,
+        "isEnabled": false,
+        "isClickable": true,
+        "isCheckable": false,
+        "isScrollable": false,
+        "isLongClickable": false
+      }
+    ]
+  },
+  "expected": [
+    {
+      "selector": {
+        "resourceId": "email"
+      },
+      "label": "Email",
+      "contentDescription": "Email address"
+    },
+    {
+      "selector": {
+        "resourceId": "password"
+      }
+    },
+    {
+      "selector": {
+        "resourceId": "submit"
+      },
+      "enabled": false
+    }
+  ]
+}

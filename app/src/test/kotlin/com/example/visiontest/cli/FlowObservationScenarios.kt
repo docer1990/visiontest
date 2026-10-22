@@ -56,10 +56,15 @@ internal class FlowObservationFixture(val platform: Platform) : AutoCloseable {
     }
 
     fun run(vararg options: String): JsonObject {
+        val result = runResult("--json", *options)
+        return Json.parseToJsonElement(assertNotNull(result.stdout, result.stderr)).jsonObject
+    }
+
+    fun runResult(vararg options: String): CliResult {
         var result: CliResult? = null
         FlowCommand(components, runner = { result = executeCliResultCommand(it) })
-            .parse(listOf("-p", platform.value, "--json") + options)
-        return Json.parseToJsonElement(assertNotNull(result?.stdout, result?.stderr)).jsonObject
+            .parse(listOf("-p", platform.value) + options)
+        return assertNotNull(result)
     }
 
     override fun close() = server.shutdown()

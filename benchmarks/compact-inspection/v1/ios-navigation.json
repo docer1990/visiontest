@@ -1,0 +1,47 @@
+{
+  "id": "ios-navigation",
+  "platform": "ios",
+  "full": {
+    "success": true,
+    "count": 2,
+    "elements": [
+      {
+        "resourceId": "",
+        "text": "Next",
+        "contentDescription": "Open details",
+        "className": "Button",
+        "bounds": "[20,100][300,140]",
+        "centerX": 160,
+        "centerY": 120,
+        "isEnabled": true,
+        "value": ""
+      },
+      {
+        "resourceId": "done",
+        "text": "Ready",
+        "contentDescription": "Ready",
+        "className": "StaticText",
+        "bounds": "[20,180][300,220]",
+        "centerX": 160,
+        "centerY": 200,
+        "isEnabled": true,
+        "value": ""
+      }
+    ]
+  },
+  "expected": [
+    {
+      "selector": {
+        "contentDescription": "Open details"
+      },
+      "label": "Next",
+      "contentDescription": "Open details"
+    },
+    {
+      "selector": {
+        "resourceId": "done"
+      },
+      "label": "Ready"
+    }
+  ]
+}

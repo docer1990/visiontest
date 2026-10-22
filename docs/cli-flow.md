@@ -92,6 +92,17 @@ Repeat `--observe` to request final observations after successful steps, or
 `screenshot`, `hierarchy`, or `interactive-elements`. No observation is automatic
 unless requested; a full hierarchy is not collected after every action.
 
+Use outer `--compact` for `compact-v1` interactive-element results. Optional
+`--type TYPE`, `--region x,y,width,height`, and `--include-bounds` require it.
+These options apply to both final observations and failure evidence, and require
+at least one `--observe interactive-elements` or `--on-failure interactive-elements`.
+Invalid combinations fail preflight before device access. See the
+[compact schema and filtering rules](cli-json.md#compact-interactive-elements).
+Other observations and step results keep their existing formats. Use `--json`
+for a structured flow report; `--compact` alone does not select report formatting.
+End known navigation sequences with an explicit `wait_for_element` step before
+requesting the final observation.
+
 Screenshots and hierarchies are saved on the host and return absolute artifact
 paths. Interactive elements are returned as structured data. Reports never embed
 image base64. Each observation reports its own result or error.

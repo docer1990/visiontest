@@ -1,0 +1,60 @@
+{
+  "id": "ios-ambiguous",
+  "platform": "ios",
+  "full": {
+    "success": true,
+    "count": 3,
+    "elements": [
+      {
+        "resourceId": "",
+        "text": "Delete",
+        "contentDescription": "",
+        "className": "Button",
+        "bounds": "[20,100][300,140]",
+        "centerX": 160,
+        "centerY": 120,
+        "isEnabled": true,
+        "value": ""
+      },
+      {
+        "resourceId": "",
+        "text": "Delete",
+        "contentDescription": "",
+        "className": "Button",
+        "bounds": "[20,180][300,220]",
+        "centerX": 160,
+        "centerY": 200,
+        "isEnabled": true,
+        "value": ""
+      },
+      {
+        "resourceId": "",
+        "text": "",
+        "contentDescription": "",
+        "className": "Button",
+        "bounds": "[20,260][300,300]",
+        "centerX": 160,
+        "centerY": 280,
+        "isEnabled": true,
+        "value": ""
+      }
+    ]
+  },
+  "expected": [
+    {
+      "selector": {
+        "text": "Delete"
+      },
+      "selectorMatches": 2
+    },
+    {
+      "selector": {
+        "text": "Delete"
+      },
+      "selectorMatches": 2
+    },
+    {
+      "selector": null
+    }
+  ]
+}

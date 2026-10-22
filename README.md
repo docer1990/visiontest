@@ -1,24 +1,27 @@
 # VisionTest
 
-VisionTest is mobile automation built for agentic software development. It gives
-any coding agent eyes and hands on Android devices and iOS simulators, so the
-agent can close its own feedback loop: test a change end to end, reproduce a
-reported bug, observe the UI after each action, and correlate that behavior with
-build, application, and device logs to find the root cause.
+VisionTest lets coding agents test mobile apps end to end from the command line.
+An agent can inspect an Android app or iOS Simulator, find a control, interact
+with it, and verify the expected result. Structured UI results, screenshots and
+flow recordings provide evidence for feature checks and bug reproduction.
 
-One MCP server and CLI expose UI inspection, element lookup, taps, swipes,
-targeted text input, keyboard actions, iOS alert handling, screenshots, and app
-management. This lets an agent move from implementation to evidence without
-handing the device back to a human.
+Use the CLI with the project-local VisionTest skill to guide the agent through
+setup, selector discovery, actions and outcome checks. MCP is also supported
+for users who prefer a connected tool interface.
 
 ## Requirements
 
-- JDK 17 or newer
-- macOS or Linux, on arm64 or x86_64
-- Android Platform Tools for Android automation
-- macOS, full Xcode, and a compatible simulator runtime for iOS automation
+- JDK 17 or newer, on macOS or Linux (arm64 or x86_64).
+- Android Platform Tools and an authorized Android device or emulator for Android.
+- macOS, full Xcode and a compatible simulator runtime for iOS. Physical iOS
+  devices are not supported. Prebuilt iOS test bundles are available on macOS arm64.
+- An application built and installed using its own repository's instructions.
 
-## Quick start
+VisionTest handles UI testing and its automation server. Your application's
+AGENTS.md or equivalent remains the authority for builds, artifacts, variants and
+installation. The skill documents native ADB/simctl commands for lifecycle setup.
+
+## Install and prepare your agent
 
 Install the latest release:
 
@@ -26,9 +29,124 @@ Install the latest release:
 curl -fsSL https://github.com/docer1990/visiontest/releases/latest/download/install.sh | bash
 ```
 
-The installer verifies every download, installs the JAR and Android APKs, and
-adds `visiontest` under `~/.local/bin`. On macOS arm64 it also installs the
-prebuilt iOS test bundle. Re-run the command to update.
+The installer verifies downloads and installs the launcher under `~/.local/bin`.
+It installs the JAR and Android APK pair, plus the prebuilt iOS bundle on macOS
+arm64. Add `~/.local/bin` to PATH if needed. See the
+[installation guide](docs/installation.md) for platform setup, custom paths and
+the iOS source fallback.
+
+In the application repository, check the installed version and install the skill
+for the agents you use:
+
+```bash
+visiontest --version
+visiontest init --agent claude,opencode,codex
+```
+
+`init` writes self-contained instructions for Claude Code, OpenCode and Codex.
+It works offline and does not configure MCP. After upgrading VisionTest, rerun
+`init` in each project to replace the selected skill files with the instructions
+embedded in that version. Local edits to those generated files are overwritten.
+
+Ask your agent for a concrete check, for example:
+
+> Test that continuing from the welcome screen opens Home. Follow this project's
+> build instructions, verify the result, and report the evidence.
+
+## A first CLI test
+
+This Android example assumes the app is already installed. Replace the app ID,
+selector and expected text with values from your app. Check each command's result
+before continuing. Install the automation APK pair on first use or after an update;
+reuse a healthy server on subsequent tests.
+
+```bash
+visiontest available_device -p android --json
+visiontest install_automation_server -p android
+visiontest start_automation_server -p android
+visiontest launch_app -p android com.example.app
+visiontest get_interactive_elements -p android --compact
+```
+
+Use the discovered selector to act, then wait for the expected result. Once both
+steps are known, run them together:
+
+```bash
+visiontest flow -p android --record --json \
+  --step 'tap_on_element --resource-id com.example.app:id/continue' \
+  --step 'wait_for_element --text "Home" --timeout 10000'
+```
+
+Inspect the report's `success`, step results and recording status/path. The tap
+waits for an actionable control; the explicit wait checks that Home appeared.
+Neither a successful tap nor a saved video alone proves the app behaved correctly.
+Use `find_element --json` for an immediate functional check, or `wait_for_element
+--json` to await a change. No fixed sleep or manual polling loop is needed.
+
+Use `--record` routinely for test flows to retain video evidence. It remains an
+explicit flag and can fail the flow if recording fails, including after successful
+UI steps. Report recorder limitations or incompatible time budgets rather than
+silently dropping evidence or replaying completed actions. You do not need routine
+video analysis or screenshots to confirm states already verified by structured
+queries. Use and inspect screenshots for visual assertions or explicit image requests.
+See [flows and recording](docs/cli-flow.md) for supported steps and time limits.
+
+At the end of the testing task, stop the server only if you started it:
+
+```bash
+visiontest stop_automation_server -p android
+```
+
+For iOS, use `-p ios`, an installed simulator app and the iOS automation bundle;
+`install_automation_server` is Android-only. Scope element commands to the app
+with `--bundle-id com.example.app`. Flow steps need their own app scope; an outer
+`--bundle-id` scopes observations. See the [iOS setup guide](docs/installation.md)
+and [CLI examples](docs/cli-usage.md).
+
+## How the skill guides testing
+
+The skill reuses verified setup and selectors, discovers unfamiliar controls with
+compact inspection, batches known actions, and uses built-in waits. It prefers
+structured queries for functional outcomes and reserves images for information
+those queries cannot establish. This avoids prescribing repeated discovery and
+redundant observations; it is not a claim of measured token or reasoning savings.
+See the [compact inspection evaluation](docs/benchmarks/compact-inspection.md)
+and [performance tracing guide](docs/performance.md) for measurement methods.
+The [guidance trials](docs/benchmarks/cli-agent-guidance.md) record simulated
+command choices and their measurement limits.
+
+Agents use CLI by default, including when MCP is available, and use MCP only on
+explicit request. They follow the application's build/install instructions and
+use native lifecycle commands for deep links, termination and scenario-specific
+resets. Deep links must not skip navigation that is itself under test. iOS
+uninstall/reinstall does not guarantee removal of Keychain, shared or remote state.
+
+VisionTest currently assumes one selected target. There is no CLI device-selection
+flag, and a running backend does not expose its identity for cross-checking against
+native commands or recording. Configure one intended target consistently.
+
+## Output and command reference
+
+Device commands require `--platform android` or `--platform ios` (`-p`). `init`,
+root `--help` and root `--version` do not. Run `visiontest --help` for commands.
+
+Prefer `--json` where supported and `--compact` for selector discovery. JSON
+stdout contains one object without JSON-RPC framing. Diagnostics go to stderr;
+routine INFO logs are suppressed by default. Do not filter with `grep -v INFO`
+or discard stderr. Check both the exit status and result fields. Standalone
+commands can return `success:false` or an operation `error` with exit 0;
+flows return nonzero for those failures. An action timeout may leave its outcome
+uncertain, so inspect the app before retrying.
+
+- [Interactions, waits, gestures and exit codes](docs/cli-usage.md)
+- [JSON schemas and compact inspection](docs/cli-json.md)
+- [Sequential flows, evidence and recording](docs/cli-flow.md)
+- [Installation and platform setup](docs/installation.md)
+
+## MCP alternative
+
+MCP exposes supported automation operations to clients that prefer tool discovery.
+The flow batching and recording commands described above are CLI features.
 
 Connect VisionTest to an MCP client:
 
@@ -76,197 +194,14 @@ with `"type": "stdio"`. OpenCode uses this entry in a project or user
 
 </details>
 
-See the [installation guide](docs/installation.md) for custom paths, artifacts,
-checksums, and the iOS source fallback.
-
-## Agentic workflow
-
-MCP clients discover VisionTest tools automatically. A coding agent can use this
-loop after implementing a feature or while investigating a bug:
-
-```text
-1. Start the platform automation server
-2. Capture a screenshot and inspect interactive elements, scoped to the iOS app when needed
-3. Reproduce the flow with selector-based taps, swipes, text input, and explicit waits
-4. Check the outcome through element lookup, UI hierarchy, and screenshots
-5. Correlate UI evidence with application and device logs
-6. Fix and repeat
-```
-
-Android requires `install_automation_server` once before its first server
-start. iOS uses an XCUITest bundle and currently supports simulators. VisionTest
-handles device interaction and UI evidence; the agent can combine those results
-with logs available in its development environment.
-
-For a short known sequence, use `flow` to run actions and explicit waits in one
-process, then request the next screen's state with `--observe interactive-elements --compact`.
-Choose `--on-failure screenshot` when failure evidence is useful. See
-[sequential CLI flows](docs/cli-flow.md) for supported steps, input files, timeouts,
-failure reports, and recovery after an uncertain action outcome.
-Add `--record` to require one validated display video with the flow. The report
-includes its absolute saved path or a recording error; recording failures can
-fail a flow even when its steps succeeded. Configure the automation server for
-the same single selected device or simulator. See the flow guide for startup,
-duration and finalization limits.
-
-| Area | Capabilities |
-| --- | --- |
-| Server | install, start, stop, and status |
-| Inspection | hierarchy, interactive elements, element lookup, waits, device info, screenshots |
-| Interaction | selector-based and coordinate taps, long press, double tap, coordinate and directional swipes, element swipe, targeted text input, home/back |
-| Keyboard and alerts | Android key presses and focused-field clearing; iOS keyboard dismissal and app/system alert handling |
-| Apps and devices | discover devices, list and inspect apps, launch apps |
-
-## CLI
-
-To record local host timings, place `--trace-performance trace.jsonl` before the
-command, for example `visiontest --trace-performance trace.jsonl get_device_info -p android`.
-For MCP, set `VISIONTEST_TRACE_PERFORMANCE=trace.jsonl` in the server environment.
-Tracing appends JSONL without changing command results or MCP stdout. CLI ignores
-that environment variable. See the [performance guide](docs/performance.md)
-for CLI/MCP examples, recorded boundaries, and session completeness.
-
-The same backend is available without an MCP client:
-
-```bash
-visiontest start_automation_server -p android
-visiontest get_interactive_elements -p android --compact
-visiontest find_element -p android --text "Login" --json
-visiontest tap_on_element -p android --resource-id "com.example:id/login" --timeout 5000 --json
-visiontest wait_for_element -p android --text "Welcome" --timeout 5000
-visiontest screenshot -p android --output ./after.png
-visiontest stop_automation_server -p android
-```
-
-Device commands require `--platform android` or `--platform ios` (`-p`).
-`init`, root `--help`, and root `--version` do not use a platform.
-On iOS, `--bundle-id` scopes inspection and element operations to an app:
-
-```bash
-visiontest get_interactive_elements -p ios --bundle-id com.example.app --compact
-visiontest get_ui_hierarchy -p ios --bundle-id com.example.app
-visiontest tap_on_element -p ios --bundle-id com.example.app --text "Continue" --timeout 5000
-```
-
-`tap_on_element` prefers stable selectors over coordinates. It requires one of
-`--text`, `--text-contains`, `--resource-id`, `--class-name`, or
-`--content-description`; `--bundle-id` is iOS scope, not a selector, and is
-rejected on Android. The timeout defaults to 10 seconds and cannot exceed 30
-seconds. Update the Android automation APK pair or iOS automation bundle when
-upgrading to a VisionTest release that introduces this native operation.
-
-Run `visiontest --help` for all 29 commands.
-
-### Forms, gestures, and permissions
-
-Use targeted input to wait for a field, focus it, and type in one native request.
-For an Android form submitted with the keyboard:
-
-```bash
-visiontest input_text -p android "" --target-resource-id "com.example:id/search"
-visiontest clear_text -p android
-visiontest input_text -p android "coffee" --target-resource-id "com.example:id/search"
-visiontest press_key -p android enter
-visiontest wait_for_element -p android --text "Search results" --timeout 5000
-```
-
-`clear_text` clears the focused editable Android field. `press_key` accepts
-`enter`, `tab`, `backspace`, `delete`, `escape`, or a nonnegative integer Android
-key code. Backspace deletes before the cursor; delete removes text after it.
-
-For an iOS permission flow, choose the exact button label shown by the dialog:
-
-```bash
-visiontest tap_on_element -p ios --bundle-id com.example.app --text "Enable notifications"
-visiontest handle_alert -p ios accept --bundle-id com.example.app --button-label "Allow"
-visiontest wait_for_element -p ios --bundle-id com.example.app --text "Notifications enabled"
-```
-
-`handle_alert` searches the scoped or active app first, then system alerts in
-SpringBoard. Without `--button-label`, `accept` taps the last enabled, hittable
-button and `dismiss` taps the first. `dismiss_keyboard -p ios` hides a visible
-software keyboard and checks that it disappeared without submitting the field.
-Both commands accept optional `--bundle-id`.
-
-`long_press` and `double_tap` accept either selectors or a complete `--x X --y Y`
-pair. Prefer selectors when stable element identity matters. Use coordinates
-when the screen location is intentional. Long press lasts 800 ms.
-
-Input target flags are `--target-text`, `--target-text-contains`,
-`--target-resource-id`, `--target-class-name`, and `--target-content-description`.
-Selector gestures and targeted input accept `--timeout` from 1 through 30,000 ms,
-defaulting to 10,000 ms. Input lookup, tap, focus, and typing share that budget.
-Coordinate gestures and input without selectors reject a timeout. Optional
-iOS `--bundle-id` must be nonblank and does not count as a selector; Android
-rejects it.
-
-Upgrade both Android automation APKs or the iOS XCUITest bundle before using
-these new native methods or targeted input. Updating only the CLI/MCP JAR is
-insufficient. Restart the automation server after upgrading its artifacts.
-Inspect the action result and verify the app outcome. All 14 UI interactions
-support opt-in `--json`, including `tap_on_element`, gestures and keyboard/alert
-actions. JSON results contain `success` without JSON-RPC framing. A normal
-`success:false` or returned RPC error still exits 0, so check the JSON fields.
-Thrown failures keep the exit codes below. Without `--json`, output is unchanged.
-
-Standalone `wait_for_element` prints `Element appeared.` or `Element gone.`.
-Add `--json` for the final find result plus `condition` and `satisfied`, including
-`{"found":false,"condition":"gone","satisfied":true}` for disappearance.
-Timeouts and thrown failures leave stdout empty. A matching returned result with
-an `error` field retains exit 0; scripts should inspect `error` as well as
-`satisfied`. See [wait JSON output](docs/cli-json.md#element-waits).
-
-Six inspection commands support `--json`: `get_interactive_elements`,
-`get_device_info`, `find_element`, `list_apps`, `info_app`, and
-`available_device`. See the [JSON schemas and examples](docs/cli-json.md),
-including the action-result format.
-
-### Exit codes
-
-| Code | Meaning |
-| --- | --- |
-| 0 | Command completed; inspect `found` or `success` for operation outcomes |
-| 1 | Generic failure |
-| 2 | Invalid or missing arguments |
-| 3 | Automation server unreachable |
-| 4 | Device or simulator unavailable |
-| 5 | Platform unsupported by the command |
-
-### Project-local agent instructions
-
-```bash
-visiontest init --agent claude,opencode,codex
-```
-
-This installs or refreshes VisionTest skill files so supported agents can
-discover the CLI and MCP workflow inside a project. Running `init` again
-completely replaces the selected skill files with the instructions embedded in
-the installed JAR. Upgrade the CLI first to get the latest instructions. The
-shared skill source is
-[agent-instructions.md](app/src/main/resources/agent-instructions.md).
-
-The skill includes separate Android and iOS CLI examples, MCP tool discovery,
-selector guidance, and checks for operation outcomes. It prioritizes targeted
-element queries and built-in waits, using screenshots for visual checks or missing
-UI information. Compact inspection preserves selectors and state while reducing
-observation payloads; see the [compact JSON format](docs/cli-json.md#compact-interactive-elements)
-and [reproducible evaluation](docs/benchmarks/compact-inspection.md). Agents use
-the CLI by default, even when MCP tools are available. MCP requires an explicit
-user request and is never an automatic fallback for CLI failures. `init` writes
-instructions; it does not configure an MCP connection.
-Consecutive tests reuse the automation server. At the end of the testing task,
-the agent stops only a server it started, unless asked to leave it running.
-For offscreen targets, the skill guides agents to swipe within a visible list
-or carousel using accessibility data, then verify progress without requiring
-a screenshot before each gesture.
-The workflow reuses verified setup, focuses on the requested assertions, and
-avoids redundant intermediate checks and retries without new evidence.
+For MCP, launch the JAR without CLI arguments (or with `serve`). Keep stdout
+reserved for the protocol. Use discovered tool schemas instead of CLI flags.
 
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VISION_TEST_LOG_LEVEL` | `PRODUCTION` | `PRODUCTION`, `DEVELOPMENT`, or `DEBUG` |
+| `VISION_TEST_LOG_LEVEL` | `PRODUCTION` | Error detail: `PRODUCTION`, `DEVELOPMENT`, or `DEBUG` |
 | `VISION_TEST_APK_PATH` | auto-detected | Explicit Android test APK path |
 | `VISION_TEST_IOS_PROJECT_PATH` | auto-detected | Explicit iOS `.xcodeproj` path |
 | `VISIONTEST_DIR` | `~/.local/share/visiontest` | Install directory under `$HOME` |

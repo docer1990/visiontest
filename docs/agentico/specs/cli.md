@@ -438,3 +438,22 @@ are unchanged. Returned failures are preserved; standalone returned failures sti
 exit zero. The complete shared contract is
 [compact inspection](2026-10-20-compact-inspection-design.md), with user-facing
 schema and examples in [CLI JSON](../../cli-json.md#compact-interactive-elements).
+
+### Requirement: Default logging is concise and preserves diagnostics
+
+The packaged SLF4J logger SHALL suppress INFO and DEBUG messages by default,
+retain WARN and ERROR on stderr, and use severity, short logger name and message
+without thread or timestamp prefixes. Logging MUST NOT contaminate structured
+stdout or MCP protocol output. Explicit SLF4J system properties MAY override
+these defaults for diagnosis. `VISION_TEST_LOG_LEVEL` controls handled-error
+detail, not the SLF4J threshold.
+
+#### Scenario: Packaged logging defaults
+
+- **Given** the packaged JAR with no logging overrides
+- **When** an operation logs routine INFO, warning and error messages
+- **Then** only the warning and error SHALL reach stderr and stdout SHALL retain
+  only the operation result
+
+Verification: `LoggingE2ETest` exercises the logger from the assembled JAR in a
+fresh JVM, independently of the test runner's logging configuration.

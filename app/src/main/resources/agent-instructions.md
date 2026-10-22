@@ -3,6 +3,24 @@
 Use VisionTest to inspect and control Android apps or iOS simulators while
 testing a code change. Work from a concrete user flow and its visible result.
 
+## Routine CLI workflow
+
+1. Identify the app, selected device, scenario and expected outcome from the project.
+2. Reuse valid build, installation, server and selectors. Follow the application's
+   AGENTS.md or equivalent for the artifact, variant, simulator build and configuration.
+3. Establish only the starting state the scenario requires. Discover unknown
+   selectors with compact inspection; use known selectors directly.
+4. Batch known actions with `flow --record --json`. Use native selector waits and
+   `wait_for_element` for synchronization, never fixed sleeps or manual polling
+   when those operations can express the condition.
+5. Verify functional outcomes with `find_element --json` or
+   `wait_for_element --json`. Their structured results are UI evidence; evidence
+   does not automatically mean an image. Capture screenshots only for visual
+   assertions, inaccessible content, unresolved ambiguity or an explicit image request.
+6. Report passed, failed and blocked checks with the observed results and saved
+   evidence paths. A video is supporting evidence, not an automatic test pass.
+
+
 ## Choose the available interface
 
 Use the VisionTest CLI by default, even when MCP tools are available. Use MCP
@@ -43,7 +61,9 @@ authorized device/emulator; iOS requires macOS, full Xcode, and a compatible
 simulator runtime. Prebuilt iOS
 bundles are available only on macOS arm64; for a source build set
 `VISION_TEST_IOS_PROJECT_PATH` to the current checkout's Xcode project.
-Build and install the app with its own toolchain. Reuse a build only when it
+Follow the application repository's build and installation instructions, including
+the correct artifact, variant, simulator build and configuration. Do not substitute
+a generic build recipe. Build and install the app with its own toolchain. Reuse a build only when it
 contains the code under test; testing an old installation does not validate a fix.
 
 ## Define and run the test
@@ -71,6 +91,43 @@ failure, not before every action. Group scenarios with compatible setup, while
 restoring any app state required for independent assertions. Serialize actions
 on the same device; parallel UI commands can invalidate each other's state.
 
+### Establish app state with native commands
+
+Use the chosen Android serial or iOS simulator UDID explicitly in every native
+command, with the established package/bundle ID. Obtain them from device discovery
+and project configuration; validate that they are nonblank and identify the intended
+available target before changing state. Do not use an arbitrary first device or
+`booted` when multiple simulators exist. VisionTest has no device-selection flag
+and cannot verify that an already running backend targets the same device. Isolate
+one intended target and configure its server consistently before combining commands.
+
+In the table, `SERIAL`, `UDID`, `PACKAGE`, `BUNDLE_ID` and `URL` are placeholders,
+not literal values. Use a URL registered by the app. The Android URL has two levels
+of quoting because `adb shell` also invokes a device shell. Percent-encode literal
+apostrophes in the URL as `%27` before using that form; retain existing encoded data,
+path and query parameters. For example, use
+`adb -s "emulator-5554" shell am start -W -a android.intent.action.VIEW -d "'shop://checkout/cart?coupon=A%26B&source=test'" -p "com.example.app"`.
+
+| Action | Android | iOS Simulator | Expected native result |
+| --- | --- | --- | --- |
+| Open URL/deep link | `adb -s "SERIAL" shell am start -W -a android.intent.action.VIEW -d "'URL'" -p "PACKAGE"` | `xcrun simctl openurl "UDID" 'URL'` | Launch request accepted; verify the expected screen separately |
+| Terminate app | `adb -s "SERIAL" shell am force-stop "PACKAGE"` | `xcrun simctl terminate "UDID" "BUNDLE_ID"` | App stopped; inspect diagnostics if it was already stopped |
+| Clear app data | `adb -s "SERIAL" shell pm clear "PACKAGE"` | No equivalent command in this workflow | Android reports `Success`; app data cleared, app remains installed |
+| Uninstall app | `adb -s "SERIAL" uninstall "PACKAGE"` | `xcrun simctl uninstall "UDID" "BUNDLE_ID"` | App removed; Android reports `Success`, simctl normally exits silently |
+
+Check native exit status and diagnostics before continuing, including errors in
+Android launch output even if the process exits zero. Then verify the relevant
+application outcome with a scoped query or wait. `openurl` does not take a bundle
+ID and may route elsewhere; a successful request does not prove the intended app
+or screen opened. Deep links may shorten setup only when the skipped navigation
+is not itself under test.
+
+Reset or uninstall only when the scenario requires it. On iOS, explicitly uninstall
+and reinstall using the project's instructions when required. This is not equivalent
+to Android `pm clear` and does not promise to clear Keychain, shared or remote state.
+Do not claim complete isolation without checking the state the scenario depends on.
+Keep native commands outside `flow`; no VisionTest lifecycle wrapper is required.
+
 ### Choose the smallest sufficient operation
 
 Use structured queries for functional checks. Commands in this table omit
@@ -91,24 +148,34 @@ Use structured queries for functional checks. Commands in this table omit
 Do not precede every tap with a find or wait, or repeat a successful wait's lookup.
 Use targeted queries for expected markers; refresh the element list when a
 selector is unknown or fails, or the observed state differs from expectations.
-Use one bounded wait instead of manual polling or sleeps. Its timeout is a
-maximum, not a mandatory delay; lowering it needlessly can create retries.
+Do not add `sleep` before or after UI actions or write shell polling loops to
+wait for an element. `tap_on_element`, selector-based `long_press`/`double_tap`
+and targeted `input_text` already wait for their target. Invoke them directly.
+For an asynchronous result after the action, use `wait_for_element` with the
+expected marker, or `--gone` for disappearance. `find_element` is an immediate
+check, not a wait. Coordinate actions, untargeted input and swipes do not provide
+these selector waits. An action's target wait does not verify its later app outcome.
+VisionTest polls internally within bounded waits; the agent need not implement
+polling. A timeout is a maximum, not a mandatory delay. If a required condition
+cannot be expressed by these operations, use a project-provided readiness check
+or report the limitation rather than guessing a fixed delay.
 A successful interaction alone does not prove the expected app outcome.
 
 ### Batch a short known sequence
 
 Use `flow` when several next actions are already known and no intermediate
 observation is needed. It reuses one process and device session. End navigation
-with an explicit element wait, then request the next screen's state. If the app
+with an explicit element wait. Request another observation only if it supplies
+information needed for the next decision. If the app
 needs launching, run `launch_app` separately before the flow:
 
 ```bash
 visiontest launch_app -p ios com.example.app
-visiontest flow -p ios --bundle-id com.example.app \
+visiontest flow -p ios --bundle-id com.example.app --record \
   --step 'input_text "user@example.com" --target-resource-id email --bundle-id com.example.app' \
   --step 'tap_on_element --resource-id continue --bundle-id com.example.app' \
   --step 'wait_for_element --resource-id done --bundle-id com.example.app' \
-  --observe interactive-elements --compact --on-failure screenshot --json
+  --json
 ```
 
 Choose exactly one source: repeated `--step`, `--file PATH`, or `--stdin`.
@@ -142,7 +209,14 @@ scopes hierarchy/element observations and evidence; these otherwise query
 SpringBoard. It does not supply step scope, so keep app-specific `--bundle-id`
 arguments inside steps as well. Each step keeps its normal
 operation arguments. The entire sequence is validated before device access.
-Add `--record` to require a display video for the entire flow. It works with
+Include `--record` by default on test flows so they save video evidence without
+extra screenshot calls. Omit it only when the user requests no recording or a
+known recorder/environment limitation or strict total time budget prevents it;
+state that exception in the report. Do not silently drop recording after a failure
+or replay completed actions solely to obtain video. The CLI flag remains opt-in.
+Do not routinely open/analyze the video; use structured assertions for functional
+results. Recording failure makes the flow fail even if all UI steps passed.
+`--record` requires a display video for the entire flow. It works with
 repeated `--step`, `--file`, or `--stdin`, not inside an individual step. Recording
 does not restrict capture to an iOS app bundle. The flag does nothing to flows
 that omit it: no recorder is started and no `recording` field is added. Configure
@@ -355,10 +429,20 @@ Exit codes 1 through 5 mean generic failure, invalid arguments,
 server unreachable, device unavailable, and unsupported platform respectively.
 
 Capture screenshots for visual assertions, content missing from the accessible
-hierarchy, unresolved ambiguity, or evidence requested by the user. Do not take
+hierarchy, unresolved ambiguity, or an explicit request for image evidence. Do not take
 routine before/after screenshots for functional tests. Open any captured PNG
 with the session's image-viewing tool before making a visual claim; a saved path
 is not verification. Element presence alone cannot prove layout or appearance.
+
+### Read output without discarding failures
+
+Use `--json` where supported and `--compact` for discovery. Read stdout as the
+operation result and stderr as diagnostics, retaining the command exit status.
+Do not pipe VisionTest through `grep -v INFO`, discard stderr, or treat a pipeline's
+exit status as the command's. Such filtering can hide errors or app text containing
+`INFO`. Default logging suppresses routine INFO messages and retains warnings and
+errors. If an older installation or diagnostic override emits extra logs, keep
+stdout and stderr separate and inspect both. Do not alter app results to reduce tokens.
 
 ## Recover only when there is new evidence
 

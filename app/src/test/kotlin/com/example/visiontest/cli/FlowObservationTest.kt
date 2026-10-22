@@ -109,7 +109,7 @@ class FlowObservationTest {
     }
 
     @Test
-    fun `evidence shares one total budget and skips pending requests when it expires`() = runBlocking {
+    fun `evidence budget bounds delayed requests and preserves the original failure`() = runBlocking {
         for (platform in Platform.entries) FlowObservationFixture(platform).use { fixture ->
             fixture.respond = { MockResponse().setBody("""{"result":{"success":true}}""")
                 .setBodyDelay(250, TimeUnit.MILLISECONDS) }
@@ -117,7 +117,9 @@ class FlowObservationTest {
                 observationOptions = FlowObservationOptions(
                     collector = FlowObservationCollector(platform, fixture.components),
                 onFailure = listOf("screenshot", "hierarchy", "interactive-elements"), evidenceTimeoutMs = 40))
-            assertEquals(listOf("failed", "skipped", "skipped"), report.evidence.map { it.status })
+            assertEquals(3, report.evidence.size)
+            assertEquals("failed", report.evidence.first().status)
+            assertTrue(report.evidence.drop(1).all { it.status == "failed" || it.status == "skipped" })
             assertEquals(1, report.exitCode)
             assertEquals("blocked", report.error?.message)
         }

@@ -103,6 +103,11 @@ process, then request the next screen's state with `--observe interactive-elemen
 Choose `--on-failure screenshot` when failure evidence is useful. See
 [sequential CLI flows](docs/cli-flow.md) for supported steps, input files, timeouts,
 failure reports, and recovery after an uncertain action outcome.
+Add `--record` to require one validated display video with the flow. The report
+includes its absolute saved path or a recording error; recording failures can
+fail a flow even when its steps succeeded. Configure the automation server for
+the same single selected device or simulator. See the flow guide for startup,
+duration and finalization limits.
 
 | Area | Capabilities |
 | --- | --- |

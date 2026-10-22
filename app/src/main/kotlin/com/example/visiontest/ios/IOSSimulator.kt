@@ -6,7 +6,6 @@ import com.example.visiontest.AppNotFoundException
 import com.example.visiontest.IOSSimulatorException
 import com.example.visiontest.NoSimulatorAvailableException
 import com.example.visiontest.common.DeviceConfig
-import com.example.visiontest.common.DeviceType
 import com.example.visiontest.common.MobileDevice
 import kotlinx.serialization.json.*
 import org.slf4j.Logger
@@ -31,7 +30,6 @@ class IOSSimulator internal constructor(
     companion object {
         private const val SIMCTL = "xcrun"
         private const val STATE_BOOTED = "Booted"
-        private const val STATE_SHUTDOWN = "Shutdown"
 
         // Maximum time to wait for a simulator to finish booting (simctl bootstatus)
         internal const val BOOT_WAIT_TIMEOUT_MILLIS = 120_000L
@@ -46,13 +44,7 @@ class IOSSimulator internal constructor(
         parseDeviceList(result.output)
     }
 
-    override suspend fun getFirstAvailableDevice(): MobileDevice {
-        val devices = listDevices()
-
-        return devices.firstOrNull { it.state == STATE_BOOTED }
-            ?: devices.firstOrNull { it.state == STATE_SHUTDOWN }
-            ?: throw NoSimulatorAvailableException("No iOS simulator available")
-    }
+    override suspend fun getFirstAvailableDevice(): MobileDevice = selectFirstAvailableSimulator(listDevices())
 
     override suspend fun listApps(deviceId: String?): List<String> {
         val device = getDevice(deviceId)
@@ -214,36 +206,5 @@ class IOSSimulator internal constructor(
         return json.keys.toList()
     }
 
-    internal fun parseDeviceList(jsonOutput: String): List<MobileDevice> {
-        val devices = mutableListOf<MobileDevice>()
-        val jsonElement = Json.parseToJsonElement(jsonOutput)
-        val devicesMap = jsonElement.jsonObject["devices"]?.jsonObject ?: return emptyList()
-
-        for ((runtime, deviceArray) in devicesMap) {
-            // simctl also lists watchOS/tvOS/visionOS runtimes; only iOS simulators
-            // are usable by this server (runtime keys look like
-            // "com.apple.CoreSimulator.SimRuntime.iOS-17-2").
-            if (!runtime.contains(".iOS-")) continue
-
-            val osVersion = runtime.substringAfterLast("iOS-").replace("-", ".")
-
-            deviceArray.jsonArray.forEach { deviceJson ->
-                val deviceObj = deviceJson.jsonObject
-
-                devices.add(
-                    MobileDevice(
-                        id = deviceObj["udid"]?.jsonPrimitive?.content ?: "",
-                        name = deviceObj["name"]?.jsonPrimitive?.content ?: "Unknown",
-                        type = DeviceType.IOS_SIMULATOR,
-                        osVersion = osVersion,
-                        state = deviceObj["state"]?.jsonPrimitive?.content ?: "Unknown",
-                        modelName = deviceObj["deviceTypeIdentifier"]?.jsonPrimitive?.content
-                            ?.substringAfterLast(".") ?: "Unknown"
-                    )
-                )
-            }
-        }
-
-        return devices
-    }
+    internal fun parseDeviceList(jsonOutput: String): List<MobileDevice> = parseIosSimulatorDevices(jsonOutput)
 }

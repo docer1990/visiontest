@@ -11,6 +11,23 @@ class IOSSimulatorParsingTest {
 
     private val simulator = IOSSimulator()
 
+    @Test
+    fun `shared parsing preserves order and selection prefers the first booted simulator`() {
+        val json = """{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-17-2":[
+            {"udid":"shutdown","state":"Shutdown"},
+            {"udid":"first","state":"Booted"},
+            {"udid":"second","state":"Booted"}
+        ]}}"""
+        val devices = parseIosSimulatorDevices(json)
+        assertEquals(simulator.parseDeviceList(json), devices)
+        assertEquals(listOf("shutdown", "first", "second"), devices.map { it.id })
+        assertEquals("first", selectFirstAvailableSimulator(devices).id)
+        assertEquals("shutdown", selectFirstAvailableSimulator(devices.take(1)).id)
+        assertFailsWith<com.example.visiontest.NoSimulatorAvailableException> {
+            selectFirstAvailableSimulator(emptyList())
+        }
+    }
+
     // --- parseDeviceList ---
 
     @Test

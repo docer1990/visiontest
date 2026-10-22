@@ -16,8 +16,22 @@ import kotlin.test.assertTrue
 import kotlin.test.assertFailsWith
 import java.util.concurrent.TimeoutException
 import kotlin.test.assertFails
+import kotlin.test.assertEquals
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.advanceTimeBy
 
 class RequestDeadlineTest {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `remaining budget uses the supplied monotonic clock`() = runTest {
+        val deadline = RequestDeadline(1000) { testScheduler.currentTime * 1_000_000 }
+        advanceTimeBy(250)
+        assertEquals(750, deadline.remainingMillis())
+        advanceTimeBy(750)
+        assertFailsWith<TimeoutException> { deadline.remainingMillis() }
+    }
+
     @Test
     fun `expired budgets never dispatch an action`() = runBlocking {
         MockWebServer().use { server ->

@@ -341,6 +341,42 @@ return absolute artifact paths, and preserve the original failure and exit code
 when collection fails. Explicit appearance and disappearance waits MUST distinguish
 valid absence from malformed responses and backend failures.
 
+With `--record`, preflight MUST still validate all steps before any device or
+recorder access. One host-owned display recording MUST start before the first
+step, remain active through final observations or requested failure evidence,
+and be structurally validated after bounded finalization. No flag MUST preserve
+the existing report shape and avoid recorder access. The selected recording
+target MUST be pinned; the automation backend MUST be configured for that same
+target as a single-target setup precondition, not a runtime identity check.
+
+iOS startup MUST await first-frame readiness; Android MUST await an initialized
+MP4 container and a live recorder without waiting for frame payload. Startup
+MUST consume at most 10000 ms within the overall flow timeout. Android MUST
+reject insufficient or unestablished recorder duration capability before any
+step. One additional 30000 ms total budget MUST bound finalization, transfer,
+validation, and cleanup. Startup failure MUST skip all actions and observations;
+an execution timeout MUST still permit finalization and a saved valid video.
+
+Recording MUST add `{status, phase, path, error}` only when requested. A validated
+video with at least one nonempty video sample is required for success; video
+bytes MUST NOT enter stdout. Recorder failure after successful steps MUST exit 1.
+Missing target MUST exit 4. First committed step/observation error and exit code
+MUST remain primary if recording subsequently fails; its separate recording
+error MUST remain visible. Text output MUST show recording status, error and
+saved path. See [the recording design](2026-10-22-flow-recording-design.md).
+
+#### Scenario: Recording startup fails before dispatch
+
+- **Given** a valid recorded flow whose recorder cannot become ready within its startup budget
+- **When** execution begins
+- **Then** it SHALL report recording failure in phase `start`, mark every step skipped, and dispatch no action
+
+#### Scenario: Execution times out after recording starts
+
+- **Given** a recorded flow whose step exceeds its execution deadline
+- **When** the flow finalizes the video within its separate finalization budget
+- **Then** it SHALL retain the first step error and report the saved validated video path when available
+
 #### Scenario: A later step is invalid
 
 - **Given** a valid first action and an invalid later step

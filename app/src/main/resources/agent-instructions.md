@@ -99,9 +99,11 @@ A successful interaction alone does not prove the expected app outcome.
 
 Use `flow` when several next actions are already known and no intermediate
 observation is needed. It reuses one process and device session. End navigation
-with an explicit element wait, then request the next screen's state:
+with an explicit element wait, then request the next screen's state. If the app
+needs launching, run `launch_app` separately before the flow:
 
 ```bash
+visiontest launch_app -p ios com.example.app
 visiontest flow -p ios --bundle-id com.example.app \
   --step 'input_text "user@example.com" --target-resource-id email --bundle-id com.example.app' \
   --step 'tap_on_element --resource-id continue --bundle-id com.example.app' \
@@ -115,14 +117,38 @@ after whitespace are ignored. Single/double quotes group arguments; backslash
 escapes the next character outside single quotes. No shell expressions or
 `@file` references expand. Put the platform on `flow`, not on individual steps.
 
-Supported steps are taps, text input, long press, double tap, coordinate/directional/
-element swipes, Home, element waits and screenshots. Android also supports Back,
-key presses and focused-field clearing; iOS supports keyboard dismissal and alerts.
-Setup, app management and nested flows are excluded. On iOS, outer `--bundle-id`
+Only the following commands are allowed inside `--step`, `--file`, or `--stdin`:
+
+| Platforms | Allowed flow step commands |
+| --- | --- |
+| Android and iOS | `tap_by_coordinates`, `tap_on_element`, `input_text`, `long_press`, `double_tap`, `swipe`, `swipe_direction`, `swipe_on_element`, `press_home`, `wait_for_element`, `screenshot` |
+| Android only | `press_back`, `press_key`, `clear_text` |
+| iOS only | `dismiss_keyboard`, `handle_alert` |
+
+Run all other commands separately, outside the flow. In particular:
+
+- `launch_app`, `list_apps`, `info_app`, and `available_device` are standalone commands.
+- `install_automation_server`, `start_automation_server`, `stop_automation_server`,
+  and `automation_server_status` must run outside the flow. Complete setup before it.
+- `find_element`, `get_device_info`, `get_interactive_elements`, and `get_ui_hierarchy`
+  cannot be steps. For final inspection, use `--observe interactive-elements` or
+  `--observe hierarchy`; use `--observe screenshot` for a final image. For an
+  element assertion inside a flow, use `wait_for_element`.
+- Do not nest `flow` or run `init` inside a flow.
+
+An unsupported step rejects the entire sequence before any step executes.
+On iOS, outer `--bundle-id`
 scopes hierarchy/element observations and evidence; these otherwise query
 SpringBoard. It does not supply step scope, so keep app-specific `--bundle-id`
 arguments inside steps as well. Each step keeps its normal
 operation arguments. The entire sequence is validated before device access.
+Add `--record` to require a display video for the entire flow. It works with
+repeated `--step`, `--file`, or `--stdin`, not inside an individual step. Recording
+does not restrict capture to an iOS app bundle. The flag does nothing to flows
+that omit it: no recorder is started and no `recording` field is added. Configure
+the automation server for the same single selected target; the backend does not
+identify its device to allow a runtime match check. Recording does not boot or
+switch targets. No audio is captured.
 
 Repeat `--observe` for final `screenshot`, `hierarchy`, or `interactive-elements`.
 Use the same values with `--on-failure` for optional evidence. Artifact paths are
@@ -139,6 +165,25 @@ complete report even on failure. Inspect step statuses and evidence as well as
 the exit code. The first failure skips remaining steps, without rollback or replay.
 After an uncertain action outcome, inspect the UI before choosing a recovery;
 the action may already have happened. Keep flows short between observations.
+Recording startup shares the overall timeout with the steps and is capped at
+10000 ms. iOS starts steps after the first-frame signal; Android starts after
+the MP4 container initializes while its recorder is alive, not after a frame
+payload appears. Android rejects insufficient or unknown duration capability
+before dispatching steps unless its recorder supports unlimited recording. The
+duration must cover the configured flow timeout, requested failure evidence
+budget, and 30000 ms of finalization. One separate *total* 30000 ms finalization
+budget covers stop, video validation, Android transfer and cleanup, even after
+a flow timeout. This is not an unconditional wait. A startup failure skips all
+steps and evidence. Recording remains active through requested observations and
+failure evidence. Only a validated video with a nonempty video sample gets an
+absolute `flow-artifacts/` host path in `recording` (`recording.mp4` on Android,
+`recording.mov` on iOS); capture is not a full-frame decode guarantee.
+`recording` reports `status` (`succeeded`/`failed`), failure `phase`
+(`start`/`record`/`finalize`, null on success), `path` (or null), and `error`
+(or null). Text mode prints recording status, error and saved path; JSON mode
+emits one full report without video bytes after execution begins. Missing device
+exits 4; other primary recording failures exit 1. A recording failure after a
+step or observation failure leaves the original error and exit code intact.
 
 Prefer `get_interactive_elements --compact` for selector discovery. It emits one
 `compact-v1` JSON object even without `--json`. Full inspection remains available

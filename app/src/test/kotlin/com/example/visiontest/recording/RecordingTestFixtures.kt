@@ -140,7 +140,8 @@ internal data class MovieTrackOptions(
     val offsetCount: Long? = null,
     val mappingCount: Long? = null,
     val tableVersion: Long = 0,
-    val dataReference: ByteArray = byteArrayOf(),
+    val dataReference: ByteArray = movieDataReference(),
+    val sampleDescription: ByteArray? = null,
 )
 
 internal fun movieTrack(
@@ -162,9 +163,44 @@ internal fun movieTrack(
         chunkEntries.fold(byteArrayOf()) { bytes, (first, count, description) ->
             bytes + movieWords(first, count, description)
         })
+    val description = options.sampleDescription ?: if (handler == "vide") movieAvcDescription() else {
+        movieBox("stsd", movieWords(0, 1) + movieBox("mett",
+            ByteArray(6) + byteArrayOf(0, 1, 0) + "application/octet-stream\u0000".toByteArray()))
+    }
     return movieBox("trak", movieBox("mdia", handlerBox + movieBox("minf",
-        options.dataReference + movieBox("stbl", sizes + offsets + mapping + options.extraTables))))
+        options.dataReference + movieBox("stbl", description + sizes + offsets + mapping + options.extraTables))))
 }
+
+internal fun movieDataReference(type: String = "url "): ByteArray =
+    movieBox("dinf", movieBox("dref", movieWords(0, 1) + movieBox(type, movieWords(1))))
+
+internal fun movieVisualHeader(reference: Int = 1): ByteArray = ByteBuffer.allocate(78).apply {
+    put(ByteArray(6)).putShort(reference.toShort())
+    putShort(0).putShort(0).putInt(0)
+    putInt(0).putInt(0)
+    putShort(640).putShort(360)
+    putInt(0x00480000).putInt(0x00480000)
+    putInt(0).putShort(1)
+    put(ByteArray(32)).putShort(24).putShort(-1)
+}.array()
+
+internal fun movieAvcConfiguration(): ByteArray = byteArrayOf(
+    1, 66, 0, 30, 0xff.toByte(), 0xe1.toByte(),
+    0, 9, 0x67, 0x42, 0, 0x1e, 0xe9.toByte(), 1, 0x40, 0x7b, 0x20,
+    1, 0, 4, 0x68, 0xce.toByte(), 0x3c, 0x80.toByte(),
+)
+
+internal fun movieAvcEntry(
+    type: String = "avc1",
+    header: ByteArray = movieVisualHeader(),
+    extensions: ByteArray = movieBox("avcC", movieAvcConfiguration()),
+): ByteArray = movieBox(type, header + extensions)
+
+internal fun movieAvcDescription(
+    entry: ByteArray = movieAvcEntry(),
+    count: Long = 1,
+    version: Long = 0,
+): ByteArray = movieBox("stsd", movieWords(version, count) + entry)
 
 internal fun movieWithMetadataBeforeVideo(): ByteArray = movieFileType() +
     movieBox("mdat", byteArrayOf(9, 9, 9, 9, 1, 2, 3, 4)) +

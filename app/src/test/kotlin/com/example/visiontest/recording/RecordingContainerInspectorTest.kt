@@ -394,6 +394,190 @@ class RecordingContainerInspectorTest {
         assertTrue(failure.message.orEmpty().contains("Unable to read"))
     }
 
+    @Test
+    fun `video tracks require a sample description`() = runTest {
+        rejects(movieWithOptions(MovieTrackOptions(sampleDescription = byteArrayOf())), "stsd")
+    }
+
+    @Test
+    fun `sample descriptions require exactly one version zero entry`() = runTest {
+        val descriptions = listOf(
+            movieBox("stsd", movieWords(0)),
+            movieAvcDescription(count = 0), movieAvcDescription(count = 2),
+            movieAvcDescription(count = 0xffffffffL), movieAvcDescription(version = 0x01000000),
+            movieAvcDescription(version = 1), movieAvcDescription(entry = movieAvcEntry() + movieAvcEntry()),
+        )
+        for (description in descriptions) {
+            rejects(movieWithOptions(MovieTrackOptions(sampleDescription = description)), "sample description")
+        }
+    }
+
+    @Test
+    fun `duplicate sample descriptions are rejected`() = runTest {
+        rejects(movieWithOptions(MovieTrackOptions(extraTables = movieAvcDescription())), "stsd")
+    }
+
+    @Test
+    fun `unsupported video sample entries are rejected`() = runTest {
+        for (type in listOf("hvc1", "avc3", "encv", "xxxx")) {
+            rejects(movieWithOptions(MovieTrackOptions(sampleDescription =
+                movieAvcDescription(movieAvcEntry(type = type)))), "Unsupported recording sample entry")
+        }
+    }
+
+    @Test
+    fun `visual sample entries require a complete valid header`() = runTest {
+        val headers = listOf(
+            movieVisualHeader().copyOf(77), movieVisualHeader().copyOf(8),
+            movieVisualHeader().apply { this[0] = 1 },
+            movieVisualHeader().apply { this[9] = 1 },
+            movieVisualHeader().apply { this[24] = 0; this[25] = 0 },
+            movieVisualHeader().apply { this[26] = 0; this[27] = 0 },
+            movieVisualHeader().apply { this[40] = 0; this[41] = 0 },
+        )
+        for (header in headers) {
+            rejects(movieWithOptions(MovieTrackOptions(sampleDescription =
+                movieAvcDescription(movieAvcEntry(header = header, extensions = byteArrayOf())))), "visual sample")
+        }
+    }
+
+    @Test
+    fun `sample entry data reference indices must resolve to a local reference`() = runTest {
+        for (reference in listOf(0, 2, 65535)) {
+            rejects(movieWithOptions(MovieTrackOptions(sampleDescription =
+                movieAvcDescription(movieAvcEntry(header = movieVisualHeader(reference))))), "data reference")
+        }
+    }
+
+    @Test
+    fun `video samples cannot omit their data reference table`() = runTest {
+        rejects(movieWithOptions(MovieTrackOptions(dataReference = byteArrayOf())), "dinf")
+        rejects(movieWithOptions(MovieTrackOptions(dataReference = movieBox("dinf"))), "dref")
+    }
+
+    @Test
+    fun `quicktime self contained alias references support native AVC video`() = runTest {
+        val header = movieVisualHeader().apply {
+            "appl".toByteArray().copyInto(this, 12)
+        }
+        val track = movieTrack(options = MovieTrackOptions(
+            dataReference = movieDataReference("alis"),
+            sampleDescription = movieAvcDescription(movieAvcEntry(header = header)),
+        ))
+        val fileType = movieBox("ftyp", "qt  ".toByteArray() + movieWords(0) + "qt  ".toByteArray())
+        validate(fileType + movieBox("mdat", ByteArray(4)) + movieBox("moov", track))
+    }
+
+    @Test
+    fun `AVC sample entries require exactly one decoder configuration`() = runTest {
+        val configuration = movieBox("avcC", movieAvcConfiguration())
+        for (extensions in listOf(byteArrayOf(), configuration + configuration, movieBox("free", configuration))) {
+            rejects(movieWithDescription(movieAvcEntry(extensions = extensions)), "AVC configuration")
+        }
+    }
+
+    @Test
+    fun `truncated AVC configurations are rejected within their own box`() = runTest {
+        val configuration = movieAvcConfiguration()
+        for (size in configuration.indices) {
+            val extensions = movieBox("avcC", configuration.copyOf(size)) + movieBox("free", configuration)
+            rejects(movieWithDescription(movieAvcEntry(extensions = extensions)), "AVC configuration")
+        }
+    }
+
+    @Test
+    fun `AVC configurations reject unsupported versions and invalid length fields`() = runTest {
+        val invalid = listOf(
+            movieAvcConfiguration().apply { this[0] = 2 },
+            movieAvcConfiguration().apply { this[4] = 3 },
+            movieAvcConfiguration().apply { this[4] = 0xfe.toByte() },
+            movieAvcConfiguration().apply { this[5] = 1 },
+            movieAvcConfiguration().apply { this[5] = 0xe0.toByte() },
+            movieAvcConfiguration().apply { this[7] = 0 },
+            movieAvcConfiguration().apply { this[6] = 0x7f; this[7] = 0xff.toByte() },
+            movieAvcConfiguration().apply { this[8] = 0x68 },
+            movieAvcConfiguration().apply { this[17] = 0 },
+            movieAvcConfiguration().apply { this[19] = 0 },
+            movieAvcConfiguration().apply { this[20] = 0x67 },
+            movieAvcConfiguration() + byteArrayOf(0),
+        )
+        for (configuration in invalid) {
+            rejects(movieWithDescription(movieAvcEntry(extensions = movieBox("avcC", configuration))),
+                "AVC configuration")
+        }
+    }
+
+    @Test
+    fun `high profile AVC configuration extensions have bounded parameter sets`() = runTest {
+        val highProfile = movieAvcConfiguration().apply { this[1] = 100 }
+        val extension = byteArrayOf(0xfc.toByte(), 0xf8.toByte(), 0xf8.toByte(), 1, 0, 1, 0x6d)
+        validate(movieWithDescription(movieAvcEntry(extensions = movieBox("avcC", highProfile + extension))))
+        validate(movieWithDescription(movieAvcEntry(extensions = movieBox("avcC", highProfile))))
+        for (size in 1 until extension.size) {
+            rejects(movieWithDescription(movieAvcEntry(extensions =
+                movieBox("avcC", highProfile + extension.copyOf(size)))), "AVC configuration")
+        }
+    }
+
+    @Test
+    fun `sample entry extension boxes must fit inside the entry`() = runTest {
+        for (extensions in listOf(
+            movieWords(1000) + "avcC".toByteArray(),
+            movieWords(1) + "avcC".toByteArray(),
+            byteArrayOf(0, 0, 0),
+        )) {
+            assertFailsWith<RecordingException> {
+                validate(movieWithDescription(movieAvcEntry(extensions = extensions)))
+            }
+        }
+    }
+
+    @Test
+    fun `protected sample entry extensions are unsupported`() = runTest {
+        rejects(movieWithDescription(movieAvcEntry(extensions =
+            movieBox("avcC", movieAvcConfiguration()) + movieBox("sinf"))), "Unsupported")
+    }
+
+    @Test
+    fun `native AVC entries may carry well formed visual metadata boxes`() = runTest {
+        val extensions = movieBox("pasp", movieWords(1, 1)) + movieBox("avcC", movieAvcConfiguration()) +
+            movieBox("colr", "nclc".toByteArray() + byteArrayOf(0, 1, 0, 1, 0, 1))
+        validate(movieWithDescription(movieAvcEntry(extensions = extensions)))
+    }
+
+    @Test
+    fun `sample description entries cannot extend beyond their table`() = runTest {
+        val entries = listOf(
+            movieWords(1000) + "avc1".toByteArray() + movieVisualHeader(),
+            movieWords(1) + "avc1".toByteArray() + movieLong(Long.MAX_VALUE),
+            movieWords(0) + "avc1".toByteArray() + movieVisualHeader(),
+        )
+        for (entry in entries) {
+            assertFailsWith<RecordingException> { validate(movieWithDescription(entry)) }
+        }
+    }
+
+    @Test
+    fun `invalid self reference tables cannot resolve the sample description`() = runTest {
+        val entries = listOf(
+            movieBox("dref", movieWords(0, 0)),
+            movieBox("dref", movieWords(0, 2) + movieBox("url ", movieWords(1))),
+            movieBox("dref", movieWords(1, 1) + movieBox("url ", movieWords(1))),
+            movieBox("dref", movieWords(0, 1) + movieBox("alis", movieWords(0))),
+            movieBox("dref", movieWords(0, 1) + movieBox("url ", movieWords(0x01000001))),
+            movieBox("dref", movieWords(0, 1) + movieBox("url ", movieWords(1)) + movieBox("url ", movieWords(1))),
+        )
+        for (entry in entries) {
+            rejects(movieWithOptions(MovieTrackOptions(dataReference = movieBox("dinf", entry))), "data reference")
+        }
+    }
+
+    private fun movieWithDescription(entry: ByteArray): ByteArray =
+        movieWithOptions(MovieTrackOptions(sampleDescription = movieAvcDescription(entry)))
+
+    private fun movieWithOptions(options: MovieTrackOptions): ByteArray = movieFileType() +
+        movieBox("mdat", ByteArray(4)) + movieBox("moov", movieTrack(options = options))
+
     private suspend fun rejects(bytes: ByteArray, message: String) {
         val failure = assertFailsWith<RecordingException> { validate(bytes) }
         assertTrue(failure.message.orEmpty().contains(message), failure.message)

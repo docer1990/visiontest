@@ -214,11 +214,13 @@ private class AndroidRemoteRecorder(
     }
 
     suspend fun status(deadline: RequestDeadline): RemoteState {
-        val line = shell(ownerGuard + "; if [ -f $directory/done ]; then " +
+        val line = shell(ownerGuard + "; if [ -s $directory/done ]; then " +
             "printf '$token %s STOPPED %s\\n' \"\$pid\" \"\$(cat $directory/done)\"; " +
-            "else $liveGuard; printf '$token %s LIVE\\n' \"\$pid\"; fi", deadline,
+            "else cmdline=\$(tr '\\000' ' ' < /proc/\$pid/cmdline 2>/dev/null); " +
+            "if [ \"\$cmdline\" = '$processCommandLine' ]; then printf '$token %s LIVE\\n' \"\$pid\"; " +
+            "elif [ -z \"\$cmdline\" ]; then printf '$token %s FINALIZING\\n' \"\$pid\"; else exit 1; fi; fi", deadline,
             recoverOwner = pid == null).stdout.decodeToString().trim()
-        val match = Regex("($token [1-9][0-9]*) (LIVE|STOPPED ([0-9]{1,3}))").matchEntire(line)
+        val match = Regex("($token [1-9][0-9]*) (LIVE|FINALIZING|STOPPED ([0-9]{1,3}))").matchEntire(line)
             ?: throw RecordingException("Invalid Android recorder ownership status")
         val ownedPid = parseOwner(match.groupValues[1])
         if (pid != null && pid != ownedPid) throw RecordingException("Android recorder PID changed")
@@ -233,13 +235,14 @@ private class AndroidRemoteRecorder(
 
     suspend fun awaitStopped(deadline: RequestDeadline): RemoteState {
         var state = status(deadline)
-        while (state.live) { delay(ANDROID_POLL_MS); state = status(deadline) }
+        while (state.code == null) { delay(ANDROID_POLL_MS); state = status(deadline) }
         stopped = true
         return state
     }
 
     suspend fun remove(deadline: RequestDeadline) {
-        shell("$ownerGuard; rm -f $media $directory/owner $directory/done $directory/log; rmdir $directory", deadline)
+        shell("$ownerGuard; rm -f $media $directory/owner $directory/done $directory/done.tmp " +
+            "$directory/log; rmdir $directory", deadline)
     }
 
     suspend fun cleanup(deadline: RequestDeadline) {
@@ -269,13 +272,18 @@ private class AndroidRemoteRecorder(
             "case \"\$pid\" in ''|*[!0-9]*) exit 1;; esac; [ \"\$pid\" -gt 0 ] || exit 1" +
             (pid?.let { "; [ \"\$pid\" = $it ] || exit 1" } ?: "")
 
-    private val liveGuard get() = "[ \"\$(tr '\\000' ' ' < /proc/\$pid/cmdline)\" = " +
-        "'/system/bin/screenrecord --time-limit $duration $media ' ] || exit 1"
+    private val processCommandLine get() = "/system/bin/screenrecord --time-limit $duration $media "
+
+    private val liveGuard get() =
+        "[ \"\$(tr '\\000' ' ' < /proc/\$pid/cmdline)\" = '$processCommandLine' ] || exit 1"
 
     private val wrapper get() = """
         umask 077
         mkdir $directory || exit 1
         child=
+        publish_completion() {
+            printf '%s\n' "${'$'}1" > $directory/done.tmp && mv $directory/done.tmp $directory/done
+        }
         cleanup() {
             trap '' HUP INT TERM
             child=${'$'}{child:-${'$'}!}
@@ -284,7 +292,7 @@ private class AndroidRemoteRecorder(
                 pid=${'$'}child
                 if ( $liveGuard ); then kill -INT "${'$'}child" 2>/dev/null; fi
                 wait "${'$'}child"
-                printf '%s\n' "${'$'}?" > $directory/done
+                publish_completion "${'$'}?"
             fi
         }
         trap 'cleanup; exit' HUP INT TERM
@@ -294,7 +302,7 @@ private class AndroidRemoteRecorder(
         printf '$token %s\n' "${'$'}child"
         wait "${'$'}child"
         code=${'$'}?
-        printf '%s\n' "${'$'}code" > $directory/done
+        publish_completion "${'$'}code"
         cat $directory/log >&2
         exit "${'$'}code"
     """.trimIndent()

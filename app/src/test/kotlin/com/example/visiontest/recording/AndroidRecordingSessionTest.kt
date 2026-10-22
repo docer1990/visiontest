@@ -15,7 +15,9 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -28,6 +30,83 @@ import kotlin.test.assertIs
 class AndroidRecordingSessionTest {
     @TempDir
     lateinit var directory: Path
+
+    @Test
+    fun `normal stop waits through process exit until the completion record is published`() = runTest {
+        for (zombie in listOf(false, true)) {
+            val runner = FakeAndroidRecordingProcesses()
+            val artifacts = directory.resolve("video-$zombie")
+            val session = AndroidRecordingSession(backgroundScope, artifacts, 150_000, runner)
+            session.start(RequestDeadline(1000))
+            val fixture = CompletionTransition(directory.resolve("remote-$zombie"), runner, zombie)
+            runner.statusFixture = fixture::inspect
+            val deadline = RequestDeadline(1000) { testScheduler.currentTime * 1_000_000 }
+            val path = session.finish(deadline)
+            assertEquals(artifacts.resolve("recording.mp4"), path)
+            assertContentEquals(movieWithMetadataBeforeVideo(), Files.readAllBytes(path))
+            assertEquals(4, fixture.exitedReads)
+            assertEquals(1, runner.signals)
+            assertEquals(0, runner.forcedRemoteStops)
+            assertTrue(fixture.deadlines.all { it === deadline })
+        }
+    }
+
+    @Test
+    fun `missing completion publication consumes only the supplied finalization deadline`() = runTest {
+        val runner = FakeAndroidRecordingProcesses()
+        val session = AndroidRecordingSession(backgroundScope, directory.resolve("video"), 150_000, runner)
+        session.start(RequestDeadline(1000))
+        val fixture = CompletionTransition(directory.resolve("remote"), runner, publish = false)
+        runner.statusFixture = fixture::inspect
+        val deadline = RequestDeadline(1000) { testScheduler.currentTime * 1_000_000 }
+        assertFailsWith<RecordingException> { session.finish(deadline) }
+        assertTrue(fixture.exitedReads > 1)
+        assertTrue(testScheduler.currentTime >= 800)
+        assertTrue(testScheduler.currentTime <= 1000)
+        assertFalse(runner.commands.any { "pull" in it })
+        assertEquals(0, runner.forcedRemoteStops)
+    }
+
+    @Test
+    fun `a different running command is not accepted as a completion transition`() = runTest {
+        val runner = FakeAndroidRecordingProcesses()
+        val session = AndroidRecordingSession(backgroundScope, directory.resolve("video"), 150_000, runner)
+        session.start(RequestDeadline(1000))
+        val remote = directory.resolve("remote")
+        val fixture = CompletionTransition(remote, runner)
+        Files.writeString(remote.resolve("proc/1234/cmdline"), "unrelated-process\u0000")
+        runner.statusFixture = fixture::inspect
+        assertFailsWith<RecordingException> { session.finish(RequestDeadline(1000)) }
+        assertEquals(0, runner.signals)
+        assertEquals(0, runner.forcedRemoteStops)
+        assertFalse(runner.removed)
+        assertFalse(runner.commands.any { "pull" in it })
+    }
+
+    @Test
+    fun `both wrapper exit paths publish complete status through an atomic rename`() = runTest {
+        val runner = FakeAndroidRecordingProcesses()
+        val session = AndroidRecordingSession(backgroundScope, directory.resolve("video"), 150_000, runner)
+        session.start(RequestDeadline(1000))
+        val wrapper = unquoteRemoteScript(runner.wrapper).replace(runner.remote, directory.toString())
+        val publication = checkNotNull(Regex("publish_completion\\(\\) \\{.*?\n}", RegexOption.DOT_MATCHES_ALL)
+            .find(wrapper)) { "The wrapper needs one atomic completion publisher" }.value
+        assertEquals(3, Regex("publish_completion").findAll(wrapper).count())
+        val script = """
+            mv() {
+                [ ! -e $directory/done ] || exit 11
+                [ "${'$'}(cat $directory/done.tmp)" = 7 ] || exit 12
+                command mv "${'$'}@"
+            }
+            $publication
+            publish_completion 7
+        """.trimIndent()
+        val result = runLocalShell(script)
+        assertEquals(0, result.exitCode, result.stderr)
+        assertEquals("7\n", Files.readString(directory.resolve("done")))
+        assertFalse(Files.exists(directory.resolve("done.tmp")))
+        session.finish(RequestDeadline(1000))
+    }
 
     @Test
     fun `cancellation recovery waits for the ownership record to finish publishing`() = runTest {
@@ -476,6 +555,7 @@ private class FakeAndroidRecordingProcesses : RecordingProcessRunner {
     var stopCode = 0
     var statusDelay = 0L
     var pendingOwnershipReads = 0
+    var statusFixture: ((String, RequestDeadline) -> RecordingCommandResult)? = null
     val finalizationDeadlines = mutableListOf<RequestDeadline>()
 
     fun completeExit(code: Int) {
@@ -545,11 +625,18 @@ private class FakeAndroidRecordingProcesses : RecordingProcessRunner {
                 RecordingCommandResult(pullCode, byteArrayOf(), "transfer failed")
             }
             script.contains("kill -INT") -> interruptRemote()
-            else -> inspectRemote(script, stdoutLimitBytes)
+            else -> inspectRemote(script, stdoutLimitBytes, deadline)
         }
     }
 
-    private suspend fun inspectRemote(script: String, stdoutLimitBytes: Int): RecordingCommandResult {
+    private suspend fun inspectRemote(
+        script: String,
+        stdoutLimitBytes: Int,
+        deadline: RequestDeadline,
+    ): RecordingCommandResult {
+        if (script.contains("/owner") && !script.contains("rm ") && !script.contains("kill -")) {
+            statusFixture?.let { return it(script, deadline) }
+        }
         return if (script.contains("/owner") && pendingOwnershipReads > 0) {
             pendingOwnershipReads--
             RecordingCommandResult(1, byteArrayOf(), "owner not published")
@@ -592,5 +679,61 @@ private class FakeAndroidRecordingProcesses : RecordingProcessRunner {
         val bytes = initialBytes
         return if (offset >= bytes.size) byteArrayOf()
         else bytes.copyOfRange(offset.toInt(), minOf(bytes.size, offset.toInt() + count))
+    }
+}
+
+private class CompletionTransition(
+    private val directory: Path,
+    private val runner: FakeAndroidRecordingProcesses,
+    private val zombie: Boolean = false,
+    private val publish: Boolean = true,
+) {
+    var exitedReads = 0
+    val deadlines = mutableListOf<RequestDeadline>()
+
+    init {
+        Files.createDirectories(directory.resolve("proc/1234"))
+        Files.writeString(directory.resolve("owner"), "${runner.token} 1234\n")
+        Files.writeString(directory.resolve("proc/1234/cmdline"),
+            "/system/bin/screenrecord\u0000--time-limit\u0000150\u0000$directory/recording.mp4\u0000")
+    }
+
+    fun inspect(script: String, deadline: RequestDeadline): RecordingCommandResult {
+        deadlines += deadline
+        if (!runner.live) {
+            exitedReads++
+            if (zombie) {
+                Files.writeString(directory.resolve("proc/1234/cmdline"), "")
+                Files.writeString(directory.resolve("proc/1234/status"), "State:\tZ (zombie)\n")
+            } else {
+                Files.deleteIfExists(directory.resolve("proc/1234/cmdline"))
+                Files.deleteIfExists(directory.resolve("proc/1234"))
+            }
+            when (exitedReads) {
+                2 -> {
+                    Files.writeString(directory.resolve("done"), "")
+                    Files.writeString(directory.resolve("done.tmp"), "")
+                }
+                3 -> Files.writeString(directory.resolve("done.tmp"), "0\n")
+                4 -> if (publish) Files.move(directory.resolve("done.tmp"), directory.resolve("done"),
+                    StandardCopyOption.REPLACE_EXISTING)
+            }
+        }
+        val local = unquoteRemoteScript(script).replace(runner.remote, directory.toString())
+            .replace("/proc/", "$directory/proc/")
+        return runLocalShell(local)
+    }
+}
+
+private fun unquoteRemoteScript(script: String) = script.removeSurrounding("'").replace("'\\''", "'")
+
+private fun runLocalShell(script: String): RecordingCommandResult {
+    val process = ProcessBuilder("/bin/sh", "-c", script).start()
+    try {
+        check(process.waitFor(5, TimeUnit.SECONDS)) { "Local recording protocol script timed out" }
+        return RecordingCommandResult(process.exitValue(), process.inputStream.readBytes(),
+            process.errorStream.readBytes().decodeToString())
+    } finally {
+        if (process.isAlive) process.destroyForcibly().waitFor()
     }
 }

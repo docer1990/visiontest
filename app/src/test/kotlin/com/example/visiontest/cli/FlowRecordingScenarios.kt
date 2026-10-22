@@ -19,8 +19,38 @@ internal class FlowRecordingScenarios(private val platform: Platform, private va
     private var report: FlowReport? = null
     private var lines = emptyList<String>()
     private var interruption: RecordingInterruptionAttempt? = null
+    private var evidenceRequests = 0
 
-    fun bindings(): Map<String, () -> Unit> = successBindings() + startupFailureBindings() + interruptionBindings()
+    fun bindings(): Map<String, () -> Unit> =
+        successBindings() + startupFailureBindings() + interruptionBindings() + evidenceBindings()
+
+    private fun evidenceBindings(): Map<String, () -> Unit> = mapOf(
+        "Given a recorded flow whose first action has failed" to { lines = listOf("press_home", "press_home") },
+        "When the recorder also fails during failure evidence collection" to {
+            assertEquals(2, lines.size)
+            val attempt = recordingFailureDuringEvidence(platform, session, artifacts)
+            report = attempt.first
+            evidenceRequests = attempt.second
+        },
+        "Then the original action error remains the primary failure" to {
+            val actual = assertNotNull(report)
+            assertEquals(3, actual.exitCode)
+            assertEquals("Action backend lost", actual.error?.message)
+            assertEquals(listOf("failed", "skipped"), actual.steps.map { it.status })
+        },
+        "And the recording error is reported separately" to {
+            val recording = assertNotNull(report).recording
+            assertEquals("failed", recording?.status)
+            assertEquals("record", recording?.phase)
+            assertTrue(assertNotNull(recording?.error).message.contains("evidence encoder failure"))
+        },
+        "And failure evidence is collected only once" to {
+            val evidence = assertNotNull(report).evidence
+            assertEquals(1, evidence.size)
+            assertEquals("succeeded", evidence.single().status)
+            assertEquals(1, evidenceRequests)
+        },
+    )
 
     private fun interruptionBindings(): Map<String, () -> Unit> = mapOf(
         "Given a recorded flow with an action awaiting its response" to { lines = listOf("press_home", "press_home") },

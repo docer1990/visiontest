@@ -230,6 +230,7 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
 internal class FlowRecordingCoordinator(private val session: RecordingSession?) {
     var failure: RecordingException? = null
         private set
+    val error: FlowError? get() = failure?.asFlowError()
 
     suspend fun report(path: Path): FlowRecordingReport {
         if (session?.terminal?.isCompleted == true) exited(session.terminal.await())

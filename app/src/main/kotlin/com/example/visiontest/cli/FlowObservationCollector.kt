@@ -43,12 +43,17 @@ internal data class FlowObservationOptions(
             requireNotNull(collector).collect(observe, overall, stopOnFailure = true, coordinator = coordinator)
         } else FlowObservationCollector.skipped(observe)
         val failedObservation = observations.firstOrNull { it.status == "failed" }
-        val failure = execution.error ?: failedObservation?.error
+        val failure = execution.error ?: failedObservation?.error ?: coordinator.error
         val evidence = if (failure != null && onFailure.isNotEmpty()) {
             requireNotNull(collector).collect(onFailure, deadlineFactory(evidenceTimeoutMs))
         } else FlowObservationCollector.skipped(onFailure)
         return execution.copy(success = failure == null, error = failure,
-            exitCode = if (execution.success) failedObservation?.exitCode ?: 0 else execution.exitCode,
+            exitCode = when {
+                !execution.success -> execution.exitCode
+                failedObservation != null -> failedObservation.exitCode
+                failure != null -> 1
+                else -> 0
+            },
             observations = observations, evidence = evidence)
     }
 }

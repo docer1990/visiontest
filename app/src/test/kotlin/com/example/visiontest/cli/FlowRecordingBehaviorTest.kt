@@ -27,6 +27,8 @@ class FlowRecordingBehaviorTest {
                 FlowRecordingScenarios(platform, directory.resolve("${platform.value}-startup")).bindings()
             }, "Stop a flow when its recorder exits early" to {
                 FlowRecordingScenarios(platform, directory.resolve("${platform.value}-interruption")).bindings()
+            }, "Preserve the original flow failure" to {
+                FlowRecordingScenarios(platform, directory.resolve("${platform.value}-evidence")).bindings()
             }), requireComplete = false, resourcePath = "/features/flow-recording.feature"))
     }
 

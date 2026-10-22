@@ -31,11 +31,20 @@ step operations and observations. A recording session exposes bounded startup,
 asynchronous terminal status and idempotent stop/finalize operations. Platform
 adapters own tool invocation, readiness detection and artifact transport.
 
-Resolve the recording target once through existing device selection. Use its
+Resolve the recording target once using the existing device-selection rules. Use its
 explicit serial or UDID for every recording, inspection, stop and transfer command.
 Do not rediscover or switch recording targets during a flow. The selected target
-must match the device served by the flow's automation backend; cover that setup
-in device tests and document the existing single-target assumption.
+must match the device served by the flow's automation backend. This is the
+existing single-target setup precondition, not a new runtime identity guarantee.
+Neither native health response currently exposes a serial or UDID. Cover the
+setup in device tests and document the precondition.
+
+Recording-specific discovery uses bounded, captured host commands rather than
+the existing discovery helpers that can inherit stdout or outlive cancellation.
+Preserve first-online Android selection and booted-first iOS selection. A selected
+shutdown simulator fails recording startup; recording does not boot or switch it.
+Discover once within the startup budget, without the standalone Android discovery
+cache or retry delays. Pin the ADB executable and server endpoint for the session.
 
 An invocation owns its recorder handles, remote PID and temporary paths. Cleanup
 must never signal unrelated recorder processes or remove unrelated files. Drain
@@ -88,7 +97,9 @@ The primary error is the first failure committed to the flow report. A later
 recording failure cannot replace an existing step or observation error or its
 exit code. If recorder failure is primary, exit 1. Requested failure evidence
 can still run under its own budget after execution fails, even if recording has
-already stopped. Evidence failure does not replace the primary error.
+already stopped. Evidence failure does not replace the primary error. If the
+recorder exits while failure evidence is already running, let that evidence finish
+within its existing budget rather than cancelling it or starting another pass.
 
 When steps succeed, keep recording through final observations. When execution
 fails, keep a healthy recorder running through requested failure evidence.

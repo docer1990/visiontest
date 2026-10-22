@@ -50,9 +50,9 @@ Both platforms MUST validate an explicit timeout in the range 1 through 30,000 m
 - **When** the registrar validates it
 - **Then** it MUST fail as an invalid argument before checking server health or polling `ui.findElement`
 
-### Requirement: Appearance and disappearance have distinct success results
+### Requirement: MCP appearance and disappearance have distinct success results
 
-An appearance wait MUST return the raw successful `ui.findElement` JSON-RPC response as soon as `result.found` is true. A disappearance wait MUST return confirmation text naming the selectors as soon as `result.found` is false. Each wait MUST throw a timeout naming the selectors and configured budget when its expected state is not reached.
+An MCP appearance wait MUST return the raw successful `ui.findElement` JSON-RPC response as soon as `result.found` is true. A disappearance wait MUST return confirmation text naming the selectors as soon as `result.found` is false. Each wait MUST throw a timeout naming the selectors and configured budget when its expected state is not reached.
 
 #### Scenario: Element appears
 
@@ -71,6 +71,23 @@ An appearance wait MUST return the raw successful `ui.findElement` JSON-RPC resp
 - **Given** every valid response continues to report the undesired state
 - **When** another poll interval would exceed the configured budget
 - **Then** the wait SHALL throw a timeout describing `not found` or `still present` and the selectors
+
+### Requirement: Standalone CLI output describes the requested condition
+
+Standalone `wait_for_element` MUST use the shared raw wait result for both modes.
+Default output MUST be `Element appeared.` or `Element gone.`. With `--json`,
+stdout MUST contain one unwrapped platform find result and newline, retaining
+additional fields and adding `condition` and boolean `satisfied`. Successful gone
+output includes `found:false`, `condition:"gone"`, and `satisfied:true`.
+Both output modes MUST validate the final matching result with the platform
+find-result schema. Invalid final fields MUST exit 1 with empty stdout.
+MCP results and raw flow execution MUST remain unchanged.
+
+The existing standalone poller checks `found`; a normally returned string
+`result.error` does not itself throw. A matching result with that field MUST retain
+exit 0 and JSON MUST preserve `error`; `satisfied` reports only the found condition.
+A nonmatching result continues polling and can time out. This does not change
+flow's stricter returned-failure handling or JSON-RPC error handling.
 
 ### Requirement: Server and protocol failures never satisfy a gone wait
 

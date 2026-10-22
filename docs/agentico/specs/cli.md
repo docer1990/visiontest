@@ -74,7 +74,7 @@ The CLI SHALL register these 30 subcommands and argument contracts:
 | `find_element` | Android or iOS | At least one selector; optional `--bundle-id` on iOS and `--json` |
 | `available_device` | Android or iOS | Optional `--json` |
 | `screenshot` | Android or iOS | Optional `--output PATH` |
-| `wait_for_element` | Android or iOS | One or more selector options; optional iOS app scope `--bundle-id`, plus `--timeout MS` and `--gone` |
+| `wait_for_element` | Android or iOS | One or more selector options; optional iOS app scope `--bundle-id`, plus `--timeout MS`, `--gone`, and `--json` |
 | `tap_by_coordinates` | Android or iOS | Required integer `x` and `y` arguments; optional `--json` |
 | `tap_on_element` | Android or iOS | At least one selector; optional iOS app scope `--bundle-id` and `--timeout MS`; optional `--json` |
 | `input_text` | Android or iOS | Required `text` argument; optional `--target-*` selectors, selector `--timeout MS`, and iOS app scope `--bundle-id`; optional `--json` |
@@ -235,6 +235,21 @@ responses SHALL exit 1 with diagnostics on stderr and no stdout. Thrown errors
 SHALL retain their mapped codes and stderr behavior. Default output, MCP results,
 registrar execution and flow step results SHALL remain unchanged. `flow` SHALL
 continue to reject a step-level `--json` before device access.
+
+### Requirement: Standalone waits provide symmetric text and structured results
+
+`wait_for_element` MUST print `Element appeared.` or `Element gone.` on success.
+With `--json`, it MUST emit one unwrapped find result and newline, preserving
+additive fields and adding `condition` (`appeared` or `gone`) and boolean
+`satisfied` based on the matching `found` value. Both output modes MUST validate
+the final result with the platform find-result schema before writing stdout.
+Timeouts and thrown RPC, protocol, transport, or malformed-result failures MUST
+leave stdout empty and retain existing exit mappings. Polling and MCP output MUST
+remain unchanged; flow steps MUST reject `--json` before backend access.
+A normally returned string `result.error` with a matching boolean `found` MUST
+retain exit 0; JSON MUST preserve that error. `satisfied` describes the found
+condition only, so callers MUST also inspect `error`. Nonmatching results continue
+polling under the existing rules.
 
 ### Requirement: Inspection offers machine-readable output
 

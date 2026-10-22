@@ -6,8 +6,14 @@ import com.example.visiontest.common.AutomationResponse
 import com.example.visiontest.common.RequestDeadline
 import com.example.visiontest.common.strictJsonObject
 import com.example.visiontest.recording.RecordingSession
+import com.example.visiontest.recording.RecordingException
+import com.example.visiontest.recording.RecordingExit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
@@ -59,17 +65,19 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
                 return@coroutineScope startupFailure(platform, steps, observationOptions, error)
             }
         }
-        val execution = executeSteps(platform, steps, stepTimeoutMs, overall)
-        val observed = observationOptions.finish(execution, overall, deadlineFactory)
+        val coordinator = FlowRecordingCoordinator(session)
+        val execution = executeSteps(platform, steps, stepTimeoutMs, overall, coordinator)
+        val observed = observationOptions.finish(execution, overall, deadlineFactory, coordinator)
         val recording = session?.let {
             val budget = minOf(FINALIZATION_TIMEOUT_MS, overall.remainingMillis())
             val deadline = deadlineFactory(budget)
             val path = withTimeoutOrNull(budget) {
+                coordinator.stopMonitoring()
                 it.finish(deadline).also { deadline.remainingMillis() }
             } ?: throw TimeoutException("Flow recording finalization deadline exceeded")
-            FlowRecordingReport("succeeded", path = path.toAbsolutePath().toString())
+            coordinator.report(path)
         }
-        observed.copy(recording = recording)
+        observed.withRecording(recording)
     }
 
     private companion object {
@@ -112,6 +120,7 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
         steps: List<FlowPreparedStep>,
         stepTimeoutMs: Long,
         overall: RequestDeadline,
+        coordinator: FlowRecordingCoordinator,
     ): FlowReport {
         val results = mutableListOf<FlowStepReport>()
         var failure: FlowError? = null
@@ -122,22 +131,23 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
                 continue
             }
             var deadline: RequestDeadline? = null
+            var started = false
             try {
                 val budget = minOf(stepTimeoutMs, overall.remainingMillis())
                 val stepDeadline = deadlineFactory(budget)
                 deadline = stepDeadline
-                val result = withContext(stepDeadline) {
-                    withTimeoutOrNull(budget) {
-                        val outcome = evaluate(platform, step, step.execute())
-                        stepDeadline.remainingMillis()
-                        outcome
-                    }
-                        ?: throw TimeoutException("Flow step deadline exceeded")
+                val result = coordinator.run(stepDeadline, budget, "Flow step deadline exceeded") {
+                    started = true
+                    evaluate(platform, step, step.execute())
                 }
                 results += FlowStepReport(step.id, step.command, if (result.success) "succeeded" else "failed",
                     result = result.result, error = result.error)
                 if (!result.success) {
                     failure = result.error
+                    exitCode = 1
+                }
+                if (failure == null && coordinator.failure != null) {
+                    failure = coordinator.failure?.asFlowError()
                     exitCode = 1
                 }
             } catch (error: Exception) {
@@ -146,12 +156,19 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
                 failure = FlowError(error.javaClass.simpleName, mapped.stderr ?: "Unknown error")
                 exitCode = mapped.exitCode
                 val uncertain = step.kind == FlowStepKind.ACTION && deadline?.actionDispatched == true
-                results += FlowStepReport(step.id, step.command, if (uncertain) "uncertain" else "failed",
-                    if (uncertain) "unknown" else "confirmed", error = failure)
+                val skipped = !started && coordinator.failure != null
+                results += interruptedStep(step, skipped, uncertain, failure)
             }
         }
         return FlowReport(platform, failure == null, exitCode, results, failure)
     }
+
+    private fun interruptedStep(step: FlowPreparedStep, skipped: Boolean, uncertain: Boolean, error: FlowError) =
+        when {
+            skipped -> FlowStepReport(step.id, step.command, "skipped", "not_executed")
+            uncertain -> FlowStepReport(step.id, step.command, "uncertain", "unknown", error = error)
+            else -> FlowStepReport(step.id, step.command, "failed", error = error)
+        }
 
     private fun evaluate(platform: Platform, step: FlowPreparedStep, raw: String): FlowOutcome {
         val response = if (step.kind == FlowStepKind.SCREENSHOT) AutomationResponse(parseScreenshot(raw), false)
@@ -209,6 +226,70 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
     } catch (error: IllegalArgumentException) {
         throw CommandExecutionException("Malformed screenshot response: ${error.message}").also { it.initCause(error) }
     }
+}
+
+internal class FlowRecordingCoordinator(private val session: RecordingSession?) {
+    var failure: RecordingException? = null
+        private set
+
+    suspend fun stopMonitoring() {
+        if (session?.terminal?.isCompleted == true) exited(session.terminal.await())
+    }
+
+    fun report(path: Path) = FlowRecordingReport(if (failure == null) "succeeded" else "failed",
+        phase = failure?.let { "record" }, path = path.toAbsolutePath().toString(), error = failure?.asFlowError())
+
+    @Suppress("TooGenericExceptionCaught")
+    suspend fun <T : Any> run(
+        deadline: RequestDeadline,
+        budget: Long,
+        timeoutMessage: String,
+        operation: suspend () -> T,
+    ): T = coroutineScope {
+        if (session == null) return@coroutineScope withContext(deadline) {
+            withTimeoutOrNull(budget) {
+                operation().also { deadline.remainingMillis() }
+            } ?: throw TimeoutException(timeoutMessage)
+        }
+        failure?.let { throw it }
+        // Cancelling the return handoff must not erase an already validated response.
+        var validated: T? = null
+        var operationFailure: Exception? = null
+        val active = launch(start = CoroutineStart.LAZY) {
+            try {
+                withContext(deadline) {
+                    withTimeoutOrNull(budget) {
+                        operation().also {
+                            deadline.remainingMillis()
+                            validated = it
+                        }
+                    } ?: throw TimeoutException(timeoutMessage)
+                }
+            } catch (error: Exception) {
+                operationFailure = error
+            }
+        }
+        select {
+            session.terminal.onAwait { exited(it) }
+            active.onJoin { }
+        }
+        if (failure != null) active.cancelAndJoin()
+        else operationFailure?.let { throw it }
+        validated ?: throw (failure ?: operationFailure ?: error("Flow operation produced no outcome"))
+    }
+
+    private fun exited(exit: RecordingExit) {
+        if (failure == null) failure = RecordingException(
+            "Recorder exited before intentional stop (exit ${exit.exitCode}): ${exit.diagnostics}")
+    }
+}
+
+private fun RecordingException.asFlowError() = FlowError(javaClass.simpleName, message ?: "Recording failed")
+
+private fun FlowReport.withRecording(recording: FlowRecordingReport?): FlowReport {
+    val failure = error ?: recording?.error
+    return copy(recording = recording, success = failure == null, error = failure,
+        exitCode = if (success && failure != null) 1 else exitCode)
 }
 
 private data class FlowOutcome(val success: Boolean, val result: JsonObject, val error: FlowError?)

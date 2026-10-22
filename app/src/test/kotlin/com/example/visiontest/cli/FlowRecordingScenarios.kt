@@ -18,8 +18,27 @@ internal class FlowRecordingScenarios(private val platform: Platform, private va
     private val session = FakeRecordingSession(artifacts).also { it.platform = platform }
     private var report: FlowReport? = null
     private var lines = emptyList<String>()
+    private var interruption: RecordingInterruptionAttempt? = null
 
-    fun bindings(): Map<String, () -> Unit> = successBindings() + startupFailureBindings()
+    fun bindings(): Map<String, () -> Unit> = successBindings() + startupFailureBindings() + interruptionBindings()
+
+    private fun interruptionBindings(): Map<String, () -> Unit> = mapOf(
+        "Given a recorded flow with an action awaiting its response" to { lines = listOf("press_home", "press_home") },
+        "When the recorder exits before the flow finishes" to {
+            assertEquals(2, lines.size)
+            interruption = interruptRecordingRequest(platform, session, artifacts, 7)
+            report = interruption?.report
+        },
+        "And the pending action has an unknown effect" to {
+            assertEquals("uncertain", assertNotNull(report).steps[0].status)
+            assertEquals("unknown", assertNotNull(report).steps[0].certainty)
+        },
+        "And later steps are skipped without replay" to {
+            assertEquals("skipped", assertNotNull(report).steps[1].status)
+            assertEquals(1, assertNotNull(interruption).posts)
+            assertEquals(0, assertNotNull(interruption).laterCalls)
+        },
+    )
 
     private fun successBindings(): Map<String, () -> Unit> = mapOf(
         "Given a valid flow with recording requested" to {
@@ -91,9 +110,10 @@ internal class FlowRecordingScenarios(private val platform: Platform, private va
             val actual = assertNotNull(report)
             assertFalse(actual.success)
             assertEquals(1, actual.exitCode)
-            assertEquals("Encoder initialization failed", actual.error?.message)
+            if (interruption == null) assertEquals("Encoder initialization failed", actual.error?.message)
+            else assertTrue(assertNotNull(actual.error).message.contains("7"))
             assertEquals("failed", actual.recording?.status)
-            assertEquals("start", actual.recording?.phase)
+            assertEquals(if (interruption == null) "start" else "record", actual.recording?.phase)
             assertEquals(actual.error, actual.recording?.error)
         },
         "And every flow step is skipped" to {

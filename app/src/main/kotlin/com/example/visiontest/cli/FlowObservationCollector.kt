@@ -8,7 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -38,9 +37,10 @@ internal data class FlowObservationOptions(
         execution: FlowReport,
         overall: RequestDeadline,
         deadlineFactory: (Long) -> RequestDeadline = { RequestDeadline(it) },
+        coordinator: FlowRecordingCoordinator = FlowRecordingCoordinator(null),
     ): FlowReport {
         val observations = if (execution.success && observe.isNotEmpty()) {
-            requireNotNull(collector).collect(observe, overall, stopOnFailure = true)
+            requireNotNull(collector).collect(observe, overall, stopOnFailure = true, coordinator = coordinator)
         } else FlowObservationCollector.skipped(observe)
         val failedObservation = observations.firstOrNull { it.status == "failed" }
         val failure = execution.error ?: failedObservation?.error
@@ -71,6 +71,7 @@ internal class FlowObservationCollector(
         requested: List<String>,
         deadline: RequestDeadline,
         stopOnFailure: Boolean = false,
+        coordinator: FlowRecordingCoordinator = FlowRecordingCoordinator(null),
     ): List<FlowObservationReport> {
         val records = mutableListOf<FlowObservationReport>()
         var stopped = false
@@ -81,12 +82,7 @@ internal class FlowObservationCollector(
             }
             val record = try {
                 val budget = deadline.remainingMillis()
-                val result = withContext(deadline) {
-                    withTimeoutOrNull(budget) {
-                        observe(kind).also { deadline.remainingMillis() }
-                    } ?: throw TimeoutException("Flow observation deadline exceeded")
-                }
-                result
+                coordinator.run(deadline, budget, "Flow observation deadline exceeded") { observe(kind) }
             } catch (error: Exception) {
                 currentCoroutineContext().ensureActive()
                 val mapped = cliFailure(error)

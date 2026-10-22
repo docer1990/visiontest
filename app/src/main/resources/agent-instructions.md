@@ -1,23 +1,19 @@
 # Test mobile apps with VisionTest
 
-Use the VisionTest CLI to test a concrete app flow and verify its expected outcome.
-
 ## Workflow
 
-1. Identify the platform, app ID, target device, starting state and expected result
-   from the application project. Follow its AGENTS.md or equivalent for builds,
-   artifacts, variants, simulator builds and installation. Reuse only a build
-   containing the code under test.
-2. Reuse valid server setup and known selectors. Discover only unknown controls
-   with `get_interactive_elements --compact`.
-3. Run known actions together with `flow --record --json`, ending with an explicit
-   outcome wait. Check intermediate states only when needed for a decision or a
-   separate assertion. Serialize actions on one device.
-4. Use structured results as functional evidence. Screenshots are for visual
-   assertions, inaccessible content, unresolved ambiguity or explicit image requests.
-   Open a captured image before making a visual claim. Do not routinely analyze video.
-5. Report passed, failed and blocked checks, expected versus observed results and
-   evidence paths. Stop when the requested checks are complete.
+Identify the platform, app ID, target device, starting state and expected result
+from the application project. Follow its AGENTS.md or equivalent for builds,
+artifacts, variants, simulator builds and installation. Reuse only a build
+containing the code under test.
+
+Check intermediate states only when needed for a decision or a separate assertion.
+Use structured results as functional evidence. Screenshots are for visual
+assertions, inaccessible content, unresolved ambiguity or explicit image requests.
+Open a captured image before making a visual claim. Do not routinely analyze video.
+
+Report passed, failed and blocked checks, expected versus observed results and
+evidence paths. Stop when the requested checks are complete.
 
 ## Prepare once, reuse setup
 
@@ -53,6 +49,7 @@ with established project/device values; do not execute them literally.
 
 ## Choose the operation
 
+Reuse known selectors; discover only unknown controls.
 Commands below omit `visiontest` and `-p PLATFORM`. For iOS element operations,
 add `--bundle-id APP_ID`; Android rejects it.
 
@@ -101,8 +98,9 @@ not prove absence from the app. Add `--include-disabled` when relevant.
 
 ## Batch known actions and record evidence
 
-Launch/setup and discovery happen outside the flow. Replace IDs and markers with
-known values. This iOS example scopes each step explicitly:
+Batch known actions and end with an explicit outcome wait. Serialize actions on
+one device. Launch/setup and discovery happen outside the flow. This iOS example
+uses known IDs and scopes each step explicitly:
 
 ```bash
 visiontest flow -p ios --record --json \
@@ -144,9 +142,8 @@ whole-process wall-clock limit.
 
 ## Native app lifecycle
 
-Use these only to establish scenario-required state. Build/install follows the
-application repository, including reinstall after uninstall. Deep links may shorten
-setup only when skipped navigation is not under test.
+Use native commands to establish the starting state. Deep links may shorten setup
+only when skipped navigation is not under test.
 
 Replace `SERIAL`, `UDID`, `PACKAGE`, `BUNDLE_ID` and `URL` with validated nonblank
 values for the intended target. Do not use an arbitrary device or ambiguous `booted`.
@@ -196,5 +193,3 @@ restarting. Use device logs only when needed to explain a failure.
 After upgrading the CLI, run `visiontest init --agent claude,opencode,codex` in each
 project, selecting only the agents used. It overwrites each selected `SKILL.md` completely
 with the offline instructions embedded in that JAR, including its version marker.
-Paths are `.claude/skills/visiontest/SKILL.md`, `.opencode/skills/visiontest/SKILL.md`
-and `.agents/skills/visiontest/SKILL.md` respectively.

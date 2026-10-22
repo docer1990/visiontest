@@ -11,7 +11,8 @@ class AndroidDeviceSelectionTest {
     @Test
     fun `permission diagnostics do not block an online device`() {
         val devices = parseAdbDevices("List of devices attached\n" +
-            "usb-1\tno permissions (user in plugdev group; are your udev rules wrong?); see [http://developer.android.com/tools/device.html]\n" +
+            "usb-1\tno permissions (user in plugdev group; are your udev rules wrong?); " +
+            "see [http://developer.android.com/tools/device.html]\n" +
             "emulator-5554\tdevice\n")
         assertEquals(listOf("emulator-5554"), devices.map { it.id })
     }

@@ -72,7 +72,6 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
             val budget = minOf(FINALIZATION_TIMEOUT_MS, overall.remainingMillis())
             val deadline = deadlineFactory(budget)
             val path = withTimeoutOrNull(budget) {
-                coordinator.stopMonitoring()
                 it.finish(deadline).also { deadline.remainingMillis() }
             } ?: throw TimeoutException("Flow recording finalization deadline exceeded")
             coordinator.report(path)
@@ -232,12 +231,11 @@ internal class FlowRecordingCoordinator(private val session: RecordingSession?) 
     var failure: RecordingException? = null
         private set
 
-    suspend fun stopMonitoring() {
+    suspend fun report(path: Path): FlowRecordingReport {
         if (session?.terminal?.isCompleted == true) exited(session.terminal.await())
+        return FlowRecordingReport(if (failure == null) "succeeded" else "failed",
+            phase = failure?.let { "record" }, path = path.toAbsolutePath().toString(), error = failure?.asFlowError())
     }
-
-    fun report(path: Path) = FlowRecordingReport(if (failure == null) "succeeded" else "failed",
-        phase = failure?.let { "record" }, path = path.toAbsolutePath().toString(), error = failure?.asFlowError())
 
     @Suppress("TooGenericExceptionCaught")
     suspend fun <T : Any> run(

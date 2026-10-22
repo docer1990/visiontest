@@ -26,7 +26,6 @@ internal class FakeRecordingSession(private val artifacts: Path) : RecordingSess
         events += "record-stop"
         beforeFinish()
         deadline.remainingMillis()
-        terminal.complete(RecordingExit(0, ""))
         finishFailure?.let { throw it }
         Files.createDirectories(artifacts)
         val name = if (platform == Platform.Ios) "recording.mov" else "recording.mp4"

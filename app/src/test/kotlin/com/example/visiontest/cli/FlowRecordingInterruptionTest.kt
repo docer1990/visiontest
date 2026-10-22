@@ -217,9 +217,48 @@ class FlowRecordingInterruptionTest {
     }
 
     @Test
+    fun `premature exit published during successful finalization retains a failed recording with its video`() =
+        runBlocking {
+            for (platform in Platform.entries) for (exitCode in listOf(0, 7)) {
+                val session = FakeRecordingSession(directory.resolve("${platform.value}-$exitCode"))
+                    .also { it.platform = platform }
+                val finishing = CompletableDeferred<Unit>()
+                val finalize = CompletableDeferred<Unit>()
+                session.beforeFinish = {
+                    finishing.complete(Unit)
+                    finalize.await()
+                    session.terminal.complete(RecordingExit(exitCode, "pre-stop exit detected during finalization"))
+                }
+                var calls = 0
+                val execution = async {
+                    FlowExecutor().execute(platform, listOf(
+                        FlowPreparedStep("step-1", "press_home", FlowStepKind.ACTION) {
+                            calls++
+                            """{"result":{"success":true}}"""
+                        }), recordingOptions = options(session))
+                }
+                withTimeout(5000) { finishing.await() }
+                assertFalse(session.terminal.isCompleted)
+                assertFalse(execution.isCompleted)
+                finalize.complete(Unit)
+                val report = withTimeout(5000) { execution.await() }
+                assertFalse(report.success)
+                assertEquals(1, report.exitCode)
+                assertEquals("succeeded", report.steps.single().status)
+                assertEquals("failed", report.recording?.status)
+                assertEquals("record", report.recording?.phase)
+                assertEquals(report.error, report.recording?.error)
+                assertTrue(assertNotNull(report.error).message.contains("exit $exitCode"))
+                assertTrue(report.error.message.contains("pre-stop exit detected during finalization"))
+                assertTrue(Files.exists(Path.of(assertNotNull(report.recording?.path))))
+                assertEquals(1, calls)
+                assertEquals(listOf("record-start", "record-stop"), session.events)
+            }
+        }
+
+    @Test
     fun `exit after intentional stop is not classified as premature`() = runBlocking {
         val session = FakeRecordingSession(directory)
-        session.beforeFinish = { session.terminal.complete(RecordingExit(0, "intentional stop")) }
         val report = FlowExecutor().execute(Platform.Android, listOf(
             FlowPreparedStep("step-1", "press_home", FlowStepKind.ACTION) {
                 """{"result":{"success":true}}"""
@@ -227,6 +266,7 @@ class FlowRecordingInterruptionTest {
         assertTrue(report.success)
         assertEquals("succeeded", report.recording?.status)
         assertEquals(listOf("record-start", "record-stop"), session.events)
+        assertFalse(session.terminal.isCompleted)
     }
 
     @Test

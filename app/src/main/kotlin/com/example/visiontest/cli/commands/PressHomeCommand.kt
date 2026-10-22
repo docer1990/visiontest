@@ -6,13 +6,13 @@ import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
 import com.example.visiontest.cli.CliCommandRunner
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 
 class PressHomeCommand @JvmOverloads constructor(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
 ) :
-    PreparedCommand(runner = runner, name = "press_home", help = "Press the home button") {
+    PreparedActionCommand(runner = runner, name = "press_home", help = "Press the home button") {
 
     private val platform by platformOption()
 

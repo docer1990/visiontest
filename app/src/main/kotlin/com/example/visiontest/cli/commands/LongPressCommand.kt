@@ -7,13 +7,13 @@ import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 
 class LongPressCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
-) : PreparedCommand(runner = runner, name = "long_press", help = "Long press at coordinates or on a selected element") {
+) : PreparedActionCommand(runner = runner, name = "long_press", help = "Long press at coordinates or on a selected element") {
     private val platform by platformOption()
     private val target by InteractionTargetOptions()
 

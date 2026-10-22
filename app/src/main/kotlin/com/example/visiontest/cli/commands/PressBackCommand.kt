@@ -6,13 +6,13 @@ import com.example.visiontest.cli.requireAndroid
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
 import com.example.visiontest.cli.CliCommandRunner
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 
 class PressBackCommand @JvmOverloads constructor(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
 ) :
-    PreparedCommand(runner = runner, name = "press_back", help = "Press the back button (Android only)") {
+    PreparedActionCommand(runner = runner, name = "press_back", help = "Press the back button (Android only)") {
 
     private val platform by androidOnlyPlatformOption()
 

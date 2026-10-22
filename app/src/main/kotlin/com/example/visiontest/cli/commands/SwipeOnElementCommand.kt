@@ -9,7 +9,7 @@ import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
 import com.example.visiontest.ios.IOSElementSelectors
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.default
@@ -19,7 +19,7 @@ import com.github.ajalt.clikt.parameters.types.choice
 class SwipeOnElementCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
-) : PreparedCommand(runner = runner, name = "swipe_on_element", help = "Swipe inside a selected UI element") {
+) : PreparedActionCommand(runner = runner, name = "swipe_on_element", help = "Swipe inside a selected UI element") {
     private val platform by platformOption()
     private val direction by argument().choice("up", "down", "left", "right")
     private val selectors by ElementSelectorOptions()

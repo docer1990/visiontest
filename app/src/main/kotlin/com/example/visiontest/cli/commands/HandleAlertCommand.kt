@@ -9,7 +9,7 @@ import com.example.visiontest.cli.Platform
 import com.example.visiontest.cli.platformOption
 import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.options.option
@@ -18,7 +18,7 @@ import com.github.ajalt.clikt.parameters.types.choice
 class HandleAlertCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
-) : PreparedCommand(runner = runner, name = "handle_alert", help = "Accept or dismiss an alert (iOS only)") {
+) : PreparedActionCommand(runner = runner, name = "handle_alert", help = "Accept or dismiss an alert (iOS only)") {
     private val platform by platformOption()
     private val action by argument(help = "Alert action").choice("accept", "dismiss")
     private val buttonLabel by option("--button-label", help = "Exact label of the alert button to tap")

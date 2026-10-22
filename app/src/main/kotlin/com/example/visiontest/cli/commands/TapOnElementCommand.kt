@@ -11,7 +11,7 @@ import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.cli.runCliCommand
 import com.example.visiontest.config.AutomationConfig
 import com.example.visiontest.ios.IOSElementSelectors
-import com.example.visiontest.cli.PreparedCommand
+import com.example.visiontest.cli.PreparedActionCommand
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
@@ -19,7 +19,7 @@ import com.github.ajalt.clikt.parameters.types.int
 class TapOnElementCommand(
     private val components: Lazy<ComponentHolder>,
     runner: CliCommandRunner = ::runCliCommand,
-) : PreparedCommand(runner = runner, name = "tap_on_element", help = "Tap a selected UI element") {
+) : PreparedActionCommand(runner = runner, name = "tap_on_element", help = "Tap a selected UI element") {
     private val platform by platformOption()
     private val selectors by ElementSelectorOptions()
     private val appScope by IosAppScopeOptions()
@@ -36,7 +36,7 @@ class TapOnElementCommand(
         require(resolvedTimeout in 1..AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS.toInt()) {
             "--timeout must be between 1 and ${AutomationConfig.ELEMENT_TAP_MAX_TIMEOUT_MS}"
         }
-        val raw = preparingForFlow
+        val raw = preparingForFlow || jsonOutput
         return {
             requireServerRunning { components.value.isServerRunning(platform) }
             when (platform) {

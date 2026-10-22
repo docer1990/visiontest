@@ -168,7 +168,7 @@ The CLI exposes the commands registered in `VisionTestCli`. MCP device and UI op
 | `stop_automation_server` | android, ios | — | — |
 | `automation_server_status` | android, ios | — | — |
 | `get_interactive_elements` | android, ios | — | `--include-disabled`, `--bundle-id` (iOS), `--json`, `--compact`, `--type`, `--region`, `--include-bounds` |
-| `wait_for_element` | android, ios | at least one selector option | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--timeout MS`, `--gone` |
+| `wait_for_element` | android, ios | at least one selector option | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--timeout MS`, `--gone`, `--json` |
 | `get_ui_hierarchy` | android, ios | — | `--bundle-id` (iOS) |
 | `get_device_info` | android, ios | — | `--json` |
 | `find_element` | android, ios | at least one selector | `--text`, `--text-contains`, `--resource-id`, `--class-name`, `--content-description`, `--bundle-id` (iOS), `--json` |
@@ -224,6 +224,13 @@ Upgrade both Android automation APKs or the iOS XCUITest bundle before using
 the new native methods or targeted `ui.inputText` fields. A JAR update alone
 does not provide them. See [missing interactions](docs/agentico/specs/missing-interactions.md)
 for the full operation and compatibility contract.
+
+Standalone waits use registrar `waitResult(expectGone)` on both platforms and
+format the validated final find result as `Element appeared.` / `Element gone.`
+or opt-in JSON with `condition` and boolean `satisfied`. JSON preserves additional
+fields. The poller still checks only `found`: matching returned `result.error`
+retains exit 0 and is preserved in JSON; `satisfied` alone does not establish an
+error-free result. Thrown failures leave stdout empty. MCP and flow are unchanged.
 
 Inspection and all 14 UI interaction commands accept `--json` and emit
 unwrapped structured objects; see [JSON schemas and examples](docs/cli-json.md).

@@ -9,6 +9,7 @@ import com.example.visiontest.cli.requireServerRunning
 import com.example.visiontest.android.AndroidElementSelectors
 import com.example.visiontest.config.AutomationConfig
 import com.example.visiontest.ios.IOSElementSelectors
+import com.example.visiontest.cli.waitOutput
 import com.example.visiontest.cli.PreparedCommand
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
@@ -44,16 +45,19 @@ class WaitForElementCommand(
     ).int()
     private val gone by option("--gone", help = "Wait for the element to disappear instead").flag()
 
+    private val json by option("--json", help = "Output the wait result as JSON").flag()
+
+    override fun formatStandaloneOutput(response: String): String = waitOutput(response, json, platform, gone)
+
     internal val flowCondition: String get() = if (gone) "gone" else "appeared"
 
     override fun prepareExecution(): suspend () -> String {
         validateArguments()
-        val raw = preparingForFlow
         return {
             requireServerRunning { components.value.isServerRunning(platform) }
             when (platform) {
-                Platform.Android -> runAndroid(raw)
-                Platform.Ios -> runIos(raw)
+                Platform.Android -> runAndroid()
+                Platform.Ios -> runIos()
             }
         }
     }
@@ -71,7 +75,7 @@ class WaitForElementCommand(
         require(bundleId?.isNotBlank() != false) { "--bundle-id must not be blank" }
     }
 
-    private suspend fun runAndroid(raw: Boolean): String {
+    private suspend fun runAndroid(): String {
         val registrar = components.value.androidWaitRegistrar
         val selectors = AndroidElementSelectors(
             text = text,
@@ -80,16 +84,10 @@ class WaitForElementCommand(
             className = className,
             contentDescription = contentDescription,
         )
-        return if (raw) {
-            registrar.waitResult(selectors, timeout, expectGone = gone)
-        } else if (gone) {
-            registrar.waitUntilGone(selectors, timeout)
-        } else {
-            registrar.waitForElement(selectors, timeout)
-        }
+        return registrar.waitResult(selectors, timeout, expectGone = gone)
     }
 
-    private suspend fun runIos(raw: Boolean): String {
+    private suspend fun runIos(): String {
         val registrar = components.value.iosWaitRegistrar
         val selectors = IOSElementSelectors(
             text = text,
@@ -99,12 +97,6 @@ class WaitForElementCommand(
             label = contentDescription,
             bundleId = bundleId,
         )
-        return if (raw) {
-            registrar.waitResult(selectors, timeout, expectGone = gone)
-        } else if (gone) {
-            registrar.waitUntilGone(selectors, timeout)
-        } else {
-            registrar.waitForElement(selectors, timeout)
-        }
+        return registrar.waitResult(selectors, timeout, expectGone = gone)
     }
 }

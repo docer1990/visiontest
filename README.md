@@ -204,6 +204,13 @@ actions. JSON results contain `success` without JSON-RPC framing. A normal
 `success:false` or returned RPC error still exits 0, so check the JSON fields.
 Thrown failures keep the exit codes below. Without `--json`, output is unchanged.
 
+Standalone `wait_for_element` prints `Element appeared.` or `Element gone.`.
+Add `--json` for the final find result plus `condition` and `satisfied`, including
+`{"found":false,"condition":"gone","satisfied":true}` for disappearance.
+Timeouts and thrown failures leave stdout empty. A matching returned result with
+an `error` field retains exit 0; scripts should inspect `error` as well as
+`satisfied`. See [wait JSON output](docs/cli-json.md#element-waits).
+
 Six inspection commands support `--json`: `get_interactive_elements`,
 `get_device_info`, `find_element`, `list_apps`, `info_app`, and
 `available_device`. See the [JSON schemas and examples](docs/cli-json.md),

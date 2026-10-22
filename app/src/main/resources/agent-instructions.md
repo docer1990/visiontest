@@ -79,7 +79,7 @@ Use structured queries for functional checks. Commands in this table omit
 | Need | Operation |
 | --- | --- |
 | Check one known element now | `find_element --resource-id ID --json` |
-| Await an expected result | `wait_for_element --text "Expected marker"`; add `--gone` for disappearance |
+| Await an expected result | `wait_for_element --text "Expected marker" --json`; add `--gone` for disappearance |
 | Tap a known control | `tap_on_element --resource-id ID --json`; it already waits for an actionable target |
 | Fill a known field | `input_text "value" --target-resource-id ID`; it waits, focuses, and enters text |
 | Discover controls on an unfamiliar screen | `get_interactive_elements --compact` |
@@ -299,6 +299,12 @@ Both can exit 0. All 14 UI interaction commands support opt-in `--json`, includi
 `tap_on_element`, input, gestures, Android key/back/clear, and iOS keyboard/alert
 commands. In JSON mode, inspect `success` or the top-level `error`; returned
 failures still exit 0. Without `--json`, their previous output remains available.
+Standalone `wait_for_element` prints `Element appeared.` or `Element gone.`.
+With `--json`, it returns the final find result plus `condition` (`appeared` or
+`gone`) and boolean `satisfied`, preserving other fields. For example, gone success
+is `{"found":false,"condition":"gone","satisfied":true}`. Timeouts and thrown
+failures leave stdout empty. The poller checks `found`; a matching returned result
+with a string `error` still exits 0. Inspect `error` as well as `satisfied`.
 Flow steps reject their own `--json` option.
 Exit codes 1 through 5 mean generic failure, invalid arguments,
 server unreachable, device unavailable, and unsupported platform respectively.

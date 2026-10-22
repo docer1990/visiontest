@@ -209,14 +209,14 @@ class FlowPreparedExecutionTest {
     }
 
     @Test
-    fun `standalone waits and screenshots preserve their text results`() {
+    fun `standalone waits and screenshots return text results`() {
         for (platform in Platform.entries) {
             response("""{"found":false}""")
             var result: CliResult? = null
             WaitForElementCommand(components) { result = executeCliCommand(it) }
                 .parse(listOf("-p", platform.value, "--text", "Spinner", "--gone"))
             assertEquals(0, result?.exitCode)
-            assertTrue(assertNotNull(result?.stdout).startsWith("Element is no longer present"))
+            assertEquals("Element gone.", result?.stdout)
             request()
             response("""{"success":false,"error":"screen unavailable"}""")
             ScreenshotCommand(components) { result = executeCliCommand(it) }.parse(listOf("-p", platform.value))

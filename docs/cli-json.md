@@ -297,3 +297,33 @@ MCP retains `get_interactive_elements` and `ios_get_interactive_elements`, addin
 requested interactive-element observations and failure evidence; see
 [flow observations](cli-flow.md#observations). Payload measurements and their
 limitations are recorded in the [compact evaluation](benchmarks/compact-inspection.md).
+
+## Element waits
+
+`wait_for_element` supports `--json` on Android and iOS, including `--gone`:
+
+```bash
+visiontest wait_for_element -p android --text Welcome --json
+visiontest wait_for_element -p ios --resource-id spinner --gone --json
+```
+
+Without `--json`, successful output is `Element appeared.` or `Element gone.`.
+JSON is one object followed by a newline, containing the final find result with
+all additional fields preserved and `condition` (`appeared` or `gone`) and
+boolean `satisfied` added. For example:
+
+```json
+{"found":false,"condition":"gone","satisfied":true}
+```
+
+The final result follows the platform `find_element` schema in both output modes.
+Timeouts exit 1, invalid arguments exit 2 before device access, and a stopped server
+exits 3. Thrown RPC, transport and protocol errors and malformed final results
+leave stdout empty with a diagnostic on stderr; no partial result is printed.
+Polling and MCP output are unchanged. Flow steps cannot include `--json`.
+
+The standalone poller checks `found`. A matching normally returned result with a
+string `error` still exits 0 and JSON preserves that field. `satisfied` describes
+only the requested found condition; scripts should also inspect `error`.
+Nonmatching returned results keep polling until the condition matches or times out.
+Flow retains its stricter returned-failure handling.

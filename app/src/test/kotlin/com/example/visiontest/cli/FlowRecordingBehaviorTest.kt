@@ -29,6 +29,8 @@ class FlowRecordingBehaviorTest {
                 FlowRecordingScenarios(platform, directory.resolve("${platform.value}-interruption")).bindings()
             }, "Preserve the original flow failure" to {
                 FlowRecordingScenarios(platform, directory.resolve("${platform.value}-evidence")).bindings()
+            }, "Fail a flow whose video cannot be saved" to {
+                FlowRecordingScenarios(platform, directory.resolve("${platform.value}-finalization")).bindings()
             }), requireComplete = false, resourcePath = "/features/flow-recording.feature"))
     }
 

@@ -68,15 +68,27 @@ internal class FlowExecutor(private val deadlineFactory: (Long) -> RequestDeadli
         val coordinator = FlowRecordingCoordinator(session)
         val execution = executeSteps(platform, steps, stepTimeoutMs, overall, coordinator)
         val observed = observationOptions.finish(execution, overall, deadlineFactory, coordinator)
-        val recording = session?.let {
+        val recording = session?.let { finalizeRecording(it, overall, coordinator) }
+        observed.withRecording(recording)
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun finalizeRecording(
+        session: RecordingSession,
+        overall: RequestDeadline,
+        coordinator: FlowRecordingCoordinator,
+    ): FlowRecordingReport {
+        return try {
             val budget = minOf(FINALIZATION_TIMEOUT_MS, overall.remainingMillis())
             val deadline = deadlineFactory(budget)
             val path = withTimeoutOrNull(budget) {
-                it.finish(deadline).also { deadline.remainingMillis() }
+                session.finish(deadline).also { deadline.remainingMillis() }
             } ?: throw TimeoutException("Flow recording finalization deadline exceeded")
             coordinator.report(path)
+        } catch (error: Exception) {
+            currentCoroutineContext().ensureActive()
+            coordinator.report(null, error)
         }
-        observed.withRecording(recording)
     }
 
     private companion object {
@@ -232,10 +244,18 @@ internal class FlowRecordingCoordinator(private val session: RecordingSession?) 
         private set
     val error: FlowError? get() = failure?.asFlowError()
 
-    suspend fun report(path: Path): FlowRecordingReport {
+    suspend fun report(path: Path?, finalizationError: Exception? = null): FlowRecordingReport {
         if (session?.terminal?.isCompleted == true) exited(session.terminal.await())
-        return FlowRecordingReport(if (failure == null) "succeeded" else "failed",
-            phase = failure?.let { "record" }, path = path.toAbsolutePath().toString(), error = failure?.asFlowError())
+        val error = failure?.asFlowError() ?: finalizationError?.let {
+            FlowError(it.javaClass.simpleName, it.message ?: "Recording finalization failed")
+        }
+        val phase = when {
+            failure != null -> "record"
+            finalizationError != null -> "finalize"
+            else -> null
+        }
+        return FlowRecordingReport(if (error == null) "succeeded" else "failed",
+            phase = phase, path = path?.toAbsolutePath()?.toString(), error = error)
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -284,12 +304,6 @@ internal class FlowRecordingCoordinator(private val session: RecordingSession?) 
 }
 
 private fun RecordingException.asFlowError() = FlowError(javaClass.simpleName, message ?: "Recording failed")
-
-private fun FlowReport.withRecording(recording: FlowRecordingReport?): FlowReport {
-    val failure = error ?: recording?.error
-    return copy(recording = recording, success = failure == null, error = failure,
-        exitCode = if (success && failure != null) 1 else exitCode)
-}
 
 private data class FlowOutcome(val success: Boolean, val result: JsonObject, val error: FlowError?)
 

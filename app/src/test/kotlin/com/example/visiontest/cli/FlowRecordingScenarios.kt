@@ -12,6 +12,7 @@ import java.nio.file.Path
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 internal class FlowRecordingScenarios(private val platform: Platform, private val artifacts: Path) {
@@ -22,7 +23,33 @@ internal class FlowRecordingScenarios(private val platform: Platform, private va
     private var evidenceRequests = 0
 
     fun bindings(): Map<String, () -> Unit> =
-        successBindings() + startupFailureBindings() + interruptionBindings() + evidenceBindings()
+        successBindings() + startupFailureBindings() + interruptionBindings() + evidenceBindings() +
+            finalizationBindings()
+
+    private fun finalizationBindings(): Map<String, () -> Unit> = mapOf(
+        "Given a recorded flow whose steps have succeeded" to { lines = listOf("press_home", "press_home") },
+        "When the video cannot be saved correctly" to {
+            session.finishFailure = RecordingException("Video transfer failed")
+            FlowObservationFixture(platform).use { fixture ->
+                val steps = FlowPreparation.prepare(platform, lines, fixture.components)
+                report = runBlocking {
+                    FlowExecutor().execute(platform, steps, recordingOptions = FlowRecordingOptions(artifacts,
+                        lazy { FlowRecordingFactory { _, _, _, _ -> session } }))
+                }
+            }
+        },
+        "And the completed steps remain successful" to {
+            val actual = assertNotNull(report)
+            assertEquals(2, actual.steps.size)
+            assertTrue(actual.steps.all { it.status == "succeeded" })
+            assertNull(actual.failedStep)
+        },
+        "And no invalid video path is reported" to {
+            val actual = assertNotNull(report)
+            assertNull(actual.recording?.path)
+            assertTrue(actual.text().contains("Video transfer failed"))
+        },
+    )
 
     private fun evidenceBindings(): Map<String, () -> Unit> = mapOf(
         "Given a recorded flow whose first action has failed" to { lines = listOf("press_home", "press_home") },
@@ -140,10 +167,22 @@ internal class FlowRecordingScenarios(private val platform: Platform, private va
             val actual = assertNotNull(report)
             assertFalse(actual.success)
             assertEquals(1, actual.exitCode)
-            if (interruption == null) assertEquals("Encoder initialization failed", actual.error?.message)
-            else assertTrue(assertNotNull(actual.error).message.contains("7"))
+            val phase = when {
+                interruption != null -> {
+                    assertTrue(assertNotNull(actual.error).message.contains("7"))
+                    "record"
+                }
+                session.finishFailure != null -> {
+                    assertEquals("Video transfer failed", actual.error?.message)
+                    "finalize"
+                }
+                else -> {
+                    assertEquals("Encoder initialization failed", actual.error?.message)
+                    "start"
+                }
+            }
             assertEquals("failed", actual.recording?.status)
-            assertEquals(if (interruption == null) "start" else "record", actual.recording?.phase)
+            assertEquals(phase, actual.recording?.phase)
             assertEquals(actual.error, actual.recording?.error)
         },
         "And every flow step is skipped" to {

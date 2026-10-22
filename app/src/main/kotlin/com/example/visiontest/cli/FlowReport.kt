@@ -32,6 +32,12 @@ internal data class FlowReport(
     val failedStep: String? get() = steps.firstOrNull { it.status in setOf("failed", "uncertain") }?.id
     val skippedSteps: List<String> get() = steps.filter { it.status == "skipped" }.map { it.id }
 
+    fun withRecording(recording: FlowRecordingReport?): FlowReport {
+        val failure = error ?: recording?.error
+        return copy(recording = recording, success = failure == null, error = failure,
+            exitCode = if (success && failure != null) 1 else exitCode)
+    }
+
     fun toJson(): JsonObject = buildJsonObject {
         put("schemaVersion", 1)
         put("platform", platform.value)

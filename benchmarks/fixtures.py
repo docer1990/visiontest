@@ -32,9 +32,9 @@ def resolve_argv(argv: list[str], tokens: dict[str, str]) -> list[str]:
 
 
 def validate_fixture_identity(platform: str, identity: str) -> None:
-    expected = "com.example.visiontest.benchmark"
+    expected = "dev.visiontest.benchmark"
     if platform not in {"android", "ios"} or identity != expected:
-        raise ValueError("fixture identity must be com.example.visiontest.benchmark")
+        raise ValueError("fixture identity must be dev.visiontest.benchmark")
 
 
 def selector_resource_id(platform: str, identity: str, name: str) -> str:

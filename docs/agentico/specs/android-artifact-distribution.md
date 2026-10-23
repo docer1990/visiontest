@@ -4,6 +4,13 @@
 
 Android artifact distribution builds, publishes, verifies, installs, discovers, and deploys the paired main and instrumentation APKs required by the Android automation server.
 
+From 1.0.0, the host package MUST be `dev.visiontest.automationserver` and the
+instrumentation package MUST be `dev.visiontest.automationserver.test`. Startup
+MUST use `dev.visiontest.automationserver.AutomationInstrumentationRunner` and
+`dev.visiontest.automationserver.AutomationServerTest#runAutomationServer`.
+Installation MUST NOT automatically remove or migrate old `com.example` packages.
+Stop old servers before installing and starting the new pair.
+
 ### Native timing compatibility
 
 An older installed main/test APK pair continues to handle the existing JSON-RPC
@@ -104,5 +111,5 @@ Network, tag-discovery, checksum, unsupported-host, and filesystem failures in `
 
 - Release production workflow: `.github/workflows/release.yaml`
 - Installer production behavior: `install.sh`
-- Runtime production discovery and installation: `app/src/main/kotlin/com/example/visiontest/discovery/ToolDiscovery.kt`, `app/src/main/kotlin/com/example/visiontest/tools/AndroidAutomationToolRegistrar.kt`, `app/src/main/kotlin/com/example/visiontest/cli/commands/InstallAutomationServerCommand.kt`
-- Executable discovery and CLI tests: `app/src/test/kotlin/com/example/visiontest/ToolFactoryPathTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/CliErrorHandlerTest.kt`
+- Runtime production discovery and installation: `app/src/main/kotlin/dev/visiontest/discovery/ToolDiscovery.kt`, `app/src/main/kotlin/dev/visiontest/tools/AndroidAutomationToolRegistrar.kt`, `app/src/main/kotlin/dev/visiontest/cli/commands/InstallAutomationServerCommand.kt`
+- Executable discovery and CLI tests: `app/src/test/kotlin/dev/visiontest/ToolFactoryPathTest.kt`, `app/src/test/kotlin/dev/visiontest/cli/VisionTestCliTest.kt`, `app/src/test/kotlin/dev/visiontest/cli/CliErrorHandlerTest.kt`

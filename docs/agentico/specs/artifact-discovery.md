@@ -114,5 +114,5 @@ The iOS startup handler MUST discover both the installed xctestrun and source pr
 
 ## Verification
 
-- Production discovery and startup: `app/src/main/kotlin/com/example/visiontest/discovery/ToolDiscovery.kt`, `app/src/main/kotlin/com/example/visiontest/config/IOSAutomationConfig.kt`, `app/src/main/kotlin/com/example/visiontest/tools/AndroidAutomationToolRegistrar.kt`, `app/src/main/kotlin/com/example/visiontest/tools/IOSAutomationToolRegistrar.kt`
-- Executable tests: `app/src/test/kotlin/com/example/visiontest/ToolFactoryPathTest.kt`
+- Production discovery and startup: `app/src/main/kotlin/dev/visiontest/discovery/ToolDiscovery.kt`, `app/src/main/kotlin/dev/visiontest/config/IOSAutomationConfig.kt`, `app/src/main/kotlin/dev/visiontest/tools/AndroidAutomationToolRegistrar.kt`, `app/src/main/kotlin/dev/visiontest/tools/IOSAutomationToolRegistrar.kt`
+- Executable tests: `app/src/test/kotlin/dev/visiontest/ToolFactoryPathTest.kt`

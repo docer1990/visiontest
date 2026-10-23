@@ -12,17 +12,17 @@ detekt {
 }
 
 android {
-    namespace = "com.example.automationserver"
+    namespace = "dev.visiontest.automationserver"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.automationserver"
+        applicationId = "dev.visiontest.automationserver"
         minSdk = 21
         targetSdk = 34
         versionCode = 3
         versionName = "1.0.0"
 
-        testInstrumentationRunner = "com.example.automationserver.AutomationInstrumentationRunner"
+        testInstrumentationRunner = "dev.visiontest.automationserver.AutomationInstrumentationRunner"
     }
 
     buildTypes {

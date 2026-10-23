@@ -92,8 +92,8 @@ elif name == 'curl':
         calls = self.calls()
         launches = [call for call in calls if 'instrument' in call]
         self.assertEqual(1, len(launches))
-        self.assertIn('com.example.automationserver.AutomationServerTest#runAutomationServer', launches[0])
-        self.assertIn('com.example.automationserver.test/com.example.automationserver.AutomationInstrumentationRunner', launches[0])
+        self.assertIn('dev.visiontest.automationserver.AutomationServerTest#runAutomationServer', launches[0])
+        self.assertIn('dev.visiontest.automationserver.test/dev.visiontest.automationserver.AutomationInstrumentationRunner', launches[0])
         self.assertIn('9008', launches[0])
         benchmark = [call for call in calls if 'commands' in call]
         self.assertEqual(1, len(benchmark))

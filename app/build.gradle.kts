@@ -80,7 +80,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "com.example.visiontest.MainKt"
+    mainClass = "dev.visiontest.MainKt"
 }
 
 tasks.named<Test>("test") {

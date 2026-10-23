@@ -18,8 +18,8 @@
 		A1000000000000000000000E = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000011, A10000000000000000000012,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
 		A1000000000000000000000F = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos;}; name = Debug;};
 		A10000000000000000000010 = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = iphoneos;}; name = Release;};
-		A10000000000000000000011 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = BenchmarkFixture/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.example.visiontest.benchmark; PRODUCT_NAME = BenchmarkFixture; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; IPHONEOS_DEPLOYMENT_TARGET = 15.0;}; name = Debug;};
-		A10000000000000000000012 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = BenchmarkFixture/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.example.visiontest.benchmark; PRODUCT_NAME = BenchmarkFixture; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; IPHONEOS_DEPLOYMENT_TARGET = 15.0;}; name = Release;};
+		A10000000000000000000011 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = BenchmarkFixture/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = dev.visiontest.benchmark; PRODUCT_NAME = BenchmarkFixture; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; IPHONEOS_DEPLOYMENT_TARGET = 15.0;}; name = Debug;};
+		A10000000000000000000012 = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = BenchmarkFixture/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = dev.visiontest.benchmark; PRODUCT_NAME = BenchmarkFixture; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; IPHONEOS_DEPLOYMENT_TARGET = 15.0;}; name = Release;};
 	};
 	rootObject = A1000000000000000000000B;
 }

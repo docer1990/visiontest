@@ -253,8 +253,8 @@ five warmup/thirty measured tracing pairs per case. Failure prevents later
 phases and is never repaired by replaying startup or a measured dispatch.
 
 Android launches only
-`com.example.automationserver.AutomationServerTest#runAutomationServer` using
-`com.example.automationserver.test/com.example.automationserver.AutomationInstrumentationRunner`
+`dev.visiontest.automationserver.AutomationServerTest#runAutomationServer` using
+`dev.visiontest.automationserver.test/dev.visiontest.automationserver.AutomationInstrumentationRunner`
 on port 9008. iOS launches only
 `IOSAutomationServerUITests/AutomationServerUITest/testRunAutomationServer` on
 port 9009 using the selected simulator UDID and current built test products.

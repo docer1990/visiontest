@@ -62,7 +62,7 @@ VisionTest has three components:
 ```
 visiontest/
 ├── app/                              # MCP Server (Kotlin/JVM)
-│   └── src/main/kotlin/com/example/visiontest/
+│   └── src/main/kotlin/dev/visiontest/
 │       ├── Main.kt                   # Entry point (MCP server or CLI dispatch)
 │       ├── ToolFactory.kt            # Thin coordinator wiring registrars
 │       ├── cli/
@@ -429,8 +429,8 @@ compatibility checks described in the repository instructions.
 ```bash
 # Terminal 1: Start the server
 adb shell am instrument -w -e port 9008 \
-  -e class com.example.automationserver.AutomationServerTest#runAutomationServer \
-  com.example.automationserver.test/com.example.automationserver.AutomationInstrumentationRunner
+  -e class dev.visiontest.automationserver.AutomationServerTest#runAutomationServer \
+  dev.visiontest.automationserver.test/dev.visiontest.automationserver.AutomationInstrumentationRunner
 
 # Terminal 2: Test the server
 adb forward tcp:9008 tcp:9008

@@ -134,8 +134,8 @@ Servers already running before the session SHALL remain active.
 
 ## Verification
 
-- Production command and resource packaging: `app/src/main/kotlin/com/example/visiontest/cli/commands/InitCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/VisionTestCli.kt`, `app/src/main/resources/agent-instructions.md`
-- Executable tests: `app/src/test/kotlin/com/example/visiontest/cli/InitCommandTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/InitCommandE2ETest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt`
+- Production command and resource packaging: `app/src/main/kotlin/dev/visiontest/cli/commands/InitCommand.kt`, `app/src/main/kotlin/dev/visiontest/cli/VisionTestCli.kt`, `app/src/main/resources/agent-instructions.md`
+- Executable tests: `app/src/test/kotlin/dev/visiontest/cli/InitCommandTest.kt`, `app/src/test/kotlin/dev/visiontest/cli/InitCommandE2ETest.kt`, `app/src/test/kotlin/dev/visiontest/cli/VisionTestCliTest.kt`
 
 ## Native lifecycle and evidence guidance
 

@@ -67,7 +67,7 @@ class RecordingProbeTest(unittest.TestCase):
     def test_android_fixture_uses_accessibility_descriptions_not_short_resource_ids(self):
         self.assertEqual(["--content-description", "fixture_ready"], fixture_selector("android", "fixture_ready"))
         self.assertEqual(["--target-content-description", "email"], fixture_selector("android", "email", target=True))
-        self.assertEqual(["--resource-id", "done", "--bundle-id", "com.example.visiontest.benchmark"],
+        self.assertEqual(["--resource-id", "done", "--bundle-id", "dev.visiontest.benchmark"],
                          fixture_selector("ios", "done"))
 
     def test_android_flow_dismisses_keyboard_before_tapping_continue(self):

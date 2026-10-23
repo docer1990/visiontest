@@ -64,7 +64,7 @@ class CompactCollectionTest(unittest.TestCase):
         self.assertEqual(2, len(forms))
         for argv in forms:
             self.assertIn("input_text agent@example.test --target-resource-id email "
-                          "--bundle-id com.example.visiontest.benchmark", argv)
+                          "--bundle-id dev.visiontest.benchmark", argv)
         self.assertNotIn("--compact", forms[0])
         self.assertIn("--compact", forms[1])
         self.assertEqual("test-runtime", report["runtime"])

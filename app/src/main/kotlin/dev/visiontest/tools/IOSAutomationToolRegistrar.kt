@@ -1,0 +1,655 @@
+package dev.visiontest.tools
+
+import dev.visiontest.performance.TraceRecorder
+import dev.visiontest.performance.TraceStage
+import dev.visiontest.performance.OperationOutcome
+
+import dev.visiontest.ServerNotRunningException
+import dev.visiontest.common.CompactInspectionOptions
+import dev.visiontest.common.DeviceConfig
+import dev.visiontest.config.IOSAutomationConfig
+import dev.visiontest.discovery.ToolDiscovery
+import dev.visiontest.ios.IOSAutomationClient
+import dev.visiontest.ios.IOSElementSelectors
+import io.modelcontextprotocol.kotlin.sdk.Tool
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
+import org.slf4j.Logger
+import java.io.File
+class IOSAutomationToolRegistrar internal constructor(
+    private val ios: DeviceConfig,
+    private val iosAutomationClient: IOSAutomationClient,
+    private val discovery: ToolDiscovery,
+    private val logger: Logger,
+    private val trace: TraceRecorder,
+    private val launchProcess: (List<String>) -> Process = { command ->
+        ProcessBuilder(command).redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
+    },
+) : ToolRegistrar {
+    constructor(
+        ios: DeviceConfig,
+        iosAutomationClient: IOSAutomationClient,
+        discovery: ToolDiscovery,
+        logger: Logger,
+    ) : this(ios, iosAutomationClient, discovery, logger, TraceRecorder.Disabled)
+    private val interactionOperations = IOSInteractionOperations(iosAutomationClient, ::requireServer)
+
+    @Volatile
+    private var iosXcodebuildProcess: Process? = null
+
+    override fun registerTools(scope: ToolScope) {
+        registerStartAutomationServer(scope)
+        registerAutomationServerStatus(scope)
+        registerGetUiHierarchy(scope)
+        registerGetInteractiveElements(scope)
+        registerTapByCoordinates(scope)
+        registerSwipe(scope)
+        registerSwipeDirection(scope)
+        registerSwipeOnElement(scope)
+        registerTapOnElement(scope)
+        registerFindElement(scope)
+        registerGetDeviceInfo(scope)
+        registerPressHome(scope)
+        IOSInteractionToolRegistration(this).register(scope)
+        registerScreenshot(scope)
+        registerStopAutomationServer(scope)
+    }
+
+    // ==================== Server Process Management ====================
+
+    internal fun buildXcodebuildCommand(
+        xctestrunPath: String?,
+        projectPath: String?,
+        simulatorName: String
+    ): List<String> {
+        val testId = "${IOSAutomationConfig.UI_TEST_TARGET}/${IOSAutomationConfig.TEST_CLASS}/${IOSAutomationConfig.TEST_METHOD}"
+        return if (xctestrunPath != null) {
+            listOf(
+                "xcodebuild", "test-without-building",
+                "-xctestrun", xctestrunPath,
+                "-destination", "platform=iOS Simulator,name=$simulatorName",
+                "-only-testing:$testId"
+            )
+        } else {
+            val resolvedProject = requireNotNull(projectPath) {
+                "projectPath must be set when xctestrunPath is null"
+            }
+            listOf(
+                "xcodebuild", "test",
+                "-project", resolvedProject,
+                "-scheme", IOSAutomationConfig.XCODE_SCHEME,
+                "-destination", "platform=iOS Simulator,name=$simulatorName",
+                "-only-testing:$testId"
+            )
+        }
+    }
+
+    private data class ServerPollResult(
+        val message: String,
+        val earlyExitCode: Int? = null
+    )
+
+    /** Formats a command list as a shell-safe string, quoting arguments that contain spaces or special characters. */
+    private fun shellQuote(command: List<String>): String {
+        return command.joinToString(" ") { arg ->
+            if (arg.any { it.isWhitespace() || it in setOf('(', ')', '&', '|', ';', '*', '?', '<', '>', '$', '!', '`', '"') }) {
+                "'${arg.replace("'", "'\\''")}'"
+            } else {
+                arg
+            }
+        }
+    }
+
+    private suspend fun startAndPollServer(
+        command: List<String>,
+        maxAttempts: Int,
+        port: Int,
+        label: String
+    ): ServerPollResult {
+        withContext(Dispatchers.IO) {
+            logger.info("Starting iOS automation server ($label): ${command.joinToString(" ")}")
+            val process = trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) }
+            iosXcodebuildProcess = process
+        }
+
+        var attempts = 0
+        while (attempts < maxAttempts) {
+            delay(2000)
+
+            val process = iosXcodebuildProcess
+            if (process != null && !process.isAlive) {
+                val exitCode = process.exitValue()
+                logger.warn("xcodebuild ($label) exited early with code $exitCode")
+                iosXcodebuildProcess = null
+                return ServerPollResult(
+                    message = "xcodebuild ($label) exited with code $exitCode before the server started. " +
+                        "Run manually to see errors:\n${shellQuote(command)}",
+                    earlyExitCode = exitCode
+                )
+            }
+
+            if (iosAutomationClient.isServerRunning()) {
+                logger.info("iOS automation server started successfully ($label)")
+                return ServerPollResult("iOS automation server started successfully ($label). Server is listening on localhost:$port")
+            }
+            attempts++
+            logger.debug("Waiting for iOS server to start ($label)... attempt $attempts/$maxAttempts")
+        }
+
+        return ServerPollResult("iOS automation server did not respond after ${maxAttempts * 2}s. xcodebuild may still be building. Check with 'ios_automation_server_status' or run xcodebuild manually to see output.")
+    }
+
+    // ==================== Extracted business logic ====================
+
+    private suspend fun requireServer() {
+        if (!iosAutomationClient.isServerRunning()) throw ServerNotRunningException("iOS automation server is not running. Use 'ios_start_automation_server' first.")
+    }
+    private suspend fun operationFailure(message: String): String {
+        trace.operationOutcome(OperationOutcome.FAILURE)
+        return message
+    }
+    private suspend fun <T> serverOperation(block: suspend () -> T): T = trace.span(TraceStage.OPERATION) {
+        requireServer()
+        block()
+    }
+    internal suspend fun startAutomationServer(): String = trace.span(TraceStage.OPERATION) {
+        val port = IOSAutomationConfig.DEFAULT_PORT
+        if (iosAutomationClient.isServerRunning()) {
+            return@span "iOS automation server is already running on localhost:$port"
+        }
+        // Clean up any orphaned previous process
+        iosXcodebuildProcess?.let { process ->
+            if (process.isAlive) {
+                logger.info("Destroying orphaned xcodebuild process before starting a new one")
+                process.destroyForcibly()
+            }
+            iosXcodebuildProcess = null
+        }
+        // Discover launch path: pre-built bundle preferred, source build as fallback
+        val xctestrunPath = discovery.findXctestrun()
+        val projectPath = discovery.findXcodeProject()
+        if (xctestrunPath == null && projectPath == null) {
+            return@span operationFailure("Neither pre-built iOS test bundle nor Xcode source project found. " +
+                "To fix: re-run install.sh on macOS to download the pre-built bundle, " +
+                "or clone the VisionTest repository and set ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV} " +
+                "to build from source.")
+        }
+        val usingPrebuilt = xctestrunPath != null
+        if (usingPrebuilt) {
+            logger.info("Using pre-built iOS test bundle: $xctestrunPath")
+        } else {
+            logger.info("Using source build from Xcode project: $projectPath")
+        }
+        val device = ios.getFirstAvailableDevice()
+        val simulatorName = device.name
+        val command = buildXcodebuildCommand(xctestrunPath, projectPath, simulatorName)
+        val maxAttempts = if (usingPrebuilt) 30 else 60
+        val label = if (usingPrebuilt) "pre-built bundle" else "source build"
+        val primaryResult = startAndPollServer(command, maxAttempts, port, label)
+        if (primaryResult.earlyExitCode == null) {
+            return@span primaryResult.message
+        }
+        // Primary attempt exited early — try source build fallback if available
+        if (usingPrebuilt && projectPath != null) {
+            logger.warn("Pre-built bundle failed (exit code ${primaryResult.earlyExitCode}), falling back to source build")
+            val fallbackCommand = buildXcodebuildCommand(null, projectPath, simulatorName)
+            val fallbackResult = startAndPollServer(fallbackCommand, 60, port, "source build fallback")
+            return@span fallbackResult.message
+        }
+        return@span primaryResult.message
+    }
+    internal suspend fun automationServerStatus(): String = trace.span(TraceStage.OPERATION) {
+        val isRunning = iosAutomationClient.isServerRunning()
+        trace.operationOutcome(if (isRunning) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
+        return@span if (isRunning) {
+            "iOS automation server is running and accessible at localhost:${IOSAutomationConfig.DEFAULT_PORT}"
+        } else {
+            "iOS automation server is not running. Use 'ios_start_automation_server' to start it."
+        }
+    }
+    internal suspend fun getUiHierarchy(bundleId: String? = null): String =
+        serverOperation { iosAutomationClient.getUiHierarchy(bundleId) }
+    internal suspend fun getInteractiveElements(
+        includeDisabled: Boolean = false,
+        bundleId: String? = null,
+        options: CompactInspectionOptions = CompactInspectionOptions(),
+    ): String {
+        options.validate()
+        return serverOperation {
+            options.project(iosAutomationClient.getInteractiveElements(includeDisabled, bundleId), ios = true)
+        }
+    }
+    internal suspend fun tapByCoordinates(x: Int, y: Int): String =
+        serverOperation { iosAutomationClient.tapByCoordinates(x, y) }
+    internal suspend fun swipe(startX: Int, startY: Int, endX: Int, endY: Int, steps: Int = 20): String =
+        serverOperation { iosAutomationClient.swipe(startX, startY, endX, endY, steps) }
+    internal suspend fun swipeByDirection(direction: String, distance: String = "medium", speed: String = "normal"): String =
+        serverOperation { iosAutomationClient.swipeByDirection(direction, distance, speed) }
+
+    internal suspend fun swipeOnElement(
+        direction: String,
+        selectors: IOSElementSelectors,
+        speed: String = "normal"
+    ): String = trace.span(TraceStage.OPERATION) {
+        require(direction.lowercase() in listOf("up", "down", "left", "right")) {
+            "Invalid direction '$direction'. Must be: up, down, left, right"
+        }
+        require(speed.lowercase() in listOf("slow", "normal", "fast")) {
+            "Invalid speed '$speed'. Must be: slow, normal, fast"
+        }
+        require(selectors.hasAnySelector()) {
+            "At least one selector required (text, textContains, resourceId, className, or contentDescription)"
+        }
+        requireServer()
+        return@span iosAutomationClient.swipeOnElement(direction, selectors, speed)
+    }
+    internal suspend fun tapOnElement(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
+        tapOnElementResponse(selectors, timeoutMs, requireSuccess = true)
+
+    internal suspend fun tapOnElementResult(selectors: IOSElementSelectors, timeoutMs: Int? = null): String =
+        tapOnElementResponse(selectors, timeoutMs, requireSuccess = false)
+
+    private suspend fun tapOnElementResponse(
+        selectors: IOSElementSelectors, timeoutMs: Int?, requireSuccess: Boolean,
+    ): String = trace.span(TraceStage.OPERATION) {
+        val timeout = validateElementTap(selectors, timeoutMs)
+        requireServer()
+        val response = iosAutomationClient.tapOnElement(selectors, timeout)
+        if (requireSuccess) successfulElementTapResponse(response) else response
+    }
+
+    internal suspend fun findElement(
+        text: String?,
+        textContains: String?,
+        identifier: String?,
+        elementType: String?,
+        label: String?,
+        bundleId: String?
+    ): String = trace.span(TraceStage.OPERATION) {
+        requireServer()
+        if (text == null && textContains == null && identifier == null &&
+            elementType == null && label == null) {
+            trace.operationOutcome(OperationOutcome.FAILURE)
+            return@span "Error: At least one selector required (text, textContains, resourceId, " +
+                "className, or contentDescription)"
+        }
+        return@span iosAutomationClient.findElement(
+            text = text,
+            textContains = textContains,
+            identifier = identifier,
+            elementType = elementType,
+            label = label,
+            bundleId = bundleId
+        )
+    }
+    internal suspend fun getDeviceInfo(): String = serverOperation { iosAutomationClient.getDeviceInfo() }
+    internal suspend fun pressHome(): String = serverOperation { iosAutomationClient.pressHome() }
+    internal suspend fun dismissKeyboard(bundleId: String? = null): String =
+        trace.span(TraceStage.OPERATION) { interactionOperations.dismissKeyboard(bundleId) }
+
+    internal suspend fun handleAlert(
+        action: String,
+        buttonLabel: String? = null,
+        bundleId: String? = null,
+    ): String = trace.span(TraceStage.OPERATION) { interactionOperations.handleAlert(action, buttonLabel, bundleId) }
+
+    internal suspend fun longPress(
+        x: Int?, y: Int?, selectors: IOSElementSelectors, timeoutMs: Int?,
+    ): String = trace.span(TraceStage.OPERATION) { interactionOperations.longPress(x, y, selectors, timeoutMs) }
+
+    internal suspend fun doubleTap(
+        x: Int?, y: Int?, selectors: IOSElementSelectors, timeoutMs: Int?,
+    ): String = trace.span(TraceStage.OPERATION) { interactionOperations.doubleTap(x, y, selectors, timeoutMs) }
+
+    internal suspend fun inputText(
+        text: String,
+        bundleId: String? = null,
+        selectors: IOSElementSelectors? = null,
+        timeoutMs: Int? = null,
+    ): String =
+        trace.span(TraceStage.OPERATION) { interactionOperations.inputText(text, bundleId, selectors, timeoutMs) }
+    internal suspend fun stopAutomationServer(): String = trace.span(TraceStage.OPERATION) {
+        val process = iosXcodebuildProcess
+        return@span if (process != null && process.isAlive) {
+            process.destroyForcibly()
+            iosXcodebuildProcess = null
+            "iOS automation server stopped successfully."
+        } else {
+            iosXcodebuildProcess = null
+            "iOS automation server is not running."
+        }
+    }
+
+    // ==================== MCP Tool Registrations ====================
+
+    private fun registerStartAutomationServer(scope: ToolScope) {
+        scope.tool(
+            name = "ios_start_automation_server",
+            description = """
+                Starts the iOS automation server on the booted iOS simulator.
+                Uses pre-built test bundle if available, otherwise builds from source.
+
+                The server starts on port ${IOSAutomationConfig.DEFAULT_PORT} and is directly
+                accessible at localhost (no port forwarding needed for iOS simulators).
+            """.trimIndent(),
+            timeoutMs = 200000
+        ) {
+            startAutomationServer()
+        }
+    }
+
+    private fun registerAutomationServerStatus(scope: ToolScope) {
+        scope.tool(
+            name = "ios_automation_server_status",
+            description = "Checks if the iOS automation server is running on the simulator. Returns server status and connection information."
+        ) {
+            automationServerStatus()
+        }
+    }
+
+    private fun registerGetUiHierarchy(scope: ToolScope) {
+        scope.tool(
+            name = "ios_get_ui_hierarchy",
+            description = """
+                Gets the COMPLETE UI hierarchy as XML from the current iOS simulator screen.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                PREFER 'ios_get_interactive_elements' for most tasks - it returns a cleaner,
+                filtered list of elements you can actually interact with.
+
+                USE THIS TOOL WHEN YOU NEED:
+                - Full XML structure with parent-child relationships
+                - Debug why an element isn't found by ios_get_interactive_elements
+                - Analyze layout structure
+                - Inspect raw accessibility properties
+
+                OPTIONAL PARAMETERS:
+                - bundleId: Bundle ID of the app to query (e.g., "com.apple.Preferences").
+                  If not provided, queries springboard (which only shows system UI, not app content).
+                  ALWAYS provide bundleId when inspecting an app's UI.
+            """.trimIndent(),
+            timeoutMs = 30000
+        ) { request ->
+            getUiHierarchy(request.optionalString("bundleId"))
+        }
+    }
+
+    private fun registerGetInteractiveElements(scope: ToolScope) {
+        scope.tool(
+            name = "ios_get_interactive_elements",
+            description = """
+                Inspect native UI candidates. The automation server must be running.
+                Set compact for compact-v1 JSON; type, region and includeBounds require compact.
+                Region uses screen points and matches centers in a half-open rectangle.
+                Provide bundleId for app content; omit for Springboard.
+                Selectors describe observed elements; actions resolve targets again.
+                Prefer ios_tap_on_element with a stable selector. Use coordinates only when
+                coordinates are the intended target.
+            """.trimIndent(),
+            inputSchema = Tool.Input(properties = compactInspectionProperties(ios = true)),
+            timeoutMs = 30000
+        ) { request ->
+            getInteractiveElements(
+                includeDisabled = request.optionalBoolean("includeDisabled") ?: false,
+                bundleId = request.optionalString("bundleId"),
+                options = request.compactInspectionOptions(),
+            )
+        }
+    }
+
+    private fun registerTapByCoordinates(scope: ToolScope) {
+        scope.tool(
+            name = "ios_tap_by_coordinates",
+            description = """
+                Tap on the iOS simulator screen at the specified (x, y) coordinates.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                WORKFLOW: First call 'ios_get_interactive_elements' to locate the target element.
+                Use the centerX, centerY values from the returned elements.
+            """.trimIndent(),
+            inputSchema = Tool.Input(required = listOf("x", "y"))
+        ) { request ->
+            tapByCoordinates(request.requireInt("x"), request.requireInt("y"))
+        }
+    }
+
+    private fun registerSwipe(scope: ToolScope) {
+        scope.tool(
+            name = "ios_swipe",
+            description = """
+                Swipe on the iOS simulator screen from one point to another.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                PARAMETERS:
+                - startX, startY: Starting coordinates
+                - endX, endY: Ending coordinates
+                - steps (optional, default 20): Controls speed (maps to duration: steps * 0.05 seconds)
+            """.trimIndent(),
+            inputSchema = Tool.Input(required = listOf("startX", "startY", "endX", "endY"))
+        ) { request ->
+            swipe(
+                startX = request.requireInt("startX"),
+                startY = request.requireInt("startY"),
+                endX = request.requireInt("endX"),
+                endY = request.requireInt("endY"),
+                steps = request.optionalInt("steps") ?: 20
+            )
+        }
+    }
+
+    private fun registerSwipeDirection(scope: ToolScope) {
+        scope.tool(
+            name = "ios_swipe_direction",
+            description = """
+                Swipe in a direction on the iOS simulator screen.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                SIMPLER than 'ios_swipe' - no need to calculate coordinates!
+
+                PARAMETERS:
+                - direction (required): "up", "down", "left", "right"
+                - distance (optional): "short" (20%), "medium" (40%, default), "long" (60%)
+                - speed (optional): "slow", "normal" (default), "fast"
+
+                DIRECTION BEHAVIOR:
+                - "up"    → Finger moves up, content scrolls DOWN
+                - "down"  → Finger moves down, content scrolls UP
+                - "left"  → Finger moves left (next item)
+                - "right" → Finger moves right (previous item)
+            """.trimIndent(),
+            inputSchema = Tool.Input(required = listOf("direction"))
+        ) { request ->
+            swipeByDirection(
+                direction = request.requireDirection(),
+                distance = request.optionalString("distance") ?: "medium",
+                speed = request.optionalString("speed") ?: "normal"
+            )
+        }
+    }
+
+    private fun registerSwipeOnElement(scope: ToolScope) {
+        scope.tool(
+            name = "ios_swipe_on_element",
+            description = "Swipe within a matching iOS element. Requires at least one selector. " +
+                "bundleId scopes the app and is not a selector; defaults to Springboard. " +
+                "resourceId is the accessibility identifier, className the element type, " +
+                "and contentDescription the accessibility label. The automation server must be running.",
+            inputSchema = Tool.Input(
+                properties = buildJsonObject {
+                    putJsonObject("direction") {
+                        put("type", "string")
+                        putJsonArray("enum") { listOf("up", "down", "left", "right").forEach { add(it) } }
+                    }
+                    putJsonObject("speed") {
+                        put("type", "string")
+                        putJsonArray("enum") { listOf("slow", "normal", "fast").forEach { add(it) } }
+                        put("default", "normal")
+                    }
+                    val selectors = listOf(
+                        "text", "textContains", "resourceId", "className",
+                        "contentDescription", "bundleId"
+                    )
+                    for (name in selectors) {
+                        putJsonObject(name) { put("type", "string") }
+                    }
+                },
+                required = listOf("direction")
+            )
+        ) { request ->
+            swipeOnElement(
+                direction = request.requireDirection(),
+                selectors = IOSElementSelectors(
+                    text = request.optionalString("text"),
+                    textContains = request.optionalString("textContains"),
+                    identifier = request.optionalString("resourceId"),
+                    elementType = request.optionalString("className"),
+                    label = request.optionalString("contentDescription"),
+                    bundleId = request.optionalString("bundleId"),
+                ),
+                speed = request.optionalString("speed") ?: "normal"
+            )
+        }
+    }
+
+    private fun registerTapOnElement(scope: ToolScope) {
+        registerElementTapTool(
+            scope = scope,
+            name = "ios_tap_on_element",
+            description = "Waits until a matching iOS element is actionable, then taps it. " +
+                "Requires a selector; bundleId scopes the app and is not a selector. timeoutMs defaults " +
+                "to 10000ms and has a 30000ms maximum. Does not auto-scroll.",
+            selectorNames = listOf(
+                "text", "textContains", "resourceId", "className", "contentDescription", "bundleId",
+            ),
+        ) { request ->
+            tapOnElement(
+                IOSElementSelectors(
+                    text = request.optionalString("text"),
+                    textContains = request.optionalString("textContains"),
+                    identifier = request.optionalString("resourceId"),
+                    elementType = request.optionalString("className"),
+                    label = request.optionalString("contentDescription"),
+                    bundleId = request.optionalString("bundleId"),
+                ),
+                request.optionalInt("timeoutMs"),
+            )
+        }
+    }
+
+    private fun registerFindElement(scope: ToolScope) {
+        scope.tool(
+            name = "ios_find_element",
+            description = """
+                Finds a UI element on the current iOS simulator screen.
+                Returns element info including bounds, text, and properties if found.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                Provide at least ONE of these parameters:
+                - text: Exact text match
+                - textContains: Partial text match
+                - resourceId: Accessibility identifier
+                - className: Element type name (e.g., "Button", "TextField")
+                - contentDescription: Accessibility label
+                - bundleId: Bundle ID of the app to search in (e.g., "com.apple.Preferences").
+                  If not provided, searches springboard. ALWAYS provide bundleId when searching in an app.
+            """.trimIndent(),
+            timeoutMs = 30000
+        ) { request ->
+            findElement(
+                text = request.optionalString("text"),
+                textContains = request.optionalString("textContains"),
+                identifier = request.optionalString("resourceId"),
+                elementType = request.optionalString("className"),
+                label = request.optionalString("contentDescription"),
+                bundleId = request.optionalString("bundleId")
+            )
+        }
+    }
+
+    private fun registerGetDeviceInfo(scope: ToolScope) {
+        scope.tool(
+            name = "ios_get_device_info",
+            description = """
+                Gets device information from the iOS simulator via the automation server.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                RETURNS:
+                - Display size (width x height in pixels)
+                - Display rotation
+                - iOS version
+                - Device model
+            """.trimIndent()
+        ) {
+            getDeviceInfo()
+        }
+    }
+
+    private fun registerPressHome(scope: ToolScope) {
+        scope.tool(
+            name = "ios_press_home",
+            description = """
+                Press the home button on the iOS simulator.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                Returns to the home screen. The current app moves to the background.
+            """.trimIndent()
+        ) {
+            pressHome()
+        }
+    }
+
+    private fun registerScreenshot(scope: ToolScope) {
+        scope.tool(
+            name = "ios_screenshot",
+            description = """
+                Captures a screenshot of the current iOS simulator display and saves it as a PNG file on the host.
+                The iOS automation server must be running first (use ios_start_automation_server).
+
+                OPTIONAL PARAMETERS:
+                - outputPath: Absolute or relative path where the PNG will be written.
+                  Relative paths resolve against the MCP server's working directory (typically the
+                  user's current project). If the file already exists it will be overwritten.
+                  Missing parent directories are created automatically.
+                  If omitted, saves to ./screenshots/ios_screenshot_<yyyyMMdd_HHmmss>.png relative to
+                  the server's working directory (i.e. the current project, not the visiontest install dir).
+
+                Returns the absolute path of the saved PNG.
+            """.trimIndent(),
+            timeoutMs = 30000
+        ) { request ->
+            captureScreenshot(request.optionalString("outputPath"))
+        }
+    }
+
+    // ==================== Screenshot helpers ====================
+
+    private val screenshotSaver = ScreenshotSaver(
+        platformLabel = "iOS",
+        filePrefix = "ios_screenshot",
+        artifactLabel = "bundle",
+        trace = trace,
+    )
+    internal suspend fun captureScreenshot(outputPath: String?): String =
+        captureScreenshotResult(outputPath).message
+
+    internal suspend fun captureScreenshotResult(outputPath: String?): ScreenshotResult =
+        serverOperation { screenshotSaver.captureResult(outputPath) { iosAutomationClient.screenshot() } }
+
+    internal fun resolveScreenshotPath(outputPath: String?): File =
+        screenshotSaver.resolveScreenshotPath(outputPath)
+
+    private fun registerStopAutomationServer(scope: ToolScope) {
+        scope.tool(
+            name = "ios_stop_automation_server",
+            description = "Stops the iOS automation server running on the simulator."
+        ) {
+            stopAutomationServer()
+        }
+    }
+}

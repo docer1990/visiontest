@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "platform": "android",
   "target": "REPLACE_WITH_SINGLE_ADB_SERIAL",
-  "fixtureIdentity": "com.example.visiontest.benchmark",
+  "fixtureIdentity": "dev.visiontest.benchmark",
   "fixtureArtifact": "benchmarks/fixtures/android/build/outputs/apk/debug/benchmark-fixture-debug.apk",
   "fixtureRevision": "fixture-v2-settled",
   "cliPrefix": [
@@ -69,7 +69,7 @@
           "am",
           "start",
           "-n",
-          "com.example.visiontest.benchmark/.MainActivity",
+          "dev.visiontest.benchmark/.MainActivity",
           "--es",
           "scenario",
           "{scenario}",
@@ -127,7 +127,7 @@
           "am",
           "start",
           "-n",
-          "com.example.visiontest.benchmark/.MainActivity",
+          "dev.visiontest.benchmark/.MainActivity",
           "--es",
           "scenario",
           "{scenario}",
@@ -139,19 +139,19 @@
       "cliArgs": [
         "find_element",
         "--resource-id",
-        "com.example.visiontest.benchmark:id/start",
+        "dev.visiontest.benchmark:id/start",
         "--json",
         "--platform",
         "android"
       ],
       "mcpTool": "find_element",
       "mcpArguments": {
-        "resourceId": "com.example.visiontest.benchmark:id/start"
+        "resourceId": "dev.visiontest.benchmark:id/start"
       },
       "timeoutMs": 8000,
       "assertion": {
         "kind": "element_found",
-        "resourceId": "com.example.visiontest.benchmark:id/start",
+        "resourceId": "dev.visiontest.benchmark:id/start",
         "expectedFound": true
       },
       "fixtureScenario": "navigation",
@@ -190,7 +190,7 @@
           "am",
           "start",
           "-n",
-          "com.example.visiontest.benchmark/.MainActivity",
+          "dev.visiontest.benchmark/.MainActivity",
           "--es",
           "scenario",
           "{scenario}",
@@ -213,16 +213,16 @@
       "timeoutMs": 8000,
       "assertion": {
         "kind": "action_then_element",
-        "resourceId": "com.example.visiontest.benchmark:id/done",
+        "resourceId": "dev.visiontest.benchmark:id/done",
         "expectedFound": true,
         "lookupTool": "find_element",
         "lookupArguments": {
-          "resourceId": "com.example.visiontest.benchmark:id/done"
+          "resourceId": "dev.visiontest.benchmark:id/done"
         },
         "verificationCliArgs": [
           "find_element",
           "--resource-id",
-          "com.example.visiontest.benchmark:id/done",
+          "dev.visiontest.benchmark:id/done",
           "--json",
           "--platform",
           "android"
@@ -264,7 +264,7 @@
           "am",
           "start",
           "-n",
-          "com.example.visiontest.benchmark/.MainActivity",
+          "dev.visiontest.benchmark/.MainActivity",
           "--es",
           "scenario",
           "{scenario}",
@@ -276,7 +276,7 @@
       "cliArgs": [
         "wait_for_element",
         "--resource-id",
-        "com.example.visiontest.benchmark:id/done",
+        "dev.visiontest.benchmark:id/done",
         "--timeout",
         "4000",
         "--platform",
@@ -284,22 +284,22 @@
       ],
       "mcpTool": "wait_for_element",
       "mcpArguments": {
-        "resourceId": "com.example.visiontest.benchmark:id/done",
+        "resourceId": "dev.visiontest.benchmark:id/done",
         "timeoutMs": 4000
       },
       "timeoutMs": 10000,
       "assertion": {
         "kind": "wait_then_element",
-        "resourceId": "com.example.visiontest.benchmark:id/done",
+        "resourceId": "dev.visiontest.benchmark:id/done",
         "expectedFound": true,
         "lookupTool": "find_element",
         "lookupArguments": {
-          "resourceId": "com.example.visiontest.benchmark:id/done"
+          "resourceId": "dev.visiontest.benchmark:id/done"
         },
         "verificationCliArgs": [
           "find_element",
           "--resource-id",
-          "com.example.visiontest.benchmark:id/done",
+          "dev.visiontest.benchmark:id/done",
           "--json",
           "--platform",
           "android"
@@ -341,7 +341,7 @@
           "am",
           "start",
           "-n",
-          "com.example.visiontest.benchmark/.MainActivity",
+          "dev.visiontest.benchmark/.MainActivity",
           "--es",
           "scenario",
           "{scenario}",
@@ -354,7 +354,7 @@
         "wait_for_element",
         "--gone",
         "--resource-id",
-        "com.example.visiontest.benchmark:id/loading",
+        "dev.visiontest.benchmark:id/loading",
         "--timeout",
         "4000",
         "--platform",
@@ -362,22 +362,22 @@
       ],
       "mcpTool": "wait_until_gone",
       "mcpArguments": {
-        "resourceId": "com.example.visiontest.benchmark:id/loading",
+        "resourceId": "dev.visiontest.benchmark:id/loading",
         "timeoutMs": 4000
       },
       "timeoutMs": 10000,
       "assertion": {
         "kind": "wait_then_element",
-        "resourceId": "com.example.visiontest.benchmark:id/loading",
+        "resourceId": "dev.visiontest.benchmark:id/loading",
         "expectedFound": false,
         "lookupTool": "find_element",
         "lookupArguments": {
-          "resourceId": "com.example.visiontest.benchmark:id/loading"
+          "resourceId": "dev.visiontest.benchmark:id/loading"
         },
         "verificationCliArgs": [
           "find_element",
           "--resource-id",
-          "com.example.visiontest.benchmark:id/loading",
+          "dev.visiontest.benchmark:id/loading",
           "--json",
           "--platform",
           "android"
@@ -419,7 +419,7 @@
           "am",
           "start",
           "-n",
-          "com.example.visiontest.benchmark/.MainActivity",
+          "dev.visiontest.benchmark/.MainActivity",
           "--es",
           "scenario",
           "{scenario}",
@@ -440,9 +440,9 @@
       "assertion": {
         "kind": "interactive_elements",
         "requiredResourceIds": [
-          "com.example.visiontest.benchmark:id/start",
-          "com.example.visiontest.benchmark:id/continue_primary",
-          "com.example.visiontest.benchmark:id/continue_secondary"
+          "dev.visiontest.benchmark:id/start",
+          "dev.visiontest.benchmark:id/continue_primary",
+          "dev.visiontest.benchmark:id/continue_secondary"
         ]
       },
       "fixtureScenario": "ambiguous",
@@ -481,7 +481,7 @@
           "am",
           "start",
           "-n",
-          "com.example.visiontest.benchmark/.MainActivity",
+          "dev.visiontest.benchmark/.MainActivity",
           "--es",
           "scenario",
           "{scenario}",
@@ -537,7 +537,7 @@
           "am",
           "start",
           "-n",
-          "com.example.visiontest.benchmark/.MainActivity",
+          "dev.visiontest.benchmark/.MainActivity",
           "--es",
           "scenario",
           "{scenario}",
@@ -549,19 +549,19 @@
       "cliArgs": [
         "find_element",
         "--resource-id",
-        "com.example.visiontest.benchmark:id/email",
+        "dev.visiontest.benchmark:id/email",
         "--json",
         "--platform",
         "android"
       ],
       "mcpTool": "find_element",
       "mcpArguments": {
-        "resourceId": "com.example.visiontest.benchmark:id/email"
+        "resourceId": "dev.visiontest.benchmark:id/email"
       },
       "timeoutMs": 8000,
       "assertion": {
         "kind": "element_found",
-        "resourceId": "com.example.visiontest.benchmark:id/email",
+        "resourceId": "dev.visiontest.benchmark:id/email",
         "expectedFound": false
       },
       "fixtureScenario": "missing",

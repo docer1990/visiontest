@@ -103,17 +103,18 @@ overall timeout is not a wall-clock limit.
 
 Use the established serial/UDID and app ID, never ambiguous `booted`.
 Deep links must not bypass navigation under test.
+Set `URL='shop://checkout/cart?$filter=name&source=test'` before Android launch.
 
 | Action | Android | iOS |
 | --- | --- | --- |
-| Open URL | `adb -s "SERIAL" shell am start -W -a android.intent.action.VIEW -d "'URL'" -p "PACKAGE"` | `xcrun simctl openurl "UDID" 'URL'` |
+| Open URL | `adb -s "SERIAL" shell am start -W -a android.intent.action.VIEW -d "'$URL'" -p "PACKAGE"` | `xcrun simctl openurl "UDID" 'URL'` |
 | Terminate | `adb -s "SERIAL" shell am force-stop "PACKAGE"` | `xcrun simctl terminate "UDID" "BUNDLE_ID"` |
 | Clear data | `adb -s "SERIAL" shell pm clear "PACKAGE"` | No equivalent |
 | Uninstall | `adb -s "SERIAL" uninstall "PACKAGE"` | `xcrun simctl uninstall "UDID" "BUNDLE_ID"` |
 
-Android URL quoting crosses two shells, e.g. `-d "'shop://checkout/cart?coupon=A%26B&source=test'"`.
-Preserve paths/query/encoding; encode literal apostrophes as `%27`. Inspect launch
-diagnostics even on exit 0; verify the scoped app outcome. iOS `openurl` may route elsewhere.
+`-d "'$URL'"` preserves `$` across both shells. Preserve paths/query/encoding;
+encode apostrophes as `%27`. Inspect launch diagnostics even on exit 0;
+verify the scoped outcome. iOS `openurl` may route elsewhere.
 
 Reset only when required. iOS reinstall is not Android `pm clear`;
 verify isolation of Keychain/shared/remote state.

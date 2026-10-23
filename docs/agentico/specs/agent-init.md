@@ -100,14 +100,26 @@ tracing guidance likewise belongs in the performance documentation. Keep the
 skill focused on routine testing, with no dependency on those external references.
 CLI examples MUST distinguish Android APK installation from iOS bundle setup.
 Require checking operation results and expected app state rather than assuming a
-successful call proves app behavior. Visual claims require inspecting image evidence.
+successful call proves app behavior. Claims about properties unavailable through
+CLI queries require inspecting image evidence.
 
 The guidance MUST prioritize targeted element queries for known selectors and
 filtered element discovery for unfamiliar screens. Built-in waiting and targeted
 interactions SHOULD replace manual polling and redundant lookup/wait/action
-sequences. Full hierarchy inspection and screenshots SHALL be reserved for
-information missing from narrower queries, visual checks, or user-requested
-evidence. Functional examples MUST NOT mandate routine before/after screenshots.
+sequences. Full hierarchy inspection SHALL be reserved for information missing
+from narrower queries. Screenshots SHALL be restricted to documenting observed
+app bugs or assertions that available CLI queries cannot establish. Guidance MUST
+reject routine before/after and per-step screenshots, including flow screenshot
+steps and observation options. A generic evidence request, report template or
+"visual verification" label MUST NOT justify an image when structured results
+already answer the actual assertion. Agents SHALL identify the bug or unresolved
+fact before capture, capture a UI bug's failing state before recovery when possible,
+and retain structured evidence if capture fails. Guidance MUST distinguish element
+presence from onscreen visibility and bounds from proof against occlusion.
+Failure evidence SHOULD prefer compact interactive elements with the outer iOS
+app scope. `--on-failure screenshot` MUST NOT be a generic default; guidance SHALL
+require a known UI bug reproduction or an assertion needing image evidence to
+justify it before execution. A functional wait timeout alone SHALL NOT qualify.
 Output reduction MUST preserve operation outcomes and errors and MUST NOT treat
 a partial view as proof of absence. Token and latency savings require measurement.
 
@@ -123,11 +135,44 @@ session setup until a relevant change or failure invalidates it. A reused app
 build MUST contain the code under test. Intermediate checks MAY be omitted when
 a specific downstream assertion covers the same requirement; requested checks
 and test isolation MUST be preserved. Actions on one device SHALL be serialized.
+Guidance MUST separate batching from recording. Known exploratory actions SHALL
+use `flow --json` without `--record`, ending at decisions requiring new UI
+information. Setup, discovery and recovery SHALL remain unrecorded. If no
+destination selector is known, a final structured observation SHALL guide the
+next decision without treating action success as proof of the app outcome.
+Recording SHALL begin only for a requested test whose starting state, complete
+action sequence, selectors, test data and expected assertions are established.
+Agents SHALL identify the scenario being verified and use one recorded flow
+through its final outcome wait, rather than videos per action or exploratory
+segment. Before EVERY recorded flow, agents MUST terminate the app, inspect that
+result, relaunch it and inspect the launch result. This includes first executions,
+consecutive recorded tests and explicit reruns; an already-ready screen or reusable
+app state MUST NOT waive restart. A healthy automation server SHALL remain running.
+Navigation from the fresh launch to the test state SHALL be included in the recorded
+scenario. Restart MUST NOT be described as clearing persisted data. Unrecorded
+exploratory flows SHALL NOT require automatic restart. A defined scenario MAY be
+recorded on its first execution; a rehearsal
+or prior successful run MUST NOT be required. Unexpected UI requiring discovery
+SHALL return the agent to unrecorded exploration, not successive recorded fragments.
+Standalone actions SHALL be limited to exploration, recovery or operations
+unsupported by flow. Completed checks MUST NOT be replayed just to use flow or
+obtain a cleaner recording; pending tests MAY require restoring the starting state.
+Before recording, agents SHALL review the final steps, selectors, assertions and
+budgets, reading a saved flow after its last edit, including scripted edits.
+Requested assertions MUST be preserved; a removed readiness check SHALL be covered
+elsewhere. Scenario assertion timeouts SHALL be explicit and justified by test
+requirements and evidence. An established exploratory timeout MUST NOT silently
+become the default when copied into a flow; overall budgets SHALL NOT be described
+as extending element waits. Failed waits MUST NOT trigger arbitrary timeout
+increases or unchanged retries solely for recording. Contradictory prerequisites
+SHALL be resolved before recording. Missing prerequisites block a test; an unmet
+assertion with valid prerequisites fails it. Expected outcomes MUST NOT be replaced
+with observed outcomes merely to pass.
 Retries SHALL follow new evidence or a corrective action. Failed prerequisites
 SHALL block dependent steps rather than produce misleading additional failures.
 
 The guidance MUST reuse a healthy, compatible automation server on the same
-target across consecutive tests and retries. Cleanup SHALL happen at the end
+target across consecutive tests and retries. Server cleanup SHALL happen at the end
 of the requested batch or testing task, not after each test, and SHALL stop only
 a server started by the agent unless the user asks to leave it running.
 Servers already running before the session SHALL remain active.
@@ -156,19 +201,64 @@ single-target limitation and MUST NOT claim backend identity verification.
 
 The skill SHALL explicitly replace fixed UI sleeps and agent-written polling
 with built-in selector waits and `wait_for_element` for supported conditions.
+This rule MUST appear in the initial workflow and explicitly cover app startup,
+navigation, swipes, animations and loading. It MUST prohibit emitting `sleep 0`
+as a placeholder or separator as well as positive-duration sleeps.
+The skill SHALL demonstrate launching
+an app, inspecting the launch result and awaiting a known ready selector without
+a fixed delay. If no ready selector is known, agents SHALL immediately use compact
+discovery and derive a condition from observed selectors, or report the unsupported
+readiness check rather than invent a selector, sleep or manually poll. A targeted
+action's own actionability wait SHOULD avoid a redundant preliminary wait.
+Dependent standalone commands MUST NOT be blindly chained with `;` or rely on
+`&&` alone, since normally returned operation failures may retain exit 0.
+The guidance SHALL demonstrate an unrecorded exploratory swipe followed by a
+known selector tap without a delay, and discovery after the swipe when the target
+is unknown. It SHALL clarify that display-wide `swipe_direction` and `screenshot`
+do not accept `--bundle-id`; scoped element actions retain it. This restriction
+SHALL accompany the main selector guidance, explicitly stating that `--bundle-id`
+is command-specific rather than a global iOS option. Agents SHALL check options
+against the exact command and consult its help when uncertain.
 It SHALL distinguish immediate lookup, target actionability and subsequent app
 outcomes, without claiming all operations wait or that internal polling is absent.
-Structured find/wait results SHALL count as functional UI evidence. Screenshots
-SHALL NOT be required merely because evidence was requested, unless image evidence
-or visual verification is needed.
+Structured find/wait results, including flow waits, SHALL count as functional UI
+evidence without repeating checks or taking screenshots to confirm them.
 
-Test flows SHOULD include `--record` by default in agent guidance. The CLI flag
-remains opt-in. The skill SHALL explain exceptions for user preferences, recorder
-limitations and incompatible time budgets, report omitted recording, and preserve
-recording failures rather than silently dropping the requirement. Video SHALL NOT
+The skill SHALL show native app termination after the final requested flow when
+the app should be closed and no pending test needs its state. Termination SHALL
+follow flow process completion, recording finalization, result inspection and
+necessary failure evidence collection. It MUST NOT be presented as a flow step
+or nonexistent CLI command. Examples SHALL use the established serial/UDID and
+report native cleanup failures separately from test results. A completed UI wait
+alone MUST NOT trigger termination while the recording is still being finalized.
+Guidance SHALL show the mandatory termination, result inspection, separate launch
+and recorded flow sequence in its main recorded-test example. Only successful
+termination or a specific diagnostic confirming an already-stopped app SHALL
+permit launch; other native failures MUST NOT be suppressed. A returned launch
+failure MUST block the recorded flow even with exit 0. An explicit rerun request
+SHALL count as a new pending test even if the previous execution passed.
+Agents SHALL reuse established selectors and
+assertions, use actionability waits or an initial known condition inside the flow,
+and rediscover only when new evidence invalidates the known path. Restart alone
+MUST NOT trigger sleeps, repeated discovery or redundant waits before gestures.
+After new exploration, agents MUST restart again before a recorded test. A prior
+flow's recording finalization and necessary failure evidence collection SHALL
+finish before termination for the next test.
+
+Agent guidance MUST require `--record` for complete, defined scenarios that still
+need testing. The CLI flag remains opt-in. Unrecorded exploration SHALL be normal,
+not a recording omission. The skill SHALL limit exceptions for ready tests to user
+opt-out, concrete recorder limitations, unsupported flow operations and incompatible
+time budgets, with the specific reason reported before unrecorded execution.
+Partial recordings MUST NOT be presented as complete scenario evidence, and
+assertions MUST NOT be omitted to fit recording budgets. Convenience or a generic
+desire for speed MUST NOT qualify. Guidance SHALL preserve recording failures rather
+than silently retrying unrecorded or dropping the requirement. Video SHALL NOT
 be treated as automatic verification or require routine video analysis. Completed
 actions MUST NOT be replayed solely to repair evidence collection.
 
 Guidance SHALL retain stdout results, stderr diagnostics and command exit status.
 It MUST NOT recommend filtering VisionTest output with `grep -v INFO` or discarding
 stderr. Returned operation errors and uncertain action outcomes remain significant.
+Extracted label matches MUST NOT substitute for selector assertions or inspection
+of complete structured results and errors.

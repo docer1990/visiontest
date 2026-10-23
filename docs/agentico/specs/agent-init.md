@@ -94,15 +94,13 @@ The `init` command MUST NOT define or require `--platform`, instantiate device c
 
 ## Usage guidance
 
-The embedded usage guidance MUST direct agents to use the CLI by default,
-including when MCP tools are available. MCP usage MUST require an explicit user
-request; CLI unavailability or failure MUST NOT trigger an automatic switch to
-MCP. CLI examples distinguish Android APK
-installation from iOS bundle setup. MCP guidance uses discovered tool schemas
-instead of treating CLI flags as tool arguments. Both workflows require checking
-operation results and the expected app state rather than assuming a successful
-call proves the app behavior. Visual claims require inspecting image evidence.
-Init itself does not configure an MCP connection.
+The embedded skill MUST describe only the CLI workflow. MCP setup and usage
+remain in the product documentation, not in the distributed skill. Performance
+tracing guidance likewise belongs in the performance documentation. Keep the
+skill focused on routine testing, with no dependency on those external references.
+CLI examples MUST distinguish Android APK installation from iOS bundle setup.
+Require checking operation results and expected app state rather than assuming a
+successful call proves app behavior. Visual claims require inspecting image evidence.
 
 The guidance MUST prioritize targeted element queries for known selectors and
 filtered element discovery for unfamiliar screens. Built-in waiting and targeted
@@ -138,3 +136,39 @@ Servers already running before the session SHALL remain active.
 
 - Production command and resource packaging: `app/src/main/kotlin/com/example/visiontest/cli/commands/InitCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/VisionTestCli.kt`, `app/src/main/resources/agent-instructions.md`
 - Executable tests: `app/src/test/kotlin/com/example/visiontest/cli/InitCommandTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/InitCommandE2ETest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/VisionTestCliTest.kt`
+
+## Native lifecycle and evidence guidance
+
+The embedded skill SHALL lead with the routine CLI workflow and follow the
+application repository's build/install instructions, including artifact, variant,
+simulator build and configuration. It SHALL contain an offline-usable native
+Android/iOS reference for opening URLs, terminating apps, clearing Android app
+data and uninstalling apps. Native commands SHALL use the chosen serial/UDID
+explicitly, with the established package/bundle ID, and explain argument quoting,
+exit status and diagnostics. Android URL examples SHALL preserve quoting through
+both host and device shells. Accepted launch requests MUST be followed by an
+application outcome check. Deep links MUST NOT bypass navigation under test.
+
+Reset/uninstall SHALL be scenario-specific. iOS uninstall with project-guided
+reinstall MUST NOT be described as equivalent to Android data clearing or as a
+complete reset of Keychain, shared or remote state. Guidance MUST retain the
+single-target limitation and MUST NOT claim backend identity verification.
+
+The skill SHALL explicitly replace fixed UI sleeps and agent-written polling
+with built-in selector waits and `wait_for_element` for supported conditions.
+It SHALL distinguish immediate lookup, target actionability and subsequent app
+outcomes, without claiming all operations wait or that internal polling is absent.
+Structured find/wait results SHALL count as functional UI evidence. Screenshots
+SHALL NOT be required merely because evidence was requested, unless image evidence
+or visual verification is needed.
+
+Test flows SHOULD include `--record` by default in agent guidance. The CLI flag
+remains opt-in. The skill SHALL explain exceptions for user preferences, recorder
+limitations and incompatible time budgets, report omitted recording, and preserve
+recording failures rather than silently dropping the requirement. Video SHALL NOT
+be treated as automatic verification or require routine video analysis. Completed
+actions MUST NOT be replayed solely to repair evidence collection.
+
+Guidance SHALL retain stdout results, stderr diagnostics and command exit status.
+It MUST NOT recommend filtering VisionTest output with `grep -v INFO` or discarding
+stderr. Returned operation errors and uncertain action outcomes remain significant.

@@ -1,9 +1,51 @@
 # VisionTest
 
-VisionTest lets coding agents test mobile apps end to end from the command line.
-An agent can inspect an Android app or iOS Simulator, find a control, interact
-with it, and verify the expected result. Structured UI results, screenshots and
-flow recordings provide evidence for feature checks and bug reproduction.
+Building a mobile app means moving constantly between code and the app itself.
+You change a screen, open it on a device, try an interaction, and notice something
+that sends you back to the editor. That feedback shapes the next change.
+
+Working with a coding agent adds another participant to this process. The agent
+can help implement a feature or investigate a bug, and access to the running app
+gives it more context to work with. A reproducible interaction, an observed UI
+state, or a screenshot can make the next conversation more concrete.
+
+VisionTest grew out of a desire to make that feedback easier to obtain and share.
+It lets developers and coding agents inspect Android apps and iOS simulators,
+exercise specific flows, and collect evidence about what happened.
+
+The developer guides the work, chooses what matters, and evaluates the experience.
+VisionTest supports that process with checks that can be repeated as the app changes.
+
+## The thinking behind it
+
+Mobile automation already has established tools and frameworks. VisionTest
+focuses on the checks a developer and a coding agent repeat while changing an
+app. In that workflow, UI observations become model input, extra interactions
+add latency, and unreliable actions can send the agent through repeated attempts.
+Token consumption, execution time, and flakiness are central design constraints.
+
+Three priorities guide development.
+
+- Keep token consumption focused on the task. Compact, filtered UI results and
+  targeted queries give the agent relevant information. The skill encourages
+  reusing known selectors and reserves screenshots for questions that need images.
+- Keep execution time focused on useful work. Flows batch known actions in one
+  CLI invocation. The skill reuses verified setup and avoids redundant discovery
+  and readiness checks. Built-in waits respond to UI conditions instead of
+  requiring fixed sleeps.
+- Make checks repeatable. Stable selectors, actionability waits, and explicit
+  outcome checks address sources of UI-test flakiness. Structured results expose
+  failures, and an uncertain action outcome must be inspected before retrying.
+
+VisionTest builds on Android's UIAutomator through instrumentation and Apple's
+XCUITest. These native test frameworks expose UI elements and accessibility
+properties. VisionTest combines that access with structured results and an
+agent workflow designed around these priorities.
+
+The main development goal is to make everyday checks more reliable and less
+expensive to repeat. Improvements to token usage, execution time, and flakiness
+take priority over growing the feature list. New features should solve a concrete
+testing need and justify the execution and context costs they introduce.
 
 Use the CLI with the project-local VisionTest skill to guide the agent through
 setup, selector discovery, actions and outcome checks. MCP is also supported
@@ -105,21 +147,17 @@ and [CLI examples](docs/cli-usage.md).
 
 ## How the skill guides testing
 
-The skill reuses verified setup and selectors, discovers unfamiliar controls with
-compact inspection, batches known actions, and uses built-in waits. It prefers
-structured queries for functional outcomes and reserves images for information
-those queries cannot establish. This avoids prescribing repeated discovery and
-redundant observations; it is not a claim of measured token or reasoning savings.
-See the [compact inspection evaluation](docs/benchmarks/compact-inspection.md)
-and [performance tracing guide](docs/performance.md) for measurement methods.
-The [guidance trials](docs/benchmarks/cli-agent-guidance.md) record simulated
-command choices and their measurement limits.
+The project-local skill translates these principles into CLI instructions for
+the agent. It follows the application's build/install instructions and uses
+native lifecycle commands for deep links, termination and scenario-specific
+resets. Deep links must not skip navigation under test. iOS uninstall/reinstall
+does not guarantee removal of Keychain, shared or remote state.
 
-The distributed skill covers CLI testing only. MCP setup remains in the section
-below, and tracing instructions remain in the performance guide. Agents follow the application's build/install instructions and
-use native lifecycle commands for deep links, termination and scenario-specific
-resets. Deep links must not skip navigation that is itself under test. iOS
-uninstall/reinstall does not guarantee removal of Keychain, shared or remote state.
+The [compact inspection evaluation](docs/benchmarks/compact-inspection.md),
+[performance tracing guide](docs/performance.md), and
+[guidance trials](docs/benchmarks/cli-agent-guidance.md) document measurements,
+methods and limitations. Simulated command choices and smaller payloads alone
+do not establish token savings or faster end-to-end execution.
 
 VisionTest currently assumes one selected target. There is no CLI device-selection
 flag, and a running backend does not expose its identity for cross-checking against
@@ -146,7 +184,8 @@ uncertain, so inspect the app before retrying.
 ## MCP alternative
 
 MCP exposes supported automation operations to clients that prefer tool discovery.
-The flow batching and recording commands described above are CLI features.
+CLI commands and MCP tools call shared operation implementations. The flow
+batching and recording commands described above are CLI features.
 
 Connect VisionTest to an MCP client:
 

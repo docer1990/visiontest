@@ -110,8 +110,22 @@ visiontest launch_app -p android com.example.app
 visiontest get_interactive_elements -p android --compact
 ```
 
-Use the discovered selector to act, then wait for the expected result. Once both
-steps are known, run them together:
+If the complete requested scenario is Continue opening Home, and its starting
+state, selector and expected result are known, record it even on its first execution.
+Before every recorded test, close the app on the established device:
+
+```bash
+adb -s "SERIAL" shell am force-stop com.example.app
+```
+
+Inspect the result, then relaunch separately:
+
+```bash
+visiontest launch_app -p android com.example.app
+```
+
+Check the launch result before running the recorded flow. This example assumes the
+app opens on the welcome screen; include any required navigation in the flow:
 
 ```bash
 visiontest flow -p android --record --json \
@@ -124,16 +138,45 @@ waits for an actionable control; the explicit wait checks that Home appeared.
 Neither a successful tap nor a saved video alone proves the app behaved correctly.
 Use `find_element --json` for an immediate functional check, or `wait_for_element
 --json` to await a change. No fixed sleep or manual polling loop is needed.
+This also applies after app launch or a swipe. Inspect launch diagnostics before
+continuing; await a known ready selector or immediately discover controls if none
+is known. Selector taps and targeted input already wait for actionability.
 
-Use `--record` routinely for test flows to retain video evidence. It remains an
-explicit flag and can fail the flow if recording fails, including after successful
-UI steps. Report recorder limitations or incompatible time budgets rather than
-silently dropping evidence or replaying completed actions. You do not need routine
-video analysis or screenshots to confirm states already verified by structured
-queries. Use and inspect screenshots for visual assertions or explicit image requests.
+During exploration, batch known actions with `flow --json` without `--record` and
+inspect structured UI data at unknown branches. Start recording only when the
+complete scenario, starting state, selectors, data and assertions are defined and
+that requested test still needs execution. Use one recorded flow for the scenario,
+not a video per exploratory segment. Termination and relaunch are required before
+each recorded flow, even if the app is already on the correct screen. Unrecorded
+exploration does not require restarting the app. Keep the healthy automation server
+running; restarting the app does not clear its persisted data.
+Recording remains an explicit CLI flag and
+can fail the flow even after successful UI steps. Report user opt-out or concrete
+recorder, flow or budget limitations before omitting recording from a ready test.
+Do not replay completed checks just to obtain video or routinely analyze recordings.
+
+Use structured CLI results as functional evidence without per-step screenshots.
+Capture screenshots only to document an observed app bug or an assertion the CLI
+queries cannot resolve, such as pixel appearance or occlusion. State the reason
+for capture and inspect the image before visual claims. A generic request for
+evidence or a "visual verification" label does not require a screenshot when the
+structured results answer the assertion.
 See [flows and recording](docs/cli-flow.md) for supported steps and time limits.
 
-At the end of the testing task, stop the server only if you started it:
+At the end of the testing task, wait for the last flow to return, inspect its
+results and finalized recording, and collect any needed bug evidence. If the app
+should be closed and no pending test needs its state, terminate it with the
+established device identifier, for example on Android:
+
+```bash
+adb -s "SERIAL" shell am force-stop com.example.app
+```
+
+On iOS, the equivalent is `xcrun simctl terminate "UDID" "com.example.app"`.
+These are native commands outside flow. Inspect their exit status and diagnostics;
+do not close the app while recording finalizes. Finish evidence collection before
+the mandatory restart for the next recorded test; exploratory flows may reuse state.
+Stop the automation server only if you started it:
 
 ```bash
 visiontest stop_automation_server -p android
@@ -260,7 +303,7 @@ simulator host network.
 - [Missing interactions](docs/agentico/specs/missing-interactions.md)
 - [Screenshots](docs/agentico/specs/screenshots.md)
 - [Release process](docs/release.md)
-- [0.2.0 release notes](docs/releases/0.2.0.md)
+- [1.0.1 release notes](docs/releases/1.0.1.md)
 - [Contributing](CONTRIBUTING.md)
 - [Open issues](https://github.com/docer1990/visiontest/issues)
 

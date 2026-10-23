@@ -18,7 +18,7 @@ Prepare a release from the repository root on the commit intended for publicatio
    - `versionName` in `automation-server/build.gradle.kts`
 
    Increment Android `versionCode` so existing installations can upgrade. For
-   VisionTest 1.0.0, use `versionCode = 3`.
+   VisionTest 1.0.1, use `versionCode = 4`.
 
 3. Confirm both files agree and commit the version change before tagging. The release tag is the same value with a `v` prefix: `vX.Y.Z`.
 4. Ensure the GitHub CLI is authenticated before using it for remote checks:
@@ -38,7 +38,7 @@ Run the complete local build before publishing:
 This exercises the Kotlin/JVM tests, packaged-JAR end-to-end tests, coverage gate, static analysis, and Android module build checks. The release workflow additionally runs the iOS tests and automation-server smoke check on its macOS runner.
 
 Release-specific changes and upgrade steps are recorded in
-[the VisionTest 1.0.0 notes](releases/1.0.0.md).
+[the VisionTest 1.0.1 notes](releases/1.0.1.md).
 
 The Android emulator smoke workflow runs nightly on the default branch. A green
 nightly result does not verify a release branch. After pushing the release

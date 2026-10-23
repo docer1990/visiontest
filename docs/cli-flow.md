@@ -1,17 +1,46 @@
 # Sequential CLI flows
 
-Use `flow` for a short sequence whose next actions are already known. Observe the
-screen between sequences, and use an explicit element wait to verify navigation.
-A successful tap only confirms the tap operation.
+Batch known actions with `flow --json`. During exploration, omit `--record` and
+inspect structured UI data where a decision needs new information. End with an
+explicit element wait when the outcome selector is known. A successful tap only
+confirms the tap operation.
+
+The distributed agent skill requires `--record` only for a complete, defined
+scenario that still needs testing: its starting state, action sequence, selectors,
+data and assertions must be established. Use one recording for that scenario,
+including on its first execution, without a mandatory rehearsal. Do not create
+a video per exploratory segment. Report user opt-out or concrete recorder, flow
+or budget limitations before omitting recording from a ready test.
+
+Before every recorded flow, terminate the app, inspect the result, relaunch it and
+inspect the launch result. This applies even when exploration left the app on the
+right screen, and before consecutive recorded tests. Keep the automation server
+running. Unrecorded exploratory flows do not require a restart.
+
+This example assumes the app opens on the form and the scenario ends at `done`.
+First terminate on the established simulator:
 
 ```bash
-visiontest flow --platform ios --bundle-id com.example.app \
+xcrun simctl terminate "UDID" "com.example.app"
+```
+
+Continue only after successful termination or a specific already-stopped diagnostic.
+Other failures block the test. Relaunch separately:
+
+```bash
+visiontest launch_app com.example.app -p ios
+```
+
+Inspect the launch result, including diagnostics on exit 0. Only on success execute:
+
+```bash
+visiontest flow --platform ios --record --bundle-id com.example.app \
   --step 'tap_on_element --resource-id email --bundle-id com.example.app' \
   --step 'input_text "user@example.com" --bundle-id com.example.app' \
   --step 'tap_on_element --resource-id continue --bundle-id com.example.app' \
-  --step 'wait_for_element --resource-id done --bundle-id com.example.app' \
-  --observe interactive-elements \
-  --on-failure screenshot \
+  --step 'wait_for_element --resource-id done --bundle-id com.example.app --timeout 10000' \
+  --observe interactive-elements --compact \
+  --on-failure interactive-elements \
   --json
 ```
 
@@ -19,7 +48,33 @@ The flow runs in one process and reuses its device components. It stops at the
 first failed step. Completed actions remain applied. There is no rollback,
 automatic retry, replay, resume, condition, loop, or parallel execution.
 
-Add `--record` at the flow level to require one screen video for this invocation.
+Before recording, review the final sequence and read any flow file after its last
+edit. Preserve requested assertions and choose explicit assertion timeouts from
+requirements and evidence; a longer overall budget does not extend an element wait.
+Do not silently lose a previously established timeout or remove a required check
+while converting exploration into a test. Resolve contradictory prerequisites:
+an unavailable prerequisite blocks the test, while a failed assertion with valid
+prerequisites fails it. Do not change the expected outcome to match the observation.
+
+For an exploratory swipe followed by a known unique selector tap, use an
+unrecorded flow without a fixed delay. The tap waits for actionability:
+
+```bash
+visiontest flow -p ios --json \
+  --step 'swipe_direction up --distance medium' \
+  --step 'tap_on_element --bundle-id com.example.app --text "Known item"'
+```
+
+`--bundle-id` is command-specific, not a global iOS option; `swipe_direction`
+does not accept it. Check options against the exact command before execution.
+If the target is still unknown,
+end after the swipe and request `--observe interactive-elements --compact` with
+the outer iOS `--bundle-id`, then inspect the result before choosing the next action.
+A known navigation outcome still needs an explicit wait. Do not chain standalone
+actions with `; sleep ...;`: later actions would run even if the first failed.
+Do not insert `sleep 0` as a placeholder or separator either.
+
+The example uses `--record` at the flow level to require one screen video for this invocation.
 It works with repeated `--step`, `--file`, and `--stdin`; do not put it inside a
 step. Recording captures the whole display without audio, even when iOS element
 inspection uses `--bundle-id`. Without `--record`, the flow does not inspect
@@ -121,6 +176,18 @@ for a structured flow report; `--compact` alone does not select report formattin
 End known navigation sequences with an explicit `wait_for_element` step before
 requesting the final observation.
 
+The agent skill uses structured results as functional evidence and restricts
+screenshots to observed app bugs or assertions that CLI queries cannot resolve.
+Do not add screenshots after each step or to confirm a successful presence wait.
+For a UI bug, capture the failing state before recovery when possible. For an
+unresolved assertion, identify what the structured data cannot establish before
+capturing and inspecting an image. These rules apply to screenshot steps and
+both observation options.
+Prefer compact interactive elements for failure diagnostics, with the outer iOS
+`--bundle-id` scope. Do not enable `--on-failure screenshot` as a generic default;
+justify it before execution for a known UI bug reproduction or a specific assertion
+requiring image evidence. A functional timeout alone is insufficient.
+
 Screenshots and hierarchies are saved on the host and return absolute artifact
 paths. Interactive elements are returned as structured data. Reports never embed
 image base64. Each observation reports its own result or error.
@@ -145,6 +212,25 @@ selection rules and pins its serial or UDID. Configure the automation server
 for that same target and isolate it from other active targets. The backend does
 not supply identity for a runtime match check. Recording does not switch devices
 or boot a shutdown simulator.
+
+When closing the app after the final requested flow, wait for the flow process
+to return, inspect step and recording results, and capture any necessary bug
+evidence first. Then use a native command outside flow, such as
+`xcrun simctl terminate "UDID" "com.example.app"` on the established simulator.
+Do not terminate during video finalization. Wait for it and required failure
+evidence before restarting for the next recorded test; exploratory flows may reuse state.
+Inspect termination's exit status and diagnostics and report cleanup failures
+separately from test outcomes.
+
+Explicit reruns follow the same mandatory restart procedure as every recorded test.
+Include navigation from the fresh launch to the test state in the recorded flow;
+do not record only the tail from a screen reached during exploration. Restart does
+not clear persisted app data. Reuse established selectors and assertions; selector actions already wait for
+actionability. Include an initial known readiness wait in the flow if needed.
+Restart alone requires neither sleeps nor rediscovery. An unexpected screen may
+invalidate the known path and require unrecorded exploration, followed by another
+restart before recording. A requested rerun
+is a new test even when the previous execution passed.
 
 ## Output and recovery
 

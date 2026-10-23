@@ -213,7 +213,7 @@ class ExecutionTest(unittest.TestCase):
             root = Path(directory)
             manifest = {
                 "schemaVersion": 1, "platform": "android", "target": "emulator",
-                "fixtureIdentity": "com.example.visiontest.benchmark", "fixtureArtifact": "fixture.apk",
+                "fixtureIdentity": "dev.visiontest.benchmark", "fixtureArtifact": "fixture.apk",
                 "fixtureRevision": "test", "cliPrefix": [sys.executable, "-c",
                     "import json; print(json.dumps({'success': True, 'displayWidth': 10, 'displayHeight': 20, 'productName': 'test', 'sdkVersion': 35}))"],
                 "mcpPrefix": [sys.executable, "-c", "pass"],
@@ -225,7 +225,7 @@ class ExecutionTest(unittest.TestCase):
                         ["adb", "-s", "{target}", "install", "-r", "{fixtureArtifact}"],
                         ["adb", "-s", "{target}", "shell", "am", "force-stop", "{fixtureIdentity}"],
                         ["adb", "-s", "{target}", "shell", "am", "start", "-n",
-                         "com.example.visiontest.benchmark/.MainActivity", "--es", "scenario", "{scenario}",
+                         "dev.visiontest.benchmark/.MainActivity", "--es", "scenario", "{scenario}",
                          "--es", "language", "{language}"],
                     ], "cliArgs": ["ignored"], "mcpTool": "info",
                     "mcpArguments": {}, "timeoutMs": 2000,

@@ -48,6 +48,13 @@ For local installer testing, `bash install.sh --local-jar app/build/libs/visiont
 
 ## Native automation-server compatibility
 
+From 1.0.0, the Android APKs use `dev.visiontest.automationserver` and
+`dev.visiontest.automationserver.test`. The iOS host uses
+`dev.visiontest.IOSAutomationServer`. Stop old `com.example` servers before
+installing and starting the new artifacts. The new apps install separately;
+old test installations can be removed manually. The new Android lifecycle
+commands target only the new packages.
+
 Some UI operations add a JSON-RPC method to the native automation server. A JAR
 upgrade alone does not add that method to an Android device or an extracted iOS
 bundle. For `tap_on_element`, update the Android automation APK pair with

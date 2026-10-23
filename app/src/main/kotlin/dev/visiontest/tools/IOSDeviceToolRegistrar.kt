@@ -1,0 +1,112 @@
+package dev.visiontest.tools
+
+import dev.visiontest.common.DeviceConfig
+import dev.visiontest.performance.TraceRecorder
+import dev.visiontest.performance.TraceStage
+import dev.visiontest.performance.OperationOutcome
+import io.modelcontextprotocol.kotlin.sdk.Tool
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.put
+class IOSDeviceToolRegistrar internal constructor(
+    private val ios: DeviceConfig,
+    private val trace: TraceRecorder,
+) : ToolRegistrar {
+    constructor(ios: DeviceConfig) : this(ios, TraceRecorder.Disabled)
+
+    override fun registerTools(scope: ToolScope) {
+        registerAvailableDevice(scope)
+        registerListApps(scope)
+        registerInfoApp(scope)
+        registerLaunchApp(scope)
+    }
+
+    private fun registerAvailableDevice(scope: ToolScope) {
+        scope.tool(
+            name = "ios_available_device",
+            description = "Returns detailed information about the first available iOS device or simulator. Includes device ID, name, type, state (Booted/Shutdown), iOS version, and model. Prioritizes booted simulators over shutdown ones."
+        ) {
+            availableDevice()
+        }
+    }
+    internal suspend fun availableDevice(json: Boolean = false): String = trace.span(TraceStage.OPERATION) {
+        val device = ios.getFirstAvailableDevice()
+        if (json) return@span buildJsonObject {
+            put("id", device.id)
+            put("name", device.name)
+            put("type", device.type.name)
+            put("state", device.state)
+            put("osVersion", device.osVersion)
+            put("modelName", device.modelName)
+        }.toString()
+        return@span """
+            |iOS Device found:
+            |ID: ${device.id}
+            |Name: ${device.name}
+            |Type: ${device.type}
+            |State: ${device.state}
+            |OS Version: ${device.osVersion ?: "Unknown"}
+            |Model: ${device.modelName ?: "Unknown"}
+            """.trimMargin()
+    }
+
+    private fun registerListApps(scope: ToolScope) {
+        scope.tool(
+            name = "ios_list_apps",
+            description = "Returns a complete list of all applications installed on the iOS device or simulator. Returns bundle IDs (e.g., com.apple.mobilesafari) for all installed apps. Device must be booted."
+        ) {
+            listApps()
+        }
+    }
+    internal suspend fun listApps(json: Boolean = false): String = trace.span(TraceStage.OPERATION) {
+        val result = ios.listApps()
+        if (json) return@span buildJsonObject {
+            put("apps", buildJsonArray { result.forEach { add(it) } })
+        }.toString()
+        return@span if (result.isEmpty()) {
+            "No apps found on the iOS device"
+        } else {
+            "Found these apps: ${result.joinToString(", ")}"
+        }
+    }
+
+    private fun registerInfoApp(scope: ToolScope) {
+        scope.tool(
+            name = "ios_info_app",
+            description = "Returns detailed information about a specific iOS application. Requires 'bundleId' parameter (e.g., com.apple.mobilesafari). Returns bundle ID and app container path. Device must be booted.",
+            inputSchema = Tool.Input(required = listOf("bundleId"))
+        ) { request ->
+            val bundleId = request.requireString("bundleId")
+            infoApp(bundleId)
+        }
+    }
+    internal suspend fun infoApp(bundleId: String, json: Boolean = false): String = trace.span(TraceStage.OPERATION) {
+        val rawResult = ios.getAppInfo(bundleId)
+        if (json) return@span buildJsonObject {
+            put("id", bundleId)
+            put("rawInfo", rawResult)
+        }.toString()
+        return@span "App Information for $bundleId:\n$rawResult"
+    }
+
+    private fun registerLaunchApp(scope: ToolScope) {
+        scope.tool(
+            name = "ios_launch_app",
+            description = "Launches an iOS application on the device or simulator. Requires 'bundleId' parameter (e.g., com.apple.mobilesafari). Device must be booted before launching apps.",
+            inputSchema = Tool.Input(required = listOf("bundleId"))
+        ) { request ->
+            val bundleId = request.requireString("bundleId")
+            launchApp(bundleId)
+        }
+    }
+    internal suspend fun launchApp(bundleId: String): String = trace.span(TraceStage.OPERATION) {
+        val result = ios.launchApp(bundleId)
+        trace.operationOutcome(if (result) OperationOutcome.SUCCESS else OperationOutcome.FAILURE)
+        return@span if (result) {
+            "Successfully launched the iOS app: $bundleId"
+        } else {
+            "Failed to launch the iOS app: $bundleId"
+        }
+    }
+}

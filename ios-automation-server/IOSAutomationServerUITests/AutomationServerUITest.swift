@@ -68,12 +68,12 @@ class AutomationServerUITest: XCTestCase {
     }
 
     func testAlertResultSurvivesDismissal() throws {
-        let app = XCUIApplication(bundleIdentifier: "com.example.IOSAutomationServer")
+        let app = XCUIApplication(bundleIdentifier: "dev.visiontest.IOSAutomationServer")
         app.launchArguments = ["--review-alert"]
         app.launch()
         XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
         let request = try HandleAlertRequest(params: [
-            "action": "accept", "buttonLabel": "Accept fixture", "bundleId": "com.example.IOSAutomationServer",
+            "action": "accept", "buttonLabel": "Accept fixture", "bundleId": "dev.visiontest.IOSAutomationServer",
         ])
 
         let result = XCUITestBridge().handleAlert(request)

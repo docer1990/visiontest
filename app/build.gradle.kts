@@ -19,7 +19,7 @@ plugins {
 // Single source of truth for the release version: stamped into the JAR manifest
 // as Implementation-Version and read at runtime by VersionInfo (MCP server info
 // and the CLI --version flag).
-version = "0.2.0"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -80,7 +80,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "com.example.visiontest.MainKt"
+    mainClass = "dev.visiontest.MainKt"
 }
 
 tasks.named<Test>("test") {

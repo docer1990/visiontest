@@ -12,7 +12,7 @@ class FixtureReadinessTest(unittest.TestCase):
 
 
     def manifest(self, platform="ios"):
-        return {"platform": platform, "fixtureIdentity": "com.example.visiontest.benchmark",
+        return {"platform": platform, "fixtureIdentity": "dev.visiontest.benchmark",
                 "cliPrefix": ["visiontest"]}
 
     def result(self, resource_id, found=True):

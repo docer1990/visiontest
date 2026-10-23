@@ -1,0 +1,42 @@
+package dev.visiontest.cli.commands
+
+import dev.visiontest.cli.ComponentHolder
+import dev.visiontest.cli.Platform
+import dev.visiontest.cli.platformOption
+import dev.visiontest.cli.requireServerRunning
+import dev.visiontest.cli.runCliCommand
+import dev.visiontest.cli.CliCommandRunner
+import dev.visiontest.cli.PreparedCommand
+import com.github.ajalt.clikt.parameters.options.option
+import com.google.gson.JsonObject
+import java.nio.file.Path
+import java.util.UUID
+
+class ScreenshotCommand @JvmOverloads constructor(
+    private val components: Lazy<ComponentHolder>,
+    runner: CliCommandRunner = ::runCliCommand,
+) :
+    PreparedCommand(runner = runner, name = "screenshot", help = "Capture a screenshot") {
+
+    private val platform by platformOption()
+    private val output by option("--output", help = "Output file path for the screenshot PNG")
+
+    override fun prepareExecution(): suspend () -> String {
+        val raw = preparingForFlow
+        val outputPath = if (raw && output.isNullOrBlank()) {
+            "screenshots/${platform.value}_flow_${UUID.randomUUID()}.png"
+        } else output
+        if (raw) outputPath?.let { Path.of(it) }
+        return {
+            requireServerRunning { components.value.isServerRunning(platform) }
+            val result = when (platform) {
+                Platform.Android -> components.value.androidAutomationRegistrar.captureScreenshotResult(outputPath)
+                Platform.Ios -> components.value.iosAutomationRegistrar.captureScreenshotResult(outputPath)
+            }
+            if (raw) JsonObject().apply {
+                addProperty("success", result.success)
+                if (result.success) addProperty("path", result.path) else addProperty("error", result.message)
+            }.toString() else result.message
+        }
+    }
+}

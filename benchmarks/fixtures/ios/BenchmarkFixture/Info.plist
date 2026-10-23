@@ -3,7 +3,7 @@
 <plist version="1.0"><dict>
 <key>CFBundleDevelopmentRegion</key><string>en</string>
 <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
-<key>CFBundleIdentifier</key><string>com.example.visiontest.benchmark</string>
+<key>CFBundleIdentifier</key><string>dev.visiontest.benchmark</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>BenchmarkFixture</string>
 <key>CFBundlePackageType</key><string>APPL</string>

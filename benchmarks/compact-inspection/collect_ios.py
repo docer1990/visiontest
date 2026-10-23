@@ -9,7 +9,7 @@ import time
 import urllib.request
 
 
-BUNDLE = "com.example.visiontest.benchmark"
+BUNDLE = "dev.visiontest.benchmark"
 ROOT = Path(__file__).resolve().parents[2]
 SCOPE = " --bundle-id " + BUNDLE
 CASES = [

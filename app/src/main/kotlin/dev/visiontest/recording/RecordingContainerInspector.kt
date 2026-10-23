@@ -1,0 +1,455 @@
+package dev.visiontest.recording
+
+import dev.visiontest.common.RequestDeadline
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.file.Path
+import java.util.concurrent.TimeoutException
+import kotlin.coroutines.coroutineContext
+
+internal class RecordingContainerInspector {
+    suspend fun validateVideo(path: Path, deadline: RequestDeadline) {
+        try {
+            withContext(Dispatchers.IO) {
+                deadline.remainingMillis()
+                FileChannel.open(path).use { channel ->
+                    val reader = ContainerReader(ChannelRecordingSource(channel), deadline)
+                    val boxes = reader.movie(channel.size())
+                    val media = boxes.filter { it.type == "mdat" }
+                    val movies = boxes.filter { it.type == "moov" }
+                    if (movies.size > 1) invalid("Unsupported multiple recording movie boxes")
+                    val tracks = movies.flatMap { it.children }.filter { it.type == "trak" }
+                    val samples = VideoSampleReader(reader, deadline)
+                    var found = false
+                    for (track in tracks) {
+                        if (samples.videoTrack(track, media)) found = true
+                    }
+                    if (!found) invalid("Recording contains no nonempty video samples")
+                }
+            }
+        } catch (failure: IncompleteContainer) {
+            throw RecordingException("Truncated recording container", failure)
+        } catch (failure: IOException) {
+            throw RecordingException("Unable to read recording container", failure)
+        }
+    }
+
+    suspend fun initialized(source: RecordingDataSource, deadline: RequestDeadline): Boolean {
+        val reader = ContainerReader(source, deadline)
+        try {
+            var offset = 0L
+            var fileType = false
+            while (true) {
+                val box = reader.header(offset)
+                if (box.type == "mdat") return fileType
+                reader.inspect(box)
+                if (box.type == "ftyp") fileType = true
+                offset = box.end ?: invalid("Unsupported open-ended recording box")
+            }
+        } catch (_: IncompleteContainer) {
+            return false
+        }
+    }
+}
+
+private data class ContainerBox(
+    val type: String,
+    val start: Long,
+    val end: Long?,
+    val children: List<ContainerBox> = emptyList(),
+) {
+    fun child(type: String): ContainerBox = children.singleOrNull { it.type == type }
+        ?: invalid("Missing or duplicate recording $type box")
+}
+
+private class IncompleteContainer : Exception()
+
+private class ContainerReader(private val source: RecordingDataSource, private val deadline: RequestDeadline) {
+    private var boxes = 0
+
+    suspend fun read(offset: Long, count: Int): ByteArray {
+        coroutineContext.ensureActive()
+        deadline.remainingMillis()
+        val bytes = withTimeoutOrNull(deadline.remainingMillis()) { source.read(offset, count, deadline) }
+            ?: throw TimeoutException("Recording inspection deadline exceeded")
+        coroutineContext.ensureActive()
+        deadline.remainingMillis()
+        if (bytes.size != count) throw IncompleteContainer()
+        return bytes
+    }
+
+    suspend fun header(offset: Long, parentEnd: Long? = null): ContainerBox {
+        checkHeaderSpace(offset, parentEnd, HEADER_SIZE)
+        val bytes = ByteBuffer.wrap(read(offset, HEADER_SIZE))
+        val shortSize = bytes.int.toLong() and UINT_MASK
+        val typeBytes = ByteArray(TYPE_SIZE).also { bytes.get(it) }
+        val type = String(typeBytes, Charsets.US_ASCII)
+        val headerSize = if (shortSize == 1L) EXTENDED_HEADER_SIZE else HEADER_SIZE
+        checkHeaderSpace(offset, parentEnd, headerSize)
+        val size = if (shortSize == 1L) {
+            ByteBuffer.wrap(read(add(offset, HEADER_SIZE.toLong()), LONG_SIZE)).long
+        } else shortSize
+        val end = boxEnd(offset, size, headerSize, type, parentEnd)
+        if (parentEnd != null && (end == null || end > parentEnd)) invalid("Recording box exceeds its parent")
+        if (++boxes > MAX_BOXES) invalid("Recording box limit exceeded")
+        if (type in FRAGMENT_BOXES) invalid("Unsupported fragmented recording")
+        return ContainerBox(type, add(offset, headerSize.toLong()), end)
+    }
+
+    private fun checkHeaderSpace(offset: Long, parentEnd: Long?, headerSize: Int) {
+        if (parentEnd != null && parentEnd - offset < headerSize) invalid("Truncated recording box header")
+    }
+
+    private fun boxEnd(offset: Long, size: Long, headerSize: Int, type: String, parentEnd: Long?): Long? = when {
+        size == 0L && headerSize == HEADER_SIZE && type == "mdat" && parentEnd == null -> null
+        size < headerSize -> invalid("Invalid recording box size for $type")
+        else -> add(offset, size)
+    }
+
+    suspend fun inspect(box: ContainerBox, depth: Int = 0): ContainerBox {
+        if (depth >= MAX_DEPTH) invalid("Recording nesting limit exceeded")
+        val end = box.end ?: invalid("Unsupported open-ended recording box")
+        val children = mutableListOf<ContainerBox>()
+        if (box.type in CONTAINER_BOXES) {
+            var offset = box.start
+            while (offset < end) {
+                val child = header(offset, end)
+                children += inspect(child, depth + 1)
+                offset = child.end ?: invalid("Unsupported open-ended recording box")
+            }
+        } else {
+            if (box.type == "ftyp" && (end - box.start < HEADER_SIZE || (end - box.start) % TYPE_SIZE != 0L)) {
+                invalid("Invalid recording file type box")
+            }
+            if (end > box.start) read(end - 1, 1)
+        }
+        return box.copy(children = children)
+    }
+
+    suspend fun movie(size: Long): List<ContainerBox> {
+        val result = mutableListOf<ContainerBox>()
+        var offset = 0L
+        while (offset < size) {
+            val box = header(offset).let { if (it.end == null) it.copy(end = size) else it }
+            val end = box.end ?: invalid("Missing recording box end")
+            if (end > size) throw IncompleteContainer()
+            result += inspect(box)
+            offset = end
+        }
+        return result
+    }
+}
+
+private class VideoSampleReader(private val reader: ContainerReader, private val deadline: RequestDeadline) {
+    private var entries = 0L
+
+    suspend fun videoTrack(track: ContainerBox, media: List<ContainerBox>): Boolean {
+        val mdia = track.child("mdia")
+        val handler = mdia.child("hdlr")
+        if ((handler.end ?: 0) - handler.start < HANDLER_SIZE) invalid("Truncated recording handler box")
+        val type = reader.read(add(handler.start, HEADER_SIZE.toLong()), TYPE_SIZE).toString(Charsets.US_ASCII)
+        if (type != "vide") return false
+        val mediaInfo = mdia.child("minf")
+        val tables = mediaInfo.child("stbl")
+        SampleDescriptionReader(reader).validate(tables.child("stsd"), mediaInfo)
+        if (tables.children.any { it.type in UNSUPPORTED_TABLES }) invalid("Unsupported recording sample layout")
+        val sizes = sampleSizes(tables.child("stsz"))
+        val offsets = tables.children.filter { it.type == "stco" || it.type == "co64" }.singleOrNull()
+            ?: invalid("Missing or duplicate recording chunk offsets")
+        val chunks = chunkOffsets(offsets)
+        val mappings = sampleMapping(tables.child("stsc"))
+        return resolveSamples(sizes, chunks, mappings, media)
+    }
+
+    private suspend fun sampleSizes(box: ContainerBox): LongArray {
+        val table = TableCursor(reader, box)
+        table.version()
+        val constant = table.word()
+        val count = entryCount(table.word())
+        val sizes = LongArray(count) { constant }
+        if (constant == 0L) {
+            for (index in sizes.indices) sizes[index] = table.word()
+        }
+        table.finished()
+        return sizes
+    }
+
+    private suspend fun chunkOffsets(box: ContainerBox): LongArray {
+        val table = TableCursor(reader, box)
+        table.version()
+        val result = LongArray(entryCount(table.word()))
+        for (index in result.indices) {
+            result[index] = if (box.type == "co64") table.longWord() else table.word()
+        }
+        table.finished()
+        return result
+    }
+
+    private suspend fun sampleMapping(box: ContainerBox): List<ChunkMapping> {
+        val table = TableCursor(reader, box)
+        table.version()
+        val count = entryCount(table.word())
+        val result = mutableListOf<ChunkMapping>()
+        repeat(count) { result += ChunkMapping(table.word(), table.word(), table.word()) }
+        table.finished()
+        return result
+    }
+
+    private fun entryCount(count: Long): Int {
+        entries += count
+        if (entries > MAX_TABLE_ENTRIES) invalid("Recording table work limit exceeded")
+        return count.toInt()
+    }
+
+    private suspend fun resolveSamples(
+        sizes: LongArray,
+        chunks: LongArray,
+        mappings: List<ChunkMapping>,
+        media: List<ContainerBox>,
+    ): Boolean {
+        validateMappings(mappings, chunks.size)
+        var sample = 0
+        var mapping = 0
+        for (index in chunks.indices) {
+            deadline.remainingMillis()
+            coroutineContext.ensureActive()
+            if (mapping + 1 < mappings.size && mappings[mapping + 1].firstChunk == index + 1L) mapping++
+            val count = mappings.getOrNull(mapping)?.samples ?: invalid("Missing recording sample mapping")
+            var end = chunks[index]
+            repeat(count.toInt()) {
+                deadline.remainingMillis()
+                coroutineContext.ensureActive()
+                if (sample >= sizes.size) invalid("Recording sample count mismatch")
+                end = add(end, sizes[sample++])
+            }
+            if (media.none { chunks[index] >= it.start && end <= (it.end ?: 0) }) {
+                invalid("Recording video samples outside media data")
+            }
+        }
+        if (sample != sizes.size) invalid("Recording sample count mismatch")
+        return sizes.any { it > 0 }
+    }
+
+    private fun validateMappings(mappings: List<ChunkMapping>, chunks: Int) {
+        if (chunks > 0 && mappings.firstOrNull()?.firstChunk != 1L) invalid("Invalid recording sample mapping origin")
+        var previous = 0L
+        for (mapping in mappings) {
+            val invalidSamples = mapping.samples <= 0 || mapping.samples > MAX_TABLE_ENTRIES
+            val invalidChunk = mapping.firstChunk <= previous || mapping.firstChunk > chunks
+            if (invalidChunk || invalidSamples || mapping.description != 1L) {
+                invalid("Unsupported or invalid recording sample mapping")
+            }
+            previous = mapping.firstChunk
+        }
+    }
+}
+
+private data class ChunkMapping(val firstChunk: Long, val samples: Long, val description: Long)
+
+private class SampleDescriptionReader(private val reader: ContainerReader) {
+    suspend fun validate(description: ContainerBox, mediaInfo: ContainerBox) {
+        val entry = singleEntry(description, "sample description")
+        if (entry.type != "avc1") invalid("Unsupported recording sample entry ${entry.type}")
+        if ((entry.end ?: 0) - entry.start < VISUAL_HEADER_SIZE) invalid("Truncated recording visual sample entry")
+        val header = ByteBuffer.wrap(reader.read(entry.start, VISUAL_HEADER_SIZE))
+        validateVisualHeader(header)
+        val index = header.getShort(DATA_REFERENCE_OFFSET).toInt() and USHORT_MASK
+        if (index != 1) invalid("Invalid recording sample entry data reference index")
+        validateDataReference(mediaInfo.child("dinf").child("dref"))
+        validateExtensions(entry)
+    }
+
+    private fun validateVisualHeader(header: ByteBuffer) {
+        val reserved = ByteArray(DATA_REFERENCE_OFFSET).also { header.get(it) }
+        if (reserved.any { it != 0.toByte() } || header.getShort(VISUAL_VERSION_OFFSET) != 0.toShort()) {
+            invalid("Unsupported recording visual sample entry header")
+        }
+        val width = header.getShort(VISUAL_WIDTH_OFFSET).toInt() and USHORT_MASK
+        val height = header.getShort(VISUAL_HEIGHT_OFFSET).toInt() and USHORT_MASK
+        if (width == 0 || height == 0 || header.getShort(VISUAL_FRAME_COUNT_OFFSET) != 1.toShort()) {
+            invalid("Invalid recording visual sample dimensions or frame count")
+        }
+    }
+
+    private suspend fun validateDataReference(references: ContainerBox) {
+        val reference = singleEntry(references, "data reference")
+        val localType = reference.type == "url " || reference.type == "alis"
+        if (!localType || (reference.end ?: 0) - reference.start != TYPE_SIZE.toLong()) {
+            invalid("Unsupported recording data reference")
+        }
+        if (ByteBuffer.wrap(reader.read(reference.start, TYPE_SIZE)).int != 1) {
+            invalid("Unsupported external recording data reference")
+        }
+    }
+
+    private suspend fun singleEntry(box: ContainerBox, label: String): ContainerBox {
+        if ((box.end ?: 0) - box.start < HEADER_SIZE) invalid("Truncated recording $label table")
+        val header = ByteBuffer.wrap(reader.read(box.start, HEADER_SIZE))
+        if (header.int != 0 || header.int != 1) invalid("Unsupported recording $label table")
+        val entry = reader.header(add(box.start, HEADER_SIZE.toLong()), box.end)
+        if (entry.end != box.end) invalid("Invalid recording $label entry count")
+        return entry
+    }
+
+    private suspend fun validateExtensions(entry: ContainerBox) {
+        var offset = add(entry.start, VISUAL_HEADER_SIZE.toLong())
+        val end = entry.end ?: invalid("Missing recording sample entry end")
+        var configuration: ContainerBox? = null
+        while (offset < end) {
+            // QuickTime visual sample extensions may end with a four-byte zero terminator.
+            if (end - offset == TYPE_SIZE.toLong() && reader.read(offset, TYPE_SIZE).all { it == 0.toByte() }) break
+            val child = reader.header(offset, end)
+            if (child.type == "sinf") invalid("Unsupported protected recording sample entry")
+            if (child.type == "avcC") {
+                if (configuration != null) invalid("Duplicate recording AVC configuration")
+                configuration = child
+            }
+            offset = child.end ?: invalid("Unsupported recording sample entry extension")
+        }
+        val avc = configuration ?: invalid("Missing recording AVC configuration")
+        AvcConfigurationReader(reader, avc).validate()
+    }
+}
+
+private class AvcConfigurationReader(private val reader: ContainerReader, private val box: ContainerBox) {
+    private var offset = box.start
+    private val remaining: Long get() = (box.end ?: 0) - offset
+
+    suspend fun validate() {
+        val header = read(AVC_CONFIG_HEADER_SIZE)
+        if (header.get().toInt() != 1) invalid("Unsupported recording AVC configuration version")
+        val profile = header.get().toInt() and UBYTE_MASK
+        header.position(AVC_LENGTH_SIZE_OFFSET)
+        val lengthSize = header.get().toInt() and UBYTE_MASK
+        if (lengthSize !in AVC_LENGTH_SIZES) invalid("Invalid recording AVC configuration length size")
+        val sequences = header.get().toInt() and UBYTE_MASK
+        if (sequences and AVC_SEQUENCE_RESERVED != AVC_SEQUENCE_RESERVED) {
+            invalid("Invalid recording AVC configuration reserved bits")
+        }
+        parameterSets(sequences and AVC_NAL_TYPE_MASK, AVC_SEQUENCE_TYPE)
+        parameterSets(read(1).get().toInt() and UBYTE_MASK, AVC_PICTURE_TYPE)
+        if (remaining > 0) highProfileExtension(profile)
+        if (remaining != 0L) invalid("Invalid trailing recording AVC configuration data")
+    }
+
+    private suspend fun highProfileExtension(profile: Int) {
+        if (profile !in AVC_EXTENDED_PROFILES) invalid("Unsupported recording AVC configuration extension")
+        val extension = read(TYPE_SIZE)
+        val chroma = extension.get().toInt() and UBYTE_MASK
+        val lumaDepth = extension.get().toInt() and UBYTE_MASK
+        val chromaDepth = extension.get().toInt() and UBYTE_MASK
+        val validDepths = lumaDepth in AVC_BIT_DEPTHS && chromaDepth in AVC_BIT_DEPTHS
+        if (chroma and AVC_CHROMA_RESERVED != AVC_CHROMA_RESERVED || !validDepths) {
+            invalid("Invalid recording AVC configuration profile extension")
+        }
+        val count = extension.get().toInt() and UBYTE_MASK
+        if (count > 0) parameterSets(count, AVC_SEQUENCE_EXTENSION_TYPE)
+    }
+
+    private suspend fun parameterSets(count: Int, type: Int) {
+        if (count == 0) invalid("Missing recording AVC configuration parameter sets")
+        repeat(count) {
+            val size = read(SHORT_SIZE).short.toInt() and USHORT_MASK
+            if (size == 0 || size > remaining) invalid("Invalid recording AVC configuration parameter set length")
+            val header = read(1).get().toInt() and UBYTE_MASK
+            if (header and AVC_FORBIDDEN_BIT != 0 || header and AVC_NAL_TYPE_MASK != type) {
+                invalid("Invalid recording AVC configuration parameter set type")
+            }
+            offset = add(offset, size - 1L)
+        }
+    }
+
+    private suspend fun read(count: Int): ByteBuffer {
+        if (count > remaining) invalid("Truncated recording AVC configuration")
+        val bytes = reader.read(offset, count)
+        offset = add(offset, count.toLong())
+        return ByteBuffer.wrap(bytes)
+    }
+}
+
+private class TableCursor(private val reader: ContainerReader, private val box: ContainerBox) {
+    private var offset = box.start
+    private var buffer = ByteBuffer.allocate(0)
+
+    suspend fun word(): Long = bytes(TYPE_SIZE).int.toLong() and UINT_MASK
+
+    suspend fun longWord(): Long = bytes(LONG_SIZE).long.also {
+        if (it < 0) invalid("Recording offset overflow")
+    }
+
+    suspend fun version() {
+        if (word() != 0L) invalid("Unsupported recording table version or flags")
+    }
+
+    fun finished() {
+        if (offset != box.end) invalid("Recording table count does not match box size")
+    }
+
+    private suspend fun bytes(count: Int): ByteBuffer {
+        val remaining = (box.end ?: 0) - offset
+        if (remaining < count) invalid("Truncated recording sample table")
+        if (buffer.remaining() < count) {
+            buffer = ByteBuffer.wrap(reader.read(offset, minOf(remaining, MAX_READ_BYTES.toLong()).toInt()))
+        }
+        offset += count
+        return buffer
+    }
+}
+
+private fun invalid(message: String): Nothing = throw RecordingException(message)
+
+private fun add(left: Long, right: Long): Long {
+    if (right < 0 || left > Long.MAX_VALUE - right) invalid("Recording offset overflow")
+    return left + right
+}
+
+private const val HEADER_SIZE = 8
+private const val EXTENDED_HEADER_SIZE = 16
+private const val TYPE_SIZE = 4
+private const val LONG_SIZE = 8
+private const val UINT_MASK = 0xffffffffL
+private const val MAX_BOXES = 10_000
+private const val MAX_DEPTH = 8
+private const val MAX_READ_BYTES = 4096
+private const val MAX_TABLE_ENTRIES = 1_000_000
+private const val HANDLER_SIZE = 24
+private const val VISUAL_HEADER_SIZE = 78
+private const val DATA_REFERENCE_OFFSET = 6
+private const val VISUAL_VERSION_OFFSET = 8
+private const val VISUAL_WIDTH_OFFSET = 24
+private const val VISUAL_HEIGHT_OFFSET = 26
+private const val VISUAL_FRAME_COUNT_OFFSET = 40
+private const val USHORT_MASK = 0xffff
+private const val UBYTE_MASK = 0xff
+private const val SHORT_SIZE = 2
+private const val AVC_CONFIG_HEADER_SIZE = 6
+private const val AVC_LENGTH_SIZE_OFFSET = 4
+private const val AVC_SEQUENCE_RESERVED = 0xe0
+private const val AVC_CHROMA_RESERVED = 0xfc
+private const val AVC_FORBIDDEN_BIT = 0x80
+private const val AVC_NAL_TYPE_MASK = 0x1f
+private const val AVC_SEQUENCE_TYPE = 7
+private const val AVC_PICTURE_TYPE = 8
+private const val AVC_SEQUENCE_EXTENSION_TYPE = 13
+private const val AVC_ONE_BYTE_LENGTH = 0xfc
+private const val AVC_TWO_BYTE_LENGTH = 0xfd
+private const val AVC_FOUR_BYTE_LENGTH = 0xff
+private const val AVC_EIGHT_BIT_DEPTH = 0xf8
+private const val AVC_FOURTEEN_BIT_DEPTH = 0xfe
+private const val AVC_HIGH_PROFILE = 100
+private const val AVC_HIGH_TEN_PROFILE = 110
+private const val AVC_HIGH_422_PROFILE = 122
+private const val AVC_HIGH_444_PROFILE = 144
+private val AVC_LENGTH_SIZES = setOf(AVC_ONE_BYTE_LENGTH, AVC_TWO_BYTE_LENGTH, AVC_FOUR_BYTE_LENGTH)
+private val AVC_BIT_DEPTHS = AVC_EIGHT_BIT_DEPTH..AVC_FOURTEEN_BIT_DEPTH
+private val AVC_EXTENDED_PROFILES = setOf(
+    AVC_HIGH_PROFILE, AVC_HIGH_TEN_PROFILE, AVC_HIGH_422_PROFILE, AVC_HIGH_444_PROFILE
+)
+private val CONTAINER_BOXES = setOf("moov", "trak", "mdia", "minf", "stbl", "dinf")
+private val FRAGMENT_BOXES = setOf("moof", "mvex", "traf")
+private val UNSUPPORTED_TABLES = setOf("stz2", "senc", "saiz", "saio")

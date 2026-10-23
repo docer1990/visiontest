@@ -24,7 +24,7 @@ cleanup() {
   set +e
   if [[ "$platform" == android && -n "$native_pid" ]]; then
     adb -s "$target" logcat -d -t 500 > "$evidence/logcat.log" 2>&1
-    adb -s "$target" shell am force-stop com.example.automationserver >> "$evidence/cleanup.log" 2>&1
+    adb -s "$target" shell am force-stop dev.visiontest.automationserver >> "$evidence/cleanup.log" 2>&1
     if [[ $? != 0 && $status == 0 ]]; then status=1; fi
   fi
   if [[ "$forwarded" == true ]]; then
@@ -62,8 +62,8 @@ if [[ "$platform" == android ]]; then
   adb -s "$target" forward tcp:9008 tcp:9008
   forwarded=true
   adb -s "$target" shell am instrument -w -e port 9008 \
-    -e class 'com.example.automationserver.AutomationServerTest#runAutomationServer' \
-    com.example.automationserver.test/com.example.automationserver.AutomationInstrumentationRunner \
+    -e class 'dev.visiontest.automationserver.AutomationServerTest#runAutomationServer' \
+    dev.visiontest.automationserver.test/dev.visiontest.automationserver.AutomationInstrumentationRunner \
     > "$evidence/native-server.log" 2>&1 &
   native_pid=$!
   port=9008

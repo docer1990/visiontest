@@ -8,7 +8,7 @@ This capability provides explicit, scriptable teardown of the Android instrument
 
 ### Requirement: Android stop force-stops both packages and removes the host forward
 
-Android stop MUST health-check whether the server was running, issue `am force-stop` for `com.example.automationserver.test` and then `com.example.automationserver`, and request removal of the host endpoint `tcp:9008` with `adb forward --remove`.
+Android stop MUST health-check whether the server was running, issue `am force-stop` for `dev.visiontest.automationserver.test` and then `dev.visiontest.automationserver`, and request removal of the host endpoint `tcp:9008` with `adb forward --remove`.
 
 #### Scenario: Running Android server stops
 
@@ -92,6 +92,6 @@ The MCP contract MUST expose Android `stop_automation_server` and iOS `ios_stop_
 
 ## Verification
 
-- Production lifecycle logic: `app/src/main/kotlin/com/example/visiontest/tools/AndroidStopToolRegistrar.kt`, `app/src/main/kotlin/com/example/visiontest/tools/IOSAutomationToolRegistrar.kt`, `app/src/main/kotlin/com/example/visiontest/config/AutomationConfig.kt`
-- Production facades: `app/src/main/kotlin/com/example/visiontest/cli/commands/StopAutomationServerCommand.kt`, `app/src/main/kotlin/com/example/visiontest/cli/ComponentHolder.kt`, `app/src/main/kotlin/com/example/visiontest/ToolFactory.kt`
-- Executable tests: `app/src/test/kotlin/com/example/visiontest/tools/AndroidStopToolRegistrarTest.kt`, `app/src/test/kotlin/com/example/visiontest/cli/CliCommandIntegrationTest.kt`, `app/src/test/kotlin/com/example/visiontest/McpStdioE2ETest.kt`
+- Production lifecycle logic: `app/src/main/kotlin/dev/visiontest/tools/AndroidStopToolRegistrar.kt`, `app/src/main/kotlin/dev/visiontest/tools/IOSAutomationToolRegistrar.kt`, `app/src/main/kotlin/dev/visiontest/config/AutomationConfig.kt`
+- Production facades: `app/src/main/kotlin/dev/visiontest/cli/commands/StopAutomationServerCommand.kt`, `app/src/main/kotlin/dev/visiontest/cli/ComponentHolder.kt`, `app/src/main/kotlin/dev/visiontest/ToolFactory.kt`
+- Executable tests: `app/src/test/kotlin/dev/visiontest/tools/AndroidStopToolRegistrarTest.kt`, `app/src/test/kotlin/dev/visiontest/cli/CliCommandIntegrationTest.kt`, `app/src/test/kotlin/dev/visiontest/McpStdioE2ETest.kt`

@@ -74,7 +74,7 @@ def _validate_case(case, index, platform):
                 ["adb", "-s", "{target}", "install", "-r", "{fixtureArtifact}"],
                 ["adb", "-s", "{target}", "shell", "am", "force-stop", "{fixtureIdentity}"],
                 ["adb", "-s", "{target}", "shell", "am", "start", "-n",
-                 "com.example.visiontest.benchmark/.MainActivity",
+                 "dev.visiontest.benchmark/.MainActivity",
                  "--es", "scenario", "{scenario}", "--es", "language", "{language}"],
             ]
         else:
@@ -149,8 +149,8 @@ def load_manifest(path: Path) -> dict:
     target = manifest.get("target")
     if not isinstance(target, str) or not target.strip():
         raise ValueError("target must identify exactly one configured device")
-    if manifest.get("fixtureIdentity") != "com.example.visiontest.benchmark":
-        raise ValueError("fixtureIdentity must be com.example.visiontest.benchmark")
+    if manifest.get("fixtureIdentity") != "dev.visiontest.benchmark":
+        raise ValueError("fixtureIdentity must be dev.visiontest.benchmark")
     if not isinstance(manifest.get("fixtureArtifact"), str) or not manifest["fixtureArtifact"].strip():
         raise ValueError("fixtureArtifact must identify the built benchmark fixture")
     if not isinstance(manifest.get("fixtureRevision"), str) or not manifest["fixtureRevision"].strip():

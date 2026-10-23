@@ -4,6 +4,13 @@
 
 iOS bundle distribution packages a portable, prebuilt XCUITest server for fast startup on compatible Apple Silicon Macs while preserving source-build startup when the prebuilt artifact cannot be used.
 
+From 1.0.0, the host bundle identifier MUST be
+`dev.visiontest.IOSAutomationServer`. The UI-test and unit-test targets MUST use
+`dev.visiontest.IOSAutomationServerUITests` and
+`dev.visiontest.IOSAutomationServerTests`, respectively. Build product names and
+Xcode scheme names remain unchanged. Old `com.example` installations are not
+automatically migrated or removed; stop old servers before starting the new bundle.
+
 ### Native timing compatibility
 
 An older installed XCUITest bundle continues to serve existing JSON-RPC commands
@@ -135,5 +142,5 @@ Startup MUST poll a prebuilt launch for health every two seconds for up to 30 at
 
 - Release production workflow: `.github/workflows/release.yaml`
 - Installer production behavior: `install.sh`
-- Runtime production discovery and launch: `app/src/main/kotlin/com/example/visiontest/discovery/ToolDiscovery.kt`, `app/src/main/kotlin/com/example/visiontest/tools/IOSAutomationToolRegistrar.kt`, `app/src/main/kotlin/com/example/visiontest/config/IOSAutomationConfig.kt`
-- Executable discovery and command-construction tests: `app/src/test/kotlin/com/example/visiontest/ToolFactoryPathTest.kt`
+- Runtime production discovery and launch: `app/src/main/kotlin/dev/visiontest/discovery/ToolDiscovery.kt`, `app/src/main/kotlin/dev/visiontest/tools/IOSAutomationToolRegistrar.kt`, `app/src/main/kotlin/dev/visiontest/config/IOSAutomationConfig.kt`
+- Executable discovery and command-construction tests: `app/src/test/kotlin/dev/visiontest/ToolFactoryPathTest.kt`

@@ -4,10 +4,10 @@ plugins {
 }
 
 android {
-    namespace = "com.example.visiontest.benchmark"
+    namespace = "dev.visiontest.benchmark"
     compileSdk = 34
     defaultConfig {
-        applicationId = "com.example.visiontest.benchmark"
+        applicationId = "dev.visiontest.benchmark"
         minSdk = 23
         targetSdk = 34
         versionCode = 1

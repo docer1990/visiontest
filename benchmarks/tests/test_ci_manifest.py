@@ -37,13 +37,13 @@ class ManifestTests(unittest.TestCase):
         from benchmarks import ci_manifest
         for platform in ('ios', 'android'):
             result = ci_manifest.build_manifest(platform, 'selected', {}, 'fixture-tree')
-            self.assertEqual(result['fixtureIdentity'], 'com.example.visiontest.benchmark')
+            self.assertEqual(result['fixtureIdentity'], 'dev.visiontest.benchmark')
             self.assertEqual(result['fixtureRevision'], 'fixture-tree')
             self.assertEqual(result['target'], 'selected')
             self.assertTrue(all(case['timeoutMs'] == 20000 for case in result['cases']))
             self.assertEqual(result['processEnvironment']['VISIONTEST_TRACE_PERFORMANCE'], '')
             lookup = next(case for case in result['cases'] if case['id'] == 'lookup')
-            self.assertEqual(lookup['mcpArguments']['resourceId'], 'start' if platform == 'ios' else 'com.example.visiontest.benchmark:id/start')
+            self.assertEqual(lookup['mcpArguments']['resourceId'], 'start' if platform == 'ios' else 'dev.visiontest.benchmark:id/start')
 
     def test_builder_rejects_invalid_configuration(self):
         from benchmarks import ci_manifest

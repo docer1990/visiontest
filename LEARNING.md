@@ -231,8 +231,8 @@ Android Instrumentation is a framework for running test code that can:
 ```bash
 adb shell am instrument -w \
   -e port 9008 \
-  -e class com.example.automationserver.AutomationServerTest#runAutomationServer \
-  com.example.automationserver.test/com.example.automationserver.AutomationInstrumentationRunner
+  -e class dev.visiontest.automationserver.AutomationServerTest#runAutomationServer \
+  dev.visiontest.automationserver.test/dev.visiontest.automationserver.AutomationInstrumentationRunner
 ```
 
 Breaking this down:
@@ -465,7 +465,7 @@ object AutomationConfig {
     const val MIN_PORT = 1024
     const val MAX_PORT = 65535
     const val DEFAULT_HOST = "localhost"
-    const val AUTOMATION_SERVER_PACKAGE = "com.example.automationserver"
+    const val AUTOMATION_SERVER_PACKAGE = "dev.visiontest.automationserver"
 }
 
 class AutomationClient(port: Int = AutomationConfig.DEFAULT_PORT)

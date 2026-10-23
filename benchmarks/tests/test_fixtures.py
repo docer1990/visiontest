@@ -11,7 +11,7 @@ from benchmarks.tests import test_fixture_smoke
 
 class FixtureTargetTest(unittest.TestCase):
     def test_duplicate_label_smoke_accepts_platform_qualified_identifiers(self):
-        identity = "com.example.visiontest.benchmark"
+        identity = "dev.visiontest.benchmark"
         for platform in ("android", "ios"):
             with self.subTest(platform=platform):
                 payload = {"elements": [
@@ -81,7 +81,7 @@ class FixtureTargetTest(unittest.TestCase):
         self.assertNotIn("scenario=appear", resolved)
 
     def test_selector_resource_ids_follow_platform_conventions(self):
-        identity = "com.example.visiontest.benchmark"
+        identity = "dev.visiontest.benchmark"
         self.assertEqual(f"{identity}:id/done", selector_resource_id("android", identity, "done"))
         self.assertEqual("done", selector_resource_id("ios", identity, "done"))
 
@@ -106,7 +106,7 @@ class FixtureTargetTest(unittest.TestCase):
             resolve_argv(["adb", "{unknown}"], {"target": "device-1"})
 
     def test_fixture_identity_must_match_the_platform_package(self):
-        validate_fixture_identity("android", "com.example.visiontest.benchmark")
+        validate_fixture_identity("android", "dev.visiontest.benchmark")
         with self.assertRaises(ValueError):
             validate_fixture_identity("ios", "com.example.user.app")
 

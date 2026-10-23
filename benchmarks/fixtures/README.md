@@ -2,7 +2,7 @@
 
 These apps contain synthetic screens only. They never read or store user data.
 Android uses platform Views and iOS uses UIKit. Both use
-`com.example.visiontest.benchmark`; startup resets the selected scenario and
+`dev.visiontest.benchmark`; startup resets the selected scenario and
 language (`en` or `it`). The `appear` and `disappear` scenarios use a fixed
 750 ms fixture delay. Keep that delay outside command CPU comparisons.
 

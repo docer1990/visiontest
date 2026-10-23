@@ -41,7 +41,7 @@ def summarize_samples(samples: list[dict]) -> dict:
             "pairedMedianDeltaMs": statistics.median(deltas) if deltas else None}
 
 
-FIXTURE = "com.example.visiontest.benchmark"
+FIXTURE = "dev.visiontest.benchmark"
 
 
 def fixture_selector(platform_name, identifier, target=False):

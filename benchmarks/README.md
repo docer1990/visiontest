@@ -54,7 +54,7 @@ Run JVM tests, including focused host/native timing tests and packaged-JAR tests
 ```bash
 ./gradlew :app:test
 ./gradlew :automation-server:test
-./gradlew :app:test --tests 'com.example.visiontest.performance.*'
+./gradlew :app:test --tests 'dev.visiontest.performance.*'
 ./gradlew :automation-server:testDebugUnitTest --tests '*NativeTimingRecorderTest'
 ./gradlew :app:e2eTest --tests '*PerformanceTraceE2ETest'
 ```

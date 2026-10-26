@@ -49,7 +49,12 @@ import dev.visiontest.performance.resolveTracePath
  * A [ComponentHolder] is created lazily on first subcommand execution so that
  * `visiontest --help` does not initialize ADB connections or register shutdown hooks.
  */
-class VisionTestCli internal constructor(private val trace: TraceRuntime) : NoOpCliktCommand(name = "visiontest") {
+class VisionTestCli internal constructor(
+    private val trace: TraceRuntime,
+    componentsProvider: (() -> ComponentHolder)? = null,
+    private val resultRunner: (suspend () -> CliResult) -> Unit = { runCliResultCommand(it, trace::finish) },
+    readStdin: () -> String = { System.`in`.bufferedReader().readText() },
+) : NoOpCliktCommand(name = "visiontest") {
     constructor() : this(TraceRuntime("cli", System.nanoTime()))
 
     @Suppress("UnusedPrivateProperty") // Eager conversion configures tracing even when help exits parsing.
@@ -61,10 +66,12 @@ class VisionTestCli internal constructor(private val trace: TraceRuntime) : NoOp
         trace.configure(path)
         value
     }
-    private val components by lazy { trace.initializeComponents { ComponentHolder.createDefault(trace.recorder) } }
+    private val components by lazy {
+        trace.initializeComponents { componentsProvider?.invoke() ?: ComponentHolder.createDefault(trace.recorder) }
+    }
 
     private fun runner(name: String): CliCommandRunner = { block ->
-        runCliCommand({ trace.cliInvocation(name, block) }, trace::finish)
+        resultRunner { trace.cliInvocation(name) { CliResult(ExitCode.Success.value, block(), null) } }
     }
 
     init {
@@ -72,8 +79,8 @@ class VisionTestCli internal constructor(private val trace: TraceRuntime) : NoOp
         versionOption(VersionInfo.version)
         subcommands(
             FlowCommand(lazy { components }, runner = { block ->
-                runCliResultCommand({ trace.cliInvocation("flow", block) }, trace::finish)
-            }),
+                resultRunner { trace.cliInvocation("flow", block) }
+            }, readStdin = readStdin),
             // Setup
             InstallAutomationServerCommand(lazy { components }, runner = runner("install_automation_server")),
             StartAutomationServerCommand(lazy { components }, runner = runner("start_automation_server")),

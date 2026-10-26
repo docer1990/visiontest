@@ -3,15 +3,10 @@ package dev.visiontest
 import dev.visiontest.performance.TraceRuntime
 import dev.visiontest.performance.resolveTracePath
 import dev.visiontest.android.Android
-import dev.visiontest.cli.CliExit
-import dev.visiontest.cli.ExitCode
-import dev.visiontest.cli.VisionTestCli
+import dev.visiontest.cli.CliExecutionContext
+import dev.visiontest.cli.CliRequestExecutor
 import dev.visiontest.ios.IOSManager
 import dev.visiontest.config.AppConfig
-import com.github.ajalt.clikt.core.CliktError
-import com.github.ajalt.clikt.core.PrintHelpMessage
-import com.github.ajalt.clikt.core.PrintMessage
-import com.github.ajalt.clikt.core.UsageError
 import io.ktor.utils.io.streams.asInput
 import io.modelcontextprotocol.kotlin.sdk.*
 import io.modelcontextprotocol.kotlin.sdk.server.*
@@ -26,55 +21,15 @@ fun main(args: Array<String>) {
     val entryNs = System.nanoTime()
     when (route(args)) {
         Route.McpServer -> runMcpServer(TraceRuntime("mcp", entryNs))
-        Route.Cli -> runCli(args, TraceRuntime("cli", entryNs))
+        Route.Cli -> runCli(args, entryNs)
     }
 }
 
-private fun runCli(args: Array<String>, trace: TraceRuntime) {
-    try {
-        VisionTestCli(trace).parse(args)
-    } catch (e: CliExit) {
-        // Safety net: all CliExit exceptions should be caught by runCliCommand inside
-        // each subcommand's run(). This catch handles any that escape during arg parsing.
-        System.err.println(e.message)
-        finishCli(trace, "other", e)
-        kotlin.system.exitProcess(e.code.value)
-    } catch (e: UsageError) {
-        val defaultFormatter = object : com.github.ajalt.clikt.output.ParameterFormatter {
-            override fun formatOption(name: String) = name
-            override fun formatArgument(name: String) = "<$name>"
-            override fun formatSubcommand(name: String) = name
-        }
-        val loc = e.context?.localization ?: object : com.github.ajalt.clikt.output.Localization {}
-        val msg = e.formatMessage(loc, defaultFormatter)
-        System.err.println(msg)
-        finishCli(trace, e.context?.command?.commandName ?: "other", e)
-        kotlin.system.exitProcess(ExitCode.UsageError.value)
-    } catch (e: PrintHelpMessage) {
-        val cmd = e.context?.command
-        if (cmd != null) {
-            println(cmd.getFormattedHelp())
-        }
-        finishCli(trace, "help", if (e.error) e else null)
-        kotlin.system.exitProcess(if (e.error) 1 else 0)
-    } catch (e: PrintMessage) {
-        // Informational output such as --version: print to stdout, exit per the message.
-        e.message?.let { println(it) }
-        finishCli(trace, "version", null)
-        kotlin.system.exitProcess(e.statusCode)
-    } catch (e: CliktError) {
-        System.err.println(e.message.orEmpty())
-        finishCli(trace, "other", e)
-        kotlin.system.exitProcess(ExitCode.GenericFailure.value)
-    }
-    trace.finish()
-}
-
-private fun finishCli(trace: TraceRuntime, operation: String, failure: Throwable?) {
-    runBlocking {
-        runCatching { trace.cliInvocation(operation) { if (failure != null) throw failure } }
-    }
-    trace.finish()
+private fun runCli(args: Array<String>, entryNs: Long) {
+    val result = CliRequestExecutor { entryNs }.execute(args, CliExecutionContext.local())
+    result.stdout?.let(::println)
+    result.stderr?.let(System.err::println)
+    kotlin.system.exitProcess(result.exitCode)
 }
 
 internal enum class Route { McpServer, Cli }

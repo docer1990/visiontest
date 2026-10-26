@@ -22,3 +22,4 @@ Technical Decisions (TDs) preserve the rationale for consequential architectural
 | [TD-016](TD-016-execute-flows-through-prepared-shared-operations.md) | Execute flows through prepared shared operations | Accepted |
 | [TD-018](TD-018-manage-flow-recording-with-host-owned-system-recorders.md) | Manage flow recording with host-owned system recorders | Accepted |
 | [TD-019](TD-019-use-platform-specific-recording-readiness.md) | Use platform-specific recording readiness | Accepted |
+| [TD-020](TD-020-reuse-a-local-kotlin-daemon-for-cli-commands.md) | Reuse a local Kotlin daemon for CLI commands | Accepted |

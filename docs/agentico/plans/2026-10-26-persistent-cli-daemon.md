@@ -245,6 +245,11 @@ Commit `feat: add private versioned daemon transport and registry`.
 
 ## Task 5: Execute serialized daemon requests and bound their lifetime
 
+**Parallel group:** A, in the feature checkout. Task 6A uses only the reviewed
+Task 4 protocol and runs in its own worktree. Both checkpoints must clear before
+Task 6B integrates the default entry path. This scheduling split accelerates the
+functional delivery without changing the approved behavior.
+
 **Files:** Create `daemon/DaemonHost.kt` and focused lifecycle/admission helper files
 if needed; test `daemon/DaemonHostTest.kt`, `daemon/DaemonCancellationTest.kt`.
 Integrate Tasks 1–4 without modifying native protocols.
@@ -282,7 +287,28 @@ Run `./gradlew :app:test --tests '*DaemonHostTest' --tests '*DaemonCancellationT
 Expected first failure: host absent; final: deterministic lifecycle tests pass.
 Commit `feat: coordinate persistent daemon requests and cancellation`.
 
-## Task 6: Route ordinary CLI commands through the thin automatic client
+## Task 6A: Build the thin client, launcher and routing primitives
+
+**Parallel group:** B, isolated worktree off the Task 4 checkpoint `f5101a0`.
+
+Implement `DaemonClient.kt`, `DaemonLauncher.kt`, `CliRouting.kt` and their focused
+tests against the reviewed protocol. Use real Unix socket fixtures for relay,
+compatibility, cancellation, stdin and no-replay behavior. The launcher accepts a
+command provider for tests and uses a hidden host entry-point string for production;
+it must not reference an unimplemented host class at compile time. Do not change
+`Main.kt`, CLI root registration, legacy E2E fixtures or the default execution path
+in this group. The checkpoint reviews these independently testable primitives.
+
+**Review:** checkpoint. Task 6B consumes these interfaces and Task 5's host.
+
+Use Task 6B's client requirements below for behavior and verification. Commit this
+group as `feat: add thin daemon client and lightweight routing`.
+
+## Task 6B: Route ordinary CLI commands through the thin automatic client
+
+Merge the independently reviewed Task 5 and Task 6A work, run the full app suite,
+then connect the hidden host entry point, default routing and lifecycle help.
+Retain Task 6A's tested primitives and complete the process acceptance cases below.
 
 **Files:** Create `daemon/DaemonClient.kt`, `daemon/DaemonLauncher.kt`,
 `daemon/CliRouting.kt`; modify `Main.kt` and CLI root help; tests

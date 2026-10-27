@@ -69,7 +69,7 @@ class WaitOutputE2ETest {
         val stderr = Files.createTempFile(directory, "stderr-", ".txt")
         val command = listOf(
             Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-            "-jar", System.getProperty("visiontest.jar"), "wait_for_element", "-p", platform.value,
+            "-jar", System.getProperty("visiontest.jar"), "--standalone", "wait_for_element", "-p", platform.value,
             "--text", "Ready", "--timeout", "1",
         ) + (if (gone) listOf("--gone") else emptyList()) +
             (if (json) listOf("--json") else emptyList())

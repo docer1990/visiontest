@@ -33,6 +33,7 @@ import dev.visiontest.cli.commands.WaitForElementCommand
 import dev.visiontest.config.VersionInfo
 import com.github.ajalt.clikt.core.NoOpCliktCommand
 import com.github.ajalt.clikt.core.subcommands
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.convert
@@ -56,7 +57,12 @@ class VisionTestCli internal constructor(
     private val resultRunner: (suspend () -> CliResult) -> Unit = { runCliResultCommand(it, trace::finish) },
     readStdin: () -> String = { System.`in`.bufferedReader().readText() },
     acquireComponents: ((TraceRuntime) -> ComponentHolder)? = null,
-) : NoOpCliktCommand(name = "visiontest") {
+) : NoOpCliktCommand(name = "visiontest", help =
+    "Device commands automatically reuse a local daemon. Manage it with daemon start, daemon status [--json], " +
+        "or daemon stop. Use --standalone to execute in this JVM.") {
+    @Suppress("UnusedPrivateProperty")
+    private val standalone by option("--standalone", help = "Execute device commands in this JVM").flag()
+
     constructor() : this(TraceRuntime("cli", System.nanoTime()))
 
     @Suppress("UnusedPrivateProperty") // Eager conversion configures tracing even when help exits parsing.

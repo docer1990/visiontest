@@ -47,7 +47,7 @@ internal class RecordingExecutableFixture(val directory: Path) : AutoCloseable {
             else -> error("Unknown input mode $inputMode")
         }
         val builder = ProcessBuilder(listOf(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-            "-jar", System.getProperty("visiontest.jar"), "flow", "-p", platform.value, "--record",
+            "-jar", System.getProperty("visiontest.jar"), "--standalone", "flow", "-p", platform.value, "--record",
             "--timeout", "15000", "--step-timeout", "10000") +
             (if (json) listOf("--json") else emptyList()) + source)
         isolateEnvironment(builder, failure)

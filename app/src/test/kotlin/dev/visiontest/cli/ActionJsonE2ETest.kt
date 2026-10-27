@@ -58,7 +58,7 @@ class ActionJsonE2ETest {
         val stderr = Files.createTempFile(directory, "stderr-", ".txt")
         val process = ProcessBuilder(
             Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-            "-jar", System.getProperty("visiontest.jar"), "press_home", "-p", platform.value, "--json",
+            "-jar", System.getProperty("visiontest.jar"), "--standalone", "press_home", "-p", platform.value, "--json",
         ).directory(directory.toFile()).redirectOutput(stdout.toFile()).redirectError(stderr.toFile()).start()
         try {
             process.outputStream.close()

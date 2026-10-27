@@ -30,14 +30,22 @@ One daemon per operating-system user coordinates the fixed native endpoints.
 A Unix-domain socket, instance metadata and lock live in a private user-owned
 runtime directory. The directory must reject symbolic links, foreign ownership
 and group/other access. The socket and metadata are accessible only to its owner.
-A test-only runtime-directory override permits process tests without touching a
-developer's running daemon. Unsupported socket paths fail with a useful diagnostic.
+`VISIONTEST_DAEMON_DIR` selects an absolute private runtime directory for isolated
+process tests or explicit instance isolation. Its default is a short per-user path
+under `/tmp`. Separate instances must not drive the same native target concurrently;
+instance isolation does not coordinate the fixed native endpoints. Unsupported
+socket paths fail with a useful diagnostic.
 
 Messages are length-delimited UTF-8 JSON with explicit protocol version, request
 identity and message kind. Clients verify the protocol and application build
 identity before submitting work. Incompatible live daemons are reported, never
 silently killed or replaced. Build identity distinguishes different development
-builds carrying the same application version. A stale socket is removed only
+builds carrying the same application version. A generated SHA-256 resource covers
+main sources/resources, build configuration, and runtime dependency identities and
+content; clients read this small resource without hashing the running JAR. A
+missing identity resource fails clearly. Control status/stop remain possible across
+application build differences when the protocol matches; execution requires the
+full identity to match. A stale socket is removed only
 under the instance lock after establishing that no live owner holds that lock.
 
 The starting daemon holds the instance lock for its lifetime. Concurrent clients
@@ -116,9 +124,12 @@ Known results remain known; a lost response reports uncertainty and never causes
 a retry, crash resume or standalone fallback. Requests and I/O waits have finite
 limits; long flows retain their documented execution and finalization budgets.
 
-Protocol request/stdin messages are limited to 8 MiB. Output is sent in bounded
-chunks; any overall output limit must fail explicitly without truncating a valid
-JSON result or claiming an undispatched operation. Daemon logs use bounded storage.
+Protocol request/stdin frames are limited to 8 MiB, including their JSON envelope.
+A four-byte big-endian positive length precedes each strict UTF-8 JSON object.
+Output uses base64 byte chunks of at most 64 KiB and a total budget of 64 MiB per
+request across stdout/stderr. Exceeding this budget is an infrastructure failure
+with potentially uncertain dispatch, never successful truncated JSON or a claim
+that the operation was undispatched. Daemon logs use bounded storage.
 
 ## Verification and measurement
 

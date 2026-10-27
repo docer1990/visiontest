@@ -329,6 +329,14 @@ class IOSAutomationToolRegistrar internal constructor(
         }
     }
 
+    /** Releases only the startup child retained by this registrar. */
+    @Synchronized
+    internal fun close() {
+        val process = iosXcodebuildProcess
+        iosXcodebuildProcess = null
+        if (process != null && process.isAlive) process.destroyForcibly()
+    }
+
     // ==================== MCP Tool Registrations ====================
 
     private fun registerStartAutomationServer(scope: ToolScope) {

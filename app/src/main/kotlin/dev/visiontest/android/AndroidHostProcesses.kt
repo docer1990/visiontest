@@ -15,10 +15,14 @@ internal class AndroidHostProcesses(
     },
 )
 
-private fun startCallerAdb() {
+internal fun callerAdbExecutable(): String {
     val context = CliExecutionContext.current()
     val sdk = context.environmentValue("ANDROID_HOME") ?: context.environmentValue("ANDROID_SDK_ROOT")
-    val adb = sdk?.let { context.resolve(it).resolve("platform-tools/adb").toString() } ?: "adb"
+    return sdk?.let { context.resolve(it).resolve("platform-tools/adb").toString() } ?: "adb"
+}
+
+private fun startCallerAdb() {
+    val adb = callerAdbExecutable()
     val process = HostProcessContext.builder(listOf(adb, "-P", "5037", "start-server"))
         .redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
     try {

@@ -3,6 +3,8 @@ package dev.visiontest.performance
 import dev.visiontest.config.VersionInfo
 import dev.visiontest.cli.CliExecutionContext
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.asContextElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.nio.file.Path
@@ -45,6 +47,12 @@ internal class TraceRuntime(
     private var dispatchContext: CoroutineContext? = null
     private var prepared = false
     var platform: String? = null
+    var operation: String? = null
+        private set
+
+    /** Bridge lazy synchronous component access into the invocation cancellation/deadline context. */
+    fun <T> inExecutionContext(block: suspend () -> T): T =
+        runBlocking(componentExecution.get() ?: dispatchContext ?: kotlin.coroutines.EmptyCoroutineContext) { block() }
 
     fun configure(path: Path?) {
         if (configured) return
@@ -66,6 +74,7 @@ internal class TraceRuntime(
     @Suppress("TooGenericExceptionCaught") // Trace control flow without replacing the original throwable.
     suspend fun <T> cliInvocation(operation: String, block: suspend () -> T): T =
         recorder.invocation(operation, platform) {
+            this.operation = operation
             dispatchContext = kotlin.coroutines.coroutineContext
             var failure: Throwable? = null
             try {
@@ -89,7 +98,7 @@ internal class TraceRuntime(
 
     fun <T> initializeComponents(block: () -> T): T {
         preparationComplete()
-        val context = dispatchContext ?: return block()
+        val context = componentExecution.get() ?: dispatchContext ?: return block()
         return runBlocking(context) { recorder.span(TraceStage.COMPONENT_INIT) { block() } }
     }
 
@@ -119,3 +128,9 @@ internal class TraceRuntime(
         private const val MAX_DRAIN_MS = 1_000L
     }
 }
+
+private val componentExecution = ThreadLocal<CoroutineContext?>()
+
+/** Explicitly hands nested flow budgets to synchronous lazy component access before it can suspend. */
+internal suspend fun <T> withComponentExecutionContext(block: suspend () -> T): T =
+    withContext(componentExecution.asContextElement(kotlin.coroutines.coroutineContext)) { block() }

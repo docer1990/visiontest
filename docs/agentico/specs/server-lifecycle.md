@@ -80,6 +80,16 @@ iOS stop MUST forcibly destroy the live `xcodebuild` process retained by the cur
 - **When** iOS stop runs
 - **Then** it SHALL return an idempotent not-running result
 
+### Requirement: Daemon graph disposal releases owned host resources
+
+The daemon MUST retain the same iOS registrar across compatible requests so a
+later stop can terminate its startup child. Graph invalidation or daemon disposal
+MUST close that owned child and host connections exactly once. It MUST NOT stop
+shared ADB, unrelated xcodebuild processes, or native instrumentation servers.
+Standalone JVM exit MUST preserve its existing background-server lifetime.
+Daemon iOS stop and status MUST remain available after target disconnection;
+Android stop still needs a device to force-stop its packages.
+
 ### Requirement: Stop is exposed through MCP and CLI
 
 The MCP contract MUST expose Android `stop_automation_server` and iOS `ios_stop_automation_server`. The CLI MUST expose one `stop_automation_server --platform android|ios` subcommand that delegates to the corresponding same internal stop operation and does not pre-require a running server.

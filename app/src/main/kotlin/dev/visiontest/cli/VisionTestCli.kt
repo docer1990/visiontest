@@ -89,7 +89,12 @@ class VisionTestCli internal constructor(
         subcommands(
             FlowCommand(lazy { components }, runner = { block ->
                 resultRunner { trace.cliInvocation("flow", block) }
-            }, readStdin = readStdin),
+            }, readStdin = readStdin, recordingFactory = lazy {
+                // FlowExecutor evaluates this inside the original overall/startup budgets,
+                // after complete preflight and before any recording subprocess starts.
+                if (acquireComponents != null) components
+                SystemFlowRecordingFactory()
+            }),
             // Setup
             InstallAutomationServerCommand(lazy { components }, runner = runner("install_automation_server")),
             StartAutomationServerCommand(lazy { components }, runner = runner("start_automation_server")),

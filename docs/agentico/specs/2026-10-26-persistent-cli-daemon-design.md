@@ -83,8 +83,20 @@ dispatch. Lifecycle status and cancellation remain responsive during device work
 
 After argument/preflight validation, target checks require exactly one usable
 Android device or one booted iOS simulator for the selected platform. Android
-forwarding must agree with the admitted serial. Ambiguity is rejected before an
-action; a platform flag or cached target is not routing evidence. Target checks
+forwarding must agree with the admitted serial. Daemon Android admission uses the
+same local ADB endpoint as the retained client, localhost:5037. Nondefault ADB
+server socket, port or nonlocal address overrides are rejected before inventory,
+with guidance to unset them or use `--standalone`. Default-equivalent values are
+accepted. An explicit `ANDROID_SERIAL` must match the sole admitted serial.
+Ambiguity is rejected before an
+action; a platform flag or cached target is not routing evidence. `available_device`
+keeps its existing diagnostic first-device inspection behavior; it is not an
+inventory listing and is exempt from target admission. `automation_server_status`
+is also exempt because it only probes health. iOS `stop_automation_server` remains
+usable without a booted simulator because it only terminates the registrar-owned
+startup child; Android stop still requires a selected device for package teardown.
+The single-booted-simulator restriction does not prove the identity of the backend
+at the fixed iOS endpoint, which has no identity handshake. Target checks
 and existing operation health checks are not elided for performance claims.
 External standalone/MCP clients are outside the daemon's mutual-exclusion boundary.
 

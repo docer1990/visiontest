@@ -22,8 +22,8 @@ import dev.visiontest.common.RequestLogger
  * Mirrors the wiring in [dev.visiontest.main] / [dev.visiontest.ToolFactory]
  * so that CLI subcommands use the identical set of dependencies that the MCP tools use.
  *
- * The holder is created once per CLI invocation (in [VisionTestCli]) and registers
- * the same shutdown-hook behavior (close [android] and [ios] on JVM exit).
+ * Standalone holders register their historical device-connection shutdown hook.
+ * Daemon holders are retained and explicitly closed by their host.
  */
 class ComponentHolder internal constructor(
     val android: Android,
@@ -34,7 +34,19 @@ class ComponentHolder internal constructor(
     val androidAutomationRegistrar: AndroidAutomationToolRegistrar,
     val iosDeviceRegistrar: IOSDeviceToolRegistrar,
     val iosAutomationRegistrar: IOSAutomationToolRegistrar,
-) {
+) : AutoCloseable {
+    private val closed = java.util.concurrent.atomic.AtomicBoolean()
+
+    /** Disposes host-owned resources; never stops shared ADB or native servers. */
+    override fun close() {
+        if (!closed.compareAndSet(false, true)) return
+        try {
+            iosAutomationRegistrar.close()
+        } finally {
+            try { android.close() } finally { ios.close() }
+        }
+    }
+
     private fun configureTracing(recorder: TraceRecorder) {
         if (recorder === TraceRecorder.Disabled) return
         androidStopRegistrar = AndroidStopToolRegistrar(android, automationClient, recorder)
@@ -64,7 +76,10 @@ class ComponentHolder internal constructor(
          */
         fun createDefault(): ComponentHolder = createDefault(TraceRecorder.Disabled)
 
-        internal fun createDefault(recorder: TraceRecorder): ComponentHolder {
+        internal fun createDefault(recorder: TraceRecorder): ComponentHolder = createDefault(recorder, true)
+
+        /** A daemon owns its graph explicitly and must not register a per-request hook. */
+        internal fun createDefault(recorder: TraceRecorder, registerShutdownHook: Boolean): ComponentHolder {
             val config = AppConfig.createDefault()
             val logger = RequestLogger.getLogger("VisionTest")
 
@@ -84,13 +99,6 @@ class ComponentHolder internal constructor(
             val iosAutomationClient = IOSAutomationClient(trace = recorder)
             val discovery = ToolDiscovery(logger)
 
-            Runtime.getRuntime().addShutdownHook(Thread {
-                logger.info("Shutting down CLI")
-                android.close()
-                ios.close()
-                logger.info("CLI shutdown complete")
-            })
-
             return ComponentHolder(
                 android = android,
                 ios = ios,
@@ -102,7 +110,16 @@ class ComponentHolder internal constructor(
                 iosDeviceRegistrar = IOSDeviceToolRegistrar(ios, recorder),
                 iosAutomationRegistrar =
                     IOSAutomationToolRegistrar(ios, iosAutomationClient, discovery, logger, recorder),
-            ).also { it.configureTracing(recorder) }
+            ).also { holder ->
+                holder.configureTracing(recorder)
+                if (registerShutdownHook) Runtime.getRuntime().addShutdownHook(Thread {
+                    // Standalone exit historically leaves background xcodebuild alive.
+                    logger.info("Shutting down CLI")
+                    android.close()
+                    ios.close()
+                    logger.info("CLI shutdown complete")
+                })
+            }
         }
     }
 }

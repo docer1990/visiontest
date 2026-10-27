@@ -17,6 +17,15 @@ class CliRequestExecutorTest {
     private val forbiddenComponents: () -> ComponentHolder = { error("must not initialize") }
 
     @Test
+    fun `request sink bounds retained diagnostics before appending`() {
+        kotlin.test.assertFailsWith<java.io.IOException> {
+            CliRequestExecutor(retainOutput = { bytes ->
+                if (bytes > 1) throw java.io.IOException("bounded")
+            }).execute(arrayOf("get_device_info"), context, forbiddenComponents)
+        }
+    }
+
+    @Test
     fun `invalid request does not prevent another request in the same JVM`() {
         val invalid = executor.execute(arrayOf("get_device_info"), context, forbiddenComponents)
         assertEquals(CliResult(2, null, "missing option --platform"), invalid)

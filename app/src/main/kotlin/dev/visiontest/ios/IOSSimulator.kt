@@ -92,7 +92,9 @@ class IOSSimulator internal constructor(
         val device = getDevice(deviceId)
         ensureDeviceBooted(device)
 
-        val result = processExecutor.execute(SIMCTL, "simctl", "launch", device.id, packageName)
+        val result = dev.visiontest.common.trackHostMutation {
+            processExecutor.execute(SIMCTL, "simctl", "launch", device.id, packageName)
+        }
 
         if (result.exitCode != 0) {
             throw IOSSimulatorException("Failed to launch app: ${result.errorOutput}")

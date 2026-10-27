@@ -127,6 +127,13 @@ rejected until explicit recovery, instead of silently interleaving with that wor
 Known results remain known; a lost response reports uncertainty and never causes
 a retry, crash resume or standalone fallback. Requests and I/O waits have finite
 limits; long flows retain their documented execution and finalization budgets.
+The host uses a conservative two-hour request ceiling, 15-second handshake and
+socket write waits, and at most 64 concurrent connection handlers. A cancelled
+non-cooperative host operation retains the instance lease and execution boundary
+until it actually settles, including resource cleanup. Recovery from a fenced
+platform requires explicitly restarting its native backend and the daemon;
+cancellation alone does not establish native completion. Request-owned captured
+logs and diagnostics share a 64 MiB retention limit before they are appended.
 
 Protocol request/stdin frames are limited to 8 MiB, including their JSON envelope.
 A four-byte big-endian positive length precedes each strict UTF-8 JSON object.

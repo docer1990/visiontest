@@ -13,7 +13,10 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 /** Fresh parsing and trace lifetime for each request; printing and process exit belong to the caller. */
-internal class CliRequestExecutor(private val entryNs: () -> Long = System::nanoTime) {
+internal class CliRequestExecutor(
+    private val entryNs: () -> Long = System::nanoTime,
+    private val retainOutput: (Int) -> Unit = {},
+) {
     fun execute(
         args: Array<String>,
         context: CliExecutionContext,
@@ -23,8 +26,14 @@ internal class CliRequestExecutor(private val entryNs: () -> Long = System::nano
     ): CliResult {
         val diagnostics = java.util.Collections.synchronizedList(mutableListOf<String>())
         val logs = java.util.Collections.synchronizedList(mutableListOf<String>())
-        val captured = context.copy(diagnostic = { diagnostics.add(it) })
-        val result = RequestLogOutput(captured) { logs.add(it) }.use { output ->
+        val captured = context.copy(diagnostic = {
+            retainOutput(it.toByteArray().size + 1)
+            diagnostics.add(it)
+        })
+        val result = RequestLogOutput(captured) {
+            retainOutput(it.toByteArray().size + 1)
+            logs.add(it)
+        }.use { output ->
             val request = captured.copy(logOutput = output::write)
             request.withCurrent { executeScoped(args, request, components, executionContext, acquireComponents) }
         }

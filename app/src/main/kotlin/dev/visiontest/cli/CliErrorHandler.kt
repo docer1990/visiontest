@@ -52,6 +52,7 @@ internal fun executeCliResultCommand(
 ): CliResult = try {
     runBlocking(executionContext) { block() }
 } catch (error: Exception) {
+    executionContext[dev.visiontest.common.DispatchEvidence]?.operationFailed()
     cliFailure(error)
 }
 

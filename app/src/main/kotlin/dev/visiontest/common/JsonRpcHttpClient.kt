@@ -96,7 +96,7 @@ abstract class JsonRpcHttpClient internal constructor(
             }
             val responseBytes = trace.span(TraceStage.HTTP_EXCHANGE) {
                 val budget = coroutineContext[RequestDeadline]
-                if (budget == null) exchange(requestBytes, readTimeoutMs)
+                if (budget == null) exchange(method, requestBytes, readTimeoutMs)
                 else budgetExchange(budget, method, requestBytes, readTimeoutMs)
             }
             trace.span(TraceStage.RESPONSE_PROCESS) {
@@ -130,7 +130,9 @@ abstract class JsonRpcHttpClient internal constructor(
         }
     }
 
-    private suspend fun exchange(requestBytes: ByteArray, readTimeoutMs: Int): ByteArray {
+    @Suppress("TooGenericExceptionCaught") // Preserve all transport failures while recording dispatch uncertainty.
+    private suspend fun exchange(method: String, requestBytes: ByteArray, readTimeoutMs: Int): ByteArray {
+        val evidence = coroutineContext[DispatchEvidence]
         val connection = URL("http://$host:$port/jsonrpc").openConnection() as HttpURLConnection
         val nativeRequest = trace.nativeRequest()
         var timingHeader: String? = null
@@ -141,6 +143,7 @@ abstract class JsonRpcHttpClient internal constructor(
             connection.connectTimeout = REQUEST_TIMEOUT_MS
             connection.readTimeout = readTimeoutMs
             connection.doOutput = true
+            evidence?.submitting(method)
             connection.outputStream.use { it.write(requestBytes) }
             trace.metric(TraceMetric.REQUEST_BYTES, requestBytes.size.toLong())
             val responseCode = connection.responseCode
@@ -156,7 +159,11 @@ abstract class JsonRpcHttpClient internal constructor(
             // Close the stream so the underlying connection can return to the keep-alive pool.
             val responseBytes = connection.inputStream.use { it.readBytes() }
             trace.metric(TraceMetric.RESPONSE_BYTES, responseBytes.size.toLong())
+            evidence?.confirmed(method)
             return responseBytes
+        } catch (error: Exception) {
+            evidence?.failed()
+            throw error
         } finally {
             if (nativeRequest != null) nativeRequest.record(timingHeader)
             connection.disconnect()

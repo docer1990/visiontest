@@ -389,7 +389,7 @@ class Android internal constructor(
             "monkey -p $packageName -c android.intent.category.LAUNCHER 1"
         }
 
-        val result = shell(command)
+        val result = dev.visiontest.common.trackHostMutation { shell(command) }
 
         // Check for specific error patterns from am/monkey commands
         if (LAUNCH_ERROR_PATTERNS.any { result.contains(it, ignoreCase = true) }) {

@@ -37,6 +37,65 @@ class DaemonComponentsTest {
         resources.close()
     }
 
+    @Test fun `artifact override changes dispose old graph exactly once`() {
+        for (name in listOf("VISIONTEST_DIR", "VISION_TEST_APK_PATH", "VISION_TEST_IOS_PROJECT_PATH")) {
+            val first = mockk<ComponentHolder>(relaxed = true)
+            val second = mockk<ComponentHolder>(relaxed = true)
+            val holders = ArrayDeque(listOf(first, second))
+            val resources = DaemonComponents(factory = { holders.removeFirst() })
+            val context = CliExecutionContext(environment = mapOf(name to "/first/artifact"))
+            assertSame(first, resources.acquire(context))
+            val changed = context.copy(environment = mapOf(name to "/second/artifact"))
+            assertSame(second, resources.acquire(changed))
+            assertSame(second, resources.acquire(changed))
+            assertEquals(2, resources.initializationCount)
+            resources.close()
+            resources.close()
+            verify(exactly = 1) { first.close() }
+            verify(exactly = 1) { second.close() }
+        }
+    }
+
+    @Test fun `relative artifact overrides resolve against each caller directory`() {
+        for (name in listOf("VISIONTEST_DIR", "VISION_TEST_APK_PATH", "VISION_TEST_IOS_PROJECT_PATH")) {
+            val first = mockk<ComponentHolder>(relaxed = true)
+            val second = mockk<ComponentHolder>(relaxed = true)
+            val holders = ArrayDeque(listOf(first, second))
+            val resources = DaemonComponents(factory = { holders.removeFirst() })
+            val context = CliExecutionContext(workingDirectory = Path.of("/first"),
+                environment = mapOf(name to "artifact"))
+            assertSame(first, resources.acquire(context))
+            assertSame(second, resources.acquire(context.copy(workingDirectory = Path.of("/second"))))
+            resources.close()
+            verify(exactly = 1) { first.close() }
+            verify(exactly = 1) { second.close() }
+        }
+    }
+
+    @Test fun `absolute artifact overrides allow reuse across caller directories`() {
+        val holder = mockk<ComponentHolder>(relaxed = true)
+        val resources = DaemonComponents(factory = { holder })
+        val context = CliExecutionContext(workingDirectory = Path.of("/first"), environment = mapOf(
+            "VISIONTEST_DIR" to "/shared/install", "VISION_TEST_APK_PATH" to "/shared/test.apk",
+            "VISION_TEST_IOS_PROJECT_PATH" to "/shared/project.xcodeproj"))
+        assertSame(resources.acquire(context), resources.acquire(context.copy(workingDirectory = Path.of("/second"))))
+        assertEquals(1, resources.initializationCount)
+        resources.close()
+    }
+
+    @Test fun `install directory whitespace follows discovery configuration semantics`() {
+        val holder = mockk<ComponentHolder>(relaxed = true)
+        val resources = DaemonComponents(factory = { holder })
+        val context = CliExecutionContext(environment = emptyMap())
+        assertSame(resources.acquire(context),
+            resources.acquire(context.copy(environment = mapOf("VISIONTEST_DIR" to " "))))
+        resources.close()
+        val explicit = DaemonComponents(factory = { mockk(relaxed = true) })
+        assertSame(explicit.acquire(context.copy(environment = mapOf("VISIONTEST_DIR" to "/shared/install"))),
+            explicit.acquire(context.copy(environment = mapOf("VISIONTEST_DIR" to " /shared/install "))))
+        explicit.close()
+    }
+
     @Test fun `tool environment replacement and invalidation dispose old resources`() {
         val first = mockk<ComponentHolder>(relaxed = true)
         val second = mockk<ComponentHolder>(relaxed = true)

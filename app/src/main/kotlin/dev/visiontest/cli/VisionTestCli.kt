@@ -1,5 +1,6 @@
 package dev.visiontest.cli
 
+import com.github.ajalt.mordant.terminal.Terminal
 import dev.visiontest.cli.commands.AutomationServerStatusCommand
 import dev.visiontest.cli.commands.AvailableDeviceCommand
 import dev.visiontest.cli.commands.ClearTextCommand
@@ -88,6 +89,9 @@ class VisionTestCli internal constructor(
     init {
         context {
             obj = trace
+            CliExecutionContext.current().terminalDimensions?.let {
+                terminal = Terminal(width = it.width, height = it.height)
+            }
             argumentFileReader = { java.nio.file.Files.readString(CliExecutionContext.current().resolve(it)) }
             envvarReader = { CliExecutionContext.current().environmentValue(it) }
         }

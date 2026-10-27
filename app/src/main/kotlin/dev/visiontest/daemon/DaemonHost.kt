@@ -203,7 +203,8 @@ internal class DaemonHost(
     private fun execute(request: Request) {
         val message = request.message
         val context = CliExecutionContext(Path.of(message.cwd), message.environment,
-            readStdin = { request.readInput() }, loggingProperties = message.loggingProperties)
+            readStdin = { request.readInput() }, loggingProperties = message.loggingProperties,
+            terminalDimensions = message.terminalDimensions)
         val evidence = dev.visiontest.common.DispatchEvidence { platform ->
             if (platform in fenced) throw IOException(
                 "Native outcome uncertain; restart native backend and daemon before mutations")

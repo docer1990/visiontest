@@ -137,4 +137,57 @@ class DaemonE2ETest {
         } finally { run("daemon", "stop") }
     }
 
+    @Test fun `device help preserves fresh caller PTY dimensions across requests`() {
+        val script = directory.resolve("terminal.py")
+        Files.writeString(script, """
+            import os,pty,fcntl,termios,struct,subprocess,sys,json
+            java,jar,runtime=sys.argv[1:]
+            env=dict(os.environ,VISIONTEST_DAEMON_DIR=runtime,TERM='xterm-256color')
+            env.pop('COLUMNS',None);env.pop('LINES',None)
+            def run(args,width,piped=False):
+                master,slave=pty.openpty()
+                fcntl.ioctl(slave,termios.TIOCSWINSZ,struct.pack('HHHH',24,width,0,0))
+                child=subprocess.Popen([java,'-jar',jar]+args,stdin=subprocess.DEVNULL if piped else slave,
+                    stdout=slave,stderr=slave,env=env)
+                os.close(slave);out=b''
+                try:
+                    while True:
+                        try: chunk=os.read(master,65536)
+                        except OSError: break
+                        if not chunk: break
+                        out+=chunk
+                    child.wait(timeout=20)
+                    return child.returncode,out
+                finally:
+                    os.close(master)
+                    if child.poll() is None: child.kill();child.wait()
+            try:
+                pid=None
+                for width in [40,100]:
+                    for piped in [False,True]:
+                        for command in ['get_device_info','flow']:
+                            args=[command,'--help']
+                            expected=run(['--standalone']+args,width,piped)
+                            actual=run(args,width,piped)
+                            assert expected==actual,(width,piped,command,expected[0],actual[0],
+                                [(i,a,b) for i,(a,b) in enumerate(zip(expected[1],actual[1])) if a!=b][:5],
+                                repr(expected[1][450:800]),repr(actual[1][450:800]))
+                    status=run(['daemon','status','--json'],width)
+                    current=json.loads(status[1])['pid']
+                    if pid is not None: assert current==pid
+                    pid=current
+            finally: run(['daemon','stop'],80)
+        """.trimIndent())
+        val stdout = directory.resolve("pty.stdout")
+        val stderr = directory.resolve("pty.stderr")
+        val child = ProcessBuilder("/usr/bin/python3", script.toString(),
+            Path.of(System.getProperty("java.home"), "bin/java").toString(), System.getProperty("visiontest.jar"),
+            directory.resolve("daemon").toString())
+            .redirectOutput(stdout.toFile()).redirectError(stderr.toFile()).start()
+        try {
+            assertTrue(child.waitFor(60, TimeUnit.SECONDS), "PTY probe timed out")
+            assertEquals(0, child.exitValue(), Files.readString(stderr))
+        } finally { if (child.isAlive) child.destroyForcibly() }
+    }
+
 }

@@ -80,4 +80,22 @@ class DaemonProtocolTest {
         }
     }
 
+    @Test fun `optional caller terminal dimensions round trip`() {
+        val message = DaemonMessage.Execute("r", emptyList(), "/tmp", emptyMap(), emptyMap(),
+            dev.visiontest.cli.CliTerminalDimensions(40, 24))
+        assertEquals(message, DaemonProtocol.decode(DaemonProtocol.encode(message)))
+        val without = message.copy(terminalDimensions = null)
+        assertEquals(without, DaemonProtocol.decode(DaemonProtocol.encode(without)))
+    }
+
+    @Test fun `invalid caller terminal dimensions are rejected before execution`() {
+        for (terminal in listOf("null", "[]", "{}", "{\"width\":0,\"height\":24}",
+            "{\"width\":40,\"height\":10001}", "{\"width\":\"40\",\"height\":24}")) {
+            val message = DaemonProtocol.encode(DaemonMessage.Execute("r", emptyList(), "/tmp", emptyMap(), emptyMap()))
+            val invalid = kotlinx.serialization.json.JsonObject(message +
+                ("terminal" to Json.parseToJsonElement(terminal)))
+            assertFailsWith<IOException> { DaemonProtocol.decode(invalid) }
+        }
+    }
+
 }

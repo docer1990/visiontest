@@ -60,7 +60,7 @@ internal class DaemonClient(
             submitted = true
             connection.send(DaemonMessage.Execute(
                 requestId, arguments, context.workingDirectory.toString(),
-                context.environment, context.loggingProperties,
+                context.environment, context.loggingProperties, context.terminalDimensions,
             ))
             receiveExecution(connection, requestId, context, stdout, stderr)
         } catch (error: InterruptedException) {

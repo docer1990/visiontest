@@ -11,7 +11,9 @@ internal fun runDaemonClient(arguments: List<String>, lifecycle: Boolean): Int =
         DaemonIdentity(DaemonProtocol.VERSION, VersionInfo.version, DaemonBuildIdentity.load()),
         stdin = System.`in`)
     if (lifecycle) runLifecycle(client, arguments) else
-        client.execute(arguments, CliExecutionContext.local(), System.out, System.err)
+        client.execute(arguments, CliExecutionContext.local().let {
+            it.copy(terminalDimensions = callerTerminalDimensions(it.environment))
+        }, System.out, System.err)
 } catch (error: IOException) {
     daemonFailure(error)
 } catch (error: IllegalArgumentException) {

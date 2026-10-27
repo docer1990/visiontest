@@ -13,6 +13,7 @@ internal data class CliExecutionContext(
     val loggingProperties: Map<String, String> = System.getProperties().stringPropertyNames()
         .filter { it.startsWith("org.slf4j.simpleLogger.") }.associateWith { System.getProperty(it) },
     val logOutput: ((String) -> Unit)? = null,
+    val terminalDimensions: CliTerminalDimensions? = null,
 ) {
     internal val logSettings = RequestLogSettings(loggingProperties)
     internal val loggingStartedAtMillis = java.lang.management.ManagementFactory.getRuntimeMXBean().startTime

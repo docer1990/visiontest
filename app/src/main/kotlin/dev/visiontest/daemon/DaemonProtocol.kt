@@ -1,5 +1,6 @@
 package dev.visiontest.daemon
 
+import dev.visiontest.cli.CliTerminalDimensions
 import java.io.IOException
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
@@ -26,6 +27,7 @@ sealed interface DaemonMessage {
         val cwd: String,
         val environment: Map<String, String>,
         val loggingProperties: Map<String, String>,
+        val terminalDimensions: CliTerminalDimensions? = null,
     ) : DaemonMessage
     data class StdinRequest(val requestId: String) : DaemonMessage
     data class Input(val requestId: String, val data: String, val eof: Boolean) : DaemonMessage
@@ -64,6 +66,7 @@ object DaemonProtocol {
                     put("cwd", message.cwd)
                     put("environment", stringMap(message.environment))
                     put("loggingProperties", stringMap(message.loggingProperties))
+                    terminalDimensions(message.terminalDimensions)
                 }
                 is DaemonMessage.StdinRequest -> { put("kind", "stdin-request"); put("requestId", message.requestId) }
                 is DaemonMessage.Input -> {
@@ -133,8 +136,19 @@ object DaemonProtocol {
         }
         return DaemonMessage.Execute(
             value.requestId(), arguments.map { stringValue(it, "argument") }, cwd,
-            environment, value.map("loggingProperties"),
+            environment, value.map("loggingProperties"), terminalDimensions(value),
         )
+    }
+
+    private fun terminalDimensions(value: JsonObject): CliTerminalDimensions? {
+        if ("terminal" !in value) return null
+        val terminal = value["terminal"] as? JsonObject ?: fail("Invalid caller terminal dimensions")
+        val width = terminal.integer("width")
+        val height = terminal.integer("height")
+        if (width !in 1..CliTerminalDimensions.MAX_DIMENSION || height !in 1..CliTerminalDimensions.MAX_DIMENSION) {
+            fail("Invalid caller terminal dimensions")
+        }
+        return CliTerminalDimensions(width, height)
     }
 
     private fun validateIdentity(identity: DaemonIdentity) {
@@ -163,6 +177,7 @@ class DaemonOutputBudget(private val maximum: Long = DEFAULT_OUTPUT_LIMIT) {
         used += bytes
     }
 }
+
 
 private fun JsonObjectBuilder.identity(identity: DaemonIdentity) {
     put("protocol", identity.protocol); put("appVersion", identity.appVersion); put("build", identity.build)

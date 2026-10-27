@@ -16,7 +16,10 @@ internal class AndroidHostProcesses(
 )
 
 private fun startCallerAdb() {
-    val process = HostProcessContext.builder(listOf("adb", "-P", "5037", "start-server"))
+    val context = CliExecutionContext.current()
+    val sdk = context.environmentValue("ANDROID_HOME") ?: context.environmentValue("ANDROID_SDK_ROOT")
+    val adb = sdk?.let { context.resolve(it).resolve("platform-tools/adb").toString() } ?: "adb"
+    val process = HostProcessContext.builder(listOf(adb, "-P", "5037", "start-server"))
         .redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
     try {
         if (!process.waitFor(START_TIMEOUT_SECONDS, TimeUnit.SECONDS)) throw TimeoutException("ADB startup timed out")

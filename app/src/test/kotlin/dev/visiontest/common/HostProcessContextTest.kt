@@ -55,6 +55,36 @@ class HostProcessContextTest {
     }
 
     @Test
+    fun `Android startup discovers each caller SDK without adb on PATH`() {
+        for (variable in listOf("ANDROID_HOME", "ANDROID_SDK_ROOT")) {
+            val sdk = Files.createDirectories(root.resolve(variable).resolve("platform-tools"))
+            Files.writeString(sdk.resolve("adb"),
+                "#!/bin/sh\nprintf '%s' \"\$*|\$REQUEST_VALUE\" > started.txt\n")
+                .toFile().setExecutable(true)
+            val context = CliExecutionContext(root, mapOf(variable to variable, "REQUEST_VALUE" to variable))
+            runBlocking(context.coroutineContext()) { AndroidHostProcesses().startAdb() }
+            assertEquals("-P 5037 start-server|$variable", Files.readString(root.resolve("started.txt")))
+        }
+    }
+
+    @Test
+    fun `Android startup prefers caller Android home over SDK root and PATH`() {
+        for (name in listOf("home", "sdk", "path")) {
+            val bin = Files.createDirectories(root.resolve(name).resolve("platform-tools"))
+            Files.writeString(bin.resolve("adb"), "#!/bin/sh\nprintf '%s' '$name' > started.txt\n")
+                .toFile().setExecutable(true)
+        }
+        val context = CliExecutionContext(root, mapOf("ANDROID_HOME" to "home", "ANDROID_SDK_ROOT" to "sdk",
+            "PATH" to root.resolve("path/platform-tools").toString()))
+        runBlocking(context.coroutineContext()) { AndroidHostProcesses().startAdb() }
+        assertEquals("home", Files.readString(root.resolve("started.txt")))
+        runBlocking(context.copy(environment = context.environment - "ANDROID_HOME").coroutineContext()) {
+            AndroidHostProcesses().startAdb()
+        }
+        assertEquals("sdk", Files.readString(root.resolve("started.txt")))
+    }
+
+    @Test
     fun `recording child uses request directory and environment`() {
         val context = CliExecutionContext(root, mapOf("PATH" to "/bin", "REQUEST_VALUE" to "recording"))
         val result = runBlocking(context.coroutineContext()) {

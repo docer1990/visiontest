@@ -30,16 +30,21 @@ object DaemonFrames {
         return parse(decoder.decode(ByteBuffer.wrap(payload)).toString())
     }
 
-    private fun parse(text: String): JsonObject = try {
-        Json.parseToJsonElement(text) as? JsonObject
-            ?: throw IOException("Daemon frame must contain a JSON object")
-    } catch (error: SerializationException) {
-        throw IOException("Invalid daemon JSON frame", error)
+    private fun parse(text: String): JsonObject {
+        DaemonJsonSyntax.validate(text)
+        return try {
+            Json.parseToJsonElement(text) as? JsonObject
+                ?: throw IOException("Daemon frame must contain a JSON object")
+        } catch (error: SerializationException) {
+            throw IOException("Invalid daemon JSON frame", error)
+        }
     }
 
     fun write(output: OutputStream, value: JsonObject) {
+        val text = value.toString()
+        DaemonJsonSyntax.validate(text)
         val encoded = Charsets.UTF_8.newEncoder().onMalformedInput(CodingErrorAction.REPORT)
-            .onUnmappableCharacter(CodingErrorAction.REPORT).encode(CharBuffer.wrap(value.toString()))
+            .onUnmappableCharacter(CodingErrorAction.REPORT).encode(CharBuffer.wrap(text))
         if (encoded.remaining() !in 1..MAX_FRAME_BYTES) throw IOException("Daemon frame exceeds $MAX_FRAME_BYTES bytes")
         val payload = ByteArray(encoded.remaining()).also { encoded.get(it) }
         DataOutputStream(output).apply { writeInt(payload.size); write(payload); flush() }

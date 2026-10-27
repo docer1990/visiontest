@@ -136,4 +136,48 @@ class DaemonRegistryTest {
         }
     }
 
+    @Test fun `unpublished lease cleans provisional owned socket before releasing lock`() {
+        val registry = registry()
+        registry.acquire()!!.use {
+            ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { server ->
+                server.bind(UnixDomainSocketAddress.of(registry.socketPath))
+                Files.setPosixFilePermissions(registry.socketPath, PosixFilePermissions.fromString("rwxr-xr-x"))
+            }
+        }
+        assertFalse(Files.exists(registry.socketPath, NOFOLLOW_LINKS))
+        registry.acquire()!!.close()
+    }
+
+    @Test fun `free lifetime lock permits recovery of provisional socket left by interrupted startup`() {
+        val registry = registry()
+        registry.acquire()!!.close()
+        ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { server ->
+            server.bind(UnixDomainSocketAddress.of(registry.socketPath))
+            Files.setPosixFilePermissions(registry.socketPath, PosixFilePermissions.fromString("rwxr-xr-x"))
+        }
+        registry.acquire()!!.use { lease ->
+            assertTrue(Files.exists(registry.socketPath, NOFOLLOW_LINKS))
+            lease.removeStaleRegistration()
+            assertFalse(Files.exists(registry.socketPath, NOFOLLOW_LINKS))
+        }
+    }
+
+    @Test fun `unpublished cleanup preserves unsafe socket paths and symlink targets`() {
+        val registry = registry()
+        registry.acquire()!!.use {
+            Files.writeString(registry.socketPath, "unrelated regular file")
+            Files.setPosixFilePermissions(registry.socketPath, PosixFilePermissions.fromString("rw-------"))
+        }
+        assertEquals("unrelated regular file", Files.readString(registry.socketPath))
+        assertFailsWith<IOException> { registry.acquire() }
+        Files.delete(registry.socketPath)
+        val target = temp.resolve("target")
+        Files.writeString(target, "preserve target")
+        registry.acquire()!!.use { Files.createSymbolicLink(registry.socketPath, target) }
+        assertTrue(Files.isSymbolicLink(registry.socketPath))
+        assertEquals("preserve target", Files.readString(target))
+        assertFailsWith<IOException> { registry.acquire() }
+        assertTrue(Files.isSymbolicLink(registry.socketPath))
+    }
+
 }

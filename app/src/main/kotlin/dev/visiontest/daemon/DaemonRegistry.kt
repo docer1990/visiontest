@@ -42,7 +42,7 @@ class DaemonRegistry(val directory: Path = defaultDirectory()) {
             if (lock == null) null else {
                 // A live owner may be securing a freshly bound socket before atomic publication.
                 // Only the lock holder inspects paths for stale registration cleanup.
-                listOf(metadataPath, socketPath).forEach { validateIfPresent(it) }
+                listOf(metadataPath, socketPath).forEach { validateIfPresent(it, allowStaleSocket = true) }
                 Lease(channel, lock).also { transferred = true }
             }
         } finally {
@@ -90,11 +90,11 @@ class DaemonRegistry(val directory: Path = defaultDirectory()) {
         }
     }
 
-    private fun validateIfPresent(path: Path) {
-        if (Files.exists(path, NOFOLLOW_LINKS)) validate(path, isDirectory = false)
+    private fun validateIfPresent(path: Path, allowStaleSocket: Boolean = false) {
+        if (Files.exists(path, NOFOLLOW_LINKS)) validate(path, isDirectory = false, allowStaleSocket)
     }
 
-    private fun validate(path: Path, isDirectory: Boolean) {
+    private fun validate(path: Path, isDirectory: Boolean, allowStaleSocket: Boolean = false) {
         val attrs = Files.readAttributes(path, PosixFileAttributes::class.java, NOFOLLOW_LINKS)
         val expected = if (isDirectory) DIRECTORY_PERMISSIONS else FILE_PERMISSIONS
         val wrongType = when {
@@ -103,7 +103,9 @@ class DaemonRegistry(val directory: Path = defaultDirectory()) {
             else -> !attrs.isRegularFile
         }
         val unsafeOwner = attrs.isSymbolicLink || attrs.owner() != owner
-        if (unsafeOwner || attrs.permissions() != expected || wrongType) {
+        val staleSocket = allowStaleSocket && path == socketPath
+        val wrongMode = attrs.permissions() != expected && !staleSocket
+        if (unsafeOwner || wrongMode || wrongType) {
             val mode = if (isDirectory) "0700" else "0600"
             throw IOException("Unsafe daemon path $path: requires current owner and $mode")
         }
@@ -134,8 +136,9 @@ class DaemonRegistry(val directory: Path = defaultDirectory()) {
 
         fun removeStaleRegistration() {
             checkHeld()
+            validate(directory, isDirectory = true)
             listOf(metadataPath, socketPath).forEach { path ->
-                validateIfPresent(path)
+                validateIfPresent(path, allowStaleSocket = true)
                 Files.deleteIfExists(path)
             }
         }
@@ -161,10 +164,20 @@ class DaemonRegistry(val directory: Path = defaultDirectory()) {
         override fun close() {
             if (closed) return
             try {
-                if (published) removeStaleRegistration()
+                if (published) removeStaleRegistration() else cleanUnpublishedSocket()
             } finally {
                 closed = true
                 try { lock.release() } finally { channel.close() }
+            }
+        }
+
+        private fun cleanUnpublishedSocket() {
+            if (!Files.exists(socketPath, NOFOLLOW_LINKS)) return
+            val attrs = Files.readAttributes(socketPath, PosixFileAttributes::class.java, NOFOLLOW_LINKS)
+            val owned = !attrs.isSymbolicLink && attrs.owner() == owner
+            if (owned && isUnixSocket(socketPath)) {
+                validate(directory, isDirectory = true)
+                Files.delete(socketPath)
             }
         }
 

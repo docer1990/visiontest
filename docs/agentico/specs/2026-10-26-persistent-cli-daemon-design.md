@@ -47,6 +47,10 @@ missing identity resource fails clearly. Control status/stop remain possible acr
 application build differences when the protocol matches; execution requires the
 full identity to match. A stale socket is removed only
 under the instance lock after establishing that no live owner holds that lock.
+An interrupted startup may leave an owned socket with provisional permissions.
+A lock holder may remove that stale Unix socket inside the validated private
+directory, without relaxing ownership, symlink or file-type checks. An unpublished
+lease also cleans its safe socket residue before releasing the lock.
 
 The starting daemon holds the instance lock for its lifetime. Concurrent clients
 wait for readiness for at most 15 seconds and converge on one instance. Startup
@@ -126,6 +130,8 @@ limits; long flows retain their documented execution and finalization budgets.
 
 Protocol request/stdin frames are limited to 8 MiB, including their JSON envelope.
 A four-byte big-endian positive length precedes each strict UTF-8 JSON object.
+Frames use RFC 8259 syntax and permit at most 128 nested objects/arrays; nonstandard
+literals, numbers, escapes and unescaped string control characters are rejected.
 Output uses base64 byte chunks of at most 64 KiB and a total budget of 64 MiB per
 request across stdout/stderr. Exceeding this budget is an infrastructure failure
 with potentially uncertain dispatch, never successful truncated JSON or a claim

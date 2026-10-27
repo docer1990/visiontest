@@ -144,11 +144,14 @@ class DaemonE2ETest {
             java,jar,runtime=sys.argv[1:]
             env=dict(os.environ,VISIONTEST_DAEMON_DIR=runtime,TERM='xterm-256color')
             env.pop('COLUMNS',None);env.pop('LINES',None)
+            last_client_pid=None
             def run(args,width,piped=False):
+                global last_client_pid
                 master,slave=pty.openpty()
                 fcntl.ioctl(slave,termios.TIOCSWINSZ,struct.pack('HHHH',24,width,0,0))
                 child=subprocess.Popen([java,'-jar',jar]+args,stdin=subprocess.DEVNULL if piped else slave,
                     stdout=slave,stderr=slave,env=env)
+                last_client_pid=child.pid
                 os.close(slave);out=b''
                 try:
                     while True:
@@ -169,9 +172,9 @@ class DaemonE2ETest {
                             args=[command,'--help']
                             expected=run(['--standalone']+args,width,piped)
                             actual=run(args,width,piped)
-                            assert expected==actual,(width,piped,command,expected[0],actual[0],
-                                [(i,a,b) for i,(a,b) in enumerate(zip(expected[1],actual[1])) if a!=b][:5],
-                                repr(expected[1][450:800]),repr(actual[1][450:800]))
+                            assert expected==actual,dict(width=width,piped=piped,command=command,
+                                client_pid=last_client_pid,previous_host_pid=pid,expected_code=expected[0],
+                                actual_code=actual[0],expected_output=repr(expected[1]),actual_output=repr(actual[1]))
                     status=run(['daemon','status','--json'],width)
                     current=json.loads(status[1])['pid']
                     if pid is not None: assert current==pid

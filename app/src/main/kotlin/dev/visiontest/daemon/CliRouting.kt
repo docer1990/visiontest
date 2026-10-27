@@ -43,11 +43,17 @@ private class RootArgumentScan(private val arguments: List<String>) {
             }
             index++
         }
-        return CliRouting(selectedRoute(), forwarded)
+        val retainedArguments = if (isRootArgumentFile()) arguments else forwarded
+        return CliRouting(selectedRoute(), retainedArguments)
     }
 
+    // Expansion may reveal local options or nested files; only the CLI parser reads their contents.
+    private fun isRootArgumentFile(): Boolean = command?.let {
+        it.startsWith("@") && !it.startsWith("@@")
+    } ?: false
+
     private fun selectedRoute(): CliRoute = when {
-        local || command == "init" -> CliRoute.LOCAL
+        local || command == "init" || isRootArgumentFile() -> CliRoute.LOCAL
         standalone -> CliRoute.STANDALONE
         command == "daemon" -> CliRoute.LIFECYCLE
         else -> CliRoute.DAEMON

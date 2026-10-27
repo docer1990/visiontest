@@ -25,4 +25,28 @@ class CliRoutingTest {
         assertEquals(CliRoute.LIFECYCLE, classifyCliArguments(arrayOf("daemon", "status")).route)
         assertEquals(CliRoute.DAEMON, classifyCliArguments(arrayOf("unknown", "--help")).route)
     }
+    @Test fun `root argument files require local authoritative parsing`() {
+        listOf(
+            arrayOf("@root.args"),
+            arrayOf("--trace-performance", "trace.jsonl", "@root.args"),
+            arrayOf("@root.args", "--standalone"),
+            arrayOf("--standalone", "@root.args"),
+        ).forEach { args ->
+            val result = classifyCliArguments(args)
+            assertEquals(CliRoute.LOCAL, result.route)
+            assertEquals(args.toList(), result.arguments)
+        }
+    }
+    @Test fun `argument file detection respects command values terminator and escaping`() {
+        listOf(
+            arrayOf("input_text", "@root.args"),
+            arrayOf("--", "@root.args"),
+            arrayOf("@@root.args"),
+            arrayOf("--trace-performance", "@trace.jsonl", "tap"),
+        ).forEach { args ->
+            val result = classifyCliArguments(args)
+            assertEquals(CliRoute.DAEMON, result.route)
+            assertEquals(args.toList(), result.arguments)
+        }
+    }
 }

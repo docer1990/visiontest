@@ -1,6 +1,7 @@
 package dev.visiontest.performance
 
 import dev.visiontest.config.VersionInfo
+import dev.visiontest.cli.CliExecutionContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -14,7 +15,7 @@ internal fun resolveTracePath(mode: String, cliPath: String?, environmentPath: S
         "mcp" -> environmentPath?.takeIf { it.isNotBlank() }
         else -> throw IllegalArgumentException("Unknown invocation mode")
     }
-    return value?.let { Path.of(it).toAbsolutePath().normalize() }
+    return value?.let { CliExecutionContext.current().resolve(it) }
 }
 
 /** One process session; the CLI explicitly attaches its coroutine context while dispatching. */

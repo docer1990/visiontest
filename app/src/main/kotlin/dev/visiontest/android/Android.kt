@@ -14,14 +14,13 @@ import dev.visiontest.common.DeviceType
 import dev.visiontest.common.MobileDevice
 import dev.visiontest.utils.ErrorHandler
 import com.malinskiy.adam.AndroidDebugBridgeClientFactory
-import com.malinskiy.adam.interactor.StartAdbInteractor
 import com.malinskiy.adam.request.device.Device
 import com.malinskiy.adam.request.device.DeviceState
 import com.malinskiy.adam.request.device.ListDevicesRequest
 import com.malinskiy.adam.request.shell.v2.ShellCommandRequest
 import com.malinskiy.adam.request.shell.v2.ShellCommandResult
 import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import dev.visiontest.common.RequestLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -32,17 +31,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-internal class AndroidHostProcesses(
-    val startAdb: suspend () -> Unit = { StartAdbInteractor().execute() },
-    val launchAdb: (List<String>) -> Process = { command ->
-        ProcessBuilder(command).redirectErrorStream(true).start()
-    },
-)
-
 class Android internal constructor(
     private val timeoutMillis: Long = 5000L,
     private val cacheValidityPeriod: Long = 1000L,
-    private val logger: Logger = LoggerFactory.getLogger(Android::class.java),
+    private val logger: Logger = RequestLogger.getLogger(Android::class.java),
     private val trace: TraceRecorder,
     private val adb: com.malinskiy.adam.AndroidDebugBridgeClient = AndroidDebugBridgeClientFactory().build(),
     private val hostProcesses: AndroidHostProcesses = AndroidHostProcesses(),
@@ -50,7 +42,7 @@ class Android internal constructor(
     constructor(
         timeoutMillis: Long = 5000L,
         cacheValidityPeriod: Long = 1000L,
-        logger: Logger = LoggerFactory.getLogger(Android::class.java),
+        logger: Logger = RequestLogger.getLogger(Android::class.java),
     ) : this(timeoutMillis, cacheValidityPeriod, logger, TraceRecorder.Disabled)
     constructor() : this(trace = TraceRecorder.Disabled)
 

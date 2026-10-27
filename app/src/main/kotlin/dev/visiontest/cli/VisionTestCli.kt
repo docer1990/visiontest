@@ -38,6 +38,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.core.context
 import dev.visiontest.performance.TraceRuntime
+import dev.visiontest.performance.TraceRecorder
 import dev.visiontest.performance.resolveTracePath
 
 /**
@@ -54,6 +55,7 @@ class VisionTestCli internal constructor(
     componentsProvider: (() -> ComponentHolder)? = null,
     private val resultRunner: (suspend () -> CliResult) -> Unit = { runCliResultCommand(it, trace::finish) },
     readStdin: () -> String = { System.`in`.bufferedReader().readText() },
+    acquireComponents: ((TraceRuntime) -> ComponentHolder)? = null,
 ) : NoOpCliktCommand(name = "visiontest") {
     constructor() : this(TraceRuntime("cli", System.nanoTime()))
 
@@ -67,7 +69,10 @@ class VisionTestCli internal constructor(
         value
     }
     private val components by lazy {
-        trace.initializeComponents { componentsProvider?.invoke() ?: ComponentHolder.createDefault(trace.recorder) }
+        trace.preparationComplete()
+        acquireComponents?.invoke(trace) ?: trace.initializeComponents {
+            componentsProvider?.invoke() ?: ComponentHolder.createDefault(TraceRecorder.Contextual)
+        }
     }
 
     private fun runner(name: String): CliCommandRunner = { block ->
@@ -75,7 +80,11 @@ class VisionTestCli internal constructor(
     }
 
     init {
-        context { obj = trace }
+        context {
+            obj = trace
+            argumentFileReader = { java.nio.file.Files.readString(CliExecutionContext.current().resolve(it)) }
+            envvarReader = { CliExecutionContext.current().environmentValue(it) }
+        }
         versionOption(VersionInfo.version)
         subcommands(
             FlowCommand(lazy { components }, runner = { block ->

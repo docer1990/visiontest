@@ -10,6 +10,7 @@ import dev.visiontest.android.Android
 import dev.visiontest.android.AutomationClient
 import dev.visiontest.common.CompactInspectionOptions
 import dev.visiontest.common.DeviceConfig
+import dev.visiontest.common.HostProcessContext
 import dev.visiontest.config.AutomationConfig
 import dev.visiontest.discovery.ToolDiscovery
 import io.modelcontextprotocol.kotlin.sdk.Tool
@@ -24,7 +25,8 @@ class AndroidAutomationToolRegistrar internal constructor(
     private val discovery: ToolDiscovery,
     private val trace: TraceRecorder,
     private val launchProcess: (List<String>) -> Process = { command ->
-        ProcessBuilder(command).redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
+        HostProcessContext.builder(command).redirectErrorStream(true)
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
     },
 ) : ToolRegistrar {
     constructor(android: DeviceConfig, automationClient: AutomationClient, discovery: ToolDiscovery) :

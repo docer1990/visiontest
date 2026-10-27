@@ -1,5 +1,7 @@
 package dev.visiontest.tools
 
+import dev.visiontest.cli.CliExecutionContext
+
 import dev.visiontest.common.strictJsonObject
 import com.google.gson.JsonParser
 import com.google.gson.JsonObject
@@ -173,10 +175,10 @@ internal class ScreenshotSaver(
      */
     fun resolveScreenshotPath(outputPath: String?): File {
         if (outputPath != null && outputPath.isNotBlank()) {
-            return File(outputPath).absoluteFile
+            return CliExecutionContext.current().resolve(outputPath).toFile()
         }
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
-        return File("screenshots/${filePrefix}_$timestamp.png").absoluteFile
+        return CliExecutionContext.current().resolve("screenshots/${filePrefix}_$timestamp.png").toFile()
     }
 
     /**

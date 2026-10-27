@@ -14,7 +14,7 @@ import dev.visiontest.tools.AndroidWaitToolRegistrar
 import dev.visiontest.tools.IOSAutomationToolRegistrar
 import dev.visiontest.tools.IOSDeviceToolRegistrar
 import dev.visiontest.tools.IOSWaitToolRegistrar
-import org.slf4j.LoggerFactory
+import dev.visiontest.common.RequestLogger
 
 /**
  * Minimal object graph for the CLI path.
@@ -66,17 +66,17 @@ class ComponentHolder internal constructor(
 
         internal fun createDefault(recorder: TraceRecorder): ComponentHolder {
             val config = AppConfig.createDefault()
-            val logger = LoggerFactory.getLogger("VisionTest")
+            val logger = RequestLogger.getLogger("VisionTest")
 
             val android = Android(
                 timeoutMillis = config.adbTimeoutMillis,
                 cacheValidityPeriod = config.deviceCacheValidityPeriod,
-                logger = LoggerFactory.getLogger(Android::class.java),
+                logger = RequestLogger.getLogger(Android::class.java),
                 trace = recorder
             )
 
             val ios = IOSManager(
-                logger = LoggerFactory.getLogger(IOSManager::class.java),
+                logger = RequestLogger.getLogger(IOSManager::class.java),
                 trace = recorder
             )
 

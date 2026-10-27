@@ -1,5 +1,7 @@
 package dev.visiontest.tools
 
+import dev.visiontest.common.HostProcessContext
+
 import dev.visiontest.performance.TraceRecorder
 import dev.visiontest.performance.TraceStage
 import dev.visiontest.performance.OperationOutcome
@@ -29,7 +31,8 @@ class IOSAutomationToolRegistrar internal constructor(
     private val logger: Logger,
     private val trace: TraceRecorder,
     private val launchProcess: (List<String>) -> Process = { command ->
-        ProcessBuilder(command).redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
+        HostProcessContext.builder(command).redirectErrorStream(true)
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
     },
 ) : ToolRegistrar {
     constructor(

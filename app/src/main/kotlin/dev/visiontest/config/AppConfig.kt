@@ -1,5 +1,7 @@
 package dev.visiontest.config
 
+import dev.visiontest.cli.CliExecutionContext
+
 /**
  * Logging levels for the application.
  * Controls the verbosity and sensitivity of logged information.
@@ -51,7 +53,7 @@ data class AppConfig(
          */
         fun createDefault(): AppConfig {
             // Read log level from environment variable, default to PRODUCTION
-            val envLogLevel = System.getenv("VISION_TEST_LOG_LEVEL")?.uppercase()
+            val envLogLevel = CliExecutionContext.current().environmentValue("VISION_TEST_LOG_LEVEL")?.uppercase()
             val logLevel = when (envLogLevel) {
                 "DEBUG" -> LogLevel.DEBUG
                 "DEVELOPMENT", "DEV" -> LogLevel.DEVELOPMENT

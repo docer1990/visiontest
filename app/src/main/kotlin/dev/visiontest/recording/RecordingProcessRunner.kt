@@ -1,6 +1,7 @@
 package dev.visiontest.recording
 
 import dev.visiontest.common.RequestDeadline
+import dev.visiontest.common.HostProcessContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
@@ -32,7 +33,7 @@ internal interface RecordingProcessRunner {
 
 internal class JvmRecordingProcessRunner(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val launch: (List<String>) -> Process = { ProcessBuilder(it).start() },
+    private val launch: (List<String>) -> Process = { HostProcessContext.builder(it).start() },
 ) : RecordingProcessRunner {
     override suspend fun start(
         scope: CoroutineScope,

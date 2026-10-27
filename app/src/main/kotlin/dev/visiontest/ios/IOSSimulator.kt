@@ -9,7 +9,7 @@ import dev.visiontest.common.DeviceConfig
 import dev.visiontest.common.MobileDevice
 import kotlinx.serialization.json.*
 import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import dev.visiontest.common.RequestLogger
 
 class IOSSimulator internal constructor(
     private val trace: TraceRecorder,
@@ -18,12 +18,12 @@ class IOSSimulator internal constructor(
     // longer than the default 5s command timeout.
     private val bootWaitExecutor: ProcessExecutor =
         ProcessExecutor(timeoutMillis = BOOT_WAIT_TIMEOUT_MILLIS, trace = trace),
-    private val logger: Logger = LoggerFactory.getLogger(IOSSimulator::class.java)
+    private val logger: Logger = RequestLogger.getLogger(IOSSimulator::class.java)
 ) : DeviceConfig {
     constructor(
         processExecutor: ProcessExecutor = ProcessExecutor(),
         bootWaitExecutor: ProcessExecutor = ProcessExecutor(timeoutMillis = BOOT_WAIT_TIMEOUT_MILLIS),
-        logger: Logger = LoggerFactory.getLogger(IOSSimulator::class.java),
+        logger: Logger = RequestLogger.getLogger(IOSSimulator::class.java),
     ) : this(TraceRecorder.Disabled, processExecutor, bootWaitExecutor, logger)
     constructor() : this(trace = TraceRecorder.Disabled)
 

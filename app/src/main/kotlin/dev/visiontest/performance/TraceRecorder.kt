@@ -65,13 +65,18 @@ internal class TraceRecorder(
 
     suspend fun <T> span(stage: TraceStage, block: suspend () -> T): T {
         val parent = activeContext(this) ?: return block()
-        return record(SpanContext(this, parent.invocation, newId(), parent.spanId), stage, block)
+        val recorder = parent.recorder
+        return recorder.record(SpanContext(recorder, parent.invocation, newId(), parent.spanId), stage, block)
     }
 
     suspend fun interval(stage: TraceStage, start: Long, end: Long, failure: Throwable? = null) =
         interval(coroutineContext, stage, start, end, failure)
 
     fun interval(context: CoroutineContext, stage: TraceStage, start: Long, end: Long, failure: Throwable? = null) {
+        if (this === Contextual) {
+            context[SpanContext]?.recorder?.interval(context, stage, start, end, failure)
+            return
+        }
         val parent = context[SpanContext]?.takeIf { enabled && it.recorder === this } ?: return
         val child = SpanContext(this, parent.invocation, newId(), parent.spanId)
         runCatching { emit(event(child, stage, start, end, failure)) }
@@ -91,7 +96,8 @@ internal class TraceRecorder(
     suspend fun nativeRequest(): NativeTimingRequest? = activeContext(this)?.let { context ->
         NativeTimingRequest(encodeTraceRequest(context.invocation.id, context.spanId)) { value ->
             val timing = decodeNativeTiming(value, context.invocation.id, context.spanId)
-            emitNative(NativeTimingEvent(sessionId, context.invocation.id, context.invocation.sequence,
+            context.recorder.emitNative(NativeTimingEvent(context.recorder.sessionId,
+                context.invocation.id, context.invocation.sequence,
                 context.spanId, context.invocation.platform, context.invocation.operation, timing))
         }
     }
@@ -165,9 +171,13 @@ internal class TraceRecorder(
 
     companion object {
         val Disabled = TraceRecorder(nowNs = { 0L }, emit = {}, enabled = false)
+        /** Immutable dispatcher for retained components; the owning invocation lives in coroutine context. */
+        val Contextual = TraceRecorder(nowNs = { 0L }, emit = {}, enabled = false)
 
         private suspend fun activeContext(recorder: TraceRecorder): SpanContext? =
-            coroutineContext[SpanContext]?.takeIf { recorder.enabled && it.recorder === recorder }
+            coroutineContext[SpanContext]?.takeIf {
+                recorder === Contextual || recorder.enabled && it.recorder === recorder
+            }
 
         private fun newId(): String = UUID.randomUUID().toString().replace("-", "")
 

@@ -107,9 +107,11 @@ abstract class JsonRpcHttpClient internal constructor(
         }
     }
 
+    @Suppress("TooGenericExceptionCaught") // Rejected HTTP responses retain potentially dispatched mutation evidence.
     private suspend fun budgetExchange(
         budget: RequestDeadline, method: String, bytes: ByteArray, timeoutMs: Int,
     ): ByteArray {
+        val evidence = coroutineContext[DispatchEvidence]
         val nativeRequest = trace.nativeRequest()
         var timingHeader: String? = null
         try {
@@ -124,7 +126,11 @@ abstract class JsonRpcHttpClient internal constructor(
                     response.statusCode(),
                 )
             }
+            evidence?.confirmed(method)
             return response.body()
+        } catch (error: Exception) {
+            evidence?.failed()
+            throw error
         } finally {
             nativeRequest?.record(timingHeader)
         }

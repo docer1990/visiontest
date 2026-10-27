@@ -93,6 +93,46 @@ class DaemonCancellationTest {
         directory.toFile().deleteRecursively()
     }
 
+    @Test
+    fun `flow HTTP rejection fences next mutation and invalidates settled graph`() {
+        val directory = Files.createTempDirectory(Path.of("/tmp"), "vtf")
+        val registry = DaemonRegistry(directory)
+        val holder = io.mockk.mockk<dev.visiontest.cli.ComponentHolder>(relaxed = true)
+        val resources = DaemonComponents(factory = { holder })
+        okhttp3.mockwebserver.MockWebServer().use { backend ->
+            backend.enqueue(okhttp3.mockwebserver.MockResponse().setResponseCode(500).setBody("lost outcome"))
+            backend.enqueue(okhttp3.mockwebserver.MockResponse().setBody("confirmed"))
+            backend.start()
+            val client = dev.visiontest.android.AutomationClient("localhost", backend.port)
+            DaemonHost(registry, identity, resources = resources, execution = { message, context, executionContext ->
+                executionContext[DispatchEvidence]!!.platform = "android"
+                if (message.requestId == "rejected") resources.acquire(context)
+                dev.visiontest.cli.executeCliResultCommand(executionContext +
+                    dev.visiontest.common.RequestDeadline(5000)) {
+                    CliResult(0, client.sendRequest("ui.tapByCoordinates"), null)
+                }
+            }).use { host ->
+                host.start()
+                connect(registry).use { first ->
+                    first.send(request(directory, "rejected"))
+                    assertEquals("stderr", (first.receive() as DaemonMessage.Output).stream)
+                    assertEquals(DaemonMessage.Completion("rejected", 1), first.receive())
+                }
+                connect(registry).use { next ->
+                    next.send(request(directory, "fenced"))
+                    val output = next.receive() as DaemonMessage.Output
+                    assertEquals("stderr", output.stream)
+                    assertTrue(java.util.Base64.getDecoder().decode(output.data).toString(Charsets.UTF_8)
+                        .contains("uncertain"))
+                    assertEquals(DaemonMessage.Completion("fenced", 1), next.receive())
+                }
+                assertEquals(1, backend.requestCount)
+                io.mockk.verify(exactly = 1) { holder.close() }
+            }
+        }
+        directory.toFile().deleteRecursively()
+    }
+
     private fun request(path: Path, id: String) = DaemonMessage.Execute(id, listOf("--version"),
         path.toString(), emptyMap(), emptyMap())
     private fun connect(registry: DaemonRegistry): DaemonSocket {

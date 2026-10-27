@@ -11,6 +11,8 @@ import java.util.concurrent.TimeUnit
 /** Independent nonblocking reads/writes avoid the shared blockingLock of Channels stream adapters. */
 internal class DaemonSocket(private val channel: SocketChannel, private val timeoutMs: Long) : Closeable {
     var readTimeoutMs: Long = timeoutMs
+    private var readDeadlineNs = 0L
+    private var writeDeadlineNs = 0L
     init { channel.configureBlocking(false) }
 
     private val input = object : InputStream() {
@@ -29,16 +31,22 @@ internal class DaemonSocket(private val channel: SocketChannel, private val time
         }
     }
 
-    fun receive(): DaemonMessage? = DaemonFrames.read(input)?.let(DaemonProtocol::decode)
-    @Synchronized fun send(message: DaemonMessage) = DaemonFrames.write(output, DaemonProtocol.encode(message))
+    fun receive(): DaemonMessage? {
+        readDeadlineNs = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(readTimeoutMs)
+        return DaemonFrames.read(input)?.let(DaemonProtocol::decode)
+    }
+    @Synchronized fun send(message: DaemonMessage) {
+        writeDeadlineNs = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
+        DaemonFrames.write(output, DaemonProtocol.encode(message))
+    }
     override fun close() = channel.close()
 
     private fun transfer(buffer: ByteBuffer, writing: Boolean): Int {
-        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(if (writing) timeoutMs else readTimeoutMs)
+        val deadline = if (writing) writeDeadlineNs else readDeadlineNs
         while (true) {
+            if (System.nanoTime() >= deadline) throw IOException("Daemon socket I/O timed out; do not replay requests")
             val count = if (writing) channel.write(buffer) else channel.read(buffer)
             if (count != 0 || !buffer.hasRemaining()) return count
-            if (System.nanoTime() >= deadline) throw IOException("Daemon socket I/O timed out; do not replay requests")
             Thread.sleep(IO_POLL_MS)
         }
     }

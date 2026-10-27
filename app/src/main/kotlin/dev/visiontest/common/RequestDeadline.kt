@@ -70,7 +70,6 @@ internal class RequestDeadline(timeoutMs: Long, private val nowNs: () -> Long = 
                 continuation.invokeOnCancellation { future.cancel(true) }
                 future.whenComplete { response, failure ->
                     if (failure == null) {
-                        evidence?.confirmed(method)
                         continuation.resume(response)
                     }
                     else continuation.resumeWithException(

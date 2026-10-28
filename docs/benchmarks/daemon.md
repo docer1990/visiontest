@@ -238,10 +238,10 @@ foreground for an unclassified reason. They are excluded from the committed
 latency comparison. The successful collection added per-sample synthetic reset
 and observed readiness, and retained every attempted sample.
 
-A separate native iOS unit gate on this host exited 65 before test bootstrap with
-UIKit's `UIScene life cycle is required` diagnostic in the existing
-`IOSAutomationServer` application target. The log is
-`/tmp/visiontest-issue86-ios-unit-gate.log`. This is an outstanding SDK/runtime
-compatibility issue outside the benchmark fixture change. The native unit gate
-is not claimed green; the dedicated prebuilt automation runner and scene-based
-fixture did execute the real iOS measurement requests successfully.
+The initial native iOS unit gate on this host exited 65 before test bootstrap:
+UIKit required a scene lifecycle in the `IOSAutomationServer` host app. The app
+now creates its existing UI in a window scene. A later gate passed 111 native unit
+tests and two finite UI tests covering the host label and alert. The measurements
+above used the separately identified prebuilt automation runner and scene-based
+fixture; their provenance and measured values were not changed by this host-app
+compatibility fix.

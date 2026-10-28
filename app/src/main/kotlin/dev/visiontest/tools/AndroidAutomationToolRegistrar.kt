@@ -76,13 +76,13 @@ class AndroidAutomationToolRegistrar internal constructor(
             ?: return@span operationFailure("Android device configuration not available")
         val resolvedMainApk = discovery.resolveMainApkPath(apkPath)
         if (resolvedMainApk != null) {
-            trackHostMutation { androidDevice.executeAdb("install", "-r", resolvedMainApk) }
+            androidDevice.executeAdb("install", "-r", resolvedMainApk)
         } else {
             return@span operationFailure("Main APK not found at the expected path derived from test APK: $apkPath. " +
                 "Ensure the main automation-server APK is built/installed " +
                 "(e.g., via :automation-server:assembleDebug), or re-run install.sh or set VISION_TEST_APK_PATH.")
         }
-        trackHostMutation { androidDevice.executeAdb("install", "-r", apkPath) }
+        androidDevice.executeAdb("install", "-r", apkPath)
         return@span "Automation server APKs installed successfully on device ${device.id}. Use " +
             "'start_automation_server' to start the server."
     }
@@ -94,7 +94,7 @@ class AndroidAutomationToolRegistrar internal constructor(
         if (automationClient.isServerRunning()) {
             return@span "Automation server is already running on localhost:$port"
         }
-        trackHostMutation { androidDevice.executeAdb("forward", "tcp:$port", "tcp:$port") }
+        androidDevice.executeAdb("forward", "tcp:$port", "tcp:$port")
         withContext(Dispatchers.IO) {
             val command = listOf(
                 "adb", "-s", device.id, "shell",

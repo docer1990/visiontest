@@ -23,7 +23,10 @@ internal fun callerAdbExecutable(): String {
 
 private fun startCallerAdb() {
     val adb = callerAdbExecutable()
-    val process = HostProcessContext.builder(listOf(adb, "-P", "5037", "start-server"))
+    val context = CliExecutionContext.current()
+    val port = context.routingProperties["ANDROID_ADB_SERVER_PORT"]
+        ?: context.environmentValue("ANDROID_ADB_SERVER_PORT") ?: "5037"
+    val process = HostProcessContext.builder(listOf(adb, "-P", port, "start-server"))
         .redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
     try {
         if (!process.waitFor(START_TIMEOUT_SECONDS, TimeUnit.SECONDS)) throw TimeoutException("ADB startup timed out")

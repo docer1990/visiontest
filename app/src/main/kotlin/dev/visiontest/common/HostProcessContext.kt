@@ -21,8 +21,9 @@ internal object HostProcessContext {
 
     private fun executable(name: String, context: CliExecutionContext): String {
         if (Path.of(name).isAbsolute || File.separatorChar in name) return context.resolve(name).toString()
-        val path = context.environmentValue("PATH") ?: ""
-        return path.split(File.pathSeparatorChar).asSequence()
+        // Let ProcessBuilder use its platform default search path when PATH is absent.
+        val path = context.environmentValue("PATH")
+        return if (path == null) name else path.split(File.pathSeparatorChar).asSequence()
             .map { context.resolve(it).resolve(name) }
             .firstOrNull { Files.isRegularFile(it) && Files.isExecutable(it) }?.toString()
             ?: throw IOException("Executable not found in caller PATH: $name")

@@ -117,10 +117,11 @@ class IOSAutomationToolRegistrar internal constructor(
     ): ServerPollResult {
         withContext(Dispatchers.IO) {
             logger.info("Starting iOS automation server ($label): ${command.joinToString(" ")}")
-            val process = dev.visiontest.common.trackHostMutation {
-                trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) }
+            dev.visiontest.common.trackHostMutation {
+                trace.span(TraceStage.PROCESS_LAUNCH) {
+                    launchProcess(command).also { iosXcodebuildProcess = it }
+                }
             }
-            iosXcodebuildProcess = process
         }
 
         var attempts = 0
@@ -172,7 +173,7 @@ class IOSAutomationToolRegistrar internal constructor(
         iosXcodebuildProcess?.let { process ->
             if (process.isAlive) {
                 logger.info("Destroying orphaned xcodebuild process before starting a new one")
-                dev.visiontest.common.trackHostMutation { process.destroyForcibly() }
+                dev.visiontest.common.trackHostMutation { terminateOwnedProcess(process) }
             }
             iosXcodebuildProcess = null
         }
@@ -322,7 +323,7 @@ class IOSAutomationToolRegistrar internal constructor(
     internal suspend fun stopAutomationServer(): String = trace.span(TraceStage.OPERATION) {
         val process = iosXcodebuildProcess
         return@span if (process != null && process.isAlive) {
-            dev.visiontest.common.trackHostMutation { process.destroyForcibly() }
+            dev.visiontest.common.trackHostMutation { terminateOwnedProcess(process) }
             iosXcodebuildProcess = null
             "iOS automation server stopped successfully."
         } else {
@@ -335,8 +336,8 @@ class IOSAutomationToolRegistrar internal constructor(
     @Synchronized
     internal fun close() {
         val process = iosXcodebuildProcess
+        if (process != null && process.isAlive) terminateOwnedProcess(process)
         iosXcodebuildProcess = null
-        if (process != null && process.isAlive) process.destroyForcibly()
     }
 
     // ==================== MCP Tool Registrations ====================
@@ -665,4 +666,19 @@ class IOSAutomationToolRegistrar internal constructor(
             stopAutomationServer()
         }
     }
+}
+
+/** Do not release graph ownership or its daemon lease until the child has exited. */
+private fun terminateOwnedProcess(process: Process) {
+    process.destroyForcibly()
+    var interrupted = false
+    while (true) {
+        try {
+            process.waitFor()
+            break
+        } catch (_: InterruptedException) {
+            interrupted = true
+        }
+    }
+    if (interrupted) Thread.currentThread().interrupt()
 }

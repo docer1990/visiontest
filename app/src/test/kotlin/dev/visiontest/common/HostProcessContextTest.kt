@@ -21,6 +21,25 @@ import kotlin.test.assertNull
 class HostProcessContextTest {
     @TempDir lateinit var root: Path
 
+    @Test fun `missing PATH uses the system executable search path`() {
+        val context = CliExecutionContext(root, emptyMap())
+        val process = context.withCurrent {
+            HostProcessContext.builder(listOf("sh", "-c", "printf ok")).start()
+        }
+        assertEquals("ok", process.inputStream.bufferedReader().readText())
+        assertEquals(0, process.waitFor())
+    }
+
+    @Test fun `standalone ADB startup uses the effective caller port`() {
+        val marker = root.resolve("started-port.txt")
+        Files.writeString(root.resolve("adb"), "#!/bin/sh\nprintf '%s' \"\$*\" > started-port.txt\n")
+            .toFile().setExecutable(true)
+        val context = CliExecutionContext(root, mapOf("PATH" to root.toString(), "ANDROID_ADB_SERVER_PORT" to "5039"),
+            routingProperties = mapOf("ANDROID_ADB_SERVER_PORT" to "5038"))
+        runBlocking(context.coroutineContext()) { AndroidHostProcesses().startAdb() }
+        assertEquals("-P 5038 start-server", Files.readString(marker))
+    }
+
     @Test
     fun `retained process executor uses each caller PATH cwd and environment`() {
         val executor = ProcessExecutor()

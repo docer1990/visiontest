@@ -292,7 +292,7 @@ class Android internal constructor(
 
         logger.debug("Executing ADB command: ${command.joinToString(" ")}")
 
-        return trace.span(TraceStage.ADB) {
+        suspend fun dispatch() = trace.span(TraceStage.ADB) {
             withContext(Dispatchers.IO) {
                 val process = hostProcesses.launchAdb(command)
 
@@ -333,6 +333,9 @@ class Android internal constructor(
                 outputText.trim()
             }
         }
+        val tracked = subCommand == "install" || subCommand == "forward" && subArgs.firstOrNull() != "--remove" &&
+            subArgs.firstOrNull() != "--list"
+        return if (tracked) dev.visiontest.common.trackHostMutation { dispatch() } else dispatch()
     }
 
     override suspend fun listApps(deviceId: String?): List<String> {

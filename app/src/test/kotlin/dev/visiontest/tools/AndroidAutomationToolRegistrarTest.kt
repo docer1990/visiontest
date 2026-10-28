@@ -2,14 +2,20 @@ package dev.visiontest.tools
 
 import dev.visiontest.ServerNotRunningException
 import dev.visiontest.android.AndroidElementSelectors
+import dev.visiontest.android.Android
+import dev.visiontest.android.AndroidHostProcesses
 import dev.visiontest.android.AutomationClient
 import dev.visiontest.common.DeviceConfig
 import dev.visiontest.common.DeviceType
 import dev.visiontest.common.MobileDevice
+import dev.visiontest.common.DispatchEvidence
+import dev.visiontest.performance.TraceRecorder
 import dev.visiontest.discovery.ToolDiscovery
 import dev.visiontest.utils.ErrorHandler
 import com.google.gson.JsonParser
 import io.mockk.mockk
+import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.slot
 import io.mockk.verify
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
@@ -26,6 +32,7 @@ import kotlinx.serialization.json.put
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.slf4j.LoggerFactory
+import java.nio.file.Files
 import kotlin.test.*
 
 /**
@@ -36,6 +43,31 @@ import kotlin.test.*
  * this class covers the remaining extracted functions.
  */
 class AndroidAutomationToolRegistrarTest {
+
+    @Test
+    fun `invalid install path does not claim a host mutation was dispatched`() {
+        val adb = mockk<com.malinskiy.adam.AndroidDebugBridgeClient>()
+        val device = mockk<com.malinskiy.adam.request.device.Device>()
+        every { device.serial } returns "fixture-device"
+        every { device.state } returns com.malinskiy.adam.request.device.DeviceState.DEVICE
+        coEvery { adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>()) } returns listOf(device)
+        val android = Android(trace = TraceRecorder.Disabled, adb = adb,
+            hostProcesses = AndroidHostProcesses(startAdb = {}))
+        val discovery = mockk<ToolDiscovery>()
+        val invalidPath = Files.createTempFile("invalid'path", ".apk").toString()
+        every { discovery.findAutomationServerApk() } returns invalidPath
+        every { discovery.resolveMainApkPath(invalidPath) } returns invalidPath
+        val evidence = DispatchEvidence().apply { platform = "android" }
+        try {
+            val installer = AndroidAutomationToolRegistrar(android, AutomationClient("localhost", 9), discovery)
+            assertFailsWith<IllegalArgumentException> {
+                runBlocking(evidence) { installer.installAutomationServer() }
+            }
+            assertFalse(evidence.pending)
+            assertFalse(evidence.uncertain)
+            assertFalse(evidence.transportFailed)
+        } finally { Files.deleteIfExists(java.nio.file.Path.of(invalidPath)) }
+    }
 
     private lateinit var mockServer: MockWebServer
     private lateinit var registrar: AndroidAutomationToolRegistrar

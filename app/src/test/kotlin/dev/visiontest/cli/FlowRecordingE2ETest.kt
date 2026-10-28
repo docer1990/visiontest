@@ -43,6 +43,38 @@ class FlowRecordingE2ETest {
     }
 
     @TestFactory
+    fun `daemon recording retains a healthy graph across a later request`() = listOf(Platform.Ios).map { platform ->
+        dynamicTest("$platform daemon recording and followup") {
+            fixture().use { fixture ->
+                val recording = fixture.run(platform, "step", null, true, standalone = false)
+                assertEquals(0, recording.exitCode, recording.stderr + recording.stdout)
+                val report = report(recording)
+                assertEquals("succeeded", report.getValue("recording").jsonObject
+                    .getValue("status").jsonPrimitive.content)
+                assertSavedVideo(fixture, report.getValue("recording").jsonObject, platform)
+                val followup = fixture.followup(platform)
+                assertEquals(0, followup.exitCode, followup.stderr + followup.stdout)
+                assertEquals(listOf("device.pressHome", "device.pressHome", "device.pressHome"), fixture.calls.toList())
+                fixture.assertOwnedCleanup(expectInterrupt = true)
+            }
+        }
+    }
+
+    @org.junit.jupiter.api.Test
+    fun `daemon recording cancellation releases its recorder and preserves partial video`() {
+        fixture().use { fixture ->
+            val result = fixture.run(Platform.Ios, "step", "premature-zero", true, standalone = false)
+            assertEquals(1, result.exitCode, result.stderr + result.stdout)
+            val report = report(result)
+            assertEquals(listOf("uncertain", "skipped"), statuses(report))
+            val recording = report.getValue("recording").jsonObject
+            assertEquals("failed", recording.getValue("status").jsonPrimitive.content)
+            assertSavedVideo(fixture, recording, Platform.Ios)
+            fixture.assertOwnedCleanup(expectInterrupt = false)
+        }
+    }
+
+    @TestFactory
     fun `packaged startup failures emit one complete report`() = cases().map { (platform, mode) ->
         dynamicTest("$platform $mode startup failure") {
             fixture().use { fixture ->

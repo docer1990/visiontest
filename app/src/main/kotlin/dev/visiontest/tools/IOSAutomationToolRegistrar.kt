@@ -118,7 +118,7 @@ class IOSAutomationToolRegistrar internal constructor(
         withContext(Dispatchers.IO) {
             logger.info("Starting iOS automation server ($label): ${command.joinToString(" ")}")
             // Resolve the host tool before admitting a mutation; a missing xcodebuild has dispatched nothing.
-            HostProcessContext.builder(command)
+            HostProcessContext.requireExecutable(command)
             dev.visiontest.common.trackHostMutation {
                 trace.span(TraceStage.PROCESS_LAUNCH) {
                     launchProcess(command).also { iosXcodebuildProcess = it }

@@ -3,6 +3,9 @@ package dev.visiontest.daemon
 import java.io.IOException
 import dev.visiontest.cli.CliExecutionContext
 import dev.visiontest.config.VersionInfo
+import dev.visiontest.performance.TraceRuntime
+import dev.visiontest.performance.resolveTracePath
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -10,7 +13,7 @@ internal fun runDaemonClient(arguments: List<String>, lifecycle: Boolean): Int =
     val client = DaemonClient(DaemonRegistry(),
         DaemonIdentity(DaemonProtocol.VERSION, VersionInfo.version, DaemonBuildIdentity.load()),
         stdin = System.`in`)
-    if (lifecycle) runLifecycle(client, arguments) else
+    if (lifecycle) runLifecycleWithRootOptions(client, arguments) else
         client.execute(arguments, CliExecutionContext.local().let {
             it.copy(terminalDimensions = callerTerminalDimensions(it.environment,
                 outputInteractive = callerOutputInteractive()))
@@ -29,8 +32,42 @@ private fun daemonFailure(error: Exception): Int {
     return 1
 }
 
+private fun runLifecycleWithRootOptions(client: DaemonClient, arguments: List<String>): Int {
+    var index = 0
+    var tracePath: String? = null
+    while (index < arguments.size) {
+        val argument = arguments[index]
+        when {
+            argument == "--trace-performance" -> {
+                tracePath = arguments.getOrNull(index + 1)
+                index += 2
+            }
+            argument.startsWith("--trace-performance=") -> {
+                tracePath = argument.substringAfter('=')
+                index++
+            }
+            else -> break
+        }
+    }
+    if (arguments.getOrNull(index) != "daemon" || tracePath?.isBlank() == true) {
+        System.err.println("Usage: visiontest [--trace-performance PATH] daemon {start|status [--json]|stop}")
+        return 2
+    }
+    val action = arguments.drop(index + 1)
+    val context = CliExecutionContext.local()
+    return context.withCurrent {
+        val trace = TraceRuntime("cli", System.nanoTime())
+        trace.configure(resolveTracePath("cli", tracePath, null))
+        try {
+            runBlocking { trace.cliInvocation("daemon.${action.firstOrNull() ?: "help"}") {
+                runLifecycle(client, action)
+            } }
+        } finally { trace.finish() }
+    }
+}
+
 private fun runLifecycle(client: DaemonClient, arguments: List<String>): Int {
-    when (arguments.drop(1)) {
+    when (arguments) {
         listOf("start") -> System.out.println("Daemon running (PID ${client.start().pid}).")
         listOf("status"), listOf("status", "--json") -> {
             val status = client.status()

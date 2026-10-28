@@ -45,7 +45,7 @@ internal suspend fun <T> trackHostMutation(block: suspend () -> T): T {
     return try {
         block().also { evidence?.confirmed("host.mutation") }
     } catch (error: Exception) {
-        evidence?.failed()
+        if (evidence?.pending == true) evidence.failed()
         throw error
     }
 }

@@ -93,6 +93,19 @@ class DaemonE2ETest {
         assertEquals(0, status.code, status.stderr)
         assertTrue(status.stdout.contains("\"running\":false"))
     }
+
+    @Test fun `lifecycle status accepts and records a leading trace option`() {
+        val trace = directory.resolve("daemon-status.jsonl")
+        val result = run("--trace-performance", trace.toString(), "daemon", "status", "--json")
+        assertEquals(0, result.code, result.stderr)
+        assertEquals("false", Json.parseToJsonElement(result.stdout).jsonObject["running"].toString())
+        val lines = Files.readAllLines(trace)
+        assertTrue(lines.any { it.contains("\"type\":\"session\"") })
+        assertTrue(lines.any { it.contains("\"type\":\"session.end\"") })
+        val invalid = run("--trace-performance=", "daemon", "status", "--json")
+        assertEquals(2, invalid.code)
+        assertEquals("", invalid.stdout)
+    }
     @Test fun `two fresh clients reuse one initialized graph while preserving exact native output`() {
         val bin = Files.createDirectories(directory.resolve("bin"))
         val xcrun = bin.resolve("xcrun")

@@ -19,6 +19,15 @@ internal object HostProcessContext {
         }
     }
 
+    fun requireExecutable(command: List<String>) {
+        val context = CliExecutionContext.currentOrNull() ?: return
+        require(command.isNotEmpty()) { "Host command must not be empty" }
+        val path = Path.of(executable(command.first(), context))
+        if (!Files.isRegularFile(path) || !Files.isExecutable(path)) {
+            throw IOException("Executable not found in caller PATH: ${command.first()}")
+        }
+    }
+
     private fun executable(name: String, context: CliExecutionContext): String {
         if (Path.of(name).isAbsolute || File.separatorChar in name) return context.resolve(name).toString()
         // A retained host must not inherit its own PATH for a caller that omitted PATH.

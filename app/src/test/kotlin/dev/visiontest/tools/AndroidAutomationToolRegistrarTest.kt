@@ -9,6 +9,7 @@ import dev.visiontest.common.DeviceConfig
 import dev.visiontest.common.DeviceType
 import dev.visiontest.common.MobileDevice
 import dev.visiontest.common.DispatchEvidence
+import dev.visiontest.cli.CliExecutionContext
 import dev.visiontest.performance.TraceRecorder
 import dev.visiontest.discovery.ToolDiscovery
 import dev.visiontest.utils.ErrorHandler
@@ -33,6 +34,9 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.slf4j.LoggerFactory
 import java.nio.file.Files
+import java.nio.file.Path
+import java.io.IOException
+import org.junit.jupiter.api.io.TempDir
 import kotlin.test.*
 
 /**
@@ -43,6 +47,50 @@ import kotlin.test.*
  * this class covers the remaining extracted functions.
  */
 class AndroidAutomationToolRegistrarTest {
+
+    @Test
+    fun `missing SDK adb fails before host mutation admission`(@TempDir root: Path) {
+        val adb = mockk<com.malinskiy.adam.AndroidDebugBridgeClient>()
+        val device = mockk<com.malinskiy.adam.request.device.Device>()
+        every { device.serial } returns "fixture-device"
+        every { device.state } returns com.malinskiy.adam.request.device.DeviceState.DEVICE
+        coEvery { adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>()) } returns listOf(device)
+        val android = Android(trace = TraceRecorder.Disabled, adb = adb,
+            hostProcesses = AndroidHostProcesses(startAdb = {}))
+        val context = CliExecutionContext(root, mapOf("PATH" to root.toString(), "ANDROID_HOME" to root.toString()))
+        val evidence = DispatchEvidence().apply { platform = "android" }
+        assertFailsWith<IOException> {
+            runBlocking(context.coroutineContext() + evidence) {
+                android.executeAdb("forward", "tcp:9001", "tcp:9001")
+            }
+        }
+        assertFalse(evidence.pending)
+        assertFalse(evidence.uncertain)
+    }
+
+    @Test
+    fun `remote Android shell failure is confirmed rather than fenced`() {
+        val adb = mockk<com.malinskiy.adam.AndroidDebugBridgeClient>()
+        val device = mockk<com.malinskiy.adam.request.device.Device>()
+        every { device.serial } returns "fixture-device"
+        every { device.state } returns com.malinskiy.adam.request.device.DeviceState.DEVICE
+        coEvery { adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>()) } returns listOf(device)
+        val response = mockk<com.malinskiy.adam.request.shell.v2.ShellCommandResult>()
+        every { response.exitCode } returns 7
+        every { response.errorOutput } returns "permission denied"
+        coEvery {
+            adb.execute(any<com.malinskiy.adam.request.shell.v2.ShellCommandRequest>(), "fixture-device")
+        } returns response
+        val android = Android(trace = TraceRecorder.Disabled, adb = adb,
+            hostProcesses = AndroidHostProcesses(startAdb = {}))
+        val evidence = DispatchEvidence().apply { platform = "android" }
+        assertFailsWith<dev.visiontest.CommandExecutionException> {
+            runBlocking(evidence) { android.launchApp("com.example.demo", null, null) }
+        }
+        assertFalse(evidence.pending)
+        assertFalse(evidence.uncertain)
+        assertFalse(evidence.transportFailed)
+    }
 
     @Test
     fun `invalid install path does not claim a host mutation was dispatched`() {

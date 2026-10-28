@@ -21,6 +21,8 @@ import com.malinskiy.adam.request.shell.v2.ShellCommandRequest
 import com.malinskiy.adam.request.shell.v2.ShellCommandResult
 import org.slf4j.Logger
 import dev.visiontest.common.RequestLogger
+import dev.visiontest.common.DispatchEvidence
+import dev.visiontest.common.HostProcessContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -235,6 +237,7 @@ class Android internal constructor(
             val response: ShellCommandResult = withTimeoutOrNull(timeoutMillis) {
                 adb.execute(ShellCommandRequest(command), device.id)
             } ?: throw TimeoutException("Timeout executing command: $command")
+            kotlin.coroutines.coroutineContext[DispatchEvidence]?.confirmed("host.mutation")
 
             if (response.exitCode != 0) {
                 logger.warn("Error executing command: '$command', exit code: ${response.exitCode}")
@@ -287,8 +290,12 @@ class Android internal constructor(
         val device = resolveDevice(deviceSerial)
 
         // Build command with validated arguments - ProcessBuilder handles escaping
-        val command = mutableListOf("adb", "-s", device.id)
+        val executable = if (dev.visiontest.cli.CliExecutionContext.currentOrNull() == null) "adb"
+            else callerAdbExecutable()
+        val command = mutableListOf(executable, "-s", device.id)
         command.addAll(args)
+
+        HostProcessContext.requireExecutable(command)
 
         logger.debug("Executing ADB command: ${command.joinToString(" ")}")
 
@@ -323,6 +330,7 @@ class Android internal constructor(
                 readerThread.join(5000)
 
                 val exitCode = process.exitValue()
+                kotlin.coroutines.coroutineContext[DispatchEvidence]?.confirmed("host.mutation")
                 val outputText = synchronized(output) { output.toString() }
                 if (exitCode != 0) {
                     logger.warn("ADB command failed with exit code $exitCode: $outputText")

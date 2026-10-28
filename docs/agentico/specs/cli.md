@@ -46,6 +46,24 @@ contents and nesting are never reinterpreted by the launcher.
 - **And** the host SHALL be detached from the launching client process group
 - **And** incompatible execution SHALL report explicit stop/restart guidance without fallback or replay
 
+### Requirement: Daemon admission and caller isolation preserve CLI results
+
+The daemon MUST serialize whole device commands and flows, accept at most 32 queued
+requests, and expire queue wait after 30 seconds before dispatch. Each request MUST
+use its caller's absolute cwd, environment, stdin, terminal dimensions and trace
+context. Relative argument files and artifacts MUST resolve in that cwd. A request
+MUST NOT retain another caller's result buffers, sealed recorder or shutdown hook.
+Root `--standalone` MUST select direct execution without automatic daemon fallback.
+
+Device commands MUST require a platform except local lifecycle, init, root help and
+version. After preflight the daemon MUST admit exactly one usable Android device
+or booted iOS simulator. `available_device` and `automation_server_status` remain
+diagnostic exceptions; iOS stop remains usable without a booted simulator. Android
+stop still needs a selected device. Nondefault ADB routing MUST fail before inventory
+with standalone guidance. Target changes and failed transport MUST invalidate
+retained resources after execution settles. Existing JSON, text and exit semantics
+MUST remain equivalent to standalone operation with the same inventories/backend.
+
 ### Requirement: Host performance tracing is opt in and preserves CLI behavior
 
 The root parser MUST accept `--trace-performance PATH` before a subcommand,

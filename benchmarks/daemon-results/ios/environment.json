@@ -1,0 +1,16 @@
+{
+  "host": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "java": "openjdk version \"17.0.18\" 2026-01-20 LTS\nOpenJDK Runtime Environment Corretto-17.0.18.9.1 (build 17.0.18+9-LTS)\nOpenJDK 64-Bit Server VM Corretto-17.0.18.9.1 (build 17.0.18+9-LTS, mixed mode, sharing)\n",
+  "platform": "ios",
+  "target": "307E104B-04BD-4A49-8BD4-F5B88E12C6CE",
+  "jar_sha256": "c2e2a2281154376458631a6cfc641b57cf430d77ef3b47c5b66bdb521c30206b",
+  "git_commit": "b119cb409b44ca910154d8abbf0b4ffa66a981a8",
+  "worktree": " M CONTRIBUTING.md\n M README.md\n M app/src/main/resources/agent-instructions.md\n M benchmarks/README.md\n M benchmarks/fixtures.py\n M benchmarks/fixtures/README.md\n M benchmarks/fixtures/ios/BenchmarkFixture/AppDelegate.swift\n M benchmarks/fixtures/ios/BenchmarkFixture/Info.plist\n M benchmarks/tests/test_fixtures.py\n M docs/agentico/specs/cli.md\n M docs/agentico/specs/server-lifecycle.md\n?? app/src/test/kotlin/dev/visiontest/daemon/DaemonAdversarialE2ETest.kt\n?? app/src/test/kotlin/dev/visiontest/daemon/DaemonRetentionE2ETest.kt\n?? benchmarks/__pycache__/\n?? benchmarks/daemon-results/\n?? benchmarks/daemon.py\n?? benchmarks/tests/test_daemon.py\n?? docs/benchmarks/daemon.md\n",
+  "limitations": [
+    "Synthetic fixture reset/readiness precedes every timed sample; setup native calls are untraced.",
+    "RSS is host resident set after completion, not peak client RSS.",
+    "Native HTTP and health spans are reported without subtracting admission costs.",
+    "Short local pilot; no hardware-independent speed threshold."
+  ]
+}

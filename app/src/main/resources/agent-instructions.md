@@ -47,10 +47,30 @@ Retain the serial/UDID. Use `start_automation_server` and `launch_app APP_ID` as
 Reuse device/server setup across tests/retries until target changes, restarts,
 disconnects or failures. App reuse does not waive the restart before a recorded flow.
 
-At task end, stop only servers you started unless asked otherwise.
-Android uses `stop_automation_server`; inspect warnings. iOS stop cannot control
-another CLI invocation's process. Check `automation_server_status`; if still active
-or unverifiable, report cleanup as incomplete. Never kill unrelated processes.
+Ordinary device commands automatically start and reuse a per-user Kotlin daemon.
+Use `visiontest daemon status --json` to inspect it; lifecycle commands need no
+platform. The host serializes commands and whole flows and exits after 15 idle
+minutes. `visiontest --standalone COMMAND ...` executes in the caller JVM. Paths,
+environment, stdin and trace paths belong to each caller. Do not run external MCP
+or standalone automation concurrently with daemon work on the same target.
+
+Require exactly one usable Android device or one booted iOS simulator before
+device work. The daemon checks fresh inventory; this does not verify the identity
+of the iOS backend on its fixed port. Nondefault ADB server routing requires
+`--standalone`; an explicit ANDROID_SERIAL must match the sole device.
+After upgrades, run `visiontest daemon stop`, then retry explicitly. An incompatible
+live host is never silently replaced. Never replay a mutation after an uncertain
+response. Inspect app state and preserve already confirmed flow steps. If native
+completion is unknown, restart the native backend and daemon explicitly before
+more mutations; cancelling a client does not confirm native cancellation.
+
+At task end, stop only servers you started unless asked otherwise. Android uses
+`stop_automation_server`; inspect warnings. Within the same daemon, iOS stop can
+control its retained startup child across invocations. It cannot control an
+external or standalone invocation's process. Daemon stop closes owned iOS startup
+children and host resources, but Android instrumentation needs its explicit native
+stop command. Check `automation_server_status`; if still active or unverifiable,
+report cleanup as incomplete. Never kill unrelated processes.
 
 ## App readiness
 

@@ -100,6 +100,24 @@ The MCP contract MUST expose Android `stop_automation_server` and iOS `ios_stop_
 - **When** it dispatches
 - **Then** Android SHALL use `AndroidStopToolRegistrar.stopAutomationServer` and iOS SHALL use `IOSAutomationToolRegistrar.stopAutomationServer`
 
+### Requirement: Automatic CLI host lifetime is separate from native lifetime
+
+Ordinary device invocations MUST start or reuse one compatible per-user daemon.
+`daemon start`, `daemon status [--json]`, and `daemon stop` MUST require neither
+a platform nor device inventory and MUST NOT contact a native backend. An idle
+host MUST expire after 15 minutes with no active or queued request. Stop MUST
+reject new work and drain accepted work for at most 30 seconds before cancellation
+and bounded cleanup. The instance lease MUST remain held until active work and
+cleanup settle. Daemon disposal MUST leave independently controlled Android
+instrumentation running; iOS owned startup children MUST be closed.
+
+An incompatible live build MUST reject execution with explicit stop/restart guidance,
+while compatible-protocol status/stop remain available. Stale registration MUST
+only be removed under the lifetime lease; metadata PIDs MUST NOT authorize killing
+unrelated processes. Cancellation or disconnect after dispatch MUST NOT imply
+native cancellation, and requests MUST NOT be replayed or resumed after a crash.
+A fenced platform requires explicit native-backend and daemon restart.
+
 ## Verification
 
 - Production lifecycle logic: `app/src/main/kotlin/dev/visiontest/tools/AndroidStopToolRegistrar.kt`, `app/src/main/kotlin/dev/visiontest/tools/IOSAutomationToolRegistrar.kt`, `app/src/main/kotlin/dev/visiontest/config/AutomationConfig.kt`

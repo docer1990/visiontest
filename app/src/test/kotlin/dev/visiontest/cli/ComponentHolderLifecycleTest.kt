@@ -1,15 +1,41 @@
 package dev.visiontest.cli
 
 import dev.visiontest.android.Android
+import dev.visiontest.common.DispatchEvidence
 import dev.visiontest.ios.IOSManager
 import dev.visiontest.tools.IOSAutomationToolRegistrar
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.io.TempDir
+import java.io.IOException
+import java.nio.file.Path
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 
 class ComponentHolderLifecycleTest {
+    @Test fun `missing xcodebuild is rejected before host mutation admission`(@TempDir root: Path) {
+        val device = mockk<IOSManager>()
+        io.mockk.coEvery { device.getFirstAvailableDevice() } returns dev.visiontest.common.MobileDevice(
+            "booted", "iPhone", dev.visiontest.common.DeviceType.IOS_SIMULATOR, "Booted")
+        val client = mockk<dev.visiontest.ios.IOSAutomationClient>()
+        io.mockk.coEvery { client.isServerRunning() } returns false
+        val discovery = mockk<dev.visiontest.discovery.ToolDiscovery>()
+        io.mockk.every { discovery.findXctestrun() } returns "/tmp/test.xctestrun"
+        io.mockk.every { discovery.findXcodeProject() } returns null
+        val registrar = IOSAutomationToolRegistrar(device, client, discovery,
+            org.slf4j.LoggerFactory.getLogger(javaClass), dev.visiontest.performance.TraceRecorder.Disabled)
+        val evidence = DispatchEvidence().apply { platform = "ios" }
+        val context = CliExecutionContext(root, mapOf("PATH" to root.toString()))
+        assertFailsWith<IOException> {
+            runBlocking(context.coroutineContext() + evidence) { registrar.startAutomationServer() }
+        }
+        assertFalse(evidence.pending)
+        assertFalse(evidence.uncertain)
+    }
+
     @Test fun `cancelled traced launch retains its child for graph disposal`() {
         val process = mockk<Process>(relaxed = true)
         io.mockk.every { process.isAlive } returns true

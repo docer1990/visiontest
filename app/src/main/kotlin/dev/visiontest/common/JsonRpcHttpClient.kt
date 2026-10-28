@@ -101,7 +101,7 @@ abstract class JsonRpcHttpClient internal constructor(
             }
             trace.span(TraceStage.RESPONSE_PROCESS) {
                 val response = responseBytes.toString(Charsets.UTF_8)
-                if (trace !== TraceRecorder.Disabled) trace.operationOutcome(responseOutcome(response))
+                if (TraceRecorder.hasActiveContext(trace)) trace.operationOutcome(responseOutcome(response))
                 response
             }
         }

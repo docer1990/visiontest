@@ -16,7 +16,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class HostProcessContextTest {
     @TempDir lateinit var root: Path
@@ -24,7 +26,10 @@ class HostProcessContextTest {
     @Test fun `missing PATH uses the system executable search path`() {
         val context = CliExecutionContext(root, emptyMap())
         val process = context.withCurrent {
-            HostProcessContext.builder(listOf("sh", "-c", "printf ok")).start()
+            val builder = HostProcessContext.builder(listOf("sh", "-c", "printf ok"))
+            assertTrue(Path.of(builder.command().first()).isAbsolute)
+            assertFalse(builder.command().first().startsWith(root.toString()))
+            builder.start()
         }
         assertEquals("ok", process.inputStream.bufferedReader().readText())
         assertEquals(0, process.waitFor())

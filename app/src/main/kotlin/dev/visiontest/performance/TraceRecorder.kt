@@ -174,6 +174,8 @@ internal class TraceRecorder(
         /** Immutable dispatcher for retained components; the owning invocation lives in coroutine context. */
         val Contextual = TraceRecorder(nowNs = { 0L }, emit = {}, enabled = false)
 
+        internal suspend fun hasActiveContext(recorder: TraceRecorder): Boolean = activeContext(recorder) != null
+
         private suspend fun activeContext(recorder: TraceRecorder): SpanContext? =
             coroutineContext[SpanContext]?.takeIf {
                 recorder === Contextual || recorder.enabled && it.recorder === recorder

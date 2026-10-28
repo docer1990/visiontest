@@ -21,11 +21,18 @@ internal object HostProcessContext {
 
     private fun executable(name: String, context: CliExecutionContext): String {
         if (Path.of(name).isAbsolute || File.separatorChar in name) return context.resolve(name).toString()
-        // Let ProcessBuilder use its platform default search path when PATH is absent.
-        val path = context.environmentValue("PATH")
-        return if (path == null) name else path.split(File.pathSeparatorChar).asSequence()
+        // A retained host must not inherit its own PATH for a caller that omitted PATH.
+        val path = context.environmentValue("PATH") ?: DEFAULT_SYSTEM_PATH
+        return path.split(File.pathSeparatorChar).asSequence()
             .map { context.resolve(it).resolve(name) }
             .firstOrNull { Files.isRegularFile(it) && Files.isExecutable(it) }?.toString()
             ?: throw IOException("Executable not found in caller PATH: $name")
+    }
+
+    private val DEFAULT_SYSTEM_PATH = if (File.separatorChar == '\\') {
+        val windows = System.getenv("SystemRoot") ?: "C:\\Windows"
+        listOf("$windows\\System32", windows).joinToString(File.pathSeparator)
+    } else {
+        listOf("/usr/bin", "/bin", "/usr/sbin", "/sbin").joinToString(File.pathSeparator)
     }
 }

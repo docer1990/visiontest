@@ -71,10 +71,12 @@ class RequestTraceTest {
     @Test
     fun `retained contextual recorder routes spans and metrics to successive sessions`() = runBlocking {
         val retained = TraceRecorder.Contextual
+        kotlin.test.assertFalse(TraceRecorder.hasActiveContext(retained))
         val sessions = List(2) { mutableListOf<TraceEvent>() }
         for (events in sessions) {
             val recorder = TraceRecorder(emit = events::add)
             recorder.invocation("press_home", "android") {
+                assertTrue(TraceRecorder.hasActiveContext(retained))
                 withContext(Dispatchers.IO) {
                     retained.span(TraceStage.OPERATION) {
                         retained.metric(TraceMetric.POLL_COUNT, 2)

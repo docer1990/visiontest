@@ -31,6 +31,12 @@ class IOSSimulator internal constructor(
         private const val SIMCTL = "xcrun"
         private const val STATE_BOOTED = "Booted"
 
+        internal fun isValidBundleIdFormat(bundleId: String): Boolean {
+            if (bundleId.isBlank()) return false
+            val pattern = Regex("^[a-zA-Z_][a-zA-Z0-9_-]*(?:\\.[a-zA-Z_][a-zA-Z0-9_-]*)+$")
+            return bundleId.matches(pattern)
+        }
+
         // Maximum time to wait for a simulator to finish booting (simctl bootstatus)
         internal const val BOOT_WAIT_TIMEOUT_MILLIS = 120_000L
     }
@@ -148,13 +154,7 @@ class IOSSimulator internal constructor(
      * @return true if valid, false otherwise
      */
     internal fun isValidBundleId(bundleId: String): Boolean {
-        if (bundleId.isBlank()) {
-            return false
-        }
-
-        // iOS bundle ID pattern: at least 2 segments, alphanumeric with underscores/hyphens
-        val pattern = Regex("^[a-zA-Z_][a-zA-Z0-9_-]*(?:\\.[a-zA-Z_][a-zA-Z0-9_-]*)+$")
-        return bundleId.matches(pattern)
+        return isValidBundleIdFormat(bundleId)
     }
 
     private suspend fun ensureDeviceBooted(device: MobileDevice) {

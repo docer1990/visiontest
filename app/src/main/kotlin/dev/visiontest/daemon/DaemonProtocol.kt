@@ -29,6 +29,7 @@ sealed interface DaemonMessage {
         val environment: Map<String, String>,
         val loggingProperties: Map<String, String>,
         val terminalDimensions: CliTerminalDimensions? = null,
+        val routingProperties: Map<String, String> = emptyMap(),
     ) : DaemonMessage
     data class StdinRequest(val requestId: String) : DaemonMessage
     data class Input(val requestId: String, val data: String, val eof: Boolean) : DaemonMessage
@@ -67,6 +68,7 @@ object DaemonProtocol {
                     put("cwd", message.cwd)
                     put("environment", stringMap(message.environment))
                     put("loggingProperties", stringMap(message.loggingProperties))
+                    put("routingProperties", stringMap(message.routingProperties))
                     terminalDimensions(message.terminalDimensions)
                 }
                 is DaemonMessage.StdinRequest -> { put("kind", "stdin-request"); put("requestId", message.requestId) }
@@ -131,13 +133,15 @@ object DaemonProtocol {
         }
         val arguments = value["arguments"] as? JsonArray ?: fail("Invalid arguments")
         val environment = value.map("environment")
+        val routingProperties = if ("routingProperties" in value) value.map("routingProperties") else emptyMap()
+        if (routingProperties.keys.any { it != "ANDROID_ADB_SERVER_PORT" }) fail("Invalid caller routing property")
         environment.forEach { (key, entry) ->
             val invalidKey = key.isEmpty() || '=' in key || '\u0000' in key
             if (invalidKey || '\u0000' in entry) fail("Invalid process environment")
         }
         return DaemonMessage.Execute(
             value.requestId(), arguments.map { stringValue(it, "argument") }, cwd,
-            environment, value.map("loggingProperties"), terminalDimensions(value),
+            environment, value.map("loggingProperties"), terminalDimensions(value), routingProperties,
         )
     }
 

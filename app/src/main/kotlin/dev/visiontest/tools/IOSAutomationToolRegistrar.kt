@@ -117,7 +117,9 @@ class IOSAutomationToolRegistrar internal constructor(
     ): ServerPollResult {
         withContext(Dispatchers.IO) {
             logger.info("Starting iOS automation server ($label): ${command.joinToString(" ")}")
-            val process = trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) }
+            val process = dev.visiontest.common.trackHostMutation {
+                trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) }
+            }
             iosXcodebuildProcess = process
         }
 
@@ -170,7 +172,7 @@ class IOSAutomationToolRegistrar internal constructor(
         iosXcodebuildProcess?.let { process ->
             if (process.isAlive) {
                 logger.info("Destroying orphaned xcodebuild process before starting a new one")
-                process.destroyForcibly()
+                dev.visiontest.common.trackHostMutation { process.destroyForcibly() }
             }
             iosXcodebuildProcess = null
         }
@@ -320,7 +322,7 @@ class IOSAutomationToolRegistrar internal constructor(
     internal suspend fun stopAutomationServer(): String = trace.span(TraceStage.OPERATION) {
         val process = iosXcodebuildProcess
         return@span if (process != null && process.isAlive) {
-            process.destroyForcibly()
+            dev.visiontest.common.trackHostMutation { process.destroyForcibly() }
             iosXcodebuildProcess = null
             "iOS automation server stopped successfully."
         } else {

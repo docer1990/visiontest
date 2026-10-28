@@ -99,7 +99,8 @@ Android device or one booted iOS simulator for the selected platform. Android
 forwarding must agree with the admitted serial. Daemon Android admission uses the
 same local ADB endpoint as the retained client, localhost:5037. Nondefault ADB
 server socket, port or nonlocal address overrides are rejected before inventory,
-including overrides inherited as daemon JVM properties, with guidance to unset
+including properties supplied by the caller JVM or inherited by the daemon JVM,
+with guidance to unset
 them or use `--standalone`. Default-equivalent values are
 accepted. An explicit `ANDROID_SERIAL` must match the sole admitted serial.
 Ambiguity is rejected before an
@@ -125,6 +126,10 @@ the backend. Configurations requiring replacement are handled only when no reque
 uses the old components, and owned resources are closed exactly once. Alternating
 between Android and iOS with unchanged targets retains compatible host components,
 including an iOS registrar-owned startup child.
+
+Host subprocess mutations become pending only when the native command or owned
+process action is dispatched. Validation and component acquisition alone do not
+make a mutation's outcome uncertain.
 
 Cancellation/disconnect removes queued work or cancels active host execution.
 Host cancellation does not establish that a native action stopped. The daemon

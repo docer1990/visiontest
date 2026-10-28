@@ -12,6 +12,21 @@ import kotlin.test.assertSame
 import kotlin.test.assertFailsWith
 
 class DaemonComponentsTest {
+    @Test fun `invalid app identifiers fail before daemon target admission`() {
+        var acquisitions = 0
+        for (command in listOf("launch_app", "info_app")) {
+            for (platform in listOf("android", "ios")) {
+                val result = CliRequestExecutor().execute(arrayOf(command, "invalid", "--platform", platform),
+                    CliExecutionContext.local(), acquireComponents = {
+                        acquisitions++
+                        error("components acquired for invalid app identifier")
+                    })
+                assertEquals(2, result.exitCode, "$command $platform: ${result.stderr}")
+            }
+        }
+        assertEquals(0, acquisitions)
+    }
+
     @Test fun `compatible requests share graph and close exactly once`() {
         val holder = mockk<ComponentHolder>(relaxed = true)
         var constructions = 0

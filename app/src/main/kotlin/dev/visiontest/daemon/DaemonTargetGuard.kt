@@ -28,6 +28,7 @@ internal class DaemonTargetGuard(
             .filter { it.state == "Booted" }.map { it.id }
     },
     private val environment: () -> Map<String, String> = { CliExecutionContext.current().environment },
+    private val callerProperties: () -> Map<String, String> = { CliExecutionContext.current().routingProperties },
 ) {
     data class Target(val platform: Platform, val id: String)
 
@@ -57,6 +58,10 @@ internal class DaemonTargetGuard(
         val propertyPort = System.getProperty("ANDROID_ADB_SERVER_PORT")
         if (propertyPort != null && propertyPort != "5037") {
             unsupportedRouting("JVM property ANDROID_ADB_SERVER_PORT=$propertyPort")
+        }
+        val callerPort = callerProperties()["ANDROID_ADB_SERVER_PORT"]
+        if (callerPort != null && callerPort != "5037") {
+            unsupportedRouting("caller JVM property ANDROID_ADB_SERVER_PORT=$callerPort")
         }
         val values = environment()
         val allowed = mapOf(

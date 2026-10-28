@@ -88,6 +88,13 @@ class DaemonProtocolTest {
         assertEquals(without, DaemonProtocol.decode(DaemonProtocol.encode(without)))
     }
 
+    @Test fun `caller routing property round trips without modifying its environment`() {
+        val message = DaemonMessage.Execute("r", emptyList(), "/tmp", emptyMap(), emptyMap(),
+            routingProperties = mapOf("ANDROID_ADB_SERVER_PORT" to "5038"))
+        assertEquals(message, DaemonProtocol.decode(DaemonProtocol.encode(message)))
+        assertEquals(emptyMap(), message.environment)
+    }
+
     @Test fun `invalid caller terminal dimensions are rejected before execution`() {
         for (terminal in listOf("null", "[]", "{}", "{\"width\":0,\"height\":24}",
             "{\"width\":40,\"height\":10001}", "{\"width\":\"40\",\"height\":24}",

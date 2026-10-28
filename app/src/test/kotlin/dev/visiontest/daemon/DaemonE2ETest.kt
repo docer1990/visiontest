@@ -26,10 +26,12 @@ class DaemonE2ETest {
     private var latestClientPid = 0L
     private fun run(
         vararg args: String, classLog: Path? = null, newSession: Boolean = false, stdin: String = "",
+        jvmOptions: List<String> = emptyList(),
     ): Output {
         val stdout = Files.createTempFile(directory, "out", ".txt")
         val stderr = Files.createTempFile(directory, "err", ".txt")
         val command = mutableListOf(Path.of(System.getProperty("java.home"), "bin/java").toString())
+        command.addAll(jvmOptions)
         classLog?.let { command.add("-Xlog:class+load=info:file=$it") }
         command.addAll(listOf("-jar", System.getProperty("visiontest.jar"), *args))
         val executable = if (newSession) listOf("/usr/bin/python3", "-c",
@@ -45,6 +47,19 @@ class DaemonE2ETest {
             assertTrue(child.waitFor(25, TimeUnit.SECONDS), "client timed out")
             return Output(child.exitValue(), Files.readString(stdout), Files.readString(stderr))
         } finally { if (child.isAlive) child.destroyForcibly() }
+    }
+
+    @Test fun `client JVM ADB routing override is rejected by an already running daemon`() {
+        try {
+            assertEquals(0, run("daemon", "start").code)
+            val result = run("get_device_info", "-p", "android",
+                jvmOptions = listOf("-DANDROID_ADB_SERVER_PORT=5038"))
+            assertEquals(1, result.code, result.stderr)
+            kotlin.test.assertContains(result.stderr, "caller JVM property ANDROID_ADB_SERVER_PORT=5038")
+            kotlin.test.assertContains(result.stderr, "--standalone")
+            val status = Json.parseToJsonElement(run("daemon", "status", "--json").stdout).jsonObject
+            assertEquals("0", status["initializationCount"].toString())
+        } finally { run("daemon", "stop") }
     }
 
     @Test fun `ordinary invocations reuse one host without loading terminal or device graph in client`() {

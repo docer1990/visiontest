@@ -11,6 +11,7 @@ import dev.visiontest.android.AutomationClient
 import dev.visiontest.common.CompactInspectionOptions
 import dev.visiontest.common.DeviceConfig
 import dev.visiontest.common.HostProcessContext
+import dev.visiontest.common.trackHostMutation
 import dev.visiontest.config.AutomationConfig
 import dev.visiontest.discovery.ToolDiscovery
 import io.modelcontextprotocol.kotlin.sdk.Tool
@@ -75,13 +76,13 @@ class AndroidAutomationToolRegistrar internal constructor(
             ?: return@span operationFailure("Android device configuration not available")
         val resolvedMainApk = discovery.resolveMainApkPath(apkPath)
         if (resolvedMainApk != null) {
-            androidDevice.executeAdb("install", "-r", resolvedMainApk)
+            trackHostMutation { androidDevice.executeAdb("install", "-r", resolvedMainApk) }
         } else {
             return@span operationFailure("Main APK not found at the expected path derived from test APK: $apkPath. " +
                 "Ensure the main automation-server APK is built/installed " +
                 "(e.g., via :automation-server:assembleDebug), or re-run install.sh or set VISION_TEST_APK_PATH.")
         }
-        androidDevice.executeAdb("install", "-r", apkPath)
+        trackHostMutation { androidDevice.executeAdb("install", "-r", apkPath) }
         return@span "Automation server APKs installed successfully on device ${device.id}. Use " +
             "'start_automation_server' to start the server."
     }
@@ -93,7 +94,7 @@ class AndroidAutomationToolRegistrar internal constructor(
         if (automationClient.isServerRunning()) {
             return@span "Automation server is already running on localhost:$port"
         }
-        androidDevice.executeAdb("forward", "tcp:$port", "tcp:$port")
+        trackHostMutation { androidDevice.executeAdb("forward", "tcp:$port", "tcp:$port") }
         withContext(Dispatchers.IO) {
             val command = listOf(
                 "adb", "-s", device.id, "shell",
@@ -102,7 +103,7 @@ class AndroidAutomationToolRegistrar internal constructor(
                 "-e", "class", AutomationConfig.AUTOMATION_SERVER_TEST_CLASS,
                 "${AutomationConfig.AUTOMATION_SERVER_TEST_PACKAGE}/${AutomationConfig.INSTRUMENTATION_RUNNER}"
             )
-            trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) }
+            trackHostMutation { trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) } }
         }
         var attempts = 0
         val maxAttempts = 10

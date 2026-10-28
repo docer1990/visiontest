@@ -12,6 +12,8 @@ internal data class CliExecutionContext(
     val diagnostic: (String) -> Unit = System.err::println,
     val loggingProperties: Map<String, String> = System.getProperties().stringPropertyNames()
         .filter { it.startsWith("org.slf4j.simpleLogger.") }.associateWith { System.getProperty(it) },
+    val routingProperties: Map<String, String> = listOf("ANDROID_ADB_SERVER_PORT")
+        .mapNotNull { name -> System.getProperty(name)?.let { name to it } }.toMap(),
     val logOutput: ((String) -> Unit)? = null,
     val terminalDimensions: CliTerminalDimensions? = null,
 ) {

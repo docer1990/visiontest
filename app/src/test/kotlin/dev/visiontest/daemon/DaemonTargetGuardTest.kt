@@ -9,6 +9,16 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class DaemonTargetGuardTest {
+    @Test fun `caller JVM ADB port override is rejected before inventory`() = runTest {
+        var inventories = 0
+        val guard = DaemonTargetGuard(androidInventory = { inventories++; listOf("serial") },
+            androidForwards = { "" }, environment = { emptyMap() },
+            callerProperties = { mapOf("ANDROID_ADB_SERVER_PORT" to "5038") })
+        val error = assertFailsWith<CliExit> { guard.check(Platform.Android, "press_home") }
+        kotlin.test.assertContains(error.message, "--standalone")
+        assertEquals(0, inventories)
+    }
+
     @org.junit.jupiter.api.io.TempDir lateinit var directory: java.nio.file.Path
 
     @Test fun `production inventory resolves caller SDK adb without PATH`() = runTest {

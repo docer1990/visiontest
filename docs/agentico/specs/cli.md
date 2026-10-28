@@ -60,8 +60,10 @@ Device commands MUST require a platform except local lifecycle, init, root help 
 version. After preflight the daemon MUST admit exactly one usable Android device
 or booted iOS simulator. `available_device` and `automation_server_status` remain
 diagnostic exceptions; iOS stop remains usable without a booted simulator. Android
-stop still needs a selected device. Nondefault ADB routing MUST fail before inventory
-with standalone guidance, including routing inherited by the daemon JVM. Android
+stop still needs a selected device. App identifiers MUST be validated before target
+admission or component acquisition. Nondefault ADB routing MUST fail before inventory
+with standalone guidance, including JVM properties supplied by the caller or inherited
+by the daemon. Android
 device discovery MUST refresh at each daemon request boundary so diagnostic results
 and the first admitted command cannot reuse another request's inventory. A target
 change within a platform and failed transport MUST invalidate retained resources

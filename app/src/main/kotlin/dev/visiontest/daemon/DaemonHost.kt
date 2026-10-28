@@ -204,7 +204,7 @@ internal class DaemonHost(
         val message = request.message
         val context = CliExecutionContext(Path.of(message.cwd), message.environment,
             readStdin = { request.readInput() }, loggingProperties = message.loggingProperties,
-            terminalDimensions = message.terminalDimensions)
+            terminalDimensions = message.terminalDimensions, routingProperties = message.routingProperties)
         val evidence = dev.visiontest.common.DispatchEvidence { platform ->
             if (platform in fenced) throw IOException(
                 "Native outcome uncertain; restart native backend and daemon before mutations")
@@ -219,7 +219,6 @@ internal class DaemonHost(
                         // Host subprocess mutation paths do not pass through HTTP evidence.
                         resources.acquire(context, trace).also {
                             acquisitions.incrementAndGet()
-                            if (trace.operation in HOST_MUTATION_OPERATIONS) evidence.submittingMutation()
                         }
                     })
             request.result(result)
@@ -309,9 +308,6 @@ private const val IDLE_MINUTES = 15L
 private const val MAX_CONNECTIONS = 64
 private const val HANDLER_IDLE_SECONDS = 30L
 private const val POLL_MS = 5L
-
-private val HOST_MUTATION_OPERATIONS = setOf("launch_app", "install_automation_server",
-    "start_automation_server", "stop_automation_server")
 
 private fun daemonThreadFactory(name: String) = java.util.concurrent.ThreadFactory { work ->
     Thread(work, name).apply { isDaemon = true }

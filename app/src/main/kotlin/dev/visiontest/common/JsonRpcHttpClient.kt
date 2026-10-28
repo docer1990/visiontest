@@ -126,7 +126,7 @@ abstract class JsonRpcHttpClient internal constructor(
                     response.statusCode(),
                 )
             }
-            evidence?.confirmed(method)
+            evidence?.received(method, response.body().toString(Charsets.UTF_8))
             return response.body()
         } catch (error: Exception) {
             evidence?.failed()
@@ -149,6 +149,7 @@ abstract class JsonRpcHttpClient internal constructor(
             connection.connectTimeout = REQUEST_TIMEOUT_MS
             connection.readTimeout = readTimeoutMs
             connection.doOutput = true
+            connection.setFixedLengthStreamingMode(requestBytes.size)
             evidence?.submitting(method)
             connection.outputStream.use { it.write(requestBytes) }
             trace.metric(TraceMetric.REQUEST_BYTES, requestBytes.size.toLong())
@@ -165,7 +166,7 @@ abstract class JsonRpcHttpClient internal constructor(
             // Close the stream so the underlying connection can return to the keep-alive pool.
             val responseBytes = connection.inputStream.use { it.readBytes() }
             trace.metric(TraceMetric.RESPONSE_BYTES, responseBytes.size.toLong())
-            evidence?.confirmed(method)
+            evidence?.received(method, responseBytes.toString(Charsets.UTF_8))
             return responseBytes
         } catch (error: Exception) {
             evidence?.failed()

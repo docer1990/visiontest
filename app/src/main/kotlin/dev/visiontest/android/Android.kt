@@ -167,6 +167,11 @@ class Android internal constructor(
     private var deviceListCache: List<MobileDevice>? = null
     private var lastDeviceListFetch: Long = 0
 
+    /** Called by the daemon only between settled requests, never during discovery. */
+    internal fun invalidateDeviceCache() {
+        deviceListCache = null
+    }
+
     private suspend fun fetchDevices(): List<MobileDevice> = trace.span(TraceStage.DEVICE_DISCOVERY) {
         ensureAdbStarted()
         deviceListCacheLock.withLock {

@@ -90,7 +90,7 @@ class VisionTestCli internal constructor(
         context {
             obj = trace
             CliExecutionContext.current().terminalDimensions?.let {
-                terminal = Terminal(width = it.width, height = it.height)
+                terminal = Terminal(width = it.width, height = it.height, interactive = it.outputInteractive)
             }
             argumentFileReader = { java.nio.file.Files.readString(CliExecutionContext.current().resolve(it)) }
             envvarReader = { CliExecutionContext.current().environmentValue(it) }

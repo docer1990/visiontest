@@ -66,7 +66,10 @@ class DaemonAdversarialE2ETest {
     } finally { if (child.process.isAlive) child.process.destroyForcibly() }
 
     private fun run(vararg args: String) = finish(start(*args))
-    private fun status() = Json.parseToJsonElement(run("daemon", "status", "--json").stdout).jsonObject
+    private fun status() = run("daemon", "status", "--json").let {
+        assertEquals(0, it.code, it.stderr)
+        Json.parseToJsonElement(it.stdout).jsonObject
+    }
     private fun until(condition: () -> Boolean) {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
         while (!condition() && System.nanoTime() < deadline) Thread.sleep(25)

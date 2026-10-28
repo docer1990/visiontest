@@ -16,7 +16,7 @@ internal class DaemonComponents(
     private var holder: ComponentHolder? = null
     private var configuration: Map<String, String>? = null
     private var closed = false
-    private var target: DaemonTargetGuard.Target? = null
+    private val targets = mutableMapOf<dev.visiontest.cli.Platform, DaemonTargetGuard.Target>()
     var initializationCount: Int = 0
         private set
 
@@ -39,11 +39,16 @@ internal class DaemonComponents(
                 if (!admittedSuccessfully) invalidate()
             }
             if (admitted != null) {
-                if (target != null && target != admitted) invalidate()
-                target = admitted
+                val previous = targets[admitted.platform]
+                if (previous != null && previous != admitted) invalidate()
+                targets[admitted.platform] = admitted
             }
         }
-        holder?.let { return it }
+        holder?.let {
+            // Admission is fresh; discovery within the operation must not reuse another request's cache.
+            it.android.invalidateDeviceCache()
+            return it
+        }
         val created = context.withCurrent {
             if (trace == null) factory() else trace.initializeComponents(factory)
         }
@@ -59,7 +64,7 @@ internal class DaemonComponents(
         val previous = holder
         holder = null
         configuration = null
-        target = null
+        targets.clear()
         previous?.close()
     }
 

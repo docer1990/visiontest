@@ -4,6 +4,9 @@ import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.SocketChannel
 import java.nio.file.Files
+import kotlinx.coroutines.runBlocking
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -11,6 +14,45 @@ import kotlin.test.assertNull
 
 @Suppress("NestedBlockDepth") // Real socket lifetimes are scoped to deterministic cleanup.
 class DaemonHostTest {
+    @Test
+    fun `malformed mutation response fences later daemon mutations`() {
+        val directory = Files.createTempDirectory(java.nio.file.Path.of("/tmp"), "vtf")
+        val registry = DaemonRegistry(directory)
+        val identity = DaemonIdentity(1, "dev", "a".repeat(64))
+        MockWebServer().use { backend ->
+            backend.enqueue(MockResponse().setBody("""{"result":{"success":"true"}}"""))
+            backend.enqueue(MockResponse().setBody("""{"result":{"success":true}}"""))
+            backend.start()
+            DaemonHost(registry, identity, execution = { _, _, coroutineContext ->
+                coroutineContext[dev.visiontest.common.DispatchEvidence]!!.platform = "android"
+                val response = runBlocking(coroutineContext) {
+                    dev.visiontest.android.AutomationClient(backend.hostName, backend.port).pressHome()
+                }
+                dev.visiontest.cli.CliResult(0, response, null)
+            }).use { host ->
+                host.start()
+                fun execute(id: String): Int {
+                    SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->
+                        channel.connect(UnixDomainSocketAddress.of(registry.socketPath))
+                        DaemonSocket(channel, 3000).use { socket ->
+                            socket.send(DaemonMessage.Hello(identity))
+                            socket.receive()
+                            socket.send(DaemonMessage.Execute(id, emptyList(), directory.toString(),
+                                emptyMap(), emptyMap()))
+                            val first = socket.receive()
+                            return if (first is DaemonMessage.Completion) first.exitCode
+                                else (socket.receive() as DaemonMessage.Completion).exitCode
+                        }
+                    }
+                }
+                assertEquals(0, execute("malformed"))
+                assertEquals(1, execute("fenced"))
+                assertEquals(1, backend.requestCount)
+            }
+        }
+        directory.toFile().deleteRecursively()
+    }
+
     @Test
     fun `host publishes after bind and serves real executor version without native resources`() {
         val directory = Files.createTempDirectory(java.nio.file.Path.of("/tmp"), "vth")

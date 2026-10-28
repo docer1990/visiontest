@@ -5,6 +5,16 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CallerTerminalTest {
+    @Test fun `output interaction is independent from redirected input`() {
+        assertEquals(true, callerOutputInteractive(consoleInteractive = false) { true })
+        assertEquals(false, callerOutputInteractive(consoleInteractive = false) { false })
+        assertEquals(true, callerOutputInteractive(consoleInteractive = true) { error("unexpected probe") })
+        assertEquals(CliTerminalDimensions(40, 24, true),
+            callerTerminalDimensions(mapOf("COLUMNS" to "40"), interactive = false, outputInteractive = true) {
+                error("unexpected size probe")
+            })
+    }
+
     @Test fun `redirected caller never probes a terminal`() {
         assertEquals(CliTerminalDimensions(79, 24), callerTerminalDimensions(emptyMap(), interactive = false) {
             error("noninteractive request spawned a probe")

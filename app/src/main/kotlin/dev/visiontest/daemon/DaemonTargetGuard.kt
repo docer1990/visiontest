@@ -54,6 +54,10 @@ internal class DaemonTargetGuard(
     }
 
     private fun checkAdbRouting() {
+        val propertyPort = System.getProperty("ANDROID_ADB_SERVER_PORT")
+        if (propertyPort != null && propertyPort != "5037") {
+            unsupportedRouting("JVM property ANDROID_ADB_SERVER_PORT=$propertyPort")
+        }
         val values = environment()
         val allowed = mapOf(
             "ADB_SERVER_SOCKET" to setOf("tcp:localhost:5037", "tcp:127.0.0.1:5037", "tcp:[::1]:5037", "tcp:5037"),

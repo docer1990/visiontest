@@ -40,6 +40,24 @@ class DaemonTargetGuardTest {
         kotlin.test.assertTrue((System.nanoTime() - start) / 1_000_000 < 2000, "Inventory outlived caller deadline")
     }
 
+    @Test fun `daemon JVM ADB port override is rejected before inventory`() = runTest {
+        val name = "ANDROID_ADB_SERVER_PORT"
+        val previous = System.getProperty(name)
+        var inventories = 0
+        try {
+            System.setProperty(name, "5038")
+            val guard = DaemonTargetGuard(androidInventory = { inventories++; listOf("serial") },
+                androidForwards = { "" }, environment = { emptyMap() })
+            val error = assertFailsWith<CliExit> { guard.check(Platform.Android, "press_home") }
+            kotlin.test.assertContains(error.message, "--standalone")
+            assertEquals(0, inventories)
+            System.setProperty(name, "5037")
+            assertEquals("serial", guard.check(Platform.Android, "press_home")?.id)
+        } finally {
+            if (previous == null) System.clearProperty(name) else System.setProperty(name, previous)
+        }
+    }
+
     @Test fun `unsupported ADB server routing is rejected before inventory`() = runTest {
         for ((name, value) in listOf("ADB_SERVER_SOCKET" to "tcp:remote:5037",
             "ANDROID_ADB_SERVER_PORT" to "5038", "ANDROID_ADB_SERVER_ADDRESS" to "remote",

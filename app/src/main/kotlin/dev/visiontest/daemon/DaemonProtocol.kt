@@ -12,6 +12,7 @@ import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 
@@ -148,7 +149,11 @@ object DaemonProtocol {
         if (width !in 1..CliTerminalDimensions.MAX_DIMENSION || height !in 1..CliTerminalDimensions.MAX_DIMENSION) {
             fail("Invalid caller terminal dimensions")
         }
-        return CliTerminalDimensions(width, height)
+        val interactive = terminal["interactive"]?.let {
+            (it as? JsonPrimitive)?.takeUnless { primitive -> primitive.isString }?.booleanOrNull
+                ?: fail("Invalid caller terminal interaction")
+        }
+        return CliTerminalDimensions(width, height, interactive)
     }
 
     private fun validateIdentity(identity: DaemonIdentity) {

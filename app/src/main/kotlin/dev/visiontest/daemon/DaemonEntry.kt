@@ -12,7 +12,8 @@ internal fun runDaemonClient(arguments: List<String>, lifecycle: Boolean): Int =
         stdin = System.`in`)
     if (lifecycle) runLifecycle(client, arguments) else
         client.execute(arguments, CliExecutionContext.local().let {
-            it.copy(terminalDimensions = callerTerminalDimensions(it.environment))
+            it.copy(terminalDimensions = callerTerminalDimensions(it.environment,
+                outputInteractive = callerOutputInteractive()))
         }, System.out, System.err)
 } catch (error: IOException) {
     daemonFailure(error)

@@ -20,6 +20,19 @@ internal class DispatchEvidence(private val admitMutation: (String) -> Unit = {}
     fun submitting(method: String?) { if (method !in readMethods) submittingMutation() }
     fun submittingMutation() { admitMutation(platform); pending = true }
     fun confirmed(method: String?) { if (method !in readMethods) pending = false }
+    fun received(method: String, response: String) {
+        if (method in readMethods) return
+        try {
+            val result = automationResult(response)
+            if (!result.isRpcError) {
+                result.value.validateFields("success", FieldType.BOOLEAN, required = true)
+                result.value.validateFields("error", FieldType.STRING)
+            }
+            confirmed(method)
+        } catch (_: dev.visiontest.CommandExecutionException) {
+            failed()
+        }
+    }
     fun failed() { transportFailed = true; if (pending) uncertain = true }
     fun operationFailed() { if (pending) failed() }
 }

@@ -136,6 +136,58 @@ class DaemonComponentsTest {
         resources.close()
     }
 
+    @Test fun `switching platforms retains the graph until a platform target changes`() {
+        var androidTarget = "android-first"
+        val holders = ArrayDeque(List(2) { mockk<ComponentHolder>(relaxed = true) })
+        val first = holders.first()
+        val resources = DaemonComponents(factory = { holders.removeFirst() }, targetGuard = DaemonTargetGuard(
+            androidInventory = { listOf(androidTarget) }, androidForwards = { "" },
+            iosInventory = { listOf("ios-first") }))
+        val context = CliExecutionContext(environment = emptyMap())
+        fun request(platform: String) = CliRequestExecutor().execute(
+            arrayOf("get_device_info", "--platform", platform), context,
+            acquireComponents = { resources.acquire(context, it) })
+        request("ios")
+        request("android")
+        request("ios")
+        assertEquals(1, resources.initializationCount)
+        verify(exactly = 0) { first.close() }
+        androidTarget = "android-second"
+        request("android")
+        assertEquals(2, resources.initializationCount)
+        verify(exactly = 1) { first.close() }
+        resources.close()
+    }
+
+    @Test fun `each daemon request refreshes Android discovery while retaining the graph`() =
+        kotlinx.coroutines.test.runTest {
+            val adb = mockk<com.malinskiy.adam.AndroidDebugBridgeClient>()
+            fun device(serial: String) = mockk<com.malinskiy.adam.request.device.Device>().also {
+                io.mockk.every { it.serial } returns serial
+                io.mockk.every { it.state } returns com.malinskiy.adam.request.device.DeviceState.DEVICE
+            }
+            var current = device("first")
+            io.mockk.coEvery { adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>()) } answers {
+                listOf(current)
+            }
+            val android = dev.visiontest.android.Android(cacheValidityPeriod = Long.MAX_VALUE,
+                trace = dev.visiontest.performance.TraceRecorder.Disabled, adb = adb,
+                hostProcesses = dev.visiontest.android.AndroidHostProcesses(startAdb = {}))
+            val holder = mockk<ComponentHolder>(relaxed = true)
+            io.mockk.every { holder.android } returns android
+            val resources = DaemonComponents(factory = { holder })
+            val context = CliExecutionContext(environment = emptyMap())
+            assertEquals("first", resources.acquire(context).android.getFirstAvailableDevice().id)
+            current = device("second")
+            assertEquals("first", android.getFirstAvailableDevice().id)
+            assertEquals("second", resources.acquire(context).android.getFirstAvailableDevice().id)
+            assertEquals(1, resources.initializationCount)
+            io.mockk.coVerify(exactly = 2) {
+                adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>())
+            }
+            resources.close()
+        }
+
     @Test fun `disconnected inventory invalidates retained graph`() {
         var targets = listOf("device")
         val holder = mockk<ComponentHolder>(relaxed = true)

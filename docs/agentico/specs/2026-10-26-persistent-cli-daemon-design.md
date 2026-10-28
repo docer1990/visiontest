@@ -68,7 +68,8 @@ instrumentation remains separately controlled by the existing native stop comman
 
 Each request has fresh parser instances, an execution context and a result sink.
 The context contains an absolute caller directory, relevant environment values,
-terminal presentation context, stdin access, request identity and tracing state.
+terminal presentation context (including width and stdout interactivity), stdin
+access, request identity and tracing state.
 Flow input, screenshots, recordings, artifact discovery and trace paths resolve
 against the caller directory. Child processes use explicit cwd/environment.
 Argument-file expansion must also resolve against the caller directory.
@@ -98,12 +99,15 @@ Android device or one booted iOS simulator for the selected platform. Android
 forwarding must agree with the admitted serial. Daemon Android admission uses the
 same local ADB endpoint as the retained client, localhost:5037. Nondefault ADB
 server socket, port or nonlocal address overrides are rejected before inventory,
-with guidance to unset them or use `--standalone`. Default-equivalent values are
+including overrides inherited as daemon JVM properties, with guidance to unset
+them or use `--standalone`. Default-equivalent values are
 accepted. An explicit `ANDROID_SERIAL` must match the sole admitted serial.
 Ambiguity is rejected before an
 action; a platform flag or cached target is not routing evidence. `available_device`
 keeps its existing diagnostic first-device inspection behavior; it is not an
-inventory listing and is exempt from target admission. `automation_server_status`
+inventory listing and is exempt from target admission. Android discovery is
+refreshed at each daemon request boundary, including diagnostic requests, while
+reuse within one request is allowed. `automation_server_status`
 is also exempt because it only probes health. iOS `stop_automation_server` remains
 usable without a booted simulator because it only terminates the registrar-owned
 startup child; Android stop still requires a selected device for package teardown.
@@ -112,12 +116,15 @@ at the fixed iOS endpoint, which has no identity handshake. Target checks
 and existing operation health checks are not elided for performance claims.
 External standalone/MCP clients are outside the daemon's mutual-exclusion boundary.
 
-Reuse is invalidated by target changes, disconnects, incompatible configuration,
+Reuse is invalidated by target changes within a platform, disconnects,
+incompatible configuration,
 or failed native transport. Native restarts are handled by fresh connections and
 normal readiness checks; no UI result is cached. An invalid request may encounter
 already-existing infrastructure, but must not initialize new components or touch
 the backend. Configurations requiring replacement are handled only when no request
-uses the old components, and owned resources are closed exactly once.
+uses the old components, and owned resources are closed exactly once. Alternating
+between Android and iOS with unchanged targets retains compatible host components,
+including an iOS registrar-owned startup child.
 
 Cancellation/disconnect removes queued work or cancels active host execution.
 Host cancellation does not establish that a native action stopped. The daemon

@@ -51,8 +51,8 @@ Ordinary device commands automatically start and reuse a per-user Kotlin daemon.
 Use `visiontest daemon status --json` to inspect it; lifecycle commands need no
 platform. The host serializes commands and whole flows and exits after 15 idle
 minutes. `visiontest --standalone COMMAND ...` executes in the caller JVM. Paths,
-environment, stdin and trace paths belong to each caller. Do not run external MCP
-or standalone automation concurrently with daemon work on the same target.
+environment, stdin and trace paths belong to each caller. Do not run external or
+standalone automation concurrently with daemon work on the same target.
 
 Require exactly one usable Android device or one booted iOS simulator before
 device work. The daemon checks fresh inventory; this does not verify the identity

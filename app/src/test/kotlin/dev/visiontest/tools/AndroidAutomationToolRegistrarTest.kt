@@ -36,6 +36,8 @@ import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.nio.file.Path
 import java.io.IOException
+import java.io.ByteArrayInputStream
+import java.util.concurrent.TimeUnit
 import org.junit.jupiter.api.io.TempDir
 import kotlin.test.*
 
@@ -47,6 +49,37 @@ import kotlin.test.*
  * this class covers the remaining extracted functions.
  */
 class AndroidAutomationToolRegistrarTest {
+
+    @Test
+    fun `instrumentation uses SDK adb when caller PATH has none`(@TempDir root: Path) {
+        val sdk = Files.createDirectories(root.resolve("sdk/platform-tools"))
+        val adbExecutable = sdk.resolve("adb")
+        Files.writeString(adbExecutable, "#!/bin/sh\nexit 0\n")
+        kotlin.test.assertTrue(adbExecutable.toFile().setExecutable(true))
+        val adb = mockk<com.malinskiy.adam.AndroidDebugBridgeClient>()
+        val device = mockk<com.malinskiy.adam.request.device.Device>()
+        every { device.serial } returns "fixture-device"
+        every { device.state } returns com.malinskiy.adam.request.device.DeviceState.DEVICE
+        coEvery { adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>()) } returns listOf(device)
+        val forward = mockk<Process>()
+        every { forward.inputStream } returns ByteArrayInputStream(byteArrayOf())
+        every { forward.waitFor(any<Long>(), any<TimeUnit>()) } returns true
+        every { forward.exitValue() } returns 0
+        val android = Android(trace = TraceRecorder.Disabled, adb = adb,
+            hostProcesses = AndroidHostProcesses(startAdb = {}, launchAdb = { forward }))
+        val client = mockk<AutomationClient>()
+        coEvery { client.isServerRunning() } returnsMany listOf(false, true)
+        var launched: List<String>? = null
+        val registrar = AndroidAutomationToolRegistrar(android, client, mockk(), TraceRecorder.Disabled,
+            launchProcess = { command -> launched = command; mockk(relaxed = true) })
+        val context = CliExecutionContext(root, mapOf(
+            "PATH" to root.toString(), "ANDROID_HOME" to root.resolve("sdk").toString()))
+        val evidence = DispatchEvidence().apply { platform = "android" }
+        val result = runBlocking(context.coroutineContext() + evidence) { registrar.startAutomationServer() }
+        assertTrue(result.contains("started successfully"))
+        assertEquals(adbExecutable.toString(), launched?.first())
+        assertFalse(evidence.uncertain)
+    }
 
     @Test
     fun `missing SDK adb fails before host mutation admission`(@TempDir root: Path) {

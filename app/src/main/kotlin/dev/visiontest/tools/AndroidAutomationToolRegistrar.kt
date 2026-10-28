@@ -7,6 +7,7 @@ import dev.visiontest.performance.OperationOutcome
 import dev.visiontest.ServerNotRunningException
 import dev.visiontest.android.AndroidElementSelectors
 import dev.visiontest.android.Android
+import dev.visiontest.android.callerAdbExecutable
 import dev.visiontest.android.AutomationClient
 import dev.visiontest.common.CompactInspectionOptions
 import dev.visiontest.common.DeviceConfig
@@ -96,13 +97,16 @@ class AndroidAutomationToolRegistrar internal constructor(
         }
         androidDevice.executeAdb("forward", "tcp:$port", "tcp:$port")
         withContext(Dispatchers.IO) {
+            val adb = if (dev.visiontest.cli.CliExecutionContext.currentOrNull() == null) "adb"
+                else callerAdbExecutable()
             val command = listOf(
-                "adb", "-s", device.id, "shell",
+                adb, "-s", device.id, "shell",
                 "am", "instrument", "-w",
                 "-e", "port", port.toString(),
                 "-e", "class", AutomationConfig.AUTOMATION_SERVER_TEST_CLASS,
                 "${AutomationConfig.AUTOMATION_SERVER_TEST_PACKAGE}/${AutomationConfig.INSTRUMENTATION_RUNNER}"
             )
+            HostProcessContext.requireExecutable(command)
             trackHostMutation { trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) } }
         }
         var attempts = 0

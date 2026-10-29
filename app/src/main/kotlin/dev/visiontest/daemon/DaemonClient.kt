@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.JsonObject
 
 internal data class DaemonClientOptions(
-    val controlTimeoutMillis: Long = 5_000,
+    val controlTimeoutMillis: Long = 15_000,
     val executionTimeoutMillis: Long = TimeUnit.HOURS.toMillis(2),
     val stdinTimeoutMillis: Long = TimeUnit.HOURS.toMillis(1),
 )

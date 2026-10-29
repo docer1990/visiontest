@@ -167,7 +167,9 @@ class DaemonAdversarialE2ETest {
                     val invocation = finish(start("--trace-performance", "trace.jsonl", "flow", "-p", "ios",
                         "--stdin", "--json", cwd = cwd, environment = mapOf("VISIONTEST_CALLER_TEST" to name),
                         stdin = "press_home\n".repeat(stepCount)))
-                    assertEquals(0, invocation.code, invocation.stderr)
+                    assertEquals(0, invocation.code,
+                        "caller=$name, backendRequests=${server.requestCount}, traceExists=" +
+                            "${Files.exists(cwd.resolve("trace.jsonl"))}: ${invocation.stderr}")
                     val trace = Files.readString(cwd.resolve("trace.jsonl"))
                     assertTrue(trace.contains("session.end"))
                     val header = Json.parseToJsonElement(trace.lineSequence().first()).jsonObject

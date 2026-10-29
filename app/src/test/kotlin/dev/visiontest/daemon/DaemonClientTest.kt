@@ -73,6 +73,16 @@ class DaemonClientTest {
         server.get(5, TimeUnit.SECONDS)
     }
 
+    @Test fun `client waits through a slow daemon handshake`() = fixture(1, handshakeDelayMs = 6_000) {
+        registry, server ->
+        val output = ByteArrayOutputStream()
+        assertEquals(5, DaemonClient(registry, identity).execute(
+            listOf("tap"), CliExecutionContext(), output, ByteArrayOutputStream(),
+        ))
+        assertEquals("héllo\n", output.toString("UTF-8"))
+        server.get(15, TimeUnit.SECONDS)
+    }
+
     @Test fun `unsafe live socket is rejected before handshake`() = fixture(0) { registry, _ ->
         Files.setPosixFilePermissions(registry.socketPath,
             java.nio.file.attribute.PosixFilePermissions.fromString("rw-rw----"))
@@ -165,6 +175,7 @@ class DaemonClientTest {
         disconnect: Boolean = false,
         remote: DaemonIdentity = identity,
         stdin: Boolean = false,
+        handshakeDelayMs: Long = 0,
         handler: ((InputStream, OutputStream, DaemonMessage.Execute) -> Unit)? = null,
         body: (DaemonRegistry, CompletableFuture<Void>) -> Unit,
     ) {
@@ -181,6 +192,7 @@ class DaemonClientTest {
                         val output = Channels.newOutputStream(channel)
                         val hello = DaemonProtocol.decode(requireNotNull(DaemonFrames.read(input)))
                         assertTrue(hello is DaemonMessage.Hello)
+                        if (handshakeDelayMs > 0) Thread.sleep(handshakeDelayMs)
                         send(output, DaemonMessage.Ready(remote))
                         when (val request = DaemonFrames.read(input)?.let(DaemonProtocol::decode)) {
                             null -> Unit

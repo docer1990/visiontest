@@ -52,8 +52,10 @@ class FlowRecordingE2ETest {
                 assertEquals("succeeded", report.getValue("recording").jsonObject
                     .getValue("status").jsonPrimitive.content)
                 assertSavedVideo(fixture, report.getValue("recording").jsonObject, platform)
+                val daemonPid = fixture.daemonStatus().getValue("pid")
                 val followup = fixture.followup(platform)
                 assertEquals(0, followup.exitCode, followup.stderr + followup.stdout)
+                assertEquals(daemonPid, fixture.daemonStatus().getValue("pid"))
                 assertEquals(listOf("device.pressHome", "device.pressHome", "device.pressHome"), fixture.calls.toList())
                 fixture.assertOwnedCleanup(expectInterrupt = true)
             }
@@ -70,6 +72,12 @@ class FlowRecordingE2ETest {
             val recording = report.getValue("recording").jsonObject
             assertEquals("failed", recording.getValue("status").jsonPrimitive.content)
             assertSavedVideo(fixture, recording, Platform.Ios)
+            val daemonPid = fixture.daemonStatus().getValue("pid")
+            val followup = fixture.diagnosticFollowup(Platform.Ios)
+            assertEquals(0, followup.exitCode, followup.stderr + followup.stdout)
+            assertTrue(followup.stdout.contains("running and accessible"), followup.stdout)
+            assertEquals(daemonPid, fixture.daemonStatus().getValue("pid"))
+            assertEquals(listOf("device.pressHome"), fixture.calls.toList())
             fixture.assertOwnedCleanup(expectInterrupt = false)
         }
     }

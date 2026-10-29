@@ -66,9 +66,22 @@ internal class RecordingExecutableFixture(val directory: Path) : AutoCloseable {
     }
 
     fun followup(platform: Platform): PackagedRecordingResult {
+        return followupCommand("press_home", "-p", platform.value, "--json")
+    }
+
+    fun diagnosticFollowup(platform: Platform): PackagedRecordingResult =
+        followupCommand("automation_server_status", "-p", platform.value)
+
+    fun daemonStatus(): kotlinx.serialization.json.JsonObject {
+        val result = followupCommand("daemon", "status", "--json")
+        assertEquals(0, result.exitCode, result.stderr + result.stdout)
+        return Json.parseToJsonElement(result.stdout).jsonObject
+    }
+
+    private fun followupCommand(vararg arguments: String): PackagedRecordingResult {
         check(daemonUsed)
         val builder = ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-            "-jar", System.getProperty("visiontest.jar"), "press_home", "-p", platform.value, "--json")
+            "-jar", System.getProperty("visiontest.jar"), *arguments)
         isolateEnvironment(builder, null)
         val stdout = directory.resolve("followup.stdout")
         val stderr = directory.resolve("followup.stderr")

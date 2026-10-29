@@ -175,7 +175,7 @@ class DaemonComponentsTest {
     }
 
     @Test fun `each daemon request refreshes Android discovery while retaining the graph`() =
-        kotlinx.coroutines.test.runTest {
+        kotlinx.coroutines.runBlocking {
             val adb = mockk<com.malinskiy.adam.AndroidDebugBridgeClient>()
             fun device(serial: String) = mockk<com.malinskiy.adam.request.device.Device>().also {
                 io.mockk.every { it.serial } returns serial
@@ -192,10 +192,17 @@ class DaemonComponentsTest {
             io.mockk.every { holder.android } returns android
             val resources = DaemonComponents(factory = { holder })
             val context = CliExecutionContext(environment = emptyMap())
-            assertEquals("first", resources.acquire(context).android.getFirstAvailableDevice().id)
+            suspend fun diagnosticRequest(): String = kotlinx.coroutines.withContext(context.coroutineContext()) {
+                val trace = dev.visiontest.performance.TraceRuntime("cli", System.nanoTime())
+                trace.platform = "android"
+                trace.cliInvocation("available_device") {
+                    resources.acquire(context, trace).android.getFirstAvailableDevice().id
+                }
+            }
+            assertEquals("first", diagnosticRequest())
             current = device("second")
             assertEquals("first", android.getFirstAvailableDevice().id)
-            assertEquals("second", resources.acquire(context).android.getFirstAvailableDevice().id)
+            assertEquals("second", diagnosticRequest())
             assertEquals(1, resources.initializationCount)
             io.mockk.coVerify(exactly = 2) {
                 adb.execute(any<com.malinskiy.adam.request.device.ListDevicesRequest>())

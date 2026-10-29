@@ -62,7 +62,7 @@ internal class FlowObservationCollector(
     private val platform: Platform,
     private val components: Lazy<ComponentHolder>,
     private val bundleId: String? = null,
-    private val artifacts: Path = Path.of("flow-artifacts", UUID.randomUUID().toString()).toAbsolutePath(),
+    private val artifacts: Path = CliExecutionContext.current().resolve("flow-artifacts/${UUID.randomUUID()}"),
     private val options: CompactInspectionOptions = CompactInspectionOptions(),
 ) {
     companion object {

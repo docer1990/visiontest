@@ -32,9 +32,12 @@ internal class RecordingExecutableFixture(val directory: Path) : AutoCloseable {
     private val adbEndpoint = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1")).apply { soTimeout = 1 }
     private var unrelated: Process? = null
     private var child: Process? = null
+    private var daemonUsed = false
+    private val daemonDirectory = Files.createTempDirectory(Path.of("/tmp"), "vtd-")
     val requestCount get() = server.requestCount
 
-    fun run(platform: Platform, inputMode: String, failure: String?, json: Boolean): PackagedRecordingResult {
+    fun run(platform: Platform, inputMode: String, failure: String?, json: Boolean,
+            standalone: Boolean = true): PackagedRecordingResult {
         startServer(platform, failure)
         prepareExecutables()
         unrelated = ProcessBuilder("/bin/sleep", "120").start()
@@ -46,8 +49,11 @@ internal class RecordingExecutableFixture(val directory: Path) : AutoCloseable {
             "stdin" -> listOf("--stdin")
             else -> error("Unknown input mode $inputMode")
         }
+        daemonUsed = !standalone
         val builder = ProcessBuilder(listOf(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-            "-jar", System.getProperty("visiontest.jar"), "flow", "-p", platform.value, "--record",
+            "-jar", System.getProperty("visiontest.jar")) +
+            (if (standalone) listOf("--standalone") else emptyList()) +
+            listOf("flow", "-p", platform.value, "--record",
             "--timeout", "15000", "--step-timeout", "10000") +
             (if (json) listOf("--json") else emptyList()) + source)
         isolateEnvironment(builder, failure)
@@ -56,6 +62,32 @@ internal class RecordingExecutableFixture(val directory: Path) : AutoCloseable {
         val process = builder.directory(directory.toFile()).redirectInput(input.toFile())
             .redirectOutput(stdout.toFile()).redirectError(stderr.toFile()).start().also { child = it }
         assertTrue(process.waitFor(70, TimeUnit.SECONDS), "packaged recording exceeded its 70-second watchdog")
+        return PackagedRecordingResult(process.exitValue(), Files.readString(stdout), Files.readString(stderr))
+    }
+
+    fun followup(platform: Platform): PackagedRecordingResult {
+        return followupCommand("press_home", "-p", platform.value, "--json")
+    }
+
+    fun diagnosticFollowup(platform: Platform): PackagedRecordingResult =
+        followupCommand("automation_server_status", "-p", platform.value)
+
+    fun daemonStatus(): kotlinx.serialization.json.JsonObject {
+        val result = followupCommand("daemon", "status", "--json")
+        assertEquals(0, result.exitCode, result.stderr + result.stdout)
+        return Json.parseToJsonElement(result.stdout).jsonObject
+    }
+
+    private fun followupCommand(vararg arguments: String): PackagedRecordingResult {
+        check(daemonUsed)
+        val builder = ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+            "-jar", System.getProperty("visiontest.jar"), *arguments)
+        isolateEnvironment(builder, null)
+        val stdout = directory.resolve("followup.stdout")
+        val stderr = directory.resolve("followup.stderr")
+        val process = builder.directory(directory.toFile()).redirectOutput(stdout.toFile())
+            .redirectError(stderr.toFile()).start().also { child = it }
+        assertTrue(process.waitFor(30, TimeUnit.SECONDS), "daemon followup exceeded its watchdog")
         return PackagedRecordingResult(process.exitValue(), Files.readString(stdout), Files.readString(stderr))
     }
 
@@ -132,6 +164,7 @@ internal class RecordingExecutableFixture(val directory: Path) : AutoCloseable {
             put("ANDROID_SERIAL", "fixture-android")
             put("RECORDING_FIXTURE", directory.toString())
             put("RECORDING_FAILURE", failure.orEmpty())
+            put("VISIONTEST_DAEMON_DIR", daemonDirectory.toString())
         }
     }
 
@@ -140,6 +173,15 @@ internal class RecordingExecutableFixture(val directory: Path) : AutoCloseable {
     }
 
     override fun close() {
+        if (daemonUsed) {
+            val stop = ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+                "-jar", System.getProperty("visiontest.jar"), "daemon", "stop")
+            isolateEnvironment(stop, null)
+            stop.directory(directory.toFile()).redirectErrorStream(true).start().apply {
+                inputStream.close()
+                if (!waitFor(10, TimeUnit.SECONDS)) destroyForcibly()
+            }
+        }
         child?.takeIf { it.isAlive }?.let { process ->
             process.descendants().use { descendants -> descendants.forEach { it.destroyForcibly() } }
             process.destroyForcibly()
@@ -153,6 +195,9 @@ internal class RecordingExecutableFixture(val directory: Path) : AutoCloseable {
         unrelated?.let { it.destroyForcibly(); it.waitFor(2, TimeUnit.SECONDS) }
         adbEndpoint.close()
         server.close()
+        Files.walk(daemonDirectory).use { paths ->
+            paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists)
+        }
     }
 }
 

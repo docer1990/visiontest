@@ -5,6 +5,8 @@ import dev.visiontest.NoSimulatorAvailableException
 import dev.visiontest.ServerNotRunningException
 import com.github.ajalt.clikt.core.CliktError
 import kotlinx.coroutines.runBlocking
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.system.exitProcess
 
 /**
@@ -40,14 +42,22 @@ internal fun executeCliCommand(block: suspend () -> String): CliResult {
 }
 
 @Suppress("TooGenericExceptionCaught") // Every command failure passes through the shared exit-code mapping.
-internal fun executeCliResultCommand(block: suspend () -> CliResult): CliResult = try {
-    runBlocking { block() }
+internal fun executeCliResultCommand(block: suspend () -> CliResult): CliResult =
+    executeCliResultCommand(EmptyCoroutineContext, block)
+
+@Suppress("TooGenericExceptionCaught") // Every command failure passes through the shared exit-code mapping.
+internal fun executeCliResultCommand(
+    executionContext: CoroutineContext,
+    block: suspend () -> CliResult,
+): CliResult = try {
+    runBlocking(executionContext) { block() }
 } catch (error: Exception) {
+    executionContext[dev.visiontest.common.DispatchEvidence]?.operationFailed()
     cliFailure(error)
 }
 
 internal fun runCliResultCommand(block: suspend () -> CliResult, beforeExit: () -> Any? = {}): Nothing {
-    val result = executeCliResultCommand(block)
+    val result = executeCliResultCommand(block = block)
     result.stdout?.let(::println)
     result.stderr?.let(System.err::println)
     beforeExit()

@@ -39,8 +39,12 @@ class AndroidStopToolRegistrar internal constructor(
     internal suspend fun stopAutomationServer(): String = trace.span(TraceStage.OPERATION) {
         val wasRunning = automationClient.isServerRunning()
 
-        android.executeShell("am force-stop ${AutomationConfig.AUTOMATION_SERVER_TEST_PACKAGE}")
-        android.executeShell("am force-stop ${AutomationConfig.AUTOMATION_SERVER_PACKAGE}")
+        dev.visiontest.common.trackHostMutation {
+            android.executeShell("am force-stop ${AutomationConfig.AUTOMATION_SERVER_TEST_PACKAGE}")
+        }
+        dev.visiontest.common.trackHostMutation {
+            android.executeShell("am force-stop ${AutomationConfig.AUTOMATION_SERVER_PACKAGE}")
+        }
         removePortForward()
         return@span if (wasRunning) {
             confirmServerStopped()
@@ -52,15 +56,17 @@ class AndroidStopToolRegistrar internal constructor(
 
     private suspend fun removePortForward() {
         val endpoint = "tcp:${AutomationConfig.DEFAULT_PORT}"
-        try {
-            executeAdb(listOf("forward", "--remove", endpoint))
-        } catch (removalError: CommandExecutionException) {
-            val forwards = listForwardsOrThrowRemoval(removalError)
-            if (forwards.lineSequence().any { line ->
-                    line.split(Regex("\\s+")).getOrNull(1) == endpoint
+        dev.visiontest.common.trackHostMutation {
+            try {
+                executeAdb(listOf("forward", "--remove", endpoint))
+            } catch (removalError: CommandExecutionException) {
+                val forwards = listForwardsOrThrowRemoval(removalError)
+                if (forwards.lineSequence().any { line ->
+                        line.split(Regex("\\s+")).getOrNull(1) == endpoint
+                    }
+                ) {
+                    throw removalError
                 }
-            ) {
-                throw removalError
             }
         }
     }

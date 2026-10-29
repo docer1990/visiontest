@@ -1,22 +1,23 @@
 package dev.visiontest.ios
 
 import dev.visiontest.performance.TraceRecorder
+import dev.visiontest.common.HostProcessContext
 import dev.visiontest.performance.TraceStage
 import dev.visiontest.performance.OperationOutcome
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import dev.visiontest.common.RequestLogger
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
 
 class ProcessExecutor internal constructor(
     private val timeoutMillis: Long = 5000L,
-    private val logger: Logger = LoggerFactory.getLogger(ProcessExecutor::class.java),
+    private val logger: Logger = RequestLogger.getLogger(ProcessExecutor::class.java),
     private val trace: TraceRecorder,
 ) {
-    constructor(timeoutMillis: Long = 5000L, logger: Logger = LoggerFactory.getLogger(ProcessExecutor::class.java)) :
+    constructor(timeoutMillis: Long = 5000L, logger: Logger = RequestLogger.getLogger(ProcessExecutor::class.java)) :
         this(timeoutMillis, logger, TraceRecorder.Disabled)
     constructor() : this(trace = TraceRecorder.Disabled)
 
@@ -31,7 +32,7 @@ class ProcessExecutor internal constructor(
             withContext(Dispatchers.IO) {
                 logger.debug("Executing command: ${command.joinToString(" ")}")
 
-                val process = ProcessBuilder(*command)
+                val process = HostProcessContext.builder(command.toList())
                     .start()
 
                 val output = StringBuilder()

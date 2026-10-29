@@ -5,6 +5,7 @@ import dev.visiontest.cli.ComponentHolder
 import dev.visiontest.cli.Platform
 import dev.visiontest.cli.platformOption
 import dev.visiontest.cli.runCliCommand
+import dev.visiontest.cli.validateAppIdentifier
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.flag
@@ -19,6 +20,7 @@ class InfoAppCommand(
     private val json by option("--json", help = "Print a structured JSON object").flag()
 
     override fun run() = runner {
+        validateAppIdentifier(platform, id)
         when (platform) {
             Platform.Android -> components.value.androidDeviceRegistrar.infoApp(id, json)
             Platform.Ios -> components.value.iosDeviceRegistrar.infoApp(id, json)

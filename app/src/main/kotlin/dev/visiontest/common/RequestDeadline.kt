@@ -38,6 +38,7 @@ internal class RequestDeadline(timeoutMs: Long, private val nowNs: () -> Long = 
         return TimeUnit.NANOSECONDS.toMillis(remaining).coerceAtLeast(1)
     }
 
+    @Suppress("TooGenericExceptionCaught") // Preserve all transport failures while recording dispatch uncertainty.
     suspend fun exchange(
         url: String,
         body: ByteArray?,
@@ -54,24 +55,32 @@ internal class RequestDeadline(timeoutMs: Long, private val nowNs: () -> Long = 
         }
         // HttpRequest.timeout may stop applying once headers arrive; bound the complete body as well.
         // withTimeoutOrNull converts only this timeout, preserving cancellation from the caller.
+        val evidence = coroutineContext[DispatchEvidence]
         val httpClient = client
         coroutineContext.ensureActive()
-        return withTimeoutOrNull(minOf(remainingMillis(), timeoutMs.toLong())) {
+        return try { withTimeoutOrNull(minOf(remainingMillis(), timeoutMs.toLong())) {
             suspendCancellableCoroutine { continuation ->
                 if (!continuation.isActive) return@suspendCancellableCoroutine
                 val prepared = request.build()
                 continuation.context.ensureActive()
                 remainingMillis()
                 if (body != null && method !in readMethods) actionDispatched = true
+                if (body != null) evidence?.submitting(method)
                 val future = httpClient.sendAsync(prepared, HttpResponse.BodyHandlers.ofByteArray())
                 continuation.invokeOnCancellation { future.cancel(true) }
                 future.whenComplete { response, failure ->
-                    if (failure == null) continuation.resume(response)
+                    if (failure == null) {
+                        continuation.resume(response)
+                    }
                     else continuation.resumeWithException(
                         if (failure is CompletionException) failure.cause ?: failure else failure
                     )
                 }
             }
         } ?: throw TimeoutException("Flow HTTP exchange deadline exceeded")
+        } catch (error: Exception) {
+            evidence?.failed()
+            throw error
+        }
     }
 }

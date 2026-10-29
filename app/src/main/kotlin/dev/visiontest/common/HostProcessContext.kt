@@ -1,0 +1,47 @@
+package dev.visiontest.common
+
+import dev.visiontest.cli.CliExecutionContext
+import java.io.File
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Path
+
+/** Creates host commands without inheriting a daemon's directory, PATH, or environment. */
+internal object HostProcessContext {
+    fun builder(command: List<String>): ProcessBuilder {
+        val context = CliExecutionContext.currentOrNull() ?: return ProcessBuilder(command)
+        require(command.isNotEmpty()) { "Host command must not be empty" }
+        val executable = executable(command.first(), context)
+        return ProcessBuilder(listOf(executable) + command.drop(1)).apply {
+            directory(context.workingDirectory.toFile())
+            environment().clear()
+            environment().putAll(context.environment)
+        }
+    }
+
+    fun requireExecutable(command: List<String>) {
+        val context = CliExecutionContext.currentOrNull() ?: return
+        require(command.isNotEmpty()) { "Host command must not be empty" }
+        val path = Path.of(executable(command.first(), context))
+        if (!Files.isRegularFile(path) || !Files.isExecutable(path)) {
+            throw IOException("Executable not found in caller PATH: ${command.first()}")
+        }
+    }
+
+    private fun executable(name: String, context: CliExecutionContext): String {
+        if (Path.of(name).isAbsolute || File.separatorChar in name) return context.resolve(name).toString()
+        // A retained host must not inherit its own PATH for a caller that omitted PATH.
+        val path = context.environmentValue("PATH") ?: DEFAULT_SYSTEM_PATH
+        return path.split(File.pathSeparatorChar).asSequence()
+            .map { context.resolve(it).resolve(name) }
+            .firstOrNull { Files.isRegularFile(it) && Files.isExecutable(it) }?.toString()
+            ?: throw IOException("Executable not found in caller PATH: $name")
+    }
+
+    private val DEFAULT_SYSTEM_PATH = if (File.separatorChar == '\\') {
+        val windows = System.getenv("SystemRoot") ?: "C:\\Windows"
+        listOf("$windows\\System32", windows).joinToString(File.pathSeparator)
+    } else {
+        listOf("/usr/bin", "/bin", "/usr/sbin", "/sbin").joinToString(File.pathSeparator)
+    }
+}

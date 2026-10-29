@@ -1,0 +1,86 @@
+{
+  "command/standalone": {
+    "median_ms": 281.8784795,
+    "p95_ms": 381.335792,
+    "samples": 10,
+    "failures": 0,
+    "setup_failures": 0,
+    "timeouts": 0,
+    "uncertain": 0,
+    "rss_kib": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "command/daemon": {
+    "median_ms": 245.6820415,
+    "p95_ms": 255.222875,
+    "samples": 10,
+    "failures": 0,
+    "setup_failures": 0,
+    "timeouts": 0,
+    "uncertain": 0,
+    "rss_kib": [
+      92736,
+      93584,
+      95520,
+      89904,
+      89088,
+      96192,
+      82848,
+      86656,
+      88592,
+      90448
+    ]
+  },
+  "flow/standalone": {
+    "median_ms": 876.8467085,
+    "p95_ms": 1145.542917,
+    "samples": 10,
+    "failures": 0,
+    "setup_failures": 0,
+    "timeouts": 0,
+    "uncertain": 0,
+    "rss_kib": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "flow/daemon": {
+    "median_ms": 350.570312,
+    "p95_ms": 358.28775,
+    "samples": 10,
+    "failures": 0,
+    "setup_failures": 0,
+    "timeouts": 0,
+    "uncertain": 0,
+    "rss_kib": [
+      114288,
+      117584,
+      122512,
+      125168,
+      127808,
+      119360,
+      108992,
+      102688,
+      105248,
+      124368
+    ]
+  }
+}

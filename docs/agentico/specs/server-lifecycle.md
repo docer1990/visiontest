@@ -80,6 +80,16 @@ iOS stop MUST forcibly destroy the live `xcodebuild` process retained by the cur
 - **When** iOS stop runs
 - **Then** it SHALL return an idempotent not-running result
 
+### Requirement: Daemon graph disposal releases owned host resources
+
+The daemon MUST retain the same iOS registrar across compatible requests so a
+later stop can terminate its startup child. Graph invalidation or daemon disposal
+MUST close that owned child and host connections exactly once. It MUST NOT stop
+shared ADB, unrelated xcodebuild processes, or native instrumentation servers.
+Standalone JVM exit MUST preserve its existing background-server lifetime.
+Daemon iOS stop and status MUST remain available after target disconnection;
+Android stop still needs a device to force-stop its packages.
+
 ### Requirement: Stop is exposed through MCP and CLI
 
 The MCP contract MUST expose Android `stop_automation_server` and iOS `ios_stop_automation_server`. The CLI MUST expose one `stop_automation_server --platform android|ios` subcommand that delegates to the corresponding same internal stop operation and does not pre-require a running server.
@@ -89,6 +99,24 @@ The MCP contract MUST expose Android `stop_automation_server` and iOS `ios_stop_
 - **Given** a caller invokes the CLI stop subcommand with a valid platform
 - **When** it dispatches
 - **Then** Android SHALL use `AndroidStopToolRegistrar.stopAutomationServer` and iOS SHALL use `IOSAutomationToolRegistrar.stopAutomationServer`
+
+### Requirement: Automatic CLI host lifetime is separate from native lifetime
+
+Ordinary device invocations MUST start or reuse one compatible per-user daemon.
+`daemon start`, `daemon status [--json]`, and `daemon stop` MUST require neither
+a platform nor device inventory and MUST NOT contact a native backend. An idle
+host MUST expire after 15 minutes with no active or queued request. Stop MUST
+reject new work and drain accepted work for at most 30 seconds before cancellation
+and bounded cleanup. The instance lease MUST remain held until active work and
+cleanup settle. Daemon disposal MUST leave independently controlled Android
+instrumentation running; iOS owned startup children MUST be closed.
+
+An incompatible live build MUST reject execution with explicit stop/restart guidance,
+while compatible-protocol status/stop remain available. Stale registration MUST
+only be removed under the lifetime lease; metadata PIDs MUST NOT authorize killing
+unrelated processes. Cancellation or disconnect after dispatch MUST NOT imply
+native cancellation, and requests MUST NOT be replayed or resumed after a crash.
+A fenced platform requires explicit native-backend and daemon restart.
 
 ## Verification
 

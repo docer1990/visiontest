@@ -31,7 +31,7 @@ class FlowCommandE2ETest {
 
     private fun run(args: List<String>, stdin: String = ""): Output {
         val builder = ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-            "-jar", System.getProperty("visiontest.jar"), "flow", *args.toTypedArray())
+            "-jar", System.getProperty("visiontest.jar"), "--standalone", "flow", *args.toTypedArray())
         return runProcess(builder, stdin)
     }
 

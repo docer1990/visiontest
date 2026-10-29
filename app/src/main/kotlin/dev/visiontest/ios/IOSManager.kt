@@ -4,13 +4,13 @@ import dev.visiontest.performance.TraceRecorder
 import dev.visiontest.common.DeviceConfig
 import dev.visiontest.common.MobileDevice
 import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import dev.visiontest.common.RequestLogger
 
 class IOSManager internal constructor(
-    private val logger: Logger = LoggerFactory.getLogger(IOSManager::class.java),
+    private val logger: Logger = RequestLogger.getLogger(IOSManager::class.java),
     private val trace: TraceRecorder,
 ) : DeviceConfig, AutoCloseable {
-    constructor(logger: Logger = LoggerFactory.getLogger(IOSManager::class.java)) :
+    constructor(logger: Logger = RequestLogger.getLogger(IOSManager::class.java)) :
         this(logger, TraceRecorder.Disabled)
     constructor() : this(trace = TraceRecorder.Disabled)
 

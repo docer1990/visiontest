@@ -1,4 +1,5 @@
 import unittest
+import plistlib
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from unittest.mock import patch
@@ -10,6 +11,17 @@ from benchmarks.tests import test_fixture_smoke
 
 
 class FixtureTargetTest(unittest.TestCase):
+    def test_ios_fixture_declares_one_window_scene_for_current_runtimes(self):
+        path = Path(__file__).parents[1] / 'fixtures/ios/BenchmarkFixture/Info.plist'
+        with path.open('rb') as source:
+            info = plistlib.load(source)
+        self.assertIn('UIApplicationSceneManifest', info)
+        manifest = info['UIApplicationSceneManifest']
+        self.assertFalse(manifest['UIApplicationSupportsMultipleScenes'])
+        scenes = manifest['UISceneConfigurations']['UIWindowSceneSessionRoleApplication']
+        self.assertEqual(1, len(scenes))
+        self.assertEqual('$(PRODUCT_MODULE_NAME).SceneDelegate', scenes[0]['UISceneDelegateClassName'])
+
     def test_duplicate_label_smoke_accepts_platform_qualified_identifiers(self):
         identity = "dev.visiontest.benchmark"
         for platform in ("android", "ios"):

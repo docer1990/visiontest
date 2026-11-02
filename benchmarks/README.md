@@ -10,6 +10,11 @@ For the opt-in observation format, see the separate
 [compact inspection evaluation](../docs/benchmarks/compact-inspection.md), including
 versioned offline fixtures, payload token estimates and a live iOS functional check.
 
+For standalone versus the automatic daemon, see
+[daemon collection and evidence](../docs/benchmarks/daemon.md). The dedicated
+`python3 -m benchmarks.daemon --help` runner records cold host startup, first
+device use, fresh subsequent clients, request counts and host RSS separately.
+
 ## Prerequisites
 
 Use Python 3.11+ (standard library only), JDK 17+, and the repository's Gradle

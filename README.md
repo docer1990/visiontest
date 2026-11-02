@@ -97,6 +97,21 @@ Ask your agent for a concrete check, for example:
 
 ## A first CLI test
 
+Device commands automatically start and reuse a local Kotlin daemon. Each invocation
+is a fresh client; the host retains connections and serializes whole commands and
+flows. Use `visiontest --standalone COMMAND ...` to execute in the caller JVM.
+`visiontest daemon status --json`, `daemon start`, and `daemon stop` need no platform.
+The daemon exits after 15 idle minutes. After upgrading, stop the old host and retry
+explicitly; incompatible builds are never replaced silently.
+
+Use exactly one usable Android device or one booted iOS simulator. The daemon checks
+inventory for each operation; external MCP and standalone clients must also be
+serialized by the caller. Caller paths, environment, stdin and tracing remain
+request-specific. A lost response may mean a mutation completed: inspect the app
+state before continuing and never replay automatically. When native completion is
+uncertain, explicitly restart the native backend and daemon before more mutations.
+See [daemon behavior and measured results](docs/benchmarks/daemon.md).
+
 This Android example assumes the app is already installed. Replace the app ID,
 selector and expected text with values from your app. Check each command's result
 before continuing. Install the automation APK pair on first use or after an update;

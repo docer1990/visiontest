@@ -7,9 +7,12 @@ import dev.visiontest.performance.OperationOutcome
 import dev.visiontest.ServerNotRunningException
 import dev.visiontest.android.AndroidElementSelectors
 import dev.visiontest.android.Android
+import dev.visiontest.android.callerAdbExecutable
 import dev.visiontest.android.AutomationClient
 import dev.visiontest.common.CompactInspectionOptions
 import dev.visiontest.common.DeviceConfig
+import dev.visiontest.common.HostProcessContext
+import dev.visiontest.common.trackHostMutation
 import dev.visiontest.config.AutomationConfig
 import dev.visiontest.discovery.ToolDiscovery
 import io.modelcontextprotocol.kotlin.sdk.Tool
@@ -24,7 +27,8 @@ class AndroidAutomationToolRegistrar internal constructor(
     private val discovery: ToolDiscovery,
     private val trace: TraceRecorder,
     private val launchProcess: (List<String>) -> Process = { command ->
-        ProcessBuilder(command).redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
+        HostProcessContext.builder(command).redirectErrorStream(true)
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
     },
 ) : ToolRegistrar {
     constructor(android: DeviceConfig, automationClient: AutomationClient, discovery: ToolDiscovery) :
@@ -93,14 +97,17 @@ class AndroidAutomationToolRegistrar internal constructor(
         }
         androidDevice.executeAdb("forward", "tcp:$port", "tcp:$port")
         withContext(Dispatchers.IO) {
+            val adb = if (dev.visiontest.cli.CliExecutionContext.currentOrNull() == null) "adb"
+                else callerAdbExecutable()
             val command = listOf(
-                "adb", "-s", device.id, "shell",
+                adb, "-s", device.id, "shell",
                 "am", "instrument", "-w",
                 "-e", "port", port.toString(),
                 "-e", "class", AutomationConfig.AUTOMATION_SERVER_TEST_CLASS,
                 "${AutomationConfig.AUTOMATION_SERVER_TEST_PACKAGE}/${AutomationConfig.INSTRUMENTATION_RUNNER}"
             )
-            trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) }
+            HostProcessContext.requireExecutable(command)
+            trackHostMutation { trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) } }
         }
         var attempts = 0
         val maxAttempts = 10

@@ -1,6 +1,7 @@
 package dev.visiontest.discovery
 
 import dev.visiontest.config.IOSAutomationConfig
+import dev.visiontest.cli.CliExecutionContext
 import org.slf4j.Logger
 import java.io.File
 
@@ -14,8 +15,8 @@ class ToolDiscovery(private val logger: Logger) {
 
     fun findXcodeProject(): String? {
         // 0. Check environment variable first (allows explicit override)
-        System.getenv(IOSAutomationConfig.XCODE_PROJECT_PATH_ENV)?.let { envPath ->
-            val envFile = File(envPath)
+        CliExecutionContext.current().environmentValue(IOSAutomationConfig.XCODE_PROJECT_PATH_ENV)?.let { envPath ->
+            val envFile = CliExecutionContext.current().resolve(envPath).toFile()
             if (isValidXcodeProjectPath(envFile)) {
                 logger.info("Using Xcode project from ${IOSAutomationConfig.XCODE_PROJECT_PATH_ENV}: $envPath")
                 return envFile.absolutePath
@@ -30,13 +31,13 @@ class ToolDiscovery(private val logger: Logger) {
         val relativePath = IOSAutomationConfig.XCODE_PROJECT_PATH
 
         // 1. Try relative to current working directory
-        val cwdFile = File(relativePath)
+        val cwdFile = CliExecutionContext.current().resolve(relativePath).toFile()
         if (isValidXcodeProjectPath(cwdFile)) {
             return cwdFile.absolutePath
         }
 
         // 2. Try relative to project root
-        val projectRoot = findProjectRoot(File(".").absoluteFile)
+        val projectRoot = findProjectRoot(CliExecutionContext.current().workingDirectory.toFile())
         if (projectRoot != null) {
             val projectFile = File(projectRoot, relativePath)
             if (isValidXcodeProjectPath(projectFile)) {
@@ -63,21 +64,22 @@ class ToolDiscovery(private val logger: Logger) {
      * Shared by APK discovery and iOS xctestrun discovery.
      */
     internal fun resolveInstallDir(): File {
-        val installDirPath = System.getenv("VISIONTEST_DIR")
+        val home = CliExecutionContext.current().environmentValue("HOME") ?: System.getProperty("user.home")
+        val installDirPath = CliExecutionContext.current().environmentValue("VISIONTEST_DIR")
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?: findJarDirectory()?.absolutePath
-            ?: "${System.getProperty("user.home")}/.local/share/visiontest"
-        return File(installDirPath)
+            ?: "$home/.local/share/visiontest"
+        return CliExecutionContext.current().resolve(installDirPath).toFile()
     }
 
     // ==================== Android APK Discovery ====================
 
     fun findAutomationServerApk(): String? {
-        val cwd = File(".").absoluteFile
+        val cwd = CliExecutionContext.current().workingDirectory.toFile()
         val codeSourceRoot = findCodeSourceRoot()
         return findAutomationServerApk(
-            envApkPath = System.getenv("VISION_TEST_APK_PATH"),
+            envApkPath = CliExecutionContext.current().environmentValue("VISION_TEST_APK_PATH"),
             searchRoots = listOfNotNull(cwd, codeSourceRoot, findProjectRoot(cwd)),
             installDir = resolveInstallDir()
         )
@@ -138,7 +140,7 @@ class ToolDiscovery(private val logger: Logger) {
 
         // 1. Check environment variable first (allows explicit configuration)
         envApkPath?.let { envPath ->
-            val file = File(envPath)
+            val file = CliExecutionContext.current().resolve(envPath).toFile()
             if (file.exists()) {
                 logger.info("Using APK from VISION_TEST_APK_PATH: $envPath")
                 return file.absolutePath

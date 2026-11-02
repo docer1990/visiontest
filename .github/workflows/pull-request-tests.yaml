@@ -35,6 +35,13 @@ jobs:
       - name: Run app tests (MCP server + CLI, incl. e2e), coverage gate, detekt
         run: ./gradlew :app:test :app:e2eTest :app:koverVerify :app:detekt --no-daemon
 
+      - name: Upload app test results on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: app-test-results
+          path: app/build/test-results/
+
   automation-server-tests:
     name: Automation Server Tests (:automation-server)
     runs-on: ubuntu-latest

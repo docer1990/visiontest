@@ -1,6 +1,7 @@
 package dev.visiontest.recording
 
 import dev.visiontest.NoDeviceAvailableException
+import dev.visiontest.cli.CliExecutionContext
 import dev.visiontest.android.parseAdbDevices
 import dev.visiontest.common.RequestDeadline
 import kotlinx.coroutines.CancellationException
@@ -58,13 +59,14 @@ internal class AndroidRecordingSession(
     }
 
     private suspend fun resolveTarget(deadline: RequestDeadline): List<String> {
-        val endpoint = AndroidRecordingEndpoint.capture(System::getProperty, System::getenv)
+        val context = CliExecutionContext.current()
+        val endpoint = AndroidRecordingEndpoint.capture(System::getProperty, context::environmentValue)
         val resolved = bounded(deadline) { processes.run(listOf("/bin/sh", "-c", "command -v adb"), deadline) }
         val executable = resolved.stdout.decodeToString().trim()
         if (resolved.exitCode != 0 || executable.isEmpty() || executable.contains('\n')) {
             throw RecordingException("Unable to resolve adb executable on PATH")
         }
-        val adb = listOf(Path.of(executable).toAbsolutePath().normalize().toString(),
+        val adb = listOf(context.resolve(executable).toString(),
             "-H", "127.0.0.1", "-P", endpoint.port.toString())
         val devices = bounded(deadline) { processes.run(adb + "devices", deadline) }
         if (devices.exitCode != 0) throw RecordingException("Unable to discover Android devices: ${devices.stderr}")

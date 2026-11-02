@@ -2,7 +2,6 @@ package dev.visiontest.cli
 
 import java.io.IOException
 import java.nio.file.Files
-import java.nio.file.Path
 
 internal object FlowInput {
     fun read(steps: List<String>, file: String?, stdin: Boolean, readStdin: () -> String): List<String> {
@@ -21,7 +20,7 @@ internal object FlowInput {
     private fun readFile(file: String): String {
         require(file.isNotBlank()) { "Flow file path must not be blank" }
         return try {
-            Files.readString(Path.of(file))
+            Files.readString(CliExecutionContext.current().resolve(file))
         } catch (error: IOException) {
             throw IllegalArgumentException("Cannot read flow file: $file", error)
         }

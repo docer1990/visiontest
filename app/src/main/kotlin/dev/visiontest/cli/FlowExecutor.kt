@@ -1,5 +1,6 @@
 package dev.visiontest.cli
 
+import dev.visiontest.performance.withComponentExecutionContext
 import dev.visiontest.common.automationResult
 import dev.visiontest.CommandExecutionException
 import dev.visiontest.common.AutomationResponse
@@ -280,7 +281,7 @@ internal class FlowRecordingCoordinator(private val session: RecordingSession?) 
     ): T = coroutineScope {
         if (session == null) return@coroutineScope withContext(deadline) {
             withTimeoutOrNull(budget) {
-                operation().also { deadline.remainingMillis() }
+                withComponentExecutionContext { operation().also { deadline.remainingMillis() } }
             } ?: throw TimeoutException(timeoutMessage)
         }
         failure?.let { throw it }
@@ -291,9 +292,11 @@ internal class FlowRecordingCoordinator(private val session: RecordingSession?) 
             try {
                 withContext(deadline) {
                     withTimeoutOrNull(budget) {
-                        operation().also {
-                            deadline.remainingMillis()
-                            validated = it
+                        withComponentExecutionContext {
+                            operation().also {
+                                deadline.remainingMillis()
+                                validated = it
+                            }
                         }
                     } ?: throw TimeoutException(timeoutMessage)
                 }

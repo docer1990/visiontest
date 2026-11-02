@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "units": "milliseconds unless named otherwise",
+  "platforms": {
+    "android": {
+      "operation_samples": 44,
+      "complete_request_traces": 44,
+      "failures": 0,
+      "setup_failures": 0,
+      "timeouts": 0,
+      "uncertain": 0,
+      "groups": {
+        "command/standalone": {
+          "median_host_invocation_ms": 80.5298545,
+          "median_cli_prepare_ms": 138.3061875,
+          "median_component_init_ms": 21.025125,
+          "median_admission_ms": 0.0,
+          "native_http_counts": [
+            1
+          ],
+          "health_counts": [
+            2
+          ],
+          "admission_counts": [
+            0
+          ],
+          "first_use_ms": 289.925583
+        },
+        "command/daemon": {
+          "median_host_invocation_ms": 55.131917,
+          "median_cli_prepare_ms": 8.3608755,
+          "median_component_init_ms": 0.0,
+          "median_admission_ms": 25.914625,
+          "native_http_counts": [
+            1
+          ],
+          "health_counts": [
+            2
+          ],
+          "admission_counts": [
+            2
+          ],
+          "first_use_ms": 287.732917,
+          "cold_host_ms": 614.984833,
+          "first_subsequent_rss_kib": 75152,
+          "last_subsequent_rss_kib": 83984,
+          "idle_rss_kib": 83952
+        },
+        "flow/standalone": {
+          "median_host_invocation_ms": 210.9646045,
+          "median_cli_prepare_ms": 160.7077085,
+          "median_component_init_ms": 21.1611875,
+          "median_admission_ms": 0.0,
+          "native_http_counts": [
+            2
+          ],
+          "health_counts": [
+            4
+          ],
+          "admission_counts": [
+            0
+          ],
+          "first_use_ms": 822.933542
+        },
+        "flow/daemon": {
+          "median_host_invocation_ms": 88.5736245,
+          "median_cli_prepare_ms": 14.750958,
+          "median_component_init_ms": 0.0,
+          "median_admission_ms": 25.9054165,
+          "native_http_counts": [
+            2
+          ],
+          "health_counts": [
+            4
+          ],
+          "admission_counts": [
+            2
+          ],
+          "first_use_ms": 396.54625,
+          "cold_host_ms": 626.887584,
+          "first_subsequent_rss_kib": 105584,
+          "last_subsequent_rss_kib": 113472,
+          "idle_rss_kib": 113232
+        }
+      },
+      "environment": {
+        "host": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+        "python": "3.14.7",
+        "java": "openjdk version \"17.0.18\" 2026-01-20 LTS\nOpenJDK Runtime Environment Corretto-17.0.18.9.1 (build 17.0.18+9-LTS)\nOpenJDK 64-Bit Server VM Corretto-17.0.18.9.1 (build 17.0.18+9-LTS, mixed mode, sharing)\n",
+        "platform": "android",
+        "target": "emulator-5554",
+        "jar_sha256": "c2e2a2281154376458631a6cfc641b57cf430d77ef3b47c5b66bdb521c30206b",
+        "git_commit": "b119cb409b44ca910154d8abbf0b4ffa66a981a8",
+        "worktree": " M CONTRIBUTING.md\n M README.md\n M app/src/main/resources/agent-instructions.md\n M benchmarks/README.md\n M benchmarks/fixtures.py\n M benchmarks/fixtures/README.md\n M benchmarks/fixtures/ios/BenchmarkFixture/AppDelegate.swift\n M benchmarks/fixtures/ios/BenchmarkFixture/Info.plist\n M benchmarks/tests/test_fixtures.py\n M docs/agentico/specs/cli.md\n M docs/agentico/specs/server-lifecycle.md\n?? app/src/test/kotlin/dev/visiontest/daemon/DaemonAdversarialE2ETest.kt\n?? app/src/test/kotlin/dev/visiontest/daemon/DaemonRetentionE2ETest.kt\n?? benchmarks/__pycache__/\n?? benchmarks/daemon-results/\n?? benchmarks/daemon.py\n?? benchmarks/tests/test_daemon.py\n?? docs/benchmarks/daemon.md\n",
+        "limitations": [
+          "Synthetic fixture reset/readiness precedes every timed sample; setup native calls are untraced.",
+          "RSS is host resident set after completion, not peak client RSS.",
+          "Native HTTP and health spans are reported without subtracting admission costs.",
+          "Short local pilot; no hardware-independent speed threshold."
+        ]
+      },
+      "observed_utc_start": "2026-10-28T07:53:35.006302+00:00"
+    },
+    "ios": {
+      "operation_samples": 44,
+      "complete_request_traces": 44,
+      "failures": 0,
+      "setup_failures": 0,
+      "timeouts": 0,
+      "uncertain": 0,
+      "groups": {
+        "command/standalone": {
+          "median_host_invocation_ms": 61.577833,
+          "median_cli_prepare_ms": 141.7138955,
+          "median_component_init_ms": 22.5916665,
+          "median_admission_ms": 0.0,
+          "native_http_counts": [
+            1
+          ],
+          "health_counts": [
+            2
+          ],
+          "admission_counts": [
+            0
+          ],
+          "first_use_ms": 623.77475
+        },
+        "command/daemon": {
+          "median_host_invocation_ms": 116.7354165,
+          "median_cli_prepare_ms": 8.374104,
+          "median_component_init_ms": 0.0,
+          "median_admission_ms": 102.527396,
+          "native_http_counts": [
+            1
+          ],
+          "health_counts": [
+            2
+          ],
+          "admission_counts": [
+            1
+          ],
+          "first_use_ms": 359.465625,
+          "cold_host_ms": 682.738375,
+          "first_subsequent_rss_kib": 92736,
+          "last_subsequent_rss_kib": 90448,
+          "idle_rss_kib": 90416
+        },
+        "flow/standalone": {
+          "median_host_invocation_ms": 266.580229,
+          "median_cli_prepare_ms": 167.344354,
+          "median_component_init_ms": 20.5574165,
+          "median_admission_ms": 0.0,
+          "native_http_counts": [
+            2
+          ],
+          "health_counts": [
+            4
+          ],
+          "admission_counts": [
+            0
+          ],
+          "first_use_ms": 871.242625
+        },
+        "flow/daemon": {
+          "median_host_invocation_ms": 223.4109375,
+          "median_cli_prepare_ms": 15.32975,
+          "median_component_init_ms": 0.0,
+          "median_admission_ms": 98.201729,
+          "native_http_counts": [
+            2
+          ],
+          "health_counts": [
+            4
+          ],
+          "admission_counts": [
+            1
+          ],
+          "first_use_ms": 542.744875,
+          "cold_host_ms": 632.892916,
+          "first_subsequent_rss_kib": 114288,
+          "last_subsequent_rss_kib": 124368,
+          "idle_rss_kib": 124384
+        }
+      },
+      "environment": {
+        "host": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+        "python": "3.14.7",
+        "java": "openjdk version \"17.0.18\" 2026-01-20 LTS\nOpenJDK Runtime Environment Corretto-17.0.18.9.1 (build 17.0.18+9-LTS)\nOpenJDK 64-Bit Server VM Corretto-17.0.18.9.1 (build 17.0.18+9-LTS, mixed mode, sharing)\n",
+        "platform": "ios",
+        "target": "307E104B-04BD-4A49-8BD4-F5B88E12C6CE",
+        "jar_sha256": "c2e2a2281154376458631a6cfc641b57cf430d77ef3b47c5b66bdb521c30206b",
+        "git_commit": "b119cb409b44ca910154d8abbf0b4ffa66a981a8",
+        "worktree": " M CONTRIBUTING.md\n M README.md\n M app/src/main/resources/agent-instructions.md\n M benchmarks/README.md\n M benchmarks/fixtures.py\n M benchmarks/fixtures/README.md\n M benchmarks/fixtures/ios/BenchmarkFixture/AppDelegate.swift\n M benchmarks/fixtures/ios/BenchmarkFixture/Info.plist\n M benchmarks/tests/test_fixtures.py\n M docs/agentico/specs/cli.md\n M docs/agentico/specs/server-lifecycle.md\n?? app/src/test/kotlin/dev/visiontest/daemon/DaemonAdversarialE2ETest.kt\n?? app/src/test/kotlin/dev/visiontest/daemon/DaemonRetentionE2ETest.kt\n?? benchmarks/__pycache__/\n?? benchmarks/daemon-results/\n?? benchmarks/daemon.py\n?? benchmarks/tests/test_daemon.py\n?? docs/benchmarks/daemon.md\n",
+        "limitations": [
+          "Synthetic fixture reset/readiness precedes every timed sample; setup native calls are untraced.",
+          "RSS is host resident set after completion, not peak client RSS.",
+          "Native HTTP and health spans are reported without subtracting admission costs.",
+          "Short local pilot; no hardware-independent speed threshold."
+        ]
+      },
+      "observed_utc_start": "2026-10-28T07:57:22.626466+00:00"
+    }
+  },
+  "limitations": [
+    "Ten subsequent samples per mode/workload; nearest-rank p95 is the maximum.",
+    "Setup is separately recorded; setup native calls are untraced.",
+    "RSS is sampled resident set, not peak client RSS or a heap bound.",
+    "Native iOS unit gate fails before test bootstrap on SDK27 because existing IOSAutomationServer app has no scene lifecycle; benchmark runner and fixed fixture succeeded."
+  ]
+}

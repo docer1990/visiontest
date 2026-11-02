@@ -1,5 +1,6 @@
 package dev.visiontest.cli
 
+import dev.visiontest.performance.withComponentExecutionContext
 import dev.visiontest.recording.AndroidRecordingSession
 import dev.visiontest.recording.IosRecordingSession
 import dev.visiontest.recording.JvmRecordingProcessRunner
@@ -61,7 +62,9 @@ internal class FlowRecordingLifetime(
             runCatching { finish(deadlineFactory(FINALIZATION_TIMEOUT_MS)) }
             Unit
         }
-        val allocated = options.factory.value.create(scope, platform, options.artifacts, requiredDurationMs)
+        val allocated = withComponentExecutionContext {
+            options.factory.value.create(scope, platform, options.artifacts, requiredDurationMs)
+        }
         session = allocated
         allocated.start(deadline)
     }

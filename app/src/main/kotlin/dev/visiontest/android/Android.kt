@@ -14,14 +14,15 @@ import dev.visiontest.common.DeviceType
 import dev.visiontest.common.MobileDevice
 import dev.visiontest.utils.ErrorHandler
 import com.malinskiy.adam.AndroidDebugBridgeClientFactory
-import com.malinskiy.adam.interactor.StartAdbInteractor
 import com.malinskiy.adam.request.device.Device
 import com.malinskiy.adam.request.device.DeviceState
 import com.malinskiy.adam.request.device.ListDevicesRequest
 import com.malinskiy.adam.request.shell.v2.ShellCommandRequest
 import com.malinskiy.adam.request.shell.v2.ShellCommandResult
 import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import dev.visiontest.common.RequestLogger
+import dev.visiontest.common.DispatchEvidence
+import dev.visiontest.common.HostProcessContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -32,17 +33,10 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-internal class AndroidHostProcesses(
-    val startAdb: suspend () -> Unit = { StartAdbInteractor().execute() },
-    val launchAdb: (List<String>) -> Process = { command ->
-        ProcessBuilder(command).redirectErrorStream(true).start()
-    },
-)
-
 class Android internal constructor(
     private val timeoutMillis: Long = 5000L,
     private val cacheValidityPeriod: Long = 1000L,
-    private val logger: Logger = LoggerFactory.getLogger(Android::class.java),
+    private val logger: Logger = RequestLogger.getLogger(Android::class.java),
     private val trace: TraceRecorder,
     private val adb: com.malinskiy.adam.AndroidDebugBridgeClient = AndroidDebugBridgeClientFactory().build(),
     private val hostProcesses: AndroidHostProcesses = AndroidHostProcesses(),
@@ -50,7 +44,7 @@ class Android internal constructor(
     constructor(
         timeoutMillis: Long = 5000L,
         cacheValidityPeriod: Long = 1000L,
-        logger: Logger = LoggerFactory.getLogger(Android::class.java),
+        logger: Logger = RequestLogger.getLogger(Android::class.java),
     ) : this(timeoutMillis, cacheValidityPeriod, logger, TraceRecorder.Disabled)
     constructor() : this(trace = TraceRecorder.Disabled)
 
@@ -175,6 +169,11 @@ class Android internal constructor(
     private var deviceListCache: List<MobileDevice>? = null
     private var lastDeviceListFetch: Long = 0
 
+    /** Called by the daemon only between settled requests, never during discovery. */
+    internal fun invalidateDeviceCache() {
+        deviceListCache = null
+    }
+
     private suspend fun fetchDevices(): List<MobileDevice> = trace.span(TraceStage.DEVICE_DISCOVERY) {
         ensureAdbStarted()
         deviceListCacheLock.withLock {
@@ -238,6 +237,7 @@ class Android internal constructor(
             val response: ShellCommandResult = withTimeoutOrNull(timeoutMillis) {
                 adb.execute(ShellCommandRequest(command), device.id)
             } ?: throw TimeoutException("Timeout executing command: $command")
+            kotlin.coroutines.coroutineContext[DispatchEvidence]?.confirmed("host.mutation")
 
             if (response.exitCode != 0) {
                 logger.warn("Error executing command: '$command', exit code: ${response.exitCode}")
@@ -290,12 +290,16 @@ class Android internal constructor(
         val device = resolveDevice(deviceSerial)
 
         // Build command with validated arguments - ProcessBuilder handles escaping
-        val command = mutableListOf("adb", "-s", device.id)
+        val executable = if (dev.visiontest.cli.CliExecutionContext.currentOrNull() == null) "adb"
+            else callerAdbExecutable()
+        val command = mutableListOf(executable, "-s", device.id)
         command.addAll(args)
+
+        HostProcessContext.requireExecutable(command)
 
         logger.debug("Executing ADB command: ${command.joinToString(" ")}")
 
-        return trace.span(TraceStage.ADB) {
+        suspend fun dispatch() = trace.span(TraceStage.ADB) {
             withContext(Dispatchers.IO) {
                 val process = hostProcesses.launchAdb(command)
 
@@ -326,6 +330,7 @@ class Android internal constructor(
                 readerThread.join(5000)
 
                 val exitCode = process.exitValue()
+                kotlin.coroutines.coroutineContext[DispatchEvidence]?.confirmed("host.mutation")
                 val outputText = synchronized(output) { output.toString() }
                 if (exitCode != 0) {
                     logger.warn("ADB command failed with exit code $exitCode: $outputText")
@@ -336,6 +341,9 @@ class Android internal constructor(
                 outputText.trim()
             }
         }
+        val tracked = subCommand == "install" || subCommand == "forward" && subArgs.firstOrNull() != "--remove" &&
+            subArgs.firstOrNull() != "--list"
+        return if (tracked) dev.visiontest.common.trackHostMutation { dispatch() } else dispatch()
     }
 
     override suspend fun listApps(deviceId: String?): List<String> {
@@ -397,7 +405,7 @@ class Android internal constructor(
             "monkey -p $packageName -c android.intent.category.LAUNCHER 1"
         }
 
-        val result = shell(command)
+        val result = dev.visiontest.common.trackHostMutation { shell(command) }
 
         // Check for specific error patterns from am/monkey commands
         if (LAUNCH_ERROR_PATTERNS.any { result.contains(it, ignoreCase = true) }) {

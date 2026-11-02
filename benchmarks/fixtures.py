@@ -45,7 +45,8 @@ def selector_resource_id(platform: str, identity: str, name: str) -> str:
     return f"{identity}:id/{name}" if platform == "android" else name
 
 
-def wait_fixture_ready(case: dict, manifest: dict, env: dict) -> tuple[bool, str | None]:
+def wait_fixture_ready(case: dict, manifest: dict, env: dict, *, runner=None) -> tuple[bool, str | None]:
+    runner = runner or run_process
     platform = manifest["platform"]
     identity = manifest["fixtureIdentity"]
     scenario = case["fixtureScenario"]
@@ -72,7 +73,7 @@ def wait_fixture_ready(case: dict, manifest: dict, env: dict) -> tuple[bool, str
                                            "--json", "--platform", platform]
             if platform == "ios":
                 argv += ["--bundle-id", identity]
-            result = run_process(argv, timeout_ms=remaining_ms, env=probe_env)
+            result = runner(argv, timeout_ms=remaining_ms, env=probe_env)
             if result["timed_out"] or result["exit_code"] != 0:
                 return False, f"fixture readiness probe failed for {name} (exit {result['exit_code']})"
             try:

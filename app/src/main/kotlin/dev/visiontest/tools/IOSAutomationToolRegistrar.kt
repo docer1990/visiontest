@@ -1,5 +1,7 @@
 package dev.visiontest.tools
 
+import dev.visiontest.common.HostProcessContext
+
 import dev.visiontest.performance.TraceRecorder
 import dev.visiontest.performance.TraceStage
 import dev.visiontest.performance.OperationOutcome
@@ -29,7 +31,8 @@ class IOSAutomationToolRegistrar internal constructor(
     private val logger: Logger,
     private val trace: TraceRecorder,
     private val launchProcess: (List<String>) -> Process = { command ->
-        ProcessBuilder(command).redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
+        HostProcessContext.builder(command).redirectErrorStream(true)
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
     },
 ) : ToolRegistrar {
     constructor(
@@ -114,8 +117,13 @@ class IOSAutomationToolRegistrar internal constructor(
     ): ServerPollResult {
         withContext(Dispatchers.IO) {
             logger.info("Starting iOS automation server ($label): ${command.joinToString(" ")}")
-            val process = trace.span(TraceStage.PROCESS_LAUNCH) { launchProcess(command) }
-            iosXcodebuildProcess = process
+            // Resolve the host tool before admitting a mutation; a missing xcodebuild has dispatched nothing.
+            HostProcessContext.requireExecutable(command)
+            dev.visiontest.common.trackHostMutation {
+                trace.span(TraceStage.PROCESS_LAUNCH) {
+                    launchProcess(command).also { iosXcodebuildProcess = it }
+                }
+            }
         }
 
         var attempts = 0
@@ -167,7 +175,7 @@ class IOSAutomationToolRegistrar internal constructor(
         iosXcodebuildProcess?.let { process ->
             if (process.isAlive) {
                 logger.info("Destroying orphaned xcodebuild process before starting a new one")
-                process.destroyForcibly()
+                dev.visiontest.common.trackHostMutation { terminateOwnedProcess(process) }
             }
             iosXcodebuildProcess = null
         }
@@ -317,13 +325,21 @@ class IOSAutomationToolRegistrar internal constructor(
     internal suspend fun stopAutomationServer(): String = trace.span(TraceStage.OPERATION) {
         val process = iosXcodebuildProcess
         return@span if (process != null && process.isAlive) {
-            process.destroyForcibly()
+            dev.visiontest.common.trackHostMutation { terminateOwnedProcess(process) }
             iosXcodebuildProcess = null
             "iOS automation server stopped successfully."
         } else {
             iosXcodebuildProcess = null
             "iOS automation server is not running."
         }
+    }
+
+    /** Releases only the startup child retained by this registrar. */
+    @Synchronized
+    internal fun close() {
+        val process = iosXcodebuildProcess
+        if (process != null && process.isAlive) terminateOwnedProcess(process)
+        iosXcodebuildProcess = null
     }
 
     // ==================== MCP Tool Registrations ====================
@@ -652,4 +668,19 @@ class IOSAutomationToolRegistrar internal constructor(
             stopAutomationServer()
         }
     }
+}
+
+/** Do not release graph ownership or its daemon lease until the child has exited. */
+private fun terminateOwnedProcess(process: Process) {
+    process.destroyForcibly()
+    var interrupted = false
+    while (true) {
+        try {
+            process.waitFor()
+            break
+        } catch (_: InterruptedException) {
+            interrupted = true
+        }
+    }
+    if (interrupted) Thread.currentThread().interrupt()
 }

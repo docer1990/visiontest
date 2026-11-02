@@ -1,7 +1,9 @@
 # Native benchmark fixtures
 
 These apps contain synthetic screens only. They never read or store user data.
-Android uses platform Views and iOS uses UIKit. Both use
+Android uses platform Views and iOS uses UIKit with a single window scene.
+The iOS fixture declares its scene delegate in Info.plist for current simulator
+runtimes; rebuild older AppDelegate-only fixture bundles before collecting. Both use
 `dev.visiontest.benchmark`; startup resets the selected scenario and
 language (`en` or `it`). The `appear` and `disappear` scenarios use a fixed
 750 ms fixture delay. Keep that delay outside command CPU comparisons.

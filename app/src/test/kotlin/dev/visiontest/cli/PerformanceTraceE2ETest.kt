@@ -17,7 +17,7 @@ class PerformanceTraceE2ETest {
     private data class Output(val code: Int, val stdout: String, val stderr: String)
     private fun run(vararg args: String, environment: String? = null): Output {
         val builder = ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-            "-jar", System.getProperty("visiontest.jar"), *args).directory(directory.toFile())
+            "-jar", System.getProperty("visiontest.jar"), "--standalone", *args).directory(directory.toFile())
         builder.environment().remove("VISIONTEST_TRACE_PERFORMANCE")
         if (environment != null) builder.environment()["VISIONTEST_TRACE_PERFORMANCE"] = environment
         val process = builder.start()

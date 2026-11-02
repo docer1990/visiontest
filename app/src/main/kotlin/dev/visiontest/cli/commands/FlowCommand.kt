@@ -21,7 +21,7 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
-import java.nio.file.Path
+import dev.visiontest.cli.CliExecutionContext
 import java.util.UUID
 
 internal class FlowCommand(
@@ -96,7 +96,7 @@ internal class FlowCommand(
         }
         val lines = FlowInput.read(steps, file, stdin, readStdin)
         val prepared = FlowPreparation.prepare(platform, lines, components)
-        val artifacts = Path.of("flow-artifacts", UUID.randomUUID().toString()).toAbsolutePath()
+        val artifacts = CliExecutionContext.current().resolve("flow-artifacts/${UUID.randomUUID()}")
         val report = FlowExecutor().execute(platform, prepared, stepTimeout.toLong(), timeout.toLong(),
             FlowObservationOptions(FlowObservationCollector(platform, components, appScope.bundleId,
                 artifacts = artifacts, options = inspectionOptions),

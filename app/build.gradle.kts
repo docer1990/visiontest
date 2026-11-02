@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
 
@@ -158,3 +160,48 @@ tasks {
         archiveVersion.set("")
     }
 }
+
+// Stable across workspaces, sensitive to same-version source/configuration/dependency changes.
+// Generated resources are deliberately excluded from the source inputs to avoid recursion.
+val daemonIdentityDirectory = layout.buildDirectory.dir("generated/daemonIdentity")
+val daemonIdentitySources = files(
+    fileTree("src/main"),
+    rootProject.file("build.gradle.kts"),
+    rootProject.file("settings.gradle.kts"),
+    rootProject.file("gradle.properties"),
+    rootProject.file("gradle/libs.versions.toml"),
+    file("build.gradle.kts"),
+)
+val generateDaemonBuildIdentity = tasks.register("generateDaemonBuildIdentity") {
+    inputs.files(daemonIdentitySources).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(configurations.runtimeClasspath).withPathSensitivity(PathSensitivity.NAME_ONLY)
+    inputs.property("appVersion", project.version.toString())
+    outputs.dir(daemonIdentityDirectory)
+    doLast {
+        val digest = MessageDigest.getInstance("SHA-256")
+        fun include(label: String, source: File) {
+            digest.update(label.toByteArray(Charsets.UTF_8))
+            digest.update(0.toByte())
+            source.inputStream().use { input ->
+                val buffer = ByteArray(65536)
+                var count = input.read(buffer)
+                while (count != -1) {
+                    digest.update(buffer, 0, count)
+                    count = input.read(buffer)
+                }
+            }
+            digest.update(0.toByte())
+        }
+        digest.update(project.version.toString().toByteArray(Charsets.UTF_8))
+        daemonIdentitySources.files.filter { it.isFile }.sortedBy { it.relativeTo(rootDir).invariantSeparatorsPath }
+            .forEach { include(it.relativeTo(rootDir).invariantSeparatorsPath, it) }
+        configurations.runtimeClasspath.get().resolvedConfiguration.resolvedArtifacts
+            .sortedBy { it.moduleVersion.id.toString() + ":" + it.file.name }
+            .forEach { include(it.moduleVersion.id.toString() + ":" + it.file.name, it.file) }
+        val target = daemonIdentityDirectory.get().file("daemon-build.sha256").asFile
+        target.parentFile.mkdirs()
+        target.writeText(digest.digest().joinToString("") { "%02x".format(it) } + "\n")
+    }
+}
+sourceSets.main { resources.srcDir(daemonIdentityDirectory) }
+tasks.named("processResources") { dependsOn(generateDaemonBuildIdentity) }

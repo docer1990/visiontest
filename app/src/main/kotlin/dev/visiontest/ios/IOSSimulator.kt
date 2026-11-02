@@ -9,7 +9,7 @@ import dev.visiontest.common.DeviceConfig
 import dev.visiontest.common.MobileDevice
 import kotlinx.serialization.json.*
 import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import dev.visiontest.common.RequestLogger
 
 class IOSSimulator internal constructor(
     private val trace: TraceRecorder,
@@ -18,18 +18,24 @@ class IOSSimulator internal constructor(
     // longer than the default 5s command timeout.
     private val bootWaitExecutor: ProcessExecutor =
         ProcessExecutor(timeoutMillis = BOOT_WAIT_TIMEOUT_MILLIS, trace = trace),
-    private val logger: Logger = LoggerFactory.getLogger(IOSSimulator::class.java)
+    private val logger: Logger = RequestLogger.getLogger(IOSSimulator::class.java)
 ) : DeviceConfig {
     constructor(
         processExecutor: ProcessExecutor = ProcessExecutor(),
         bootWaitExecutor: ProcessExecutor = ProcessExecutor(timeoutMillis = BOOT_WAIT_TIMEOUT_MILLIS),
-        logger: Logger = LoggerFactory.getLogger(IOSSimulator::class.java),
+        logger: Logger = RequestLogger.getLogger(IOSSimulator::class.java),
     ) : this(TraceRecorder.Disabled, processExecutor, bootWaitExecutor, logger)
     constructor() : this(trace = TraceRecorder.Disabled)
 
     companion object {
         private const val SIMCTL = "xcrun"
         private const val STATE_BOOTED = "Booted"
+
+        internal fun isValidBundleIdFormat(bundleId: String): Boolean {
+            if (bundleId.isBlank()) return false
+            val pattern = Regex("^[a-zA-Z_][a-zA-Z0-9_-]*(?:\\.[a-zA-Z_][a-zA-Z0-9_-]*)+$")
+            return bundleId.matches(pattern)
+        }
 
         // Maximum time to wait for a simulator to finish booting (simctl bootstatus)
         internal const val BOOT_WAIT_TIMEOUT_MILLIS = 120_000L
@@ -92,7 +98,9 @@ class IOSSimulator internal constructor(
         val device = getDevice(deviceId)
         ensureDeviceBooted(device)
 
-        val result = processExecutor.execute(SIMCTL, "simctl", "launch", device.id, packageName)
+        val result = dev.visiontest.common.trackHostMutation {
+            processExecutor.execute(SIMCTL, "simctl", "launch", device.id, packageName)
+        }
 
         if (result.exitCode != 0) {
             throw IOSSimulatorException("Failed to launch app: ${result.errorOutput}")
@@ -146,13 +154,7 @@ class IOSSimulator internal constructor(
      * @return true if valid, false otherwise
      */
     internal fun isValidBundleId(bundleId: String): Boolean {
-        if (bundleId.isBlank()) {
-            return false
-        }
-
-        // iOS bundle ID pattern: at least 2 segments, alphanumeric with underscores/hyphens
-        val pattern = Regex("^[a-zA-Z_][a-zA-Z0-9_-]*(?:\\.[a-zA-Z_][a-zA-Z0-9_-]*)+$")
-        return bundleId.matches(pattern)
+        return isValidBundleIdFormat(bundleId)
     }
 
     private suspend fun ensureDeviceBooted(device: MobileDevice) {

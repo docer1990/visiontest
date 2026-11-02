@@ -1,0 +1,47 @@
+{
+  "android_serial": "emulator-5554",
+  "android_release": "17",
+  "installed_packages": [
+    {
+      "package": "dev.visiontest.automationserver",
+      "installed_apk_sha256": "1d852c01cfa4a4e8f0bb0342443e4115a1ec45ac6efa46e9aaa8425cbd786c30",
+      "version_lines": [
+        "versionCode=3 minSdk=21 targetSdk=34",
+        "versionName=1.0.0"
+      ]
+    },
+    {
+      "package": "dev.visiontest.automationserver.test",
+      "installed_apk_sha256": "774407e1eafbab24d93c52a0b6483561b2c55d9b95e1eb2392a31d02979afc25",
+      "version_lines": [
+        "versionCode=0 minSdk=21 targetSdk=34",
+        "versionName=null"
+      ]
+    },
+    {
+      "package": "dev.visiontest.benchmark",
+      "installed_apk_sha256": "79fb23866fb0232515e66feeb23d5aeaa1280785be1a813ea42a29c89182fcb9",
+      "version_lines": [
+        "versionCode=1 minSdk=23 targetSdk=34",
+        "versionName=1.0"
+      ]
+    }
+  ],
+  "ios_simulator": "307E104B-04BD-4A49-8BD4-F5B88E12C6CE",
+  "ios_release": "27.0",
+  "ios_xctestrun": "/tmp/visiontest-issue86-ios-derived/Build/Products/IOSAutomationServer_iphonesimulator27.1-arm64.xctestrun",
+  "artifact_sha256": {
+    "ios_test_runner_binary": "5762d9ce95fd34100f30103a2a55e81888f49b10baf7bf51e49675dc423639e2",
+    "ios_xctestrun": "a320233a915424e02291f140643f71886f1fae8b60c25c431786cd59188da01d",
+    "ios_fixture_binary": "e2ad3ac32f0ab85d312341a63055e0824b1c5023b97866158028f9890fe726c3",
+    "ios_fixture_info_plist": "1128862c76d723aa61d5473661ab8d26af5440a053520fe9a717f365ba54c353",
+    "android_fixture_apk": "79fb23866fb0232515e66feeb23d5aeaa1280785be1a813ea42a29c89182fcb9"
+  },
+  "artifact_paths": {
+    "ios_test_runner_binary": "/tmp/visiontest-issue86-ios-derived/Build/Products/Debug-iphonesimulator/IOSAutomationServerUITests-Runner.app/PlugIns/IOSAutomationServerUITests.xctest/IOSAutomationServerUITests",
+    "ios_xctestrun": "/tmp/visiontest-issue86-ios-derived/Build/Products/IOSAutomationServer_iphonesimulator27.1-arm64.xctestrun",
+    "ios_fixture_binary": "/tmp/visiontest-issue86-fixture-derived/Build/Products/Debug-iphonesimulator/BenchmarkFixture.app/BenchmarkFixture",
+    "ios_fixture_info_plist": "/tmp/visiontest-issue86-fixture-derived/Build/Products/Debug-iphonesimulator/BenchmarkFixture.app/Info.plist",
+    "android_fixture_apk": "benchmarks/fixtures/android/build/outputs/apk/debug/benchmark-fixture-debug.apk"
+  }
+}

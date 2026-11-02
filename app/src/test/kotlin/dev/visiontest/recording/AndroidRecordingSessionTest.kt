@@ -1,6 +1,8 @@
 package dev.visiontest.recording
 
 import dev.visiontest.common.RequestDeadline
+import dev.visiontest.cli.CliExecutionContext
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -145,6 +147,18 @@ class AndroidRecordingSessionTest {
         val expected = Path.of("tools/adb").toAbsolutePath().toString()
         assertTrue(runner.commands.drop(1).all { it.first() == expected })
         assertEquals(1, runner.commands.count { it.first() == "/bin/sh" })
+    }
+
+    @Test
+    fun `relative adb launcher belongs to the recording caller directory`() = runTest {
+        val runner = FakeAndroidRecordingProcesses()
+        runner.executable = "tools/adb"
+        withContext(CliExecutionContext(workingDirectory = directory).coroutineContext()) {
+            val session = AndroidRecordingSession(backgroundScope, directory, 150_000, runner)
+            session.start(RequestDeadline(1000))
+            session.finish(RequestDeadline(1000))
+        }
+        assertTrue(runner.commands.drop(1).all { it.first() == directory.resolve("tools/adb").toString() })
     }
 
     @Test

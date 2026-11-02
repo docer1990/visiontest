@@ -8,7 +8,14 @@ The command-line interface provides scriptable access to selected VisionTest ope
 
 ### Requirement: The entry point routes MCP and CLI modes by the first argument
 
-The JAR MUST start the MCP stdio server when invoked with no arguments or when its first argument is exactly `serve`. Every other first argument MUST enter the CLI parser.
+The JAR MUST start the MCP stdio server when invoked with no arguments or when its first argument is exactly `serve`. Ordinary device invocations MUST use the thin automatic daemon client, which
+MUST NOT construct the CLI tree or load Clikt, Mordant, or device components.
+Authoritative parsing and validation run in the daemon. Root `--standalone` opts
+into execution in the caller JVM. Root help/version and `init` run locally.
+`daemon start`, `daemon status [--json]`, and `daemon stop` run locally without a
+platform or native backend. The internal host sentinel is only recognized as the
+first argument. Root argument files use the local authoritative parser so their
+contents and nesting are never reinterpreted by the launcher.
 
 #### Scenario: No arguments
 
@@ -26,7 +33,43 @@ The JAR MUST start the MCP stdio server when invoked with no arguments or when i
 
 - **Given** the first argument is not `serve`
 - **When** the entry point routes the invocation
-- **Then** it SHALL construct the CLI root command without starting MCP mode
+- **Then** it SHALL select local or daemon execution without starting MCP mode
+- **And** it SHALL preserve command data after the subcommand or `--`, including literal `--standalone`
+
+#### Scenario: Daemon lifecycle
+
+- **Given** a private daemon instance directory
+- **When** `daemon status --json` is invoked while stopped
+- **Then** it SHALL emit `{"running":false}` and exit 0
+- **When** ordinary device commands start the host
+- **Then** separate client JVMs SHALL reuse the same host PID and reusable component graph
+- **And** the host SHALL be detached from the launching client process group
+- **And** incompatible execution SHALL report explicit stop/restart guidance without fallback or replay
+
+### Requirement: Daemon admission and caller isolation preserve CLI results
+
+The daemon MUST serialize whole device commands and flows, accept at most 32 queued
+requests, and expire queue wait after 30 seconds before dispatch. Each request MUST
+use its caller's absolute cwd, environment, stdin, terminal dimensions, stdout
+interactivity and trace
+context. Relative argument files and artifacts MUST resolve in that cwd. A request
+MUST NOT retain another caller's result buffers, sealed recorder or shutdown hook.
+Root `--standalone` MUST select direct execution without automatic daemon fallback.
+
+Device commands MUST require a platform except local lifecycle, init, root help and
+version. After preflight the daemon MUST admit exactly one usable Android device
+or booted iOS simulator. `available_device` and `automation_server_status` remain
+diagnostic exceptions; iOS stop remains usable without a booted simulator. Android
+stop still needs a selected device. App identifiers MUST be validated before target
+admission or component acquisition. Nondefault ADB routing MUST fail before inventory
+with standalone guidance, including JVM properties supplied by the caller or inherited
+by the daemon. Android
+device discovery MUST refresh at each daemon request boundary so diagnostic results
+and the first admitted command cannot reuse another request's inventory. A target
+change within a platform and failed transport MUST invalidate retained resources
+after execution settles; alternating platforms with stable targets MUST retain
+their compatible resources. Existing JSON, text and exit semantics
+MUST remain equivalent to standalone operation with the same inventories/backend.
 
 ### Requirement: Host performance tracing is opt in and preserves CLI behavior
 

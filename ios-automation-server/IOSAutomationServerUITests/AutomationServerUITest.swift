@@ -83,6 +83,15 @@ class AutomationServerUITest: XCTestCase {
         XCTAssertFalse(app.alerts.firstMatch.exists)
     }
 
+    func testHostAppShowsItsLabel() {
+        let app = XCUIApplication(bundleIdentifier: "dev.visiontest.IOSAutomationServer")
+        app.launch()
+
+        let heading = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "iOS Automation Server"))
+            .firstMatch
+        XCTAssertTrue(heading.waitForExistence(timeout: 5), app.debugDescription)
+    }
+
     func testSelectorGestureWithoutBundleIdUsesForegroundApplication() throws {
         let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
         safari.activate()

@@ -1,5 +1,6 @@
 package dev.visiontest.cli
 
+import com.github.ajalt.mordant.terminal.Terminal
 import dev.visiontest.cli.commands.AutomationServerStatusCommand
 import dev.visiontest.cli.commands.AvailableDeviceCommand
 import dev.visiontest.cli.commands.ClearTextCommand
@@ -33,11 +34,13 @@ import dev.visiontest.cli.commands.WaitForElementCommand
 import dev.visiontest.config.VersionInfo
 import com.github.ajalt.clikt.core.NoOpCliktCommand
 import com.github.ajalt.clikt.core.subcommands
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.core.context
 import dev.visiontest.performance.TraceRuntime
+import dev.visiontest.performance.TraceRecorder
 import dev.visiontest.performance.resolveTracePath
 
 /**
@@ -49,7 +52,18 @@ import dev.visiontest.performance.resolveTracePath
  * A [ComponentHolder] is created lazily on first subcommand execution so that
  * `visiontest --help` does not initialize ADB connections or register shutdown hooks.
  */
-class VisionTestCli internal constructor(private val trace: TraceRuntime) : NoOpCliktCommand(name = "visiontest") {
+class VisionTestCli internal constructor(
+    private val trace: TraceRuntime,
+    componentsProvider: (() -> ComponentHolder)? = null,
+    private val resultRunner: (suspend () -> CliResult) -> Unit = { runCliResultCommand(it, trace::finish) },
+    readStdin: () -> String = { System.`in`.bufferedReader().readText() },
+    acquireComponents: ((TraceRuntime) -> ComponentHolder)? = null,
+) : NoOpCliktCommand(name = "visiontest", help =
+    "Device commands automatically reuse a local daemon. Manage it with daemon start, daemon status [--json], " +
+        "or daemon stop. Use --standalone to execute in this JVM.") {
+    @Suppress("UnusedPrivateProperty")
+    private val standalone by option("--standalone", help = "Execute device commands in this JVM").flag()
+
     constructor() : this(TraceRuntime("cli", System.nanoTime()))
 
     @Suppress("UnusedPrivateProperty") // Eager conversion configures tracing even when help exits parsing.
@@ -61,18 +75,35 @@ class VisionTestCli internal constructor(private val trace: TraceRuntime) : NoOp
         trace.configure(path)
         value
     }
-    private val components by lazy { trace.initializeComponents { ComponentHolder.createDefault(trace.recorder) } }
+    private val components by lazy {
+        trace.preparationComplete()
+        acquireComponents?.invoke(trace) ?: trace.initializeComponents {
+            componentsProvider?.invoke() ?: ComponentHolder.createDefault(TraceRecorder.Contextual)
+        }
+    }
 
     private fun runner(name: String): CliCommandRunner = { block ->
-        runCliCommand({ trace.cliInvocation(name, block) }, trace::finish)
+        resultRunner { trace.cliInvocation(name) { CliResult(ExitCode.Success.value, block(), null) } }
     }
 
     init {
-        context { obj = trace }
+        context {
+            obj = trace
+            CliExecutionContext.current().terminalDimensions?.let {
+                terminal = Terminal(width = it.width, height = it.height, interactive = it.outputInteractive)
+            }
+            argumentFileReader = { java.nio.file.Files.readString(CliExecutionContext.current().resolve(it)) }
+            envvarReader = { CliExecutionContext.current().environmentValue(it) }
+        }
         versionOption(VersionInfo.version)
         subcommands(
             FlowCommand(lazy { components }, runner = { block ->
-                runCliResultCommand({ trace.cliInvocation("flow", block) }, trace::finish)
+                resultRunner { trace.cliInvocation("flow", block) }
+            }, readStdin = readStdin, recordingFactory = lazy {
+                // FlowExecutor evaluates this inside the original overall/startup budgets,
+                // after complete preflight and before any recording subprocess starts.
+                if (acquireComponents != null) components
+                SystemFlowRecordingFactory()
             }),
             // Setup
             InstallAutomationServerCommand(lazy { components }, runner = runner("install_automation_server")),

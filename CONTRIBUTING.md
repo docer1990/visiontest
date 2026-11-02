@@ -133,6 +133,22 @@ contract is [docs/agentico/specs/cli.md](docs/agentico/specs/cli.md); use
 `visiontest --help` to inspect the built artifact. CLI adapters delegate to the
 same registrar operations exposed through MCP.
 
+Ordinary device CLI calls forward through a lightweight client to the per-user
+Unix-socket daemon; `--standalone` keeps execution in the caller JVM. Lifecycle
+commands run without platform/device setup. Authoritative parsing stays in the
+existing CLI, and retained `DaemonComponents` wrap the same registrar graph. Keep
+request cwd/environment/stdin/trace/output scoped to `CliExecutionContext`; never
+change global streams or JVM properties to impersonate a caller. New operations
+must preserve validation before graph acquisition.
+
+For process tests use an isolated private `VISIONTEST_DAEMON_DIR`, own every child
+you terminate, and leave fixed native ports free of real backends. Test-only hosts
+may inject `DaemonHostOptions`; production flags must not bypass admission or
+timeouts. Run `./gradlew :app:e2eTest --tests '*Daemon*E2ETest'` and
+`python3 -m unittest benchmarks.tests.test_daemon -q` while iterating. The complete
+repository gate remains required before opening a PR. See
+[daemon measurements](docs/benchmarks/daemon.md) for reproducible paired runs.
+
 Flow-compatible commands extend `PreparedCommand`. Their `prepareExecution()`
 validates arguments synchronously and returns a suspend closure containing every
 component access and device operation. `FlowPreparation` parses all steps through

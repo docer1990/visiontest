@@ -104,11 +104,11 @@ internal class DaemonHost(
 
     private fun watchdog() {
         val time = now()
-        queue.toList().filter { time - it.accepted >= options.queueWaitMs }.forEach {
-            if (queue.remove(it)) {
-                it.fail("Daemon queue wait expired before execution")
-                it.done.complete(Unit)
-                it.connection.close()
+        for (request in queue) {
+            if (time - request.accepted >= options.queueWaitMs && queue.remove(request)) {
+                request.fail("Daemon queue wait expired before execution")
+                request.done.complete(Unit)
+                request.connection.close()
             }
         }
         active?.let {
@@ -249,7 +249,10 @@ internal class DaemonHost(
         synchronized(queue) { stopping.set(true) }
         val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(options.drainMs)
         while ((active != null || queue.isNotEmpty()) && System.nanoTime() < deadline) Thread.sleep(POLL_MS)
-        queue.toList().forEach { it.cancel(); if (queue.remove(it)) it.done.complete(Unit) }
+        for (request in queue) {
+            request.cancel()
+            if (queue.remove(request)) request.done.complete(Unit)
+        }
         active?.cancel()
         running.set(false)
         server?.close()
